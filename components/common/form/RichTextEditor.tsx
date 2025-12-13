@@ -248,18 +248,21 @@ export const RichTextEditor = ({ value, onChange, label, error, disabled, placeh
       Table.configure({
         resizable: true,
         HTMLAttributes: {
-          class: 'border-collapse table-auto w-full my-4 border border-gray-300 dark:border-gray-600',
+          // THE FIX: Enforce min-width to ensure horizontal scrolling triggers
+          class: 'border-collapse table-auto min-w-full my-4 border border-gray-300 dark:border-gray-600',
         },
       }),
       TableRow,
       TableHeader.configure({
         HTMLAttributes: {
-          class: 'border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 p-2 font-semibold text-left',
+          // THE FIX: Added !px-3 !py-2 to force padding even if typography resets it
+          class: 'border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 !px-3 !py-2 font-semibold text-left',
         },
       }),
       TableCell.configure({
         HTMLAttributes: {
-          class: 'border border-gray-300 dark:border-gray-600 p-2 align-top relative',
+          // THE FIX: Added !px-3 !py-2 to force padding
+          class: 'border border-gray-300 dark:border-gray-600 !px-3 !py-2 align-top relative',
         },
       }),
     ],
@@ -292,12 +295,14 @@ export const RichTextEditor = ({ value, onChange, label, error, disabled, placeh
     <div className="w-full">
       {label && <Label className="mb-2">{label}</Label>}
       <div className={`
-        border rounded-lg overflow-hidden bg-white dark:bg-gray-900 transition-colors
+        border rounded-lg bg-white dark:bg-gray-900 transition-colors
         ${error 
           ? "border-red-500 dark:border-red-500" 
           : "border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
         }
         ${disabled ? "opacity-60 cursor-not-allowed" : ""}
+        // Overflow handling for tables during edit
+        overflow-x-auto
       `}>
         <MenuBar editor={editor} />
         <EditorContent editor={editor} placeholder={placeholder} />

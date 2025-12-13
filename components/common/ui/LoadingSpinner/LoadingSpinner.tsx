@@ -97,43 +97,6 @@ export const CardSpinner: React.FC<{ text?: string }> = ({ text }) => (
   </div>
 );
 
-// Loading skeleton components
-export const LoadingSkeleton: React.FC<{
-  className?: string;
-  rows?: number;
-}> = ({ className, rows = 1 }) => (
-  <div className={cn("animate-pulse space-y-3", className)}>
-    {Array.from({ length: rows }).map((_, index) => (
-      <div
-        key={index}
-        className='h-4 rounded bg-gray-200 dark:bg-gray-700'
-        style={{
-          width: `${Math.random() * 40 + 60}%`,
-        }}
-      />
-    ))}
-  </div>
-);
-
-export const LoadingCard: React.FC<{
-  className?: string;
-}> = ({ className }) => (
-  <div
-    className={cn(
-      "animate-pulse rounded-lg border border-gray-200 dark:border-gray-700 p-6",
-      className
-    )}>
-    <div className='space-y-4'>
-      <div className='h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700' />
-      <div className='space-y-2'>
-        <div className='h-4 rounded bg-gray-200 dark:bg-gray-700' />
-        <div className='h-4 w-5/6 rounded bg-gray-200 dark:bg-gray-700' />
-      </div>
-      <div className='h-10 w-24 rounded bg-gray-200 dark:bg-gray-700' />
-    </div>
-  </div>
-);
-
 // THE FIX: Changed from `items-center` to `items-start` and added `pt-10` to position
 // the loader near the top, making it less obtrusive.
 export const BlurLoader: React.FC<{

@@ -23,7 +23,10 @@ export interface ValidationError {
   code?: string;
 }
 
-const formattersCache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>();
+const formattersCache = new Map<
+  string,
+  Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat
+>();
 
 function getCachedFormatter(
   type: 'number',
@@ -46,7 +49,7 @@ function getCachedFormatter(
   options: Intl.NumberFormatOptions | Intl.DateTimeFormatOptions | Intl.ListFormatOptions
 ): Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat {
   const key = `${type}-${locale}-${JSON.stringify(options)}`;
-  
+
   if (!formattersCache.has(key)) {
     let formatter: Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat;
     switch (type) {
@@ -64,24 +67,21 @@ function getCachedFormatter(
     }
     formattersCache.set(key, formatter);
   }
-  
+
   return formattersCache.get(key)!;
 }
 
 // =============================================================================
 // =============================================================================
 
-export const formatNumber = (
-  num: number,
-  options: NumberFormatOptions = {}
-): string => {
+export const formatNumber = (num: number, options: NumberFormatOptions = {}): string => {
   if (!Number.isFinite(num)) {
     return num.toString();
   }
 
   const { locale = 'en-IN', ...intlOptions } = options;
   const formatter = getCachedFormatter('number', locale, intlOptions);
-  
+
   return formatter.format(num);
 };
 
@@ -96,44 +96,8 @@ export const formatCurrency = (
     locale,
     style: 'currency',
     currency,
-    ...options
+    ...options,
   });
-};
-
-export const formatPercentage = (
-  value: number,
-  decimals: number = 1,
-  locale: string = 'en-US'
-): string => {
-  return formatNumber(value / 100, {
-    locale,
-    style: 'percent',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
-};
-
-export const formatScore = (
-  score: number,
-  total: number,
-  options: {
-    showFraction?: boolean;
-    decimals?: number;
-    locale?: string;
-  } = {}
-): string => {
-  const { showFraction = true, decimals = 1, locale = 'en-US' } = options;
-  
-  if (total <= 0) {
-    return showFraction ? `${score}/0 (0%)` : '0%';
-  }
-
-  const percentage = (score / total) * 100;
-  const formattedPercentage = formatPercentage(percentage, decimals, locale);
-  
-  return showFraction 
-    ? `${formatNumber(score, { locale })}/${formatNumber(total, { locale })} (${formattedPercentage})`
-    : formattedPercentage;
 };
 
 export const formatFileSize = (
@@ -145,38 +109,55 @@ export const formatFileSize = (
   } = {}
 ): string => {
   const { binary = false, decimals = 2, locale = 'en-US' } = options;
-  
+
   if (bytes === 0) return '0 B';
   if (!Number.isFinite(bytes) || bytes < 0) return 'Invalid size';
 
   const base = binary ? 1024 : 1000;
-  const sizes = binary 
-    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'] 
+  const sizes = binary
+    ? ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
     : ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-  
+
   const i = Math.floor(Math.log(bytes) / Math.log(base));
   const size = bytes / Math.pow(base, i);
-  
-  return `${formatNumber(size, { 
+
+  return `${formatNumber(size, {
     locale,
     minimumFractionDigits: i === 0 ? 0 : decimals,
-    maximumFractionDigits: i === 0 ? 0 : decimals
+    maximumFractionDigits: i === 0 ? 0 : decimals,
   })} ${sizes[i]}`;
 };
 
 // =============================================================================
 // =============================================================================
 
-export const toTitleCase = (
-  str: string,
-  options: StringCaseOptions = {}
-): string => {
+export const toTitleCase = (str: string, options: StringCaseOptions = {}): string => {
   if (!str) return '';
-  
+
   const { preserveAcronyms = true } = options;
-  
-  const articles = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet']);
-  
+
+  const articles = new Set([
+    'a',
+    'an',
+    'and',
+    'as',
+    'at',
+    'but',
+    'by',
+    'for',
+    'if',
+    'in',
+    'nor',
+    'of',
+    'on',
+    'or',
+    'so',
+    'the',
+    'to',
+    'up',
+    'yet',
+  ]);
+
   return str
     .toLowerCase()
     .split(/\s+/)
@@ -194,168 +175,16 @@ export const toTitleCase = (
 
 export const snakeToTitleCase = (str: string): string => {
   if (!str) return '';
-  
+
   return str
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
-};
-
-export const camelToKebab = (str: string): string => {
-  if (!str) return '';
-  
-  return str
-    .replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2')
-    .toLowerCase();
-};
-
-export const kebabToCamel = (str: string): string => {
-  if (!str) return '';
-  
-  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-export const snakeToCamel = (str: string): string => {
-  if (!str) return '';
-  
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-export const camelToSnake = (str: string): string => {
-  if (!str) return '';
-  
-  return str.replace(/([A-Z])/g, '_$1').toLowerCase();
-};
-
-export const createSlug = (
-  text: string,
-  options: {
-    maxLength?: number;
-    separator?: string;
-    lowercase?: boolean;
-  } = {}
-): string => {
-  const { maxLength = 50, separator = '-', lowercase = true } = options;
-  
-  if (!text) return '';
-  
-  let slug = text
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, separator) // Replace spaces with separator
-    .replace(new RegExp(`${separator}+`, 'g'), separator) // Replace multiple separators
-    .replace(new RegExp(`^${separator}|${separator}$`, 'g'), ''); // Remove leading/trailing separators
-  
-  if (lowercase) {
-    slug = slug.toLowerCase();
-  }
-  
-  if (maxLength && slug.length > maxLength) {
-    slug = slug.substring(0, maxLength).replace(new RegExp(`${separator}$`), '');
-  }
-  
-  return slug;
-};
-
-export const truncateText = (
-  text: string,
-  maxLength: number,
-  options: {
-    suffix?: string;
-    preserveWords?: boolean;
-  } = {}
-): string => {
-  const { suffix = '...', preserveWords = true } = options;
-  
-  if (!text || text.length <= maxLength) return text;
-  
-  if (!preserveWords) {
-    return text.substring(0, maxLength - suffix.length) + suffix;
-  }
-  
-  const words = text.split(' ');
-  let truncated = '';
-  
-  for (const word of words) {
-    const nextText = truncated ? `${truncated} ${word}` : word;
-    if (nextText.length > maxLength - suffix.length) {
-      break;
-    }
-    truncated = nextText;
-  }
-  
-  return truncated ? truncated + suffix : text.substring(0, maxLength - suffix.length) + suffix;
-};
-
-// =============================================================================
-// =============================================================================
-
-export const formatUserName = (
-  firstName: string,
-  lastName: string,
-  format: 'full' | 'lastFirst' | 'initials' | 'firstInitial' = 'full'
-): string => {
-  const first = firstName?.trim() || '';
-  const last = lastName?.trim() || '';
-  
-  if (!first && !last) return '';
-  
-  switch (format) {
-    case 'full':
-      return `${first} ${last}`.trim();
-    case 'lastFirst':
-      return last ? `${last}, ${first}`.trim() : first;
-    case 'initials':
-      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
-    case 'firstInitial':
-      return `${first.charAt(0).toUpperCase()}. ${last}`.trim();
-    default:
-      return `${first} ${last}`.trim();
-  }
-};
-
-export const formatPhoneNumber = (
-  phone: string,
-  options: PhoneFormatOptions = {}
-): string => {
-  const { format = 'US' } = options;
-  
-  if (!phone) return '';
-  
-  const cleaned = phone.replace(/\D/g, '');
-  
-  switch (format) {
-    case 'US':
-      if (cleaned.length === 10) {
-        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-      }
-      if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
-      }
-      break;
-      
-    case 'E164':
-      if (cleaned.length === 10) {
-        return `+1${cleaned}`;
-      }
-      if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        return `+${cleaned}`;
-      }
-      break;
-      
-    case 'international':
-      if (cleaned.length >= 10) {
-        return `+${cleaned}`;
-      }
-      break;
-  }
-  
-  return phone; // Return original if can't format
 };
 
 export const formatEmail = (email: string): string => {
   if (!email) return '';
-  
+
   return email.trim().toLowerCase();
 };
 
@@ -364,13 +193,20 @@ export const formatEmail = (email: string): string => {
 
 type FormatDateOptions = Intl.DateTimeFormatOptions & {
   locale?: string;
-  format?: 'short' | 'medium' | 'long' | 'full' | 'ddmmyyyy' | 'yyyy-mm-dd' | 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'dd MMM yyyy' | 'dd-mm-yyyy';
+  format?:
+    | 'short'
+    | 'medium'
+    | 'long'
+    | 'full'
+    | 'ddmmyyyy'
+    | 'yyyy-mm-dd'
+    | 'dd/mm/yyyy'
+    | 'mm/dd/yyyy'
+    | 'dd MMM yyyy'
+    | 'dd-mm-yyyy';
 };
 
-const DATE_FORMATS: Record<
-  'short' | 'medium' | 'long' | 'full',
-  Intl.DateTimeFormatOptions
-> = {
+const DATE_FORMATS: Record<'short' | 'medium' | 'long' | 'full', Intl.DateTimeFormatOptions> = {
   short: { year: '2-digit', month: 'numeric', day: 'numeric' },
   medium: { year: 'numeric', month: 'short', day: 'numeric' },
   long: { year: 'numeric', month: 'long', day: 'numeric' },
@@ -401,7 +237,7 @@ export const formatDate = (
     }
 
     const dateObj = new Date(date);
-    
+
     if (isNaN(dateObj.getTime()) || isSuspiciousUnixEpoch(date, dateObj)) {
       return 'No Date';
     }
@@ -410,7 +246,20 @@ export const formatDate = (
       const day = dateObj.getDate().toString().padStart(2, '0');
       const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
       const year = dateObj.getFullYear().toString();
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       const monthName = monthNames[dateObj.getMonth()];
 
       switch (format) {
@@ -444,148 +293,43 @@ export const formatDate = (
 function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: Date): boolean {
   const time = dateObj.getTime();
   const isUnixEpoch = time === 0; // January 1, 1970 00:00:00 UTC
-  
+
   if (!isUnixEpoch) return false;
-  
+
   if (originalInput instanceof Date) {
     return false;
   }
-  
+
   if (originalInput === 0) {
     return false;
   }
-  
+
   if (typeof originalInput === 'number') {
     return true;
   }
-  
+
   if (typeof originalInput === 'string') {
     const trimmed = originalInput.trim();
-    
+
     const validUnixEpochStrings = [
       '0',
       '1970-01-01',
       '01/01/1970',
-      '1/1/1970', 
+      '1/1/1970',
       '01-01-1970',
       '1970-01-01T00:00:00.000Z',
-      '1970-01-01T00:00:00Z'
+      '1970-01-01T00:00:00Z',
     ];
-    
-    const isExactMatch = validUnixEpochStrings.includes(trimmed) || 
-                        validUnixEpochStrings.includes(trimmed.toLowerCase());
-    
+
+    const isExactMatch =
+      validUnixEpochStrings.includes(trimmed) ||
+      validUnixEpochStrings.includes(trimmed.toLowerCase());
+
     return !isExactMatch;
   }
-  
+
   return true;
 }
-
-
-export const formatTimeRange = (
-  startTime: Date | string,
-  endTime: Date | string,
-  options: Intl.DateTimeFormatOptions & { locale?: string } = {}
-): string => {
-  const { locale = 'en-IN', ...intlOptions } = options;
-  
-  const formatOptions = {
-    hour: 'numeric' as const,
-    minute: '2-digit' as const,
-    ...intlOptions
-  };
-  
-  const start = formatDate(startTime, { locale, ...formatOptions });
-  const end = formatDate(endTime, { locale, ...formatOptions });
-  
-  return `${start} - ${end}`;
-};
-
-export const formatRelativeTime = (
-  date: Date | string | number,
-  locale: string = 'en-US'
-): string => {
-  try {
-    const dateObj = new Date(date);
-    const now = new Date();
-    const diffMs = now.getTime() - dateObj.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-    
-    if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
-    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
-    if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
-    
-    return formatDate(dateObj, { locale, dateStyle: 'medium' });
-  } catch {
-    return 'No Date';
-  }
-};
-
-// =============================================================================
-// =============================================================================
-
-export const formatList = (
-  items: (string | number)[],
-  options: ListFormatOptions & { locale?: string } = {}
-): string => {
-  const { locale = 'en-US', conjunction = 'and', ...intlOptions } = options;
-  
-  if (!Array.isArray(items) || items.length === 0) return '';
-  
-  const stringItems = items.map(String).filter(Boolean);
-  
-  if (stringItems.length === 0) return '';
-  if (stringItems.length === 1) return stringItems[0];
-  
-  try {
-    const listFormatOptions: Intl.ListFormatOptions = {
-      style: 'long',
-      type: conjunction === 'or' ? 'disjunction' : 'conjunction',
-      ...intlOptions
-    };
-    
-    const formatter = getCachedFormatter('list', locale, listFormatOptions);
-    
-    return formatter.format(stringItems);
-  } catch {
-    if (stringItems.length === 2) {
-      return `${stringItems[0]} ${conjunction} ${stringItems[1]}`;
-    }
-    
-    const lastItem = stringItems[stringItems.length - 1];
-    const otherItems = stringItems.slice(0, -1);
-    return `${otherItems.join(', ')}, ${conjunction} ${lastItem}`;
-  }
-};
-
-export const formatArrayWithLimit = (
-  items: (string | number)[],
-  options: {
-    maxItems?: number;
-    moreText?: string;
-    conjunction?: 'and' | 'or';
-    locale?: string;
-  } = {}
-): string => {
-  const { maxItems = 5, moreText = 'more', conjunction = 'and', locale = 'en-US' } = options;
-  
-  if (!Array.isArray(items) || items.length === 0) return '';
-  
-  const stringItems = items.map(String).filter(Boolean);
-  
-  if (stringItems.length <= maxItems) {
-    return formatList(stringItems, { conjunction, locale });
-  }
-  
-  const visibleItems = stringItems.slice(0, maxItems);
-  const remainingCount = stringItems.length - maxItems;
-  
-  return `${formatList(visibleItems, { conjunction, locale })} and ${remainingCount} ${moreText}`;
-};
 
 // =============================================================================
 // =============================================================================
@@ -609,10 +353,10 @@ export const formatValidationErrors = (
 ): string[] => {
   if (Array.isArray(errors)) {
     return errors
-      .filter(error => error.message?.trim())
-      .map(error => `${toTitleCase(error.field.replace(/([A-Z])/g, ' $1'))}: ${error.message}`);
+      .filter((error) => error.message?.trim())
+      .map((error) => `${toTitleCase(error.field.replace(/([A-Z])/g, ' $1'))}: ${error.message}`);
   }
-  
+
   return Object.entries(errors)
     .filter(([, message]) => message?.trim())
     .map(([field, message]) => `${toTitleCase(field.replace(/([A-Z])/g, ' $1'))}: ${message}`);
@@ -623,7 +367,7 @@ export const formatValidationErrors = (
 
 export const normalizeSearchQuery = (query: string): string => {
   if (!query) return '';
-  
+
   return query
     .trim()
     .replace(/\s+/g, ' ') // Replace multiple spaces with single space
@@ -640,32 +384,32 @@ export const highlightSearchTerms = (
   } = {}
 ): string => {
   const { className = 'highlight', caseSensitive = false, wholeWords = false } = options;
-  
+
   if (!text || !searchTerms) return text;
-  
+
   const terms = Array.isArray(searchTerms) ? searchTerms : [searchTerms];
   const flags = caseSensitive ? 'g' : 'gi';
-  
+
   let result = text;
-  
-  terms.forEach(term => {
+
+  terms.forEach((term) => {
     if (!term.trim()) return;
-    
+
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const pattern = wholeWords ? `\\b${escapedTerm}\\b` : escapedTerm;
     const regex = new RegExp(pattern, flags);
-    
+
     result = result.replace(regex, `<span class="${className}">$&</span>`);
   });
-  
+
   return result;
 };
 
 export const sanitizeSheetFileName = (name: string) => {
   return name
-    .replace(/[*?:\\/\[\]]/g, "_")  // replace invalid chars
-    .substring(0, 31);              // Excel limit (31 chars)
-}
+    .replace(/[*?:\\/\[\]]/g, '_') // replace invalid chars
+    .substring(0, 31); // Excel limit (31 chars)
+};
 
 export const formatIP = (ip: unknown): string => {
   if (!ip || typeof ip !== 'string') return '';
@@ -679,33 +423,17 @@ export const formatIP = (ip: unknown): string => {
 const formatters = {
   formatNumber,
   formatCurrency,
-  formatPercentage,
-  formatScore,
   formatFileSize,
-  
+
   toTitleCase,
   snakeToTitleCase,
-  camelToKebab,
-  kebabToCamel,
-  snakeToCamel,
-  camelToSnake,
-  createSlug,
-  truncateText,
-  
-  formatUserName,
-  formatPhoneNumber,
   formatEmail,
-  
+
   formatDate,
-  formatTimeRange,
-  formatRelativeTime,
-  
-  formatList,
-  formatArrayWithLimit,
-  
+
   formatErrorMessage,
   formatValidationErrors,
-  
+
   normalizeSearchQuery,
   highlightSearchTerms,
   sanitizeSheetFileName,

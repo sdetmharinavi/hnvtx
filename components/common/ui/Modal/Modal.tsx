@@ -63,7 +63,8 @@ export const Modal = ({
     md: "max-w-lg",
     lg: "max-w-2xl",
     xl: "max-w-4xl",
-    full: "max-w-[95vw] max-h-[95vh]",
+    xxl: "max-w-6xl",
+    full: "max-w-[98vw] max-h-[95vh]",
   };
 
   // 1. Track where the mouse was pressed down

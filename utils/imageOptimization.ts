@@ -537,31 +537,3 @@ export const getOptimalImageSettings = (file: File) => {
     return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
   }
 };
-
-// 9. Batch optimization function
-export const optimizeFilesBatch = async (files: File[]): Promise<File[]> => {
-  const optimizationPromises = files.map(async (file) => {
-    console.log(
-      "Original file:",
-      file.name,
-      "Size:",
-      file.size,
-      "Type:",
-      file.type,
-    );
-
-    if (file.type.startsWith("image/") && file.size > 0) {
-      try {
-        const optimized = await smartCompress(file);
-        return optimized.size > 0 ? optimized : file; // Fallback to original if compression fails
-      } catch (error) {
-        console.warn(`Batch optimization failed for ${file.name}:`, error);
-        return file; // Return original on error
-      }
-    }
-
-    return file;
-  });
-
-  return Promise.all(optimizationPromises);
-};

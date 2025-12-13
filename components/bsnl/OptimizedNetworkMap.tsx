@@ -9,7 +9,13 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
-import { MapLegend } from '@/components/map/MapLegend'; // THE FIX: Import Legend
+import { MapLegend } from '@/components/map/MapLegend';
+
+// Interface for nodes with display coordinates (potentially offset)
+interface DisplayNode extends BsnlNode {
+  displayLat: number;
+  displayLng: number;
+}
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -68,57 +74,116 @@ const MapContent = ({
   mapAttribution: string;
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
-}) => (
-  <>
-    <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
-    <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
+}) => {
 
-    {visibleLayers.cables && cables.map((cable: BsnlCable) => {
-        const startNode = nodeMap.get(cable.sn_id!);
-        const endNode = nodeMap.get(cable.en_id!);
-        if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
-            return (
-                <Polyline
-                    key={cable.id}
-                    positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
-                    pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
-                >
-                  <Popup>
-                      <div className="min-w-48 max-w-72">
-                          <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                          <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                          <p className="text-sm">Capacity: {cable.capacity}F</p>
-                          <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                          <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
-                      </div>
-                  </Popup>
-                </Polyline>
-            );
-        }
-        return null;
-    })}
+  // --- JITTER LOGIC: Spread out overlapping nodes ---
+  const displayNodes = useMemo(() => {
+    const groupedNodes = new Map<string, BsnlNode[]>();
 
-    {visibleNodes.map((node: BsnlNode) => {
-        const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
-        const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
-        
-        return (node.latitude && node.longitude) && (
-          <Marker key={node.id} position={[node.latitude, node.longitude]} icon={icon}>
-              <Popup>
-                  <div className="min-w-48 max-w-72">
-                      <h3 className="font-semibold text-base">{node.name}</h3>
-                      <p className="text-sm">Type: {node.node_type_code}</p>
-                      <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                      {systemTypesAtNode && <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>}
-                      {node.latitude && <p className="text-sm mt-1 text-gray-500">{node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}</p>}
-                      {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
-                  </div>
-              </Popup>
-          </Marker>
-      )
-    })}
-  </>
-);
+    // 1. Group nodes by exact coordinate
+    visibleNodes.forEach(node => {
+      if(node.latitude && node.longitude) {
+        // Create a key based on coordinates (rounded slightly to catch very close nodes)
+        const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
+        if (!groupedNodes.has(key)) groupedNodes.set(key, []);
+        groupedNodes.get(key)!.push(node);
+      }
+    });
+
+    const results: DisplayNode[] = [];
+    // 2. Apply offset
+    groupedNodes.forEach((nodesAtLoc) => {
+      if (nodesAtLoc.length === 1) {
+        // No overlap, keep original position
+        results.push({
+          ...nodesAtLoc[0],
+          displayLat: nodesAtLoc[0].latitude!,
+          displayLng: nodesAtLoc[0].longitude!
+        });
+      } else {
+        // Overlap detected: Spiral them out
+        // 0.00015 degrees is roughly 15-20 meters
+        const radius = 0.00015; 
+        const angleStep = (2 * Math.PI) / nodesAtLoc.length;
+
+        nodesAtLoc.forEach((node, i) => {
+          const angle = i * angleStep;
+          results.push({
+            ...node,
+            displayLat: node.latitude! + (radius * Math.sin(angle)),
+            displayLng: node.longitude! + (radius * Math.cos(angle))
+          });
+        });
+      }
+    });
+    return results;
+  }, [visibleNodes]);
+
+
+  return (
+    <>
+      <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
+      <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
+
+      {visibleLayers.cables && cables.map((cable: BsnlCable) => {
+          const startNode = nodeMap.get(cable.sn_id!);
+          const endNode = nodeMap.get(cable.en_id!);
+          
+          if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
+              return (
+                  <Polyline
+                      key={cable.id}
+                      // Use original coordinates for lines so the geometry stays true
+                      positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
+                      pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
+                  >
+                    <Popup>
+                        <div className="min-w-48 max-w-72">
+                            <h3 className="font-semibold text-base">{cable.route_name}</h3>
+                            <p className="text-sm">Type: {cable.ofc_type_name}</p>
+                            <p className="text-sm">Capacity: {cable.capacity}F</p>
+                            <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
+                            <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
+                        </div>
+                    </Popup>
+                  </Polyline>
+              );
+          }
+          return null;
+      })}
+
+      {displayNodes.map((node: DisplayNode) => {
+          const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
+          const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
+
+          return (
+            <Marker 
+              key={node.id} 
+              // Use calculated display coordinates (spread out)
+              position={[node.displayLat, node.displayLng]} 
+              icon={icon}
+              // THE FIX: riseOnHover allows accessing partially overlapped markers
+              riseOnHover={true}
+              // Ensure overlapping markers have stacking context logic if needed
+              zIndexOffset={10} 
+            >
+                <Popup>
+                    <div className="min-w-48 max-w-72">
+                        <h3 className="font-semibold text-base">{node.name}</h3>
+                        <p className="text-sm">Type: {node.node_type_code}</p>
+                        <p className="text-sm">Region: {node.maintenance_area_name}</p>
+                        {systemTypesAtNode && <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>}
+                        {node.latitude && <p className="text-sm mt-1 text-gray-500">{node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}</p>}
+                        {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
+                    </div>
+                </Popup>
+            </Marker>
+        )
+      })}
+    </>
+  );
+}
+
 MapContent.displayName = 'MapContent';
 
 interface OptimizedNetworkMapProps {
@@ -174,10 +239,10 @@ export function OptimizedNetworkMap({
   const nodeSystemMap = useMemo(() => {
     const map = new Map<string, string>();
     systems.forEach(sys => {
-        if (sys.node_id && sys.system_type_name) {
+        if (sys.node_id && sys.system_type_code) {
             const current = map.get(sys.node_id) || '';
-            if (!current.includes(sys.system_type_name)) {
-                map.set(sys.node_id, current ? `${current}, ${sys.system_type_name}` : sys.system_type_name);
+            if (!current.includes(sys.system_type_code)) {
+                map.set(sys.node_id, current ? `${current}, ${sys.system_type_code}` : sys.system_type_code);
             }
         }
     });
@@ -194,11 +259,11 @@ export function OptimizedNetworkMap({
         return mapBounds.contains([lat, lng]);
     });
   }, [nodes, mapBounds, zoom, visibleLayers.nodes]);
-  
+
   if (nodes.length > 0 && !initialBounds) {
     return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No valid location data in the provided nodes.</p></div>;
   }
-  
+
   if (nodes.length === 0) {
     return <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700"><p className="text-gray-500 dark:text-gray-300">No location data available to display map.</p></div>;
   }
@@ -209,8 +274,7 @@ export function OptimizedNetworkMap({
   return (
     <>
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
-        
-        {/* THE FIX: Add Legend */}
+
         <MapLegend />
 
         <MapContainer key="normal" bounds={initialBounds!} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
@@ -228,15 +292,15 @@ export function OptimizedNetworkMap({
         </MapContainer>
         <button
           onClick={() => setIsFullScreen(true)}
-          className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="absolute top-4 right-4 z-1000 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Enter Full Screen"
         >
           <Maximize className="h-5 w-5" />
         </button>
       </div>
       {isFullScreen && (
-        <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
-          <MapLegend /> {/* Legend for fullscreen too */}
+        <div className="fixed inset-0 z-9999 bg-white dark:bg-gray-900">
+          <MapLegend />
           <MapContainer key="fullscreen" bounds={initialBounds!} className="h-full w-full bg-gray-200 dark:bg-gray-800">
             <MapContent
               cables={cables}
@@ -252,7 +316,7 @@ export function OptimizedNetworkMap({
           </MapContainer>
           <button
             onClick={() => setIsFullScreen(false)}
-            className="absolute top-4 right-4 z-[10000] p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="absolute top-4 right-4 z-10000 p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Exit Full Screen"
           >
             <Minimize className="h-6 w-6" />

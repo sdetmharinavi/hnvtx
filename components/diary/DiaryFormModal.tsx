@@ -55,7 +55,7 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
         isLoading={isLoading}
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
         standalone
-        widthClass="max-w-4xl" // Wider for WYSIWYG
+        widthClass="full" // Wider for WYSIWYG
       >
         <div className="space-y-4">
           <FormDateInput name="note_date" label="Note Date" control={control} error={errors.note_date} required pickerProps={{ readOnly: !editingNote }} />

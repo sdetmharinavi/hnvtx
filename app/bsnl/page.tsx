@@ -3,7 +3,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw, Loader2, Eye } from 'lucide-react';
+import { Network, Loader2, Eye } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import dynamic from 'next/dynamic';
@@ -21,7 +21,6 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-import { useDataSync } from '@/hooks/data/useDataSync';
 import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 import { formatIP } from '@/utils/formatters';
 
@@ -65,10 +64,6 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const { isSyncing: isDataSyncing, sync } = useDataSync();
-  const handleRefresh = useCallback(async () => {
-    await sync();
-  }, [sync]);
   
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -183,18 +178,6 @@ export default function ScalableFiberNetworkDashboard() {
                   )}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`h-5 w-5 ${isDataSyncing || isLoading ? 'animate-spin' : ''}`} />
-              </button>
-              <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
-                <Settings className="h-5 w-5" />
-              </button>
             </div>
           </div>
         </div>
