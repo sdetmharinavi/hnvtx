@@ -1,7 +1,7 @@
 export { Button } from './Button';
 export { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription, CardAction } from './card';
 export { Input } from './Input';
-export { LoadingSpinner, BlurLoader, ButtonSpinner, PageSpinner, CardSpinner, LoadingSkeleton } from './LoadingSpinner';
+export { LoadingSpinner, BlurLoader, ButtonSpinner, PageSpinner, CardSpinner } from './LoadingSpinner';
 export { ProgressBar } from './ProgressBar';
 export { PhoneInputWithCountry } from './phoneInput';
 export { Modal } from './Modal';

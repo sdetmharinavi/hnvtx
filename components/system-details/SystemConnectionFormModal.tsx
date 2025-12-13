@@ -2,7 +2,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, SubmitErrorHandler } from 'react-hook-form';
+import { useForm, SubmitErrorHandler, UseFormRegister, UseFormSetValue, UseFormWatch, FieldError } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   V_servicesRowSchema,
@@ -75,7 +75,6 @@ const formSchema = z.object({
 });
 
 export type SystemConnectionFormValues = z.infer<typeof formSchema>;
-// Define extended type to handle the new property until zod schema is regenerated
 type ExtendedConnectionRow = V_system_connections_completeRowSchema & {
   services_ip?: unknown;
   services_interface?: string | null;
@@ -91,6 +90,66 @@ interface SystemConnectionFormModalProps {
   editingConnection: V_system_connections_completeRowSchema | null;
   onSubmit: (data: UpsertPayload) => void;
   isLoading: boolean;
+}
+
+// --- Helper Component for Bandwidth Inputs ---
+const BandwidthInput = ({
+  name,
+  label,
+  register,
+  error,
+  setValue,
+  watch,
+  placeholder
+}: {
+  name: "bandwidth" | "bandwidth_allocated";
+  label: string;
+  register: UseFormRegister<SystemConnectionFormValues>;
+  error?: FieldError;
+  setValue: UseFormSetValue<SystemConnectionFormValues>;
+  watch: UseFormWatch<SystemConnectionFormValues>;
+  placeholder?: string;
+}) => {
+  const currentValue = watch(name);
+
+  const appendUnit = (unit: string) => {
+      const current = currentValue || '';
+      // Remove existing units to avoid duplication (e.g., "100 Mbps Gbps")
+      const clean = current.replace(/\s*(Kbps|Mbps|Gbps|G|M|K)$/i, '').trim();
+      
+      if (clean) {
+           setValue(name, `${clean} ${unit}`, { shouldValidate: true, shouldDirty: true });
+      } else {
+           // Optional: Handle empty state if needed, e.g. focusing the input
+      }
+  };
+
+  return (
+      <div>
+          <div className="flex justify-between items-center mb-2">
+            <Label htmlFor={name}>{label}</Label>
+            <div className="flex gap-1">
+                {['Kbps', 'Mbps', 'Gbps'].map(unit => (
+                    <button
+                        key={unit}
+                        type="button"
+                        onClick={() => appendUnit(unit)}
+                        className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-600 transition-colors"
+                        title={`Append ${unit}`}
+                    >
+                        {unit}
+                    </button>
+                ))}
+            </div>
+          </div>
+          <Input
+              id={name}
+              {...register(name)}
+              error={typeof error?.message === 'string' ? error.message : undefined}
+              placeholder={placeholder}
+          />
+      </div>
+  );
 }
 
 export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
@@ -253,13 +312,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }));
   }, [servicesData, watchLinkTypeId]);
 
-  // NEW: Effect to sync system_working_interface to sn_interface
-  // This ensures that when user picks a working port in General tab,
-  // it auto-populates the Start Interface in Connectivity tab if start node == current system
+  // Sync working interface
   useEffect(() => {
-    // Only auto-sync if:
-    // 1. We have a working interface selected
-    // 2. The Start Node (sn_id) matches the Main System (system_id)
     if (watchWorkingInterface && watchSnId === watchSystemId) {
       setValue('sn_interface', watchWorkingInterface);
     }
@@ -387,17 +441,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           b_customer: safeNull(extConnection.sdh_b_customer),
         });
       } else if (!isEditMode) {
-        // Create Mode - Auto-fill Start Node
         reset({
           system_id: parentSystem.id!,
           status: true,
           media_type_id: '',
           service_name: '',
           link_type_id: '',
-          // FIX: Correctly map system_id to sn_id (source system)
-          sn_id: parentSystem.id, // Was defaulting to node_id incorrectly before
+          sn_id: parentSystem.id,
           sn_ip: formatIP(parentSystem.ip_address),
-          sn_interface: '', // Will be auto-filled by effect when working port is chosen
+          sn_interface: '',
         });
         setServiceMode('existing');
       }
@@ -472,8 +524,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
             <span className="inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs">
               <span className="shrink-0">⚠️ Editing Physical Source:</span>
-              <Link 
-                href={`/dashboard/systems/${pristineRecord.system_id}`} 
+              <Link
+                href={`/dashboard/systems/${pristineRecord.system_id}`}
                 className="underline hover:text-white font-bold truncate max-w-[200px]"
                 title={`Go to ${pristineRecord.system_name}`}
                 target="_blank"
@@ -570,12 +622,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                 </div>
 
                 <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
-                <FormInput
+                
+                {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
+                <BandwidthInput
                   name="bandwidth_allocated"
                   label="Allocated BW"
                   register={register}
                   error={errors.bandwidth_allocated}
+                  setValue={setValue}
+                  watch={watch}
+                  placeholder="e.g. 100 Mbps"
                 />
+
                 <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
                 <FormInput
                   name="unique_id"
@@ -594,13 +652,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   error={errors.media_type_id}
                   required
                 />
-                <FormInput
+                
+                {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
+                <BandwidthInput
                   name="bandwidth"
                   label="Physical Port Capacity"
                   register={register}
                   error={errors.bandwidth}
-                  placeholder="e.g. 1G"
+                  setValue={setValue}
+                  watch={watch}
+                  placeholder="e.g. 10 Gbps"
                 />
+
                 <FormDateInput
                   name="commissioned_on"
                   label="Commissioned On"
@@ -776,7 +839,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     </div>
                   </div>
 
-                  {/* NEW FIELD: Destination Protection Port */}
                   {watchEnId && (
                     <div className="grid grid-cols-3 gap-3 mt-2">
                       <div className="col-span-2">
