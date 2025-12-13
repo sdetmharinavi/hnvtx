@@ -184,18 +184,18 @@ body {
   .no-print {
     display: none !important;
   }
-  
+
   /* Ensure the body and page wrapper have a clean white background for printing */
   body, .qr-page-wrapper {
     background: #ffffff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
+
   /* Remove shadows and borders from the main content card for a cleaner print */
   .print-content {
     box-shadow: none !important;
-    border: 1px solid #ccc !important;
+    border: none !important; /* Changed from 1px solid #ccc */
   }
 
   /* Force light theme styles for printing from dark mode */
@@ -203,12 +203,12 @@ body {
     background-color: #ffffff !important;
   }
   .dark .print-content * {
-    color: #1f2937 !important;
+    color: #000000 !important;
   }
   .dark .print-content .bg-gray-50 {
-     background-color: #f9fafb !important;
+     background-color: #ffffff !important;
   }
   .dark .print-content svg {
-    color: #6b7280 !important;
+    color: #000000 !important;
   }
 }

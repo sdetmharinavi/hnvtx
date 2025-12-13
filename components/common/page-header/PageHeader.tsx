@@ -7,7 +7,7 @@ import { CardSkeleton } from "@/components/common/ui/table/TableSkeleton";
 import { StatCard, StatProps } from "@/components/common/page-header/StatCard";
 import { ActionButton, DropdownButton } from "@/components/common/page-header/DropdownButton";
 import { Button } from "@/components/common/ui";
-import { Breadcrumbs } from "@/components/common/ui/Breadcrumbs"; // IMPORTED
+import { Breadcrumbs } from "@/components/common/ui/Breadcrumbs";
 
 export interface PageHeaderProps {
   title: string;
@@ -40,8 +40,7 @@ export function PageHeader({
     <>
       {showHeader && (
         <div className={cn("space-y-4 sm:space-y-6", className)}>
-          
-          {/* ADDED: Breadcrumbs at the very top */}
+
           <Breadcrumbs />
 
           {/* Header Section */}
@@ -66,20 +65,31 @@ export function PageHeader({
 
             {/* Desktop Action Buttons */}
             <div className='hidden lg:flex items-center gap-2 shrink-0 ml-4'>
-              {actions.map((action, index) =>
-                action["data-dropdown"] ? (
+              {actions.map((action, index) => {
+                // Destructure custom props to avoid passing them to Button/DOM
+                const { 
+                  hideTextOnMobile, 
+                  hideOnMobile, 
+                  priority, 
+                  'data-dropdown': isDropdown, 
+                  dropdownoptions, 
+                  ...btnProps 
+                } = action;
+
+                return isDropdown ? (
                   <div key={`desktop-dropdown-${index}`} data-dropdown='true'>
+                    {/* DropdownButton needs the full action object to render correctly */}
                     <DropdownButton {...action} disabled={action.disabled || isLoading} />
                   </div>
                 ) : (
                   <Button
                     key={`desktop-action-${index}`}
-                    {...action}
+                    {...btnProps}
                     disabled={action.disabled || isLoading}>
                     {action.label}
                   </Button>
-                )
-              )}
+                );
+              })}
             </div>
           </div>
 
@@ -94,24 +104,33 @@ export function PageHeader({
 
             {/* Mobile/Tablet Action Buttons */}
             <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:shrink-0'>
-              {actions.map((action, index) =>
-                action["data-dropdown"] ? (
+              {actions.map((action, index) => {
+                 const { 
+                  hideTextOnMobile, 
+                  hideOnMobile, 
+                  priority, 
+                  'data-dropdown': isDropdown, 
+                  dropdownoptions, 
+                  ...btnProps 
+                } = action;
+
+                return isDropdown ? (
                   <DropdownButton
                     key={`mobile-dropdown-${index}`}
                     {...action}
-                    className={`flex-1 sm:flex-none ${action.hideOnMobile ? "hidden sm:flex" : ""}`}
+                    className={`flex-1 sm:flex-none ${hideOnMobile ? "hidden sm:flex" : ""}`}
                     disabled={action.disabled || isLoading}
                   />
                 ) : (
                   <Button
                     key={`mobile-action-${index}`}
-                    {...action}
-                    className={`flex-1 sm:flex-none ${action.hideOnMobile ? "hidden sm:flex" : ""}`}
+                    {...btnProps}
+                    className={`flex-1 sm:flex-none ${hideOnMobile ? "hidden sm:flex" : ""}`}
                     disabled={action.disabled || isLoading}>
-                    {action.hideTextOnMobile ? "" : action.label}
+                    {hideTextOnMobile ? "" : action.label}
                   </Button>
-                )
-              )}
+                );
+              })}
             </div>
           </div>
         </div>

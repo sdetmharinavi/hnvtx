@@ -26,6 +26,11 @@ export const DropdownButton: React.FC<ActionButton> = ({
   variant = 'outline',
   leftIcon,
   className,
+  // Destructure these to prevent them from being passed to the DOM/Button
+  hideOnMobile,
+  hideTextOnMobile,
+  priority,
+  'data-dropdown': dataDropdown,
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);

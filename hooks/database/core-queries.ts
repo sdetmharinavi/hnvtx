@@ -169,6 +169,49 @@ export function useTableInfiniteQuery<
   });
 }
 
+/**
+ * NEW: Generic single record query hook using RPC (Bypasses Table RLS for View logic)
+ * Use this for Views where the user might not have direct table access.
+ */
+export function useRpcRecord<
+  T extends TableOrViewName,
+  TData = Row<T> | null
+>(
+  supabase: SupabaseClient<Database>,
+  viewName: T,
+  id: string | null,
+  options?: Omit<UseTableRecordOptions<T, TData>, 'columns'> // RPC returns all columns
+) {
+  const { ...queryOptions } = options || {};
+
+  return useQuery({
+    queryKey: ['rpc-record', viewName, id],
+    queryFn: async (): Promise<Row<T> | null> => {
+      if (!id) return null;
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: viewName,
+        p_limit: 1,
+        p_offset: 0,
+        p_filters: { id: id },
+        p_order_by: 'id' // Default sort, irrelevant for single ID fetch
+      });
+
+      if (error) {
+        console.error(`Error fetching record via RPC for ${viewName}:`, error);
+        throw error;
+      }
+
+      // get_paged_data returns { data: [...], ... }
+      const rows = (data as any)?.data as Row<T>[];
+      return rows?.[0] || null;
+    },
+    enabled: !!id && (queryOptions?.enabled ?? true),
+    staleTime: 5 * 60 * 1000,
+    ...queryOptions,
+  });
+}
+
 // Generic single record query hook (optimized)
 export function useTableRecord<
   T extends TableOrViewName,

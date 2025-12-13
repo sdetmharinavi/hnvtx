@@ -1,15 +1,15 @@
 // app/dashboard/inventory/page.tsx
 "use client";
 
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef } from "react";
 import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { DataTable, TableAction } from "@/components/table";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiBox, FiMapPin } from "react-icons/fi"; 
+import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiGrid, FiList, FiSearch } from "react-icons/fi";
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
-import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
+import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema, Lookup_typesRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
@@ -18,27 +18,32 @@ import { FaQrcode } from "react-icons/fa";
 import { InventoryFormModal } from "@/components/inventory/InventoryFormModal";
 import { useInventoryData } from "@/hooks/data/useInventoryData";
 import { IssueItemModal } from "@/components/inventory/IssueItemModal";
-import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal"; 
+import { InventoryHistoryModal } from "@/components/inventory/InventoryHistoryModal";
 import { IssueItemFormData, useIssueInventoryItem } from "@/hooks/inventory-actions";
-
-// Use the new Transactional Import hook
 import { useInventoryExcelUpload } from "@/hooks/database/excel-queries/useInventoryExcelUpload";
 import { formatCurrency } from "@/utils/formatters";
+import { InventoryItemCard } from "@/components/inventory/InventoryItemCard";
+import { Input, SearchableSelect } from "@/components/common/ui";
+import { BulkActions } from "@/components/common/BulkActions";
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { createClient } from "@/utils/supabase/client";
+import { localDb } from "@/hooks/data/localDb";
 
 export default function InventoryPage() {
   const router = useRouter();
+  const supabase = createClient();
   const { role, isSuperAdmin } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [itemToIssue, setItemToIssue] = useState<V_inventory_itemsRowSchema | null>(null);
-
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState<{id: string, name: string} | null>(null);
 
   const {
     data: inventory, totalCount, isLoading, isMutating, isFetching, error, refetch,
-    pagination, search, editModal, deleteModal, actions: crudActions
+    pagination, search, editModal, deleteModal, actions: crudActions, filters, bulkActions
   } = useCrudManager<'inventory_items', V_inventory_itemsRowSchema>({
     tableName: 'inventory_items',
     dataQueryHook: useInventoryData,
@@ -47,18 +52,38 @@ export default function InventoryPage() {
   });
 
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
-  
-  // NEW: Transactional Upload Hook
   const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
 
-  const columns = getInventoryTableColumns();
-  const canPerformActions = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
+  // --- Fetch Filter Options ---
+  const { data: categories } = useOfflineQuery<Lookup_typesRowSchema[]>(
+     ['inventory-categories'],
+     async () => (await supabase.from('lookup_types').select('*').eq('category', 'INVENTORY_CATEGORY')).data ?? [],
+     async () => await localDb.lookup_types.where({ category: 'INVENTORY_CATEGORY' }).toArray()
+  );
+  
+  const { data: locations } = useOfflineQuery<V_nodes_completeRowSchema[]>(
+     ['inventory-locations'],
+     async () => (await supabase.from('v_nodes_complete').select('*').eq('status', true)).data ?? [],
+     async () => await localDb.v_nodes_complete.where({ status: true }).toArray()
+  );
+
+  const categoryOptions = useMemo(() => (categories || []).map(c => ({ value: c.id, label: c.name })), [categories]);
+  const locationOptions = useMemo(() => (locations || []).map(l => ({ value: l.id!, label: l.name! })), [locations]);
+
+  // Permission Logic
+  const canManage = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
+  const canDelete = isSuperAdmin === true;
+
+  // Calculate Total Value of visible items
+  const totalInventoryValue = useMemo(() => {
+    return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);
+  }, [inventory]);
 
   const handleOpenIssueModal = (record: V_inventory_itemsRowSchema) => {
     setItemToIssue(record);
     setIsIssueModalOpen(true);
   };
-  
+
   const handleOpenHistory = (record: V_inventory_itemsRowSchema) => {
       if (!record.id) return;
       setHistoryItem({ id: record.id, name: record.name || 'Item' });
@@ -67,11 +92,7 @@ export default function InventoryPage() {
 
   const handleIssueSubmit = (data: IssueItemFormData) => {
     issueItem(data, {
-      onSuccess: () => {
-        refetch(); 
-        setIsIssueModalOpen(false);
-        setItemToIssue(null);
-      }
+      onSuccess: () => { refetch(); setIsIssueModalOpen(false); setItemToIssue(null); }
     });
   };
 
@@ -81,165 +102,176 @@ export default function InventoryPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Table Config
+  const columns = getInventoryTableColumns();
   const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
     const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
-      onEdit: canPerformActions ? editModal.openEdit : undefined,
-      onDelete: canPerformActions ? crudActions.handleDelete : undefined,
+      onEdit: canManage ? editModal.openEdit : undefined,
+      onDelete: canDelete ? crudActions.handleDelete : undefined, // Only super admin
     });
-    
     standardActions.unshift({
-        key: 'history',
-        label: 'View History',
-        icon: <FiClock />,
-        onClick: (record) => handleOpenHistory(record),
-        variant: 'secondary'
+        key: 'history', label: 'History', icon: <FiClock />, onClick: (r) => handleOpenHistory(r), variant: 'secondary'
     });
-
-    if (canPerformActions) {
+    if (canManage) {
         standardActions.unshift({
-          key: 'issue',
-          label: 'Issue Stock',
-          icon: <FiMinusCircle className="text-orange-600" />,
-          onClick: (record) => handleOpenIssueModal(record),
-          variant: 'secondary',
-          disabled: (record) => (record.quantity || 0) <= 0,
+          key: 'issue', label: 'Issue', icon: <FiMinusCircle className="text-orange-600" />, onClick: (r) => handleOpenIssueModal(r), variant: 'secondary', disabled: (r) => (r.quantity || 0) <= 0,
         });
     }
-
     standardActions.unshift({
-      key: 'qr-code',
-      label: 'View QR Code',
-      icon: <FaQrcode />,
-      onClick: (record) => router.push(`/dashboard/inventory/qr/${record.id}`),
-      variant: 'secondary'
+      key: 'qr-code', label: 'QR', icon: <FaQrcode />, onClick: (r) => router.push(`/dashboard/inventory/qr/${r.id}`), variant: 'secondary'
     });
-
     return standardActions;
-  }, [editModal.openEdit, crudActions.handleDelete, canPerformActions, router]);
+  }, [editModal.openEdit, crudActions.handleDelete, canManage, canDelete, router]);
 
   const headerActions = useStandardHeaderActions<'v_inventory_items'>({
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
-    onAddNew: canPerformActions ? editModal.openAdd : undefined,
+    onAddNew: canManage ? editModal.openAdd : undefined,
     isLoading,
-    exportConfig: { 
-        tableName: 'v_inventory_items',
-        useRpc: true 
-    }
+    exportConfig: { tableName: 'v_inventory_items', useRpc: true }
   });
 
-  // Inject Upload Button
-  if (canPerformActions) {
+  if (canManage) {
     headerActions.splice(1, 0, {
-        label: isUploading ? 'Importing...' : 'Import Stock',
-        variant: 'outline',
-        leftIcon: <FiUpload />,
-        disabled: isUploading || isLoading,
-        onClick: () => fileInputRef.current?.click()
+        label: isUploading ? 'Importing...' : 'Import', variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoading, onClick: () => fileInputRef.current?.click(), hideTextOnMobile: true
     });
   }
 
-  const renderMobileItem = useCallback((record: Row<'v_inventory_items'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate pr-2">
-              {record.name}
-            </h3>
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">
-               {record.asset_no || 'No Asset ID'}
-            </div>
-          </div>
-          {actions}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-sm mt-1">
-           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
-               <div className="text-[10px] text-gray-400 uppercase">Quantity</div>
-               <div className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
-                   <FiBox className="w-3 h-3" /> {record.quantity}
-               </div>
-           </div>
-           <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
-               <div className="text-[10px] text-gray-400 uppercase">Value</div>
-               <div className="font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                   {formatCurrency(record.total_value || 0)}
-               </div>
-           </div>
-        </div>
-
-        <div className="space-y-1 mt-1">
-            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <FiMapPin className="w-3 h-3 text-blue-500" />
-                <span className="truncate">{record.store_location || 'Unknown Location'}</span>
-            </div>
-            {record.functional_location && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500 pl-5">
-                    └ {record.functional_location}
-                </div>
-            )}
-        </div>
-
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <span className="text-[10px] text-gray-400">{record.category_name}</span>
-             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                record.status_name === 'Working' || record.status_name === 'Good' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
-                record.status_name === 'Faulty' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
-                'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-             }`}>
-                {record.status_name || 'Unknown'}
-             </span>
-        </div>
-      </div>
-    );
-  }, []);
+  const headerStats = [
+      { value: totalCount, label: 'Total Items' },
+      { value: formatCurrency(totalInventoryValue), label: 'Total Value', color: 'success' as const }
+  ];
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <input 
-         type="file" 
-         ref={fileInputRef} 
-         onChange={handleFileChange} 
-         className="hidden" 
-         accept=".xlsx, .xls" 
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
 
       <PageHeader
-        title="Inventory Management"
-        description="Track and manage all physical assets like equipment, furniture, and consumables."
+        title="Inventory"
+        description="Track physical assets, stock levels, and movements."
         icon={<FiArchive />}
-        stats={[{ value: totalCount, label: 'Total Items' }]}
+        stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}
       />
-      
-           <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_inventory_items"
-        data={inventory}
-        columns={columns}
-        loading={isLoading}
-        isFetching={isFetching || isMutating}
-        actions={tableActions}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, pageSize) => {
-            if (page !== pagination.currentPage) pagination.setCurrentPage(page);
-            if (pageSize !== pagination.pageLimit) pagination.setPageLimit(pageSize);
-          },
-        }}
-        searchable
-        onSearchChange={search.setSearchQuery}
+
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search asset, name, desc..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[160px]">
+                <SearchableSelect 
+                   placeholder="Category"
+                   options={categoryOptions}
+                   value={filters.filters.category_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, category_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[160px]">
+                 <SearchableSelect 
+                   placeholder="Location"
+                   options={locationOptions}
+                   value={filters.filters.location_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, location_id: v}))}
+                   clearable
+                />
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button 
+                   onClick={() => setViewMode('grid')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Grid View"
+                >
+                    <FiGrid />
+                </button>
+                <button 
+                   onClick={() => setViewMode('table')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Table View"
+                >
+                    <FiList />
+                </button>
+             </div>
+          </div>
+      </div>
+
+      <BulkActions
+        selectedCount={bulkActions.selectedCount}
+        isOperationLoading={isMutating}
+        onBulkDelete={bulkActions.handleBulkDelete}
+        onBulkUpdateStatus={() => {}} 
+        onClearSelection={bulkActions.handleClearSelection}
+        entityName="item"
+        showStatusUpdate={false}
+        canDelete={() => !!canDelete} // Only show delete if user is super admin
       />
 
+      {/* Content Area */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {inventory.map(item => (
+                <InventoryItemCard 
+                    key={item.id}
+                    item={item}
+                    onEdit={editModal.openEdit}
+                    onDelete={crudActions.handleDelete}
+                    onIssue={handleOpenIssueModal}
+                    onHistory={handleOpenHistory}
+                    onQr={(r) => router.push(`/dashboard/inventory/qr/${r.id}`)}
+                    canManage={!!canManage}
+                    canDelete={!!canDelete} // Pass specific delete permission
+                />
+             ))}
+             {inventory.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                        <FiArchive className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">No items found</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Try adjusting your filters or search terms.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
+           <DataTable
+            autoHideEmptyColumns={true}
+            tableName="v_inventory_items"
+            data={inventory}
+            columns={columns}
+            loading={isLoading}
+            isFetching={isFetching || isMutating}
+            actions={tableActions}
+            selectable={canDelete} // Only selectable if can delete
+            onRowSelect={(rows) => {
+                const validRows = rows.filter((row): row is V_inventory_itemsRowSchema & { id: string } => row.id != null);
+                bulkActions.handleRowSelect(validRows);
+            }}
+            pagination={{
+                current: pagination.currentPage,
+                pageSize: pagination.pageLimit,
+                total: totalCount,
+                showSizeChanger: true,
+                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
+            }}
+            customToolbar={<></>}
+          />
+      )}
+
+      {/* Modals */}
       <InventoryFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -249,7 +281,7 @@ export default function InventoryPage() {
       />
 
       {isIssueModalOpen && (
-        <IssueItemModal 
+        <IssueItemModal
             isOpen={isIssueModalOpen}
             onClose={() => setIsIssueModalOpen(false)}
             item={itemToIssue}
@@ -259,7 +291,7 @@ export default function InventoryPage() {
       )}
 
       {isHistoryModalOpen && historyItem && (
-          <InventoryHistoryModal 
+          <InventoryHistoryModal
             isOpen={isHistoryModalOpen}
             onClose={() => setIsHistoryModalOpen(false)}
             itemId={historyItem.id}

@@ -8,17 +8,25 @@ import { useLocalFirstQuery } from "./useLocalFirstQuery";
 export function useInventoryHistory(itemId: string | null) {
   const supabase = createClient();
 
-  // 1. Online Fetcher
+  // 1. Online Fetcher (UPDATED: Uses RPC instead of direct Table Select)
   const onlineQueryFn = useCallback(async (): Promise<V_inventory_transactions_extendedRowSchema[]> => {
     if (!itemId) return [];
-    const { data, error } = await supabase
-      .from("v_inventory_transactions_extended")
-      .select("*")
-      .eq("inventory_item_id", itemId)
-      .order("created_at", { ascending: false });
+
+    // Use the secure RPC wrapper
+    const { data, error } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_inventory_transactions_extended',
+      p_limit: 100, // Fetch up to 100 history items
+      p_offset: 0,
+      p_filters: { inventory_item_id: itemId },
+      p_order_by: 'created_at',
+      p_order_dir: 'desc'
+    });
 
     if (error) throw error;
-    return data as V_inventory_transactions_extendedRowSchema[];
+    
+    // Parse the JSONB response structure from get_paged_data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.data || [];
   }, [itemId, supabase]);
 
   // 2. Offline Fetcher
@@ -28,8 +36,8 @@ export function useInventoryHistory(itemId: string | null) {
     return localDb.v_inventory_transactions_extended
       .where('inventory_item_id')
       .equals(itemId)
-      .reverse() // Sort by primary key (id) effectively, though created_at would be better if indexed
-      .sortBy('created_at'); 
+      .reverse() 
+      .sortBy('created_at');
   }, [itemId]);
 
   // 3. Local First Query Hook
