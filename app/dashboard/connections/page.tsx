@@ -1,7 +1,7 @@
 // app/dashboard/connections/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
@@ -12,25 +12,27 @@ import {
   Lookup_typesRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiGitBranch, FiMonitor, FiEye } from 'react-icons/fi';
+import { FiGitBranch, FiMonitor, FiEye, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/common/ui/Input';
+import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { ConnectionCard } from '@/components/connections/ConnectionCard';
+import { Row } from '@/hooks/database';
+import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
@@ -40,7 +42,6 @@ export default function GlobalConnectionsPage() {
   const [isTracing, setIsTracing] = useState(false);
   const tracePath = useTracePath(supabase);
 
-  // 1. Initialize CRUD Manager with Global Data Hook
   const {
     data: connections,
     totalCount,
@@ -56,45 +57,32 @@ export default function GlobalConnectionsPage() {
   } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
     tableName: 'system_connections',
     localTableName: 'v_system_connections_complete',
-    dataQueryHook: useAllSystemConnectionsData, // Uses the new global hook
+    dataQueryHook: useAllSystemConnectionsData,
     displayNameField: 'service_name',
     searchColumn: ['service_name', 'system_name', 'connected_system_name'],
   });
 
-  // 2. Fetch Options for Filters
+  // Fetch Filters
   const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['media-types-filter'],
-    async () =>
-      (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
   );
 
   const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['link-types-filter'],
-    async () =>
-      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
   );
 
-  const mediaOptions = useMemo(
-    () => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })),
-    [mediaTypesData]
-  );
-  const linkTypeOptions = useMemo(
-    () => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })),
-    [linkTypesData]
-  );
+  const mediaOptions = useMemo(() => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })), [mediaTypesData]);
+  const linkTypeOptions = useMemo(() => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })), [linkTypesData]);
 
-  // 3. Configure Columns
-  // pass 'true' to show the System Name column since we are in global view
+  // Columns
   const columns = SystemConnectionsTableColumns(connections, true);
+  const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
 
-  const orderedColumns = useOrderedColumns(columns, [
-    'system_name',
-    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
-  ]);
-
-  // 4. Handlers
+  // Handlers
   const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
     setSelectedConnectionId(record.id);
     setIsDetailsModalOpen(true);
@@ -121,47 +109,17 @@ export default function GlobalConnectionsPage() {
     }
   };
 
-  const tableActions = useMemo(
-    (): TableAction<'v_system_connections_complete'>[] => [
-      {
-        key: 'view-details',
-        label: 'Full Details',
-        icon: <FiMonitor />,
-        onClick: handleViewDetails,
-        variant: 'primary',
-      },
-      {
-        key: 'view-path',
-        label: 'View Path',
-        icon: <FiEye />,
-        onClick: handleTracePath,
-        variant: 'secondary',
-        hidden: (record) =>
-          !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0),
-      },
-      {
-        key: 'go-to-system',
-        label: 'Go to System',
-        icon: <FiGitBranch />,
-        onClick: handleGoToSystem,
-        variant: 'secondary',
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleGoToSystem]
-  );
+  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => [
+    { key: 'view-details', label: 'Full Details', icon: <FiMonitor />, onClick: handleViewDetails, variant: 'primary' },
+    { key: 'view-path', label: 'View Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0) },
+    { key: 'go-to-system', label: 'Go to System', icon: <FiGitBranch />, onClick: handleGoToSystem, variant: 'secondary' },
+  ], [handleGoToSystem]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const headerActions = useStandardHeaderActions({
     data: connections,
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Refreshed!');
-    },
+    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
     isLoading,
-    exportConfig: {
-      tableName: 'v_system_connections_complete',
-      fileName: 'Global_Connections_List',
-    },
+    exportConfig: { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' },
   });
 
   const headerStats = [
@@ -169,41 +127,23 @@ export default function GlobalConnectionsPage() {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
+  
+  // Mobile Render for Table Mode
+  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
+     return (
+        <ConnectionCard 
+            connection={record as V_system_connections_completeRowSchema}
+            onViewDetails={handleViewDetails}
+            onViewPath={handleTracePath}
+            onGoToSystem={handleGoToSystem}
+        />
+     );
+  }, [handleGoToSystem]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mobile Renderer
-  const renderMobileItem = (
-    record: V_system_connections_completeRowSchema,
-    actions: React.ReactNode
-  ) => (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between items-start">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-            {record.service_name || record.connected_system_name || 'Unnamed'}
-          </h3>
-          <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-            {record.system_name}
-          </div>
-        </div>
-        {actions}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
-        <div>Type: {record.connected_link_type_name || '-'}</div>
-        <div>BW: {record.bandwidth_allocated || '-'}</div>
-      </div>
-    </div>
-  );
-
-  if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
-      />
-    );
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <PageHeader
         title="Global Connection Explorer"
         description="View and search all service connections across the entire network."
@@ -214,80 +154,98 @@ export default function GlobalConnectionsPage() {
         isFetching={isFetching}
       />
 
-      <DataTable
-        autoHideEmptyColumns={true}
-        tableName="v_system_connections_complete"
-        data={connections}
-        columns={orderedColumns}
-        loading={isLoading}
-        isFetching={isFetching}
-        actions={tableActions}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (p, s) => {
-            pagination.setCurrentPage(p);
-            pagination.setPageLimit(s);
-          },
-        }}
-        searchable={false}
-        customToolbar={
-          <SearchAndFilters
-            searchTerm={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            onClearFilters={() => {
-              search.setSearchQuery('');
-              filters.setFilters({});
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search service, system, or ID..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[160px]">
+                <SearchableSelect 
+                   placeholder="Link Type"
+                   options={linkTypeOptions}
+                   value={filters.filters.connected_link_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, connected_link_type_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[160px]">
+                 <SearchableSelect 
+                   placeholder="Media Type"
+                   options={mediaOptions}
+                   value={filters.filters.media_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, media_type_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[120px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.filters.status as string || ''}
+                    onChange={(e) => filters.setFilters(prev => ({...prev, status: e.target.value}))}
+                 >
+                    <option value="">Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                 </select>
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><FiGrid /></button>
+                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><FiList /></button>
+             </div>
+          </div>
+      </div>
+
+      {/* Content */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {connections.map(conn => (
+                <ConnectionCard 
+                    key={conn.id} 
+                    connection={conn}
+                    onViewDetails={handleViewDetails}
+                    onViewPath={handleTracePath}
+                    onGoToSystem={handleGoToSystem}
+                />
+             ))}
+             {connections.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No connections found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
+           <DataTable
+            autoHideEmptyColumns={true}
+            tableName="v_system_connections_complete"
+            data={connections}
+            columns={orderedColumns}
+            loading={isLoading}
+            isFetching={isFetching}
+            actions={tableActions}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+                current: pagination.currentPage,
+                pageSize: pagination.pageLimit,
+                total: totalCount,
+                showSizeChanger: true,
+                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
             }}
-            hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-            activeFilterCount={Object.keys(filters.filters).length}
-            searchPlaceholder="Search Service, System, or ID..."
-          >
-            <SelectFilter
-              label="Media Type"
-              filterKey="media_type_id"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={mediaOptions}
-            />
-            <SelectFilter
-              label="Link Type"
-              filterKey="connected_link_type_id"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={linkTypeOptions}
-            />
-            <SelectFilter
-              label="Status"
-              filterKey="status"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: 'true', label: 'Active' },
-                { value: 'false', label: 'Inactive' },
-              ]}
-            />
-          </SearchAndFilters>
-        }
-      />
+            customToolbar={<></>}
+          />
+      )}
 
-      <SystemConnectionDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        connectionId={selectedConnectionId}
-      />
-
-      <SystemFiberTraceModal
-        isOpen={isTraceModalOpen}
-        onClose={() => setIsTraceModalOpen(false)}
-        traceData={traceModalData}
-        isLoading={isTracing}
-      />
+      <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={selectedConnectionId} />
+      <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
     </div>
   );
 }

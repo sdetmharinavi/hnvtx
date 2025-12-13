@@ -35,6 +35,8 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { FiAnchor, FiArrowRight, FiDatabase, FiGitBranch, FiMapPin, FiPieChart, FiUpload } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -43,6 +45,7 @@ export default function SystemConnectionsPage() {
   const systemId = params.id as string;
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { isSuperAdmin, role } = useUser();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
@@ -75,6 +78,18 @@ export default function SystemConnectionsPage() {
   });
 
   const tracePath = useTracePath(supabase);
+
+  // --- PERMISSIONS ---
+  const canEdit = !!isSuperAdmin || [
+    UserRole.ADMIN, 
+    UserRole.CPANADMIN, 
+    UserRole.MAANADMIN, 
+    UserRole.SDHADMIN, 
+    UserRole.ASSETADMIN, 
+    UserRole.MNGADMIN
+  ].includes(role as UserRole);
+
+  const canDelete = isSuperAdmin === true;
 
   // Fetch Options
   const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -128,6 +143,7 @@ export default function SystemConnectionsPage() {
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];
 
+  // Fetch ports for stats
   const { data: ports = [] } = usePortsData(systemId)({
       currentPage: 1,
       pageLimit: 5000,
@@ -180,10 +196,10 @@ export default function SystemConnectionsPage() {
 
     return [
         { label: 'Connections', value: totalConnections, color: 'default' },
-        { 
-            label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`, 
-            value: `${utilPercent}%`, 
-            color: utilPercent > 80 ? 'warning' : 'default' 
+        {
+            label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`,
+            value: `${utilPercent}%`,
+            color: utilPercent > 80 ? 'warning' : 'default'
         },
         { label: 'Free Ports', value: availablePorts, color: availablePorts === 0 ? 'danger' : 'success' },
         ...(portsDown > 0 ? [{ label: 'Ports Down', value: portsDown, color: 'danger' as const }] : []),
@@ -284,22 +300,25 @@ export default function SystemConnectionsPage() {
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
-      onEdit: openEditModal,
-      onDelete: (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }),
+      onEdit: canEdit ? openEditModal : undefined,
+      onDelete: canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined,
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) => Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
+    
     return [
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
-      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) },
-      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) },
+      // Deprovision: Allow Admins
+      { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) || !canEdit },
+      // Allocate: Allow Admins
+      { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) || !canEdit },
       ...standard,
     ];
-  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal, handleViewDetails]);
+  }, [deleteManager, handleTracePath, handleDeprovisionClick, handleOpenAllocationModal, openEditModal, handleViewDetails, canEdit, canDelete]);
 
   const headerActions = useStandardHeaderActions({
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
-    onAddNew: openAddModal,
+    onAddNew: canEdit ? openAddModal : undefined,
     isLoading: isLoadingConnections,
     exportConfig: {
         tableName: 'v_system_connections_complete',
@@ -313,13 +332,17 @@ export default function SystemConnectionsPage() {
     onClick: () => setIsStatsConfigOpen(true),
     variant: 'outline',
     leftIcon: <FiPieChart />,
-    disabled: isLoadingConnections || !ports.length
+    disabled: isLoadingConnections || !ports.length,
+    hideTextOnMobile: true
   });
 
-  headerActions.splice(2, 0, {
-    label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
-    variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
-  });
+  if (canEdit) {
+    headerActions.splice(2, 0, {
+        label: isUploading ? 'Uploading...' : 'Upload Connections', onClick: handleUploadClick,
+        variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoadingConnections,
+        hideTextOnMobile: true
+    });
+  }
 
   const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
     return (
@@ -331,7 +354,7 @@ export default function SystemConnectionsPage() {
               {record.service_name || record.connected_system_name || 'Unnamed Connection'}
             </h3>
             <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
-               {record.connected_link_type_name || 'Link'} 
+               {record.connected_link_type_name || 'Link'}
                {record.bandwidth_allocated && <span className="text-gray-400 mx-1">•</span>}
                {record.bandwidth_allocated}
             </div>
@@ -447,7 +470,6 @@ export default function SystemConnectionsPage() {
                 options={mediaOptions}
              />
              <SelectFilter
-                // FIX: Used corrected Key
                 label="Link Type"
                 filterKey="connected_link_type_id"
                 filters={filters}

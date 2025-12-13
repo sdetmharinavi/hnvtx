@@ -2,27 +2,31 @@
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, StatusBadge } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { NodeFormModal } from '@/components/nodes/NodeFormModal';
-import { NodesFilters } from '@/components/nodes/NodesFilters'; // Updated component
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table/DataTable';
 import { NodeDetailsModal } from '@/config/node-details-config';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
-import { Filters, Row } from '@/hooks/database';
+import { Row } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
+import { NodesRowSchema, V_nodes_completeRowSchema, Lookup_typesRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useCallback, useMemo } from 'react';
-import { FiCpu, FiCopy, FiMapPin, FiInfo } from 'react-icons/fi';
+import { useCallback, useMemo, useState } from 'react';
+import { FiCpu, FiCopy, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
+import { NodeCard } from '@/components/nodes/NodeCard';
+import { Input } from '@/components/common/ui/Input';
+import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { BulkActions } from '@/components/common/BulkActions';
+import { UserRole } from '@/types/user-roles';
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string } | null;
@@ -30,6 +34,10 @@ export type NodeRowsWithRelations = NodesRowSchema & {
 };
 
 const NodesPage = () => {
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const { isSuperAdmin, role } = useUser();
+  const supabase = createClient();
+
   const {
     data: nodes,
     totalCount,
@@ -46,62 +54,45 @@ const NodesPage = () => {
     editModal,
     viewModal,
     deleteModal,
+    bulkActions,
     actions: crudActions,
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
     tableName: 'nodes',
     dataQueryHook: useNodesData,
     displayNameField: 'name'
   });
-  
-  const { isSuperAdmin } = useUser();
+
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
-  // 1. Fetch Node Types for Filter
-  const { data: nodeTypeOptionsData } = useOfflineQuery(
-    ['node-types-for-filter'],
-    async () =>
-      (await createClient().from('v_nodes_complete').select('node_type_id, node_type_name')).data ?? [],
-    async () =>
-      (await localDb.v_nodes_complete.toArray()).map((n) => ({
-        node_type_id: n.node_type_id,
-        node_type_name: n.node_type_name,
-      }))
+  // --- PERMISSIONS ---
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  const canDelete = isSuperAdmin === true;
+  const isSelectable = canDelete; // Only Super Admin can bulk delete
+
+  // 1. Fetch Node Types
+  const { data: nodeTypeOptionsData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['node-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'NODE_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'NODE_TYPES' }).toArray()
   );
 
-  const nodeTypes = useMemo(() => {
-    if (!nodeTypeOptionsData) return [];
-    const uniqueNodeTypes = new Map<string, { id: string; name: string }>();
-    nodeTypeOptionsData.forEach(
-      (node: { node_type_id: string | null; node_type_name: string | null }) => {
-        if (node.node_type_id && node.node_type_name && !uniqueNodeTypes.has(node.node_type_id)) {
-          uniqueNodeTypes.set(node.node_type_id, {
-            id: node.node_type_id,
-            name: node.node_type_name,
-          });
-        }
-      }
-    );
-    return Array.from(uniqueNodeTypes.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [nodeTypeOptionsData]);
-
-  // 2. Fetch Maintenance Areas for Filter
-  const { data: maintenanceAreasData } = useOfflineQuery(
+  // 2. Fetch Maintenance Areas
+  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
     ['maintenance-areas-for-filter-nodes'],
-    async () =>
-      (await createClient().from('maintenance_areas').select('id, name').eq('status', true)).data ?? [],
-    async () =>
-      (await localDb.maintenance_areas.where('status').equals('true').toArray()).map((m) => ({
-        id: m.id,
-        name: m.name,
-      }))
+    async () => (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
   );
 
-  const maintenanceAreas = useMemo(() => {
-    if (!maintenanceAreasData) return [];
-    return maintenanceAreasData
-      .map(m => ({ id: m.id, name: m.name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [maintenanceAreasData]);
+  // Options Mappers
+  const nodeTypeOptions = useMemo(() => 
+    (nodeTypeOptionsData || [])
+      .filter(t => t.name !== 'DEFAULT')
+      .map(t => ({ value: t.id, label: t.name })), 
+  [nodeTypeOptionsData]);
+
+  const areaOptions = useMemo(() => 
+    (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })), 
+  [maintenanceAreasData]);
 
   const isInitialLoad = isLoading && nodes.length === 0;
 
@@ -111,18 +102,18 @@ const NodesPage = () => {
   const tableActions = useMemo(
     () =>
       createStandardActions<V_nodes_completeRowSchema>({
-        onEdit: editModal.openEdit,
+        onEdit: canEdit ? editModal.openEdit : undefined,
         onView: viewModal.open,
-        onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
       }),
-    [editModal.openEdit, viewModal.open, crudActions.handleDelete, isSuperAdmin]
+    [editModal.openEdit, viewModal.open, crudActions.handleDelete, canEdit, canDelete]
   );
 
   const headerActions = useStandardHeaderActions({
     data: nodes as NodesRowSchema[],
-    onAddNew: editModal.openAdd,
-    onRefresh: () => {
-      refetch();
+    onAddNew: canEdit ? editModal.openAdd : undefined,
+    onRefresh: async () => {
+      await refetch();
       toast.success('Refreshed successfully!');
     },
     isLoading: isLoading,
@@ -134,6 +125,7 @@ const NodesPage = () => {
     onClick: toggleDuplicates,
     variant: showDuplicates ? "secondary" : "outline",
     leftIcon: <FiCopy />,
+    hideTextOnMobile: true
   });
 
   const headerStats = [
@@ -142,109 +134,145 @@ const NodesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-               {record.node_type_name || record.node_type_code || 'Unknown Type'}
-            </div>
-          </div>
-          {actions}
-        </div>
-        
-        <div className="grid grid-cols-1 gap-1 text-sm mt-1">
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-             <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
-             <span className="truncate">{record.maintenance_area_name || 'No Area'}</span>
-          </div>
-          {record.remark && (
-             <div className="flex items-start gap-2 text-gray-500 dark:text-gray-400 text-xs italic">
-                <FiInfo className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span className="line-clamp-2">{record.remark}</span>
-             </div>
-          )}
-        </div>
-        
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="text-xs text-gray-400 font-mono">
-                {record.latitude?.toFixed(4)}, {record.longitude?.toFixed(4)}
-             </div>
-             <StatusBadge status={record.status ?? false} />
-        </div>
-      </div>
-    );
-  }, []);
+  const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>) => {
+      // Re-use Card component for mobile list view items to ensure consistency
+      return (
+         <NodeCard 
+            node={record as V_nodes_completeRowSchema}
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            onView={viewModal.open}
+            canEdit={canEdit}
+            canDelete={canDelete}
+         />
+      )
+  }, [editModal.openEdit, crudActions.handleDelete, viewModal.open, canEdit, canDelete]);
 
-  if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
-      />
-    );
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
-    <div className="mx-auto space-y-4 p-6">
+    <div className="mx-auto space-y-6 p-4 md:p-6">
       <PageHeader
         title="Node Management"
-        description="Manage network nodes and their related information."
+        description="Manage network locations, towers, and exchanges."
         icon={<FiCpu />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-      <NodeDetailsModal
-        isOpen={viewModal.isOpen}
-        node={viewModal.record as V_nodes_completeRowSchema}
-        onClose={viewModal.close}
+
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search node name, remark..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[180px]">
+                <SearchableSelect 
+                   placeholder="Node Type"
+                   options={nodeTypeOptions}
+                   value={filters.filters.node_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, node_type_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[180px]">
+                 <SearchableSelect 
+                   placeholder="Maintenance Area"
+                   options={areaOptions}
+                   value={filters.filters.maintenance_terminal_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, maintenance_terminal_id: v}))}
+                   clearable
+                />
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button 
+                   onClick={() => setViewMode('grid')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Grid View"
+                >
+                    <FiGrid />
+                </button>
+                <button 
+                   onClick={() => setViewMode('table')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Table View"
+                >
+                    <FiList />
+                </button>
+             </div>
+          </div>
+      </div>
+
+      <BulkActions
+        selectedCount={bulkActions.selectedCount}
+        isOperationLoading={isMutating}
+        onBulkDelete={bulkActions.handleBulkDelete}
+        onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
+        onClearSelection={bulkActions.handleClearSelection}
+        entityName="node"
+        showStatusUpdate={true}
+        canDelete={() => !!canDelete}
       />
+
+      {/* Content Area */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {nodes.map(node => (
+                <NodeCard 
+                    key={node.id} 
+                    node={node} 
+                    onEdit={editModal.openEdit} 
+                    onDelete={crudActions.handleDelete} 
+                    onView={viewModal.open}
+                    canEdit={canEdit}
+                    canDelete={canDelete} 
+                />
+             ))}
+             {nodes.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FiCpu className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No nodes found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
            <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_nodes_complete"
-        data={nodes}
-        columns={orderedColumns}
-        loading={isLoading}
-        actions={tableActions}
-        selectable={isSuperAdmin ? true : false}
-        showColumnsToggle={true}
-        searchable={false}
-        onCellEdit={crudActions.handleCellEdit}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-          current: pagination.currentPage,
-          pageSize: pagination.pageLimit,
-          total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, pageSize) => {
-            pagination.setCurrentPage(page);
-            pagination.setPageLimit(pageSize);
-          },
-        }}
-        customToolbar={
-          <NodesFilters
-            searchQuery={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            
-            // Node Type Props
-            nodeTypes={nodeTypes}
-            selectedNodeType={filters.filters.node_type_id as string | undefined}
-            onNodeTypeChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, node_type_id: value } as Filters))
-            }
-            
-            // Maintenance Area Props
-            maintenanceAreas={maintenanceAreas}
-            selectedMaintenanceArea={filters.filters.maintenance_terminal_id as string | undefined}
-            onMaintenanceAreaChange={(value) => 
-               filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: value } as Filters))
-            }
+            autoHideEmptyColumns={true}
+            tableName="v_nodes_complete"
+            data={nodes}
+            columns={orderedColumns}
+            loading={isLoading}
+            actions={tableActions}
+            selectable={isSelectable}
+            onRowSelect={(rows) => {
+                const validRows = rows.filter((row): row is V_nodes_completeRowSchema & { id: string } => row.id != null);
+                bulkActions.handleRowSelect(validRows);
+            }}
+            showColumnsToggle={true}
+            searchable={false} // Custom toolbar used
+            onCellEdit={crudActions.handleCellEdit}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+                current: pagination.currentPage,
+                pageSize: pagination.pageLimit,
+                total: totalCount,
+                showSizeChanger: true,
+                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
+            }}
+            customToolbar={<></>}
           />
-        }
-      />
+      )}
+
       {editModal.isOpen && (
         <NodeFormModal
           isOpen={editModal.isOpen}
@@ -254,6 +282,13 @@ const NodesPage = () => {
           isLoading={isMutating}
         />
       )}
+      
+      <NodeDetailsModal
+        isOpen={viewModal.isOpen}
+        node={viewModal.record as V_nodes_completeRowSchema}
+        onClose={viewModal.close}
+      />
+      
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}

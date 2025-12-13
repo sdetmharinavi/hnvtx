@@ -13,31 +13,38 @@ import { toast } from "sonner";
 import { Copy, Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { ConfirmModal, ErrorDisplay, StatusBadge } from "@/components/common/ui";
+import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
 import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { Row } from "@/hooks/database";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { localDb } from "@/hooks/data/localDb";
-import { SearchAndFilters } from "@/components/common/filters/SearchAndFilters";
-import { SelectFilter } from "@/components/common/filters/FilterInputs";
 import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
 import { useUser } from "@/providers/UserProvider";
-import { FiMapPin } from "react-icons/fi";
+import { Input } from "@/components/common/ui/Input";
+import { SearchableSelect } from "@/components/common/ui";
+import { BulkActions } from "@/components/common/BulkActions";
+import { ServiceCard } from "@/components/services/ServiceCard";
+import { UserRole } from "@/types/user-roles";
+import { FiGrid, FiList, FiSearch } from "react-icons/fi";
 
 export default function ServicesPage() {
   const supabase = createClient();
-  const [showFilters, setShowFilters] = useState(false);
-  const { isSuperAdmin } = useUser();
-  
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const { isSuperAdmin, role } = useUser();
+
   const {
-    data, totalCount, isLoading, isFetching, error, refetch,
-    pagination, search, filters, editModal, deleteModal, actions: crudActions
+    data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch, isMutating,
+    pagination, search, filters, editModal, deleteModal, bulkActions, actions: crudActions
   } = useCrudManager<'services', V_servicesRowSchema>({
-    tableName: 'services', 
+    tableName: 'services',
     localTableName: 'v_services',
-    dataQueryHook: useServicesData, 
+    dataQueryHook: useServicesData,
     displayNameField: 'name',
   });
+
+  // --- PERMISSIONS ---
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.MAANADMIN || role === UserRole.CPANADMIN;
+  const canDelete = isSuperAdmin === true;
 
   // --- DUPLICATE DETECTION LOGIC ---
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
@@ -46,10 +53,10 @@ export default function ServicesPage() {
     return `${name}|${linkType}`;
   }, []);
 
-  const { 
-    showDuplicates, 
-    toggleDuplicates, 
-    duplicateSet 
+  const {
+    showDuplicates,
+    toggleDuplicates,
+    duplicateSet
   } = useDuplicateFinder(data, duplicateIdentity, 'Services');
 
   const columns = ServicesTableColumns(data, duplicateSet);
@@ -57,12 +64,12 @@ export default function ServicesPage() {
   // --- FETCH LINK TYPES FOR FILTER ---
   const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['link-types-for-filter'],
-    async () => 
+    async () =>
       (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
-    async () => 
+    async () =>
       await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
   );
-  
+
   const linkTypeOptions = useMemo(() => {
     return (linkTypesData || [])
       .filter(lt => lt.name !== 'DEFAULT')
@@ -74,7 +81,7 @@ export default function ServicesPage() {
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
      onSuccess: () => { refetch(); editModal.close(); toast.success("Service created."); }
   });
-  
+
   const { mutate: updateService, isPending: isUpdating } = useTableUpdate(supabase, 'services', {
      onSuccess: () => { refetch(); editModal.close(); toast.success("Service updated."); }
   });
@@ -87,7 +94,7 @@ export default function ServicesPage() {
           insertService(formData);
       }
   };
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getEditingService = (record: V_servicesRowSchema | null): any | null => {
       if (!record) return null;
@@ -95,13 +102,13 @@ export default function ServicesPage() {
   };
 
   const tableActions = useMemo(() => createStandardActions({
-      onEdit: editModal.openEdit,
-      onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
-  }), [editModal.openEdit, isSuperAdmin, crudActions.handleDelete]);
+      onEdit: canEdit ? editModal.openEdit : undefined,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
+  }), [editModal.openEdit, canEdit, canDelete, crudActions.handleDelete]);
 
   const headerActions = useStandardHeaderActions({
       onRefresh: refetch,
-      onAddNew: editModal.openAdd,
+      onAddNew: canEdit ? editModal.openAdd : undefined,
       isLoading,
       data: data as Row<'v_services'>[],
       exportConfig: {
@@ -119,130 +126,160 @@ export default function ServicesPage() {
         onClick: toggleDuplicates,
         variant: showDuplicates ? "secondary" : "outline",
         leftIcon: <Copy className="w-4 h-4" />,
+        hideTextOnMobile: true
       }
   ];
+  
   // Reorder to ensure Add New is last
-  const addNewAction = enhancedHeaderActions.pop(); 
-  enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction!);
+  const addNewAction = enhancedHeaderActions.pop();
+  if (addNewAction) enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction);
 
-  const renderMobileItem = useCallback((record: Row<'v_services'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div className="max-w-[75%]">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm wrap-break-words">
-              {record.name}
-            </h3>
-            <div className="flex items-center gap-2 mt-1">
-               <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
-                 {record.link_type_name || 'Link'}
-               </span>
-               {record.bandwidth_allocated && (
-                 <span className="text-xs text-gray-500 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
-                   {record.bandwidth_allocated}
-                 </span>
-               )}
-            </div>
-          </div>
-          {actions}
-        </div>
-        
-        <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 space-y-1">
-           <div className="flex items-start gap-1.5">
-              <FiMapPin className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
-              <span className="truncate">{record.node_name}</span>
-           </div>
-           {record.end_node_name && (
-             <div className="flex items-start gap-1.5">
-                <FiMapPin className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                <span className="truncate">{record.end_node_name}</span>
-             </div>
-           )}
-        </div>
-
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="text-xs text-gray-400 font-mono">
-               ID: {record.unique_id || 'N/A'} {record.vlan ? `| V:${record.vlan}` : ''}
-             </div>
-             <StatusBadge status={record.status ?? false} />
-        </div>
-      </div>
-    );
-  }, []);
+  const renderMobileItem = useCallback((record: Row<'v_services'>) => {
+     return (
+        <ServiceCard
+            service={record as V_servicesRowSchema}
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            isDuplicate={duplicateSet?.has(`${record.name?.trim().toLowerCase()}|${record.link_type_name?.trim().toLowerCase()}`)}
+        />
+     )
+  }, [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, duplicateSet]);
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
   return (
-    <div className="p-6 space-y-6">
-       <PageHeader 
-        title="Service Management" 
+    <div className="p-4 md:p-6 space-y-6">
+       <PageHeader
+        title="Service Management"
         description="Manage logical services, customers, and link definitions."
         icon={<DatabaseIcon />}
-        stats={[{ value: totalCount, label: "Total Services" }]}
-        actions={enhancedHeaderActions} 
+        stats={[
+            { value: totalCount, label: "Total Services" },
+            { value: activeCount, label: 'Active', color: 'success' },
+            { value: inactiveCount, label: 'Inactive', color: 'danger' }
+        ]}
+        actions={enhancedHeaderActions}
         isLoading={isLoading}
         isFetching={isFetching}
       />
 
-           <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_services"
-        data={data}
-        columns={columns}
-        loading={isLoading}
-        isFetching={isFetching}
-        actions={tableActions}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
-        }}
-        searchable={false} // Disable default search as we use custom toolbar
-        customToolbar={
-            <SearchAndFilters
-                searchTerm={search.searchQuery}
-                onSearchChange={search.setSearchQuery}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => {
-                    search.setSearchQuery('');
-                    filters.setFilters({});
-                }}
-                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-                activeFilterCount={Object.keys(filters.filters).length}
-                searchPlaceholder="Search by Service Name, Node, or Description..."
-            >
-                {/* Link Type Filter */}
-                <SelectFilter
-                    label="Link Type"
-                    filterKey="link_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={linkTypeOptions}
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search name, node, description..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[180px]">
+                <SearchableSelect 
+                   placeholder="Link Type"
+                   options={linkTypeOptions}
+                   value={filters.filters.link_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, link_type_id: v}))}
+                   clearable
                 />
-                
-                {/* Status Filter */}
-                <SelectFilter
-                    label="Status"
-                    filterKey="status"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={[
-                        { value: "true", label: "Active" },
-                        { value: "false", label: "Inactive" }
-                    ]}
-                />
-            </SearchAndFilters>
-        }
+             </div>
+             <div className="min-w-[140px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.filters.status as string || ''}
+                    onChange={(e) => filters.setFilters(prev => ({...prev, status: e.target.value}))}
+                 >
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                 </select>
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button 
+                   onClick={() => setViewMode('grid')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Grid View"
+                >
+                    <FiGrid size={16} />
+                </button>
+                <button 
+                   onClick={() => setViewMode('table')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Table View"
+                >
+                    <FiList size={16} />
+                </button>
+             </div>
+          </div>
+      </div>
+
+      <BulkActions
+        selectedCount={bulkActions.selectedCount}
+        isOperationLoading={isMutating}
+        onBulkDelete={bulkActions.handleBulkDelete}
+        onBulkUpdateStatus={() => {}}
+        onClearSelection={bulkActions.handleClearSelection}
+        entityName="service"
+        showStatusUpdate={false}
+        canDelete={() => !!canDelete}
       />
 
+      {/* Content */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {data.map(service => (
+                <ServiceCard 
+                    key={service.id}
+                    service={service}
+                    onEdit={editModal.openEdit}
+                    onDelete={crudActions.handleDelete}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    isDuplicate={duplicateSet.has(`${service.name?.trim().toLowerCase()}|${service.link_type_name?.trim().toLowerCase()}`)}
+                />
+             ))}
+             {data.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <DatabaseIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No services found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
+           <DataTable
+            autoHideEmptyColumns={true}
+            tableName="v_services"
+            data={data}
+            columns={columns}
+            loading={isLoading}
+            isFetching={isFetching}
+            actions={tableActions}
+            selectable={canDelete}
+            onRowSelect={(rows) => {
+                const validRows = rows.filter((row): row is V_servicesRowSchema & { id: string } => row.id != null);
+                bulkActions.handleRowSelect(validRows);
+            }}
+            pagination={{
+                current: pagination.currentPage,
+                pageSize: pagination.pageLimit,
+                total: totalCount,
+                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
+            }}
+            customToolbar={<></>}
+            renderMobileItem={renderMobileItem}
+          />
+      )}
+
       {editModal.isOpen && (
-        <ServiceFormModal 
-            isOpen={editModal.isOpen} 
-            onClose={editModal.close} 
-            editingService={getEditingService(editModal.record)} 
+        <ServiceFormModal
+            isOpen={editModal.isOpen}
+            onClose={editModal.close}
+            editingService={getEditingService(editModal.record)}
             onSubmit={handleSave}
             isLoading={isInserting || isUpdating}
         />
@@ -253,7 +290,7 @@ export default function ServicesPage() {
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
         title="Confirm Delete"
-        message="Are you sure? This will remove the service and unlink it from any connections."
+        message={deleteModal.message}
         type="danger"
         loading={deleteModal.loading}
       />

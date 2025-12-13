@@ -1,6 +1,7 @@
+// app/dashboard/e-files/page.tsx
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable } from '@/components/table';
 import { useEFiles, useDeleteFile } from '@/hooks/data/useEFilesData';
@@ -9,9 +10,9 @@ import {
   ForwardFileModal,
   EditFileModal,
 } from '@/components/efile/ActionModals';
-import { ConfirmModal } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { useRouter } from 'next/navigation';
-import { FileText, Eye, Plus, Send, Edit, Trash2, Database, User } from 'lucide-react';
+import { FileText, Eye, Plus, Send, Edit, Trash2, Database, Grid, List, Search } from 'lucide-react';
 import { EFileRow } from '@/schemas/efile-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { formatDate } from '@/utils/formatters';
@@ -20,19 +21,26 @@ import { createClient } from '@/utils/supabase/client';
 import { buildColumnConfig } from '@/constants/table-column-keys';
 import { V_e_files_extendedRowSchema } from '@/schemas/zod-schemas';
 import { useUser } from '@/providers/UserProvider';
-
-// Import the new Backup Hooks
 import {
   useExportEFileSystem,
   useImportEFileSystem,
 } from '@/hooks/database/excel-queries/useEFileSystemBackup';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
-import { Row } from '@/hooks/database';
+import { Input } from '@/components/common/ui/Input';
+import { EFileCard } from '@/components/efile/EFileCard';
+import { UserRole } from '@/types/user-roles';
 
 export default function EFilesPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
+
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  
+  // Local state for filters/search
+  const [searchQuery, setSearchQuery] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [filters, setFilters] = useState<Record<string, any>>({ status: 'active' });
 
   // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -49,19 +57,20 @@ export default function EFilesPage() {
     fileId: null,
   });
 
-  // Input Refs
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  // Data & Mutations
-  const { data: files = [], isLoading, refetch } = useEFiles({ status: 'active' });
+  const { data: files = [], isLoading, refetch, error } = useEFiles({ status: filters.status });
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
   const { mutate: exportList, isPending: isExportingList } = useRPCExcelDownload(supabase);
 
-  // Backup Hooks
   const { mutate: exportBackup, isPending: isBackingUp } = useExportEFileSystem();
   const { mutate: importBackup, isPending: isRestoring } = useImportEFileSystem();
 
-  // Handlers
+  // --- PERMISSION LOGIC ---
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN;
+  // Strict check: Only true if isSuperAdmin is true.
+  const canDelete = isSuperAdmin === true;
+
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) importBackup(file);
@@ -71,7 +80,10 @@ export default function EFilesPage() {
   const handleConfirmDelete = () => {
     if (deleteModal.fileId) {
       deleteFile(deleteModal.fileId, {
-        onSuccess: () => setDeleteModal({ isOpen: false, fileId: null }),
+        onSuccess: () => {
+             setDeleteModal({ isOpen: false, fileId: null });
+             refetch();
+        }
       });
     }
   };
@@ -89,12 +101,34 @@ export default function EFilesPage() {
           p_offset: 0,
           p_order_by: 'updated_at',
           p_order_dir: 'desc',
+          p_filters: { status: filters.status }
         },
       },
     });
   };
 
-  // --- COLUMNS ---
+  const filteredFiles = useMemo(() => {
+     let result = files;
+
+     if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        result = result.filter(f => 
+            f.subject?.toLowerCase().includes(q) || 
+            f.file_number?.toLowerCase().includes(q) ||
+            f.description?.toLowerCase().includes(q) ||
+            f.current_holder_name?.toLowerCase().includes(q)
+        );
+     }
+     if (filters.priority) {
+        result = result.filter(f => f.priority === filters.priority);
+     }
+     if (filters.category) {
+        result = result.filter(f => f.category === filters.category);
+     }
+
+     return result;
+  }, [files, searchQuery, filters]);
+
   const columns: Column<EFileRow>[] = [
     {
       key: 'file_number',
@@ -191,78 +225,17 @@ export default function EFilesPage() {
     },
   ];
 
-  const renderMobileItem = useCallback(
-    (record: Row<'v_e_files_extended'>, actions: React.ReactNode) => {
-      const priorityColors = {
-        immediate: 'bg-red-100 text-red-800 border-red-200',
-        urgent: 'bg-orange-100 text-orange-800 border-orange-200',
-        normal: 'bg-blue-50 text-blue-700 border-blue-100',
-      };
-      const pStyle =
-        priorityColors[record.priority as keyof typeof priorityColors] || priorityColors.normal;
-
-      return (
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <div className="flex-1 pr-2">
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded border ${pStyle}`}
-                >
-                  {record.priority}
-                </span>
-                <span className="text-xs text-gray-400 font-mono">{record.file_number}</span>
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-snug line-clamp-2">
-                {record.subject}
-              </h3>
-            </div>
-            {actions}
-          </div>
-
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-2 rounded-md border border-gray-100 dark:border-gray-700 mt-1">
-            <div className="text-[10px] text-gray-400 uppercase mb-0.5">Current Holder</div>
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-100 dark:bg-blue-900/50 p-1 rounded-full">
-                <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                  {record.current_holder_name}
-                </div>
-                <div className="text-xs text-gray-500 truncate">
-                  {record.current_holder_designation}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
-            <span>{record.category}</span>
-            <span>
-              {record.updated_at ? formatDate(record.updated_at, { format: 'dd-mm-yyyy' }) : 'N/A'}
-            </span>
-          </div>
-        </div>
-      );
-    },
-    []
-  );
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]} />;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <input
-        type="file"
-        ref={backupInputRef}
-        onChange={handleBackupRestore}
-        className="hidden"
-        accept=".xlsx"
-      />
+      <input type="file" ref={backupInputRef} onChange={handleBackupRestore} className="hidden" accept=".xlsx" />
 
       <PageHeader
         title="E-File Tracking"
         description="Track physical files, manage movement, and view history."
         icon={<FileText />}
+        stats={[{ value: filteredFiles.length, label: 'Visible Files' }]}
         actions={[
           {
             label: 'Refresh',
@@ -270,29 +243,16 @@ export default function EFilesPage() {
             variant: 'outline',
           },
           {
-            label: 'System Backup/Restore',
+            label: 'Backup / Restore',
             variant: 'outline',
             leftIcon: <Database className="h-4 w-4" />,
             disabled: isLoading || isRestoring || isBackingUp,
             'data-dropdown': true,
+            hideTextOnMobile: true,
             dropdownoptions: [
-              {
-                label: isBackingUp
-                  ? 'Generating Backup...'
-                  : 'Download Full Backup (Files + History)',
-                onClick: () => exportBackup(),
-                disabled: isBackingUp,
-              },
-              {
-                label: isRestoring ? 'Restoring...' : 'Restore from Backup',
-                onClick: () => backupInputRef.current?.click(),
-                disabled: isRestoring,
-              },
-              {
-                label: isExportingList ? 'Exporting List...' : 'Export Current View Only',
-                onClick: handleExportList,
-                disabled: isExportingList,
-              },
+              { label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup', onClick: () => exportBackup(), disabled: isBackingUp },
+              { label: isRestoring ? 'Restoring...' : 'Restore from Backup', onClick: () => backupInputRef.current?.click(), disabled: isRestoring },
+              { label: isExportingList ? 'Exporting List...' : 'Export Current View Only', onClick: handleExportList, disabled: isExportingList },
             ],
           },
           {
@@ -304,78 +264,117 @@ export default function EFilesPage() {
         ]}
       />
 
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search subject, number, holder..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[140px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.status}
+                    onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                 >
+                    <option value="active">Active Files</option>
+                    <option value="closed">Closed / Archived</option>
+                    <option value="">All Files</option>
+                 </select>
+             </div>
+             <div className="min-w-[140px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.priority || ''}
+                    onChange={(e) => setFilters(prev => ({...prev, priority: e.target.value || undefined}))}
+                 >
+                    <option value="">All Priorities</option>
+                    <option value="immediate">Immediate</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="normal">Normal</option>
+                 </select>
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><Grid size={16} /></button>
+                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><List size={16} /></button>
+             </div>
+          </div>
+      </div>
+
+      {/* Content */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {filteredFiles.map(file => (
+                <EFileCard 
+                   key={file.id} 
+                   file={file} 
+                   onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
+                   onForward={(f) => setForwardModal({ isOpen: true, fileId: f.id! })}
+                   onEdit={(f) => setEditModal({ isOpen: true, file: f })}
+                   onDelete={(f) => setDeleteModal({ isOpen: true, fileId: f.id! })}
+                   canEdit={canEdit}
+                   canDelete={canDelete}
+                />
+             ))}
+             {filteredFiles.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No files match your search criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
            <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_e_files_extended"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data={files as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        columns={columns as any}
-        loading={isLoading}
-        searchable={true}
-        renderMobileItem={renderMobileItem}
-        actions={[
-          {
-            key: 'view',
-            label: 'Details',
-            icon: <Eye className="w-4 h-4" />,
-            onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`),
-            variant: 'secondary',
-          },
-          {
-            key: 'forward',
-            label: 'Forward',
-            icon: <Send className="w-4 h-4" />,
-            onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }),
-            variant: 'primary',
-            hidden: (rec) => rec.status !== 'active',
-          },
-          {
-            key: 'edit',
-            label: 'Edit Info',
-            icon: <Edit className="w-4 h-4" />,
+            autoHideEmptyColumns={true}
+            tableName="v_e_files_extended"
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
-            variant: 'secondary',
-            hidden: (rec) => rec.status !== 'active',
-          },
-          {
-            key: 'delete',
-            label: 'Delete',
-            icon: <Trash2 className="w-4 h-4" />,
-            onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }),
-            variant: 'danger',
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            disabled: (rec) => !isSuperAdmin && role !== 'admin',
-          },
-        ]}
-      />
+            data={filteredFiles as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            columns={columns as any}
+            loading={isLoading}
+            searchable={false}
+            pagination={{ current: 1, pageSize: 20, total: filteredFiles.length, onChange: () => {} }}
+            customToolbar={<></>}
+            actions={[
+              {
+                key: 'view', label: 'Details', icon: <Eye className="w-4 h-4" />, onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`), variant: 'secondary',
+              },
+              {
+                key: 'forward', label: 'Forward', icon: <Send className="w-4 h-4" />, onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }), variant: 'primary', hidden: (rec) => rec.status !== 'active',
+              },
+              {
+                key: 'edit', label: 'Edit Info', icon: <Edit className="w-4 h-4" />,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
+                variant: 'secondary', hidden: (rec) => rec.status !== 'active' || !canEdit,
+              },
+              {
+                key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
+                // THE FIX: Strict hiding based on canDelete boolean
+                hidden: (rec) => !canDelete,
+              },
+            ]}
+          />
+      )}
 
-      {/* MODALS */}
+      {/* Modals */}
       <InitiateFileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-
-      {forwardModal.isOpen && forwardModal.fileId && (
-        <ForwardFileModal
-          isOpen={forwardModal.isOpen}
-          onClose={() => setForwardModal({ isOpen: false, fileId: null })}
-          fileId={forwardModal.fileId}
-        />
-      )}
-
-      {editModal.isOpen && editModal.file && (
-        <EditFileModal
-          isOpen={editModal.isOpen}
-          onClose={() => setEditModal({ isOpen: false, file: null })}
-          file={editModal.file}
-        />
-      )}
+      {forwardModal.isOpen && forwardModal.fileId && <ForwardFileModal isOpen={forwardModal.isOpen} onClose={() => setForwardModal({ isOpen: false, fileId: null })} fileId={forwardModal.fileId} />}
+      {editModal.isOpen && editModal.file && <EditFileModal isOpen={editModal.isOpen} onClose={() => setEditModal({ isOpen: false, file: null })} file={editModal.file} />}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onCancel={() => setDeleteModal({ isOpen: false, fileId: null })}
         onConfirm={handleConfirmDelete}
         title="Delete File Record"
-        message="Are you sure you want to delete this file record? This will also remove its entire movement history. This action cannot be undone."
+        message="Are you sure you want to delete this file? This will remove its history. This action cannot be undone."
         type="danger"
         confirmText="Delete Permanently"
         loading={isDeleting}

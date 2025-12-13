@@ -31,12 +31,13 @@ import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 import { FiActivity, FiArrowRight } from 'react-icons/fi';
 
-export const dynamic = 'force-dynamic';
+// REMOVED: export const dynamic = 'force-dynamic';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
   const router = useRouter();
   const supabase = createClient();
+  const { isSuperAdmin } = useUser();
 
   const {
     data: cableConnectionsData,
@@ -57,7 +58,6 @@ export default function OfcCableDetailsPage() {
   );
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  // Fetch specific utilization stats for this cable
   const { data: utilResult } = useTableQuery(supabase, 'v_cable_utilization', {
     filters: { cable_id: cableId as string },
     limit: 1,
@@ -93,8 +93,6 @@ export default function OfcCableDetailsPage() {
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
   ]);
 
-  const { isSuperAdmin } = useUser();
-
   const tableActions = useMemo(
     () => [
       {
@@ -121,6 +119,7 @@ export default function OfcCableDetailsPage() {
         onEdit: editModal.openEdit,
         onDelete: crudActions.handleDelete,
         onToggleStatus: crudActions.handleToggleStatus,
+        // STRICT CHECK: Only Super Admin can delete connections manually
         canDelete: () => isSuperAdmin === true,
       }),
     ],
@@ -150,28 +149,11 @@ export default function OfcCableDetailsPage() {
 
   const headerStats: StatProps[] = useMemo(() => {
     const utilPercent = utilization?.utilization_percent ?? 0;
-
     return [
-      {
-        value: utilization?.capacity ?? 0,
-        label: 'Total Capacity',
-        color: 'default',
-      },
-      {
-        value: utilization?.used_fibers ?? 0,
-        label: 'Utilized',
-        color: 'primary',
-      },
-      {
-        value: utilization?.available_fibers ?? 0,
-        label: 'Available',
-        color: 'success',
-      },
-      {
-        value: `${utilPercent}%`,
-        label: 'Utilization',
-        color: utilPercent > 80 ? 'warning' : 'default',
-      },
+      { value: utilization?.capacity ?? 0, label: 'Total Capacity', color: 'default' },
+      { value: utilization?.used_fibers ?? 0, label: 'Utilized', color: 'primary' },
+      { value: utilization?.available_fibers ?? 0, label: 'Available', color: 'success' },
+      { value: `${utilPercent}%`, label: 'Utilization', color: utilPercent > 80 ? 'warning' : 'default' },
     ];
   }, [utilization]);
 
@@ -196,7 +178,6 @@ export default function OfcCableDetailsPage() {
             {actions}
           </div>
 
-          {/* System / Service Info */}
           <div className="min-w-0 mt-1">
             {record.system_name ? (
               <div>
@@ -214,7 +195,6 @@ export default function OfcCableDetailsPage() {
             )}
           </div>
 
-          {/* Technical Metrics Grid */}
           <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
             <div>
               <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
@@ -249,9 +229,7 @@ export default function OfcCableDetailsPage() {
     []
   );
 
-  if (isLoading || isLoadingRouteDetails) {
-    return <PageSpinner />;
-  }
+  if (isLoading || isLoadingRouteDetails) return <PageSpinner />;
 
   if (!routeDetails?.route) {
     return (
@@ -284,7 +262,7 @@ export default function OfcCableDetailsPage() {
           columns={orderedColumns}
           loading={isLoading}
           actions={tableActions}
-          selectable={true}
+          selectable={!!isSuperAdmin}
           searchable={true}
           renderMobileItem={renderMobileItem}
           pagination={{
