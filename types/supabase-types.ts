@@ -358,6 +358,27 @@ export type Database = {
           },
         ]
       }
+      oauth_client_states: {
+        Row: {
+          code_verifier: string | null
+          created_at: string
+          id: string
+          provider_type: string
+        }
+        Insert: {
+          code_verifier?: string | null
+          created_at: string
+          id: string
+          provider_type: string
+        }
+        Update: {
+          code_verifier?: string | null
+          created_at?: string
+          id?: string
+          provider_type?: string
+        }
+        Relationships: []
+      }
       oauth_clients: {
         Row: {
           client_name: string | null
@@ -5494,7 +5515,16 @@ export type Database = {
           fiber_no: number
         }[]
       }
-      get_dashboard_overview: { Args: never; Returns: Json }
+      get_dashboard_overview: {
+        Args: {
+          p_node_type?: string
+          p_query?: string
+          p_region?: string
+          p_status?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       get_diagrams_backup: { Args: never; Returns: Json }
       get_diary_notes_for_range: {
         Args: { end_date: string; start_date: string }
@@ -5700,6 +5730,10 @@ export type Database = {
         }
         Returns: string
       }
+      recalculate_port_utilization: {
+        Args: { p_port_name: string; p_system_id: string }
+        Returns: undefined
+      }
       recalculate_segments_for_cable: {
         Args: { p_cable_id: string }
         Returns: undefined
@@ -5718,6 +5752,10 @@ export type Database = {
           id: string
           name: string
         }[]
+      }
+      search_systems_deep: {
+        Args: { p_limit?: number; p_offset?: number; p_search_term: string }
+        Returns: Json
       }
       trace_fiber_path: {
         Args: { p_start_fiber_no: number; p_start_segment_id: string }

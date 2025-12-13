@@ -299,6 +299,27 @@ export const authOauth_authorizationsUpdateSchema = z.object({
   user_id: z.uuid().nullable().optional(),
 });
 
+export const authOauth_client_statesRowSchema = z.object({
+  code_verifier: z.string().nullable(),
+  created_at: z.iso.datetime(),
+  id: z.uuid(),
+  provider_type: z.string(),
+});
+
+export const authOauth_client_statesInsertSchema = z.object({
+  code_verifier: z.string().nullable().optional(),
+  created_at: z.iso.datetime(),
+  id: z.uuid(),
+  provider_type: z.string(),
+});
+
+export const authOauth_client_statesUpdateSchema = z.object({
+  code_verifier: z.string().nullable().optional(),
+  created_at: z.iso.datetime().optional(),
+  id: z.uuid().optional(),
+  provider_type: z.string().optional(),
+});
+
 export const authOauth_clientsRowSchema = z.object({
   client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   client_secret_hash: z.string().nullable(),
@@ -2551,6 +2572,9 @@ export type AuthMfa_factorsUpdateSchema = z.infer<typeof authMfa_factorsUpdateSc
 export type AuthOauth_authorizationsRowSchema = z.infer<typeof authOauth_authorizationsRowSchema>;
 export type AuthOauth_authorizationsInsertSchema = z.infer<typeof authOauth_authorizationsInsertSchema>;
 export type AuthOauth_authorizationsUpdateSchema = z.infer<typeof authOauth_authorizationsUpdateSchema>;
+export type AuthOauth_client_statesRowSchema = z.infer<typeof authOauth_client_statesRowSchema>;
+export type AuthOauth_client_statesInsertSchema = z.infer<typeof authOauth_client_statesInsertSchema>;
+export type AuthOauth_client_statesUpdateSchema = z.infer<typeof authOauth_client_statesUpdateSchema>;
 export type AuthOauth_clientsRowSchema = z.infer<typeof authOauth_clientsRowSchema>;
 export type AuthOauth_clientsInsertSchema = z.infer<typeof authOauth_clientsInsertSchema>;
 export type AuthOauth_clientsUpdateSchema = z.infer<typeof authOauth_clientsUpdateSchema>;

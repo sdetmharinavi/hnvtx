@@ -221,7 +221,7 @@ export default function ScalableFiberNetworkDashboard() {
           )}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <DashboardStatsGrid />
+              <DashboardStatsGrid filters={filters} />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 {/* THE FIX: Added the systems prop here */}
                 <OptimizedNetworkMap

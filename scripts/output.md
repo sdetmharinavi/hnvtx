@@ -3264,6 +3264,7 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 <!-- path: app/globals.css -->
 ```css
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:where([class=dark], [class=dark] *));
 
@@ -4149,7 +4150,7 @@ export default function ResetPasswordPage() {
 
 import React, { useState, useCallback, useMemo } from 'react';
 import 'leaflet/dist/leaflet.css';
-import { Network, Settings, RefreshCw, Loader2, Eye } from 'lucide-react';
+import { Network, Loader2, Eye } from 'lucide-react';
 import { BsnlCable, BsnlSystem, AllocationSaveData } from '@/components/bsnl/types';
 import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import dynamic from 'next/dynamic';
@@ -4167,7 +4168,6 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-import { useDataSync } from '@/hooks/data/useDataSync';
 import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 import { formatIP } from '@/utils/formatters';
 
@@ -4211,10 +4211,6 @@ export default function ScalableFiberNetworkDashboard() {
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  const { isSyncing: isDataSyncing, sync } = useDataSync();
-  const handleRefresh = useCallback(async () => {
-    await sync();
-  }, [sync]);
 
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -4254,7 +4250,7 @@ export default function ScalableFiberNetworkDashboard() {
 
   const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
     { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_name' },
+    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_code' },
     { key: 'node_name', title: 'Node', dataIndex: 'node_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
     { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{formatIP(val)}</code> : null },
     { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
@@ -4330,18 +4326,6 @@ export default function ScalableFiberNetworkDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleRefresh}
-                disabled={isLoading}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className={`h-5 w-5 ${isDataSyncing || isLoading ? 'animate-spin' : ''}`} />
-              </button>
-              <button className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
-                <Settings className="h-5 w-5" />
-              </button>
-            </div>
           </div>
         </div>
       </header>
@@ -4402,7 +4386,8 @@ export default function ScalableFiberNetworkDashboard() {
             </div>
           )}
           {activeTab === 'systems' && (
-            <DataTable
+                 <DataTable
+      autoHideEmptyColumns={true}
               tableName="v_systems_complete"
               data={data.systems}
               columns={systemColumns}
@@ -4418,7 +4403,8 @@ export default function ScalableFiberNetworkDashboard() {
             />
           )}
           {activeTab === 'routes' && (
-            <DataTable
+                 <DataTable
+      autoHideEmptyColumns={true}
               tableName="v_ofc_cables_complete"
               data={data.ofcCables}
               columns={cableColumns}
@@ -5443,7 +5429,7 @@ export default function Home() {
 
         {showModal && <OutdatedBrowserModal handleCloseModal={handleCloseModal} />}
 
-        <div className='overflow-hidden relative z-10 flex min-h-screen flex-col items-center justify-center bg-black/60 bg-gradient-to-b from-black/60 via-black/40 to-black/60'>
+        <div className='overflow-hidden relative z-10 flex min-h-screen flex-col items-center justify-center bg-black/60 bg-linear-to-b from-black/60 via-black/40 to-black/60'>
           <HeroContent
             variants={{
               containerVariants,
@@ -6168,7 +6154,8 @@ export default function RingsPage() {
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName='v_rings'
         data={rings}
         columns={orderedColumns}
@@ -6265,6 +6252,7 @@ import { EFileTimeline } from "@/components/efile/EFileTimeline";
 import { ForwardFileModal } from "@/components/efile/ActionModals";
 import { useState } from "react";
 import { ArrowLeft, Send, Archive, FileText, User } from "lucide-react";
+import { HtmlContent } from "@/components/common/ui/HtmlContent"; // Import HtmlContent
 
 export default function EFileDetailsPage() {
     const { id } = useParams();
@@ -6390,7 +6378,8 @@ export default function EFileDetailsPage() {
                     <Card className="p-6">
                          <h3 className="font-semibold mb-3 text-gray-900 dark:text-white border-b dark:border-gray-700 pb-2">Description</h3>
                          <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border dark:border-gray-700 whitespace-pre-wrap wrap-break-word">
-                             {file.description || "No detailed description provided."}
+                             {/* THE FIX: Use HtmlContent for the description */}
+                             <HtmlContent content={file.description} />
                          </div>
                     </Card>
                 </div>
@@ -6738,7 +6727,8 @@ export default function EFilesPage() {
         ]}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_e_files_extended"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data={files as any}
@@ -7163,7 +7153,8 @@ export default function InventoryPage() {
         isFetching={isFetching}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_inventory_items"
         data={inventory}
         columns={columns}
@@ -7224,6 +7215,304 @@ export default function InventoryPage() {
     </div>
   );
 }
+```
+
+<!-- path: app/dashboard/connections/page.tsx -->
+```typescript
+// app/dashboard/connections/page.tsx
+'use client';
+
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import {
+  V_system_connections_completeRowSchema,
+  Lookup_typesRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { FiGitBranch, FiMonitor, FiEye } from 'react-icons/fi';
+import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
+import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
+import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { useRouter } from 'next/navigation';
+
+export default function GlobalConnectionsPage() {
+  const supabase = createClient();
+  const router = useRouter();
+
+  const [showFilters, setShowFilters] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+
+  // Trace State
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
+  const tracePath = useTracePath(supabase);
+
+  // 1. Initialize CRUD Manager with Global Data Hook
+  const {
+    data: connections,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters,
+  } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
+    tableName: 'system_connections',
+    localTableName: 'v_system_connections_complete',
+    dataQueryHook: useAllSystemConnectionsData, // Uses the new global hook
+    displayNameField: 'service_name',
+    searchColumn: ['service_name', 'system_name', 'connected_system_name'],
+  });
+
+  // 2. Fetch Options for Filters
+  const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['media-types-filter'],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
+  );
+
+  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['link-types-filter'],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
+  );
+
+  const mediaOptions = useMemo(
+    () => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+    [mediaTypesData]
+  );
+  const linkTypeOptions = useMemo(
+    () => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+    [linkTypesData]
+  );
+
+  // 3. Configure Columns
+  // pass 'true' to show the System Name column since we are in global view
+  const columns = SystemConnectionsTableColumns(connections, true);
+
+  const orderedColumns = useOrderedColumns(columns, [
+    'system_name',
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
+
+  // 4. Handlers
+  const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
+    setSelectedConnectionId(record.id);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleTracePath = async (record: V_system_connections_completeRowSchema) => {
+    setIsTracing(true);
+    setIsTraceModalOpen(true);
+    setTraceModalData(null);
+    try {
+      const traceData = await tracePath(record);
+      setTraceModalData(traceData);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to trace path');
+      setIsTraceModalOpen(false);
+    } finally {
+      setIsTracing(false);
+    }
+  };
+
+  const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
+    if (record.system_id) {
+      router.push(`/dashboard/systems/${record.system_id}`);
+    }
+  };
+
+  const tableActions = useMemo(
+    (): TableAction<'v_system_connections_complete'>[] => [
+      {
+        key: 'view-details',
+        label: 'Full Details',
+        icon: <FiMonitor />,
+        onClick: handleViewDetails,
+        variant: 'primary',
+      },
+      {
+        key: 'view-path',
+        label: 'View Path',
+        icon: <FiEye />,
+        onClick: handleTracePath,
+        variant: 'secondary',
+        hidden: (record) =>
+          !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0),
+      },
+      {
+        key: 'go-to-system',
+        label: 'Go to System',
+        icon: <FiGitBranch />,
+        onClick: handleGoToSystem,
+        variant: 'secondary',
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleGoToSystem]
+  );
+
+  const headerActions = useStandardHeaderActions({
+    data: connections,
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed!');
+    },
+    isLoading,
+    exportConfig: {
+      tableName: 'v_system_connections_complete',
+      fileName: 'Global_Connections_List',
+    },
+  });
+
+  const headerStats = [
+    { value: totalCount, label: 'Total Connections' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+  ];
+
+  // Mobile Renderer
+  const renderMobileItem = (
+    record: V_system_connections_completeRowSchema,
+    actions: React.ReactNode
+  ) => (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-between items-start">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+            {record.service_name || record.connected_system_name || 'Unnamed'}
+          </h3>
+          <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            {record.system_name}
+          </div>
+        </div>
+        {actions}
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+        <div>Type: {record.connected_link_type_name || '-'}</div>
+        <div>BW: {record.bandwidth_allocated || '-'}</div>
+      </div>
+    </div>
+  );
+
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
+
+  return (
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title="Global Connection Explorer"
+        description="View and search all service connections across the entire network."
+        icon={<FiGitBranch />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading && connections.length === 0}
+        isFetching={isFetching}
+      />
+
+      <DataTable
+        autoHideEmptyColumns={true}
+        tableName="v_system_connections_complete"
+        data={connections}
+        columns={orderedColumns}
+        loading={isLoading}
+        isFetching={isFetching}
+        actions={tableActions}
+        renderMobileItem={renderMobileItem}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
+        }}
+        searchable={false}
+        customToolbar={
+          <SearchAndFilters
+            searchTerm={search.searchQuery}
+            onSearchChange={search.setSearchQuery}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            onClearFilters={() => {
+              search.setSearchQuery('');
+              filters.setFilters({});
+            }}
+            hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+            activeFilterCount={Object.keys(filters.filters).length}
+            searchPlaceholder="Search Service, System, or ID..."
+          >
+            <SelectFilter
+              label="Media Type"
+              filterKey="media_type_id"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={mediaOptions}
+            />
+            <SelectFilter
+              label="Link Type"
+              filterKey="connected_link_type_id"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={linkTypeOptions}
+            />
+            <SelectFilter
+              label="Status"
+              filterKey="status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+            />
+          </SearchAndFilters>
+        }
+      />
+
+      <SystemConnectionDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        connectionId={selectedConnectionId}
+      />
+
+      <SystemFiberTraceModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        traceData={traceModalData}
+        isLoading={isTracing}
+      />
+    </div>
+  );
+}
+
 ```
 
 <!-- path: app/dashboard/users/page.tsx -->
@@ -7449,7 +7738,8 @@ const AdminUsersPage = () => {
         onBulkUpdateStatus={handleBulkUpdateStatus}
         onClearSelection={handleClearSelection}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_user_profiles_extended"
         data={users.map(user => ({
           ...user,
@@ -7954,7 +8244,8 @@ export default function ServicesPage() {
         isFetching={isFetching}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_services"
         data={data}
         columns={columns}
@@ -8056,9 +8347,11 @@ import { createClient } from '@/utils/supabase/client';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
-const useLogicalPathsData = (
-  params: { currentPage: number; pageLimit: number; searchQuery: string }
-): DataQueryHookReturn<LogicalPathView> => {
+const useLogicalPathsData = (params: {
+  currentPage: number;
+  pageLimit: number;
+  searchQuery: string;
+}): DataQueryHookReturn<LogicalPathView> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
 
@@ -8080,7 +8373,7 @@ const useLogicalPathsData = (
   );
 
   const mappedData = useMemo(() => {
-    return (data?.data || []).map(path => ({
+    return (data?.data || []).map((path) => ({
       ...path,
       id: path.path_id,
     }));
@@ -8091,7 +8384,10 @@ const useLogicalPathsData = (
     totalCount: data?.total_count || 0,
     activeCount: data?.active_count || 0,
     inactiveCount: data?.inactive_count || 0,
-    isLoading, isFetching, error, refetch,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
   };
 };
 
@@ -8106,7 +8402,14 @@ export default function LogicalPathsPage() {
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const {
-    data: logicalPaths, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch
+    data: logicalPaths,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
   } = useLogicalPathsData({ currentPage, pageLimit, searchQuery });
 
   const deprovisionMutation = useDeprovisionPath();
@@ -8116,62 +8419,71 @@ export default function LogicalPathsPage() {
 
   const handleDeletePath = useCallback((record: Row<'v_end_to_end_paths'>) => {
     if (!record.path_id) {
-      toast.error("Cannot de-provision: Path ID is missing.");
+      toast.error('Cannot de-provision: Path ID is missing.');
       return;
     }
     setItemToDelete({
       id: record.path_id,
-      name: record.path_name || `Path ${record.path_id.slice(0, 8)}`
+      name: record.path_name || `Path ${record.path_id.slice(0, 8)}`,
     });
     setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      deprovisionMutation.mutate({ pathId: itemToDelete.id }, {
-        onSuccess: () => {
-          toast.success(`Successfully de-provisioned "${itemToDelete.name}".`);
-          setItemToDelete(null);
-          setDeleteModalOpen(false);
-          refetch();
-        },
-        onError: (err) => {
-          toast.error(`De-provision failed: ${err.message}`);
-          setItemToDelete(null);
-          setDeleteModalOpen(false);
+      deprovisionMutation.mutate(
+        { pathId: itemToDelete.id },
+        {
+          onSuccess: () => {
+            toast.success(`Successfully de-provisioned "${itemToDelete.name}".`);
+            setItemToDelete(null);
+            setDeleteModalOpen(false);
+            refetch();
+          },
+          onError: (err) => {
+            toast.error(`De-provision failed: ${err.message}`);
+            setItemToDelete(null);
+            setDeleteModalOpen(false);
+          },
         }
-      });
+      );
     }
   };
 
-  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(() => [
-    {
-      key: 'view',
-      label: 'View Details',
-      icon: <FiEye />,
-      onClick: (record) => {
-        if (record.source_system_id) {
-          router.push(`/dashboard/systems/${record.source_system_id}`);
-        } else {
-          toast.info('This path does not have a source system assigned.');
-        }
+  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(
+    () => [
+      {
+        key: 'view',
+        label: 'View Details',
+        icon: <FiEye />,
+        onClick: (record) => {
+          if (record.source_system_id) {
+            router.push(`/dashboard/systems/${record.source_system_id}`);
+          } else {
+            toast.info('This path does not have a source system assigned.');
+          }
+        },
+        variant: 'secondary',
       },
-      variant: 'secondary',
-    },
-    {
-      key: 'deprovision',
-      label: 'De-provision Path',
-      icon: <FiTrash2 />,
-      onClick: handleDeletePath,
-      variant: 'danger',
-    },
-  ], [handleDeletePath, router]);
+      {
+        key: 'deprovision',
+        label: 'De-provision Path',
+        icon: <FiTrash2 />,
+        onClick: handleDeletePath,
+        variant: 'danger',
+      },
+    ],
+    [handleDeletePath, router]
+  );
 
   const headerActions = useStandardHeaderActions<'v_end_to_end_paths'>({
     data: logicalPaths,
-    onRefresh: async () => { await refetch(); toast.success('Logical paths refreshed!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Logical paths refreshed!');
+    },
     isLoading: isLoading,
-    exportConfig: { tableName: 'v_end_to_end_paths' }
+    exportConfig: { tableName: 'v_end_to_end_paths' },
   });
 
   const headerStats = [
@@ -8181,7 +8493,12 @@ export default function LogicalPathsPage() {
   ];
 
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
   }
 
   return (
@@ -8196,6 +8513,7 @@ export default function LogicalPathsPage() {
       />
 
       <DataTable<'v_end_to_end_paths'>
+        autoHideEmptyColumns={true}
         tableName="v_end_to_end_paths"
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}
@@ -8218,7 +8536,7 @@ export default function LogicalPathsPage() {
             searchTerm={searchQuery}
             onSearchChange={setSearchQuery}
             showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(p => !p)}
+            onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={handleClearFilters}
             hasActiveFilters={hasActiveFilters}
             activeFilterCount={0}
@@ -8241,6 +8559,7 @@ export default function LogicalPathsPage() {
     </div>
   );
 }
+
 ```
 
 <!-- path: app/dashboard/categories/page.tsx -->
@@ -8654,7 +8973,8 @@ const NodesPage = () => {
         node={viewModal.record as V_nodes_completeRowSchema}
         onClose={viewModal.close}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_nodes_complete"
         data={nodes}
         columns={orderedColumns}
@@ -8900,7 +9220,8 @@ const EmployeesPage = () => {
         entityName="employee"
         showStatusUpdate={true}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_employees"
         data={employees}
         columns={orderedColumns}
@@ -9468,7 +9789,8 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_system_connections_complete"
         data={connections}
         columns={orderedColumns}
@@ -9806,7 +10128,8 @@ export default function SystemsPage() {
 
       <input type='file' ref={fileInputRef} onChange={handleFileChange} className='hidden' accept='.xlsx, .xls, .csv' />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName='v_systems_complete'
         data={systems}
         columns={orderedSystems}
@@ -10014,7 +10337,7 @@ export default function MaintenanceAreasPage() {
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -10329,7 +10652,6 @@ const useRingsDataWithStats = (
 
         if (r.bts_status === 'On-Air') {
           stats.bts.onAir++;
-          // Sum up the node count. Use bts_node_count if available (after SQL update), else total_nodes
           stats.bts.nodesOnAir += (r.bts_node_count ?? r.total_nodes ?? 0);
         } else if (r.bts_status === 'Configured') {
           stats.bts.configuredCount++;
@@ -10338,8 +10660,7 @@ const useRingsDataWithStats = (
         }
     });
 
-    // We use a timeout to avoid setting state during render
-    setTimeout(() => setDynamicStats(stats), 0);
+    // REMOVED: setTimeout(() => setDynamicStats(stats), 0);
     // -----------------------------
 
     filtered.sort((a, b) =>
@@ -10356,9 +10677,15 @@ const useRingsDataWithStats = (
       totalCount,
       activeCount,
       inactiveCount: totalCount - activeCount,
+      stats, // ← ADD THIS: return the stats so useEffect can access them
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
+
+  // ADD THIS: useEffect to update the stats state
+  useEffect(() => {
+    setDynamicStats(processedData.stats);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setDynamicStats]);
 
   return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
 };
@@ -11420,7 +11747,8 @@ export default function AuditLogsPage() {
         isOperationLoading={isMutating}
       />
 
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_audit_logs"
         data={logs}
         columns={orderedColumns}
@@ -12090,7 +12418,7 @@ export default function RingMapPage() {
 <!-- path: app/dashboard/ofc/[id]/page.tsx -->
 ```typescript
 // path: app/dashboard/ofc/[id]/page.tsx
-"use client";
+'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -12151,7 +12479,7 @@ export default function OfcCableDetailsPage() {
   // Fetch specific utilization stats for this cable
   const { data: utilResult } = useTableQuery(supabase, 'v_cable_utilization', {
     filters: { cable_id: cableId as string },
-    limit: 1
+    limit: 1,
   });
   const utilization = utilResult?.data?.[0];
 
@@ -12246,88 +12574,99 @@ export default function OfcCableDetailsPage() {
       {
         value: utilization?.capacity ?? 0,
         label: 'Total Capacity',
-        color: 'default'
+        color: 'default',
       },
       {
         value: utilization?.used_fibers ?? 0,
         label: 'Utilized',
-        color: 'primary'
+        color: 'primary',
       },
       {
         value: utilization?.available_fibers ?? 0,
         label: 'Available',
-        color: 'success'
+        color: 'success',
       },
       {
         value: `${utilPercent}%`,
         label: 'Utilization',
-        color: utilPercent > 80 ? 'warning' : 'default'
+        color: utilPercent > 80 ? 'warning' : 'default',
       },
     ];
   }, [utilization]);
 
-  const renderMobileItem = useCallback((record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-               F{record.fiber_no_sn}
-            </span>
-            {record.fiber_no_sn !== record.fiber_no_en && (
+  const renderMobileItem = useCallback(
+    (record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+                F{record.fiber_no_sn}
+              </span>
+              {record.fiber_no_sn !== record.fiber_no_en && (
                 <>
                   <FiArrowRight className="w-3 h-3 text-gray-400" />
                   <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
                     F{record.fiber_no_en}
                   </span>
                 </>
+              )}
+            </div>
+            {actions}
+          </div>
+
+          {/* System / Service Info */}
+          <div className="min-w-0 mt-1">
+            {record.system_name ? (
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                  {record.system_name}
+                </h4>
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
+                  <span className="uppercase font-bold tracking-wider">
+                    {record.connection_type || 'Connection'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
             )}
           </div>
-          {actions}
-        </div>
 
-        {/* System / Service Info */}
-        <div className="min-w-0 mt-1">
-           {record.system_name ? (
-             <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">{record.system_name}</h4>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
-                   <span className="uppercase font-bold tracking-wider">{record.connection_type || 'Connection'}</span>
-                </div>
-             </div>
-           ) : (
-             <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
-           )}
-        </div>
-
-        {/* Technical Metrics Grid */}
-        <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
+          {/* Technical Metrics Grid */}
+          <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
             <div>
-               <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
-               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                  {record.updated_sn_name || 'N/A'}
-               </div>
-               <div className="text-gray-500 mt-0.5">{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</div>
+              <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
+              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                {record.updated_sn_name || 'N/A'}
+              </div>
+              <div className="text-gray-500 mt-0.5">
+                {record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}
+              </div>
             </div>
-             <div>
-               <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
-               <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                  {record.updated_en_name || 'N/A'}
-               </div>
-               <div className="text-gray-500 mt-0.5">{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</div>
+            <div>
+              <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
+              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
+                {record.updated_en_name || 'N/A'}
+              </div>
+              <div className="text-gray-500 mt-0.5">
+                {record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}
+              </div>
             </div>
-        </div>
+          </div>
 
-        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <FiActivity className="w-3.5 h-3.5" />
-                <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
-             </div>
-             <StatusBadge status={record.status ?? false} />
+          <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <FiActivity className="w-3.5 h-3.5" />
+              <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
+            </div>
+            <StatusBadge status={record.status ?? false} />
+          </div>
         </div>
-      </div>
-    );
-  }, []);
+      );
+    },
+    []
+  );
 
   if (isLoading || isLoadingRouteDetails) {
     return <PageSpinner />;
@@ -12358,6 +12697,7 @@ export default function OfcCableDetailsPage() {
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <DataTable<'v_ofc_connections_complete'>
+          autoHideEmptyColumns={true}
           tableName="v_ofc_connections_complete"
           data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
           columns={orderedColumns}
@@ -12406,6 +12746,7 @@ export default function OfcCableDetailsPage() {
     </div>
   );
 }
+
 ```
 
 <!-- path: app/dashboard/ofc/page.tsx -->
@@ -12658,7 +12999,8 @@ const OfcPage = () => {
         showStatusUpdate={true}
         canDelete={() => isSuperAdmin === true}
       />
-      <DataTable
+           <DataTable
+      autoHideEmptyColumns={true}
         tableName="v_ofc_cables_complete"
         data={ofcData}
         columns={orderedColumns}
@@ -15670,6 +16012,7 @@ import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { V_ringsRowSchema } from "@/schemas/zod-schemas";
 
 // Helper to render phase status badges
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PhaseBadge = ({ value, type }: { value: unknown, type: 'spec' | 'ofc' | 'bts' }) => {
     const status = value as string || 'Pending';
     let color = 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
@@ -15744,7 +16087,7 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
           render: (val) => <PhaseBadge value={val} type="ofc" />
       },
       bts_status: {
-          title: "BTS",
+          title: "WORKING STATUS",
           width: 100,
           render: (val) => <PhaseBadge value={val} type="bts" />
       },
@@ -15851,62 +16194,80 @@ import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { FiMapPin } from "react-icons/fi";
 import { formatDate } from "@/utils/formatters";
 import { Row } from "@/hooks/database";
-import { PathDisplay } from "@/components/system-details/PathDisplay"; // Updated Import
+import { PathDisplay } from "@/components/system-details/PathDisplay";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import TruncateTooltip from "@/components/common/TruncateTooltip";
 
 export const SystemConnectionsTableColumns = (
-  data: Row<"v_system_connections_complete">[]
+  data: Row<"v_system_connections_complete">[],
+  showSystemContext: boolean = false // NEW PARAMETER
 ): Column<Row<"v_system_connections_complete">>[] => {
+
+  const omitFields = [
+    "id",
+    "system_id",
+    // "system_name", // We conditionally remove this from omit list
+    "system_type_name",
+    "media_type_id",
+    "created_at",
+    "updated_at",
+    "en_interface",
+    "sn_interface",
+    "en_ip",
+    "sn_ip",
+    "sn_id",
+    "en_id",
+    "service_node_id",
+    "sn_node_id",
+    "en_node_id",
+    "sdh_a_customer",
+    "sdh_a_slot",
+    "sdh_b_customer",
+    "sdh_b_slot",
+    "sdh_carrier",
+    "sdh_stm_no",
+    "vlan",
+    "en_node_name",
+    "sn_node_name",
+    "media_type_name",
+    "remark",
+    "working_fiber_in_ids",
+    "working_fiber_out_ids",
+    "protection_fiber_in_ids",
+    "protection_fiber_out_ids",
+    "service_id",
+    "connected_link_type_id",
+    "sn_name",
+    "en_name",
+    "connected_system_type_name",
+    "en_system_type_name",
+    "sn_system_type_name",
+    "bandwidth",
+    "connected_system_name",
+    "service_node_name",
+  ];
+
+  // If showing system context, do not omit system_name
+  const finalOmit = showSystemContext
+    ? omitFields.filter((f) => f !== "system_name")
+    : [...omitFields, "system_name"];
+
   const baseColumns = useDynamicColumnConfig("v_system_connections_complete", {
     data: data,
-    omit: [
-      "id",
-      "system_id",
-      "system_name",
-      "system_type_name",
-      "media_type_id",
-      "created_at",
-      "updated_at",
-      "en_interface",
-      "sn_interface",
-      "en_ip",
-      "sn_ip",
-      "sn_id",
-      "en_id",
-      "service_node_id",
-      "sn_node_id",
-      "en_node_id",
-      "sdh_a_customer",
-      "sdh_a_slot",
-      "sdh_b_customer",
-      "sdh_b_slot",
-      "sdh_carrier",
-      "sdh_stm_no",
-      "vlan",
-      "en_node_name",
-      "sn_node_name",
-      "media_type_name",
-      "remark",
-      "working_fiber_in_ids",
-      "working_fiber_out_ids",
-      "protection_fiber_in_ids",
-      "protection_fiber_out_ids",
-      "service_id",
-      "connected_link_type_id",
-      "sn_name",
-      "en_name",
-      "connected_system_type_name",
-      "en_system_type_name",
-      "sn_system_type_name",
-      "bandwidth",
-      "connected_system_name",
-      "service_node_name",
-
-
-
-    ],
+    omit: finalOmit as (keyof Row<"v_system_connections_complete"> & string)[],
     overrides: {
+      // NEW: Definition for System Name column
+      system_name: {
+        title: "Host System",
+        sortable: true,
+        searchable: true,
+        width: 180,
+        render: (value) => (
+          <span className="font-semibold text-gray-800 dark:text-gray-200">
+            <TruncateTooltip text={value as string} />
+          </span>
+        ),
+      },
       service_name: {
         title: "Service / Customer",
         sortable: true,
@@ -15938,19 +16299,19 @@ export const SystemConnectionsTableColumns = (
         naturalSort: true,
       },
       system_working_interface: {
-        title: "Working Interface",
+        title: "Working Port",
         sortable: true,
         naturalSort: true,
       },
       system_protection_interface: {
-        title: "Protection Interface",
+        title: "Protection Port",
         sortable: true,
         naturalSort: true,
       },
       bandwidth: {
-        title: "Capacity (Mbps)",
+        title: "Capacity",
         sortable: true,
-        width: 120,
+        width: 100,
         render: (value) => <span className='font-mono text-sm'>{value ? `${value}` : "N/A"}</span>,
       },
       en_name: {
@@ -15996,9 +16357,9 @@ export const SystemConnectionsTableColumns = (
         render: (value) => <StatusBadge status={value as boolean} />,
       },
       commissioned_on: {
-        title: "Commissioned On",
+        title: "Commissioned",
         sortable: true,
-        width: 150,
+        width: 120,
         render: (value) => formatDate(value as string, { format: "dd-mm-yyyy" }),
       },
     },
@@ -16015,15 +16376,24 @@ export const SystemConnectionsTableColumns = (
   const serviceNameIndex = baseColumns.findIndex((c) => c.key === "service_name");
   const finalColumns = [...baseColumns];
 
+  // Insert path column after service name
   if (serviceNameIndex !== -1) {
     finalColumns.splice(serviceNameIndex + 1, 0, provisionedPathColumn);
   } else {
     finalColumns.unshift(provisionedPathColumn);
   }
 
+  // If showing system context, reorder to put system_name first
+  if (showSystemContext) {
+    const sysNameIndex = finalColumns.findIndex((c) => c.key === "system_name");
+    if (sysNameIndex !== -1) {
+      const [sysNameCol] = finalColumns.splice(sysNameIndex, 1);
+      finalColumns.unshift(sysNameCol);
+    }
+  }
+
   return finalColumns;
 };
-
 ```
 
 <!-- path: config/table-columns/InventoryTableColumns.tsx -->
@@ -25465,15 +25835,6 @@ declare module 'intersection-observer';
 declare module 'url-polyfill';
 ```
 
-<!-- path: types/error-types.ts -->
-```typescript
-export type DetailedError = Error & { details?: unknown; hint?: unknown; code?: unknown };
-
-export function hasDetails(error: unknown): error is DetailedError {
-  return typeof error === "object" && error !== null && "details" in error;
-}
-```
-
 <!-- path: types/mapbox__togeojson.d.ts -->
 ```typescript
 declare module '@mapbox/togeojson' {
@@ -26688,7 +27049,6 @@ export const VIEWS = {
   v_maintenance_areas: "v_maintenance_areas",
   v_employees: "v_employees",
   v_rings: "v_rings",
-  // v_system_ring_paths_detailed: "v_system_ring_paths_detailed",
   v_cable_segments_at_jc: "v_cable_segments_at_jc",
   v_junction_closures_complete: "v_junction_closures_complete",
   v_ring_nodes: "v_ring_nodes",
@@ -27017,32 +27377,6 @@ LEFT JOIN public.ofc_cables oc ON lps.ofc_cable_id = oc.id
 GROUP BY
   lfp.id,
   lt_status.name;
-
-
--- View showing detailed segments for a given logical path.
--- CREATE OR REPLACE VIEW public.v_system_ring_paths_detailed WITH (security_invoker = true) AS
--- SELECT
---   srp.id,
---   srp.logical_path_id,
---   lp.path_name,
---   lp.source_system_id,
---   srp.ofc_cable_id,
---   srp.path_order,
---   oc.route_name,
---   oc.sn_id AS start_node_id,
---   sn.name AS start_node_name,
---   oc.en_id AS end_node_id,
---   en.name AS end_node_name,
---   srp.created_at
--- FROM public.logical_path_segments srp
--- JOIN public.logical_fiber_paths lp ON srp.logical_path_id = lp.id
--- JOIN public.ofc_cables oc ON srp.ofc_cable_id = oc.id
--- LEFT JOIN public.nodes sn ON oc.sn_id = sn.id
--- LEFT JOIN public.nodes en ON oc.en_id = en.id
--- ORDER BY
---   srp.logical_path_id,
---   srp.path_order;
-
 
 -- View for calculating fiber utilization per cable.
 CREATE OR REPLACE VIEW public.v_cable_utilization WITH (security_invoker = true) AS
@@ -27939,7 +28273,6 @@ BEGIN
   -- CORRECTED: Added grants for specific admin roles to all relevant views in this module.
   GRANT SELECT ON public.v_junction_closures_complete TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  -- GRANT SELECT ON public.v_system_ring_paths_detailed TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
 
@@ -28996,90 +29329,190 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 -- path: data/migrations/06_utilities/18_fix_port_trigger_bidirectional.sql
 -- Description: Updates the port utilization trigger to handle BOTH ends of a connection (Source and Destination).
 
+-- CREATE OR REPLACE FUNCTION public.fn_update_port_utilization()
+-- RETURNS TRIGGER AS $$
+-- DECLARE
+--     v_count integer;
+-- BEGIN
+--     -- ========================================================================
+--     -- PART 1: CLEANUP OLD VALUES (Source & Destination)
+--     -- Runs on DELETE, or on UPDATE (to clear previous ports)
+--     -- ========================================================================
+--     IF (TG_OP = 'DELETE') OR (TG_OP = 'UPDATE') THEN
+
+--         -- A. Clean Source Side (system_id)
+--         IF OLD.system_working_interface IS NOT NULL THEN
+--             SELECT COUNT(*) INTO v_count FROM public.system_connections
+--             WHERE system_id = OLD.system_id AND system_working_interface = OLD.system_working_interface;
+
+--             UPDATE public.ports_management
+--             SET services_count = v_count, port_utilization = (v_count > 0)
+--             WHERE system_id = OLD.system_id AND port = OLD.system_working_interface;
+--         END IF;
+
+--         -- B. Clean Destination Side (en_id) - ONLY if it refers to a System in our DB
+--         IF OLD.en_id IS NOT NULL AND OLD.en_interface IS NOT NULL THEN
+--             -- Check if en_id is actually a system (optimization: check ports table existence)
+--             IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = OLD.en_id AND port = OLD.en_interface) THEN
+--                 -- Count connections where this system is the Destination OR the Source using this port
+--                 SELECT COUNT(*) INTO v_count FROM public.system_connections
+--                 WHERE (en_id = OLD.en_id AND en_interface = OLD.en_interface)
+--                    OR (system_id = OLD.en_id AND system_working_interface = OLD.en_interface);
+
+--                 UPDATE public.ports_management
+--                 SET services_count = v_count, port_utilization = (v_count > 0)
+--                 WHERE system_id = OLD.en_id AND port = OLD.en_interface;
+--             END IF;
+--         END IF;
+--     END IF;
+
+--     -- ========================================================================
+--     -- PART 2: APPLY NEW VALUES (Source & Destination)
+--     -- Runs on INSERT, or on UPDATE
+--     -- ========================================================================
+--     IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
+
+--         -- A. Update Source Side
+--         IF NEW.system_working_interface IS NOT NULL THEN
+--             SELECT COUNT(*) INTO v_count FROM public.system_connections
+--             WHERE system_id = NEW.system_id AND system_working_interface = NEW.system_working_interface;
+
+--             UPDATE public.ports_management
+--             SET
+--                 services_count = v_count,
+--                 port_utilization = (v_count > 0),
+--                 port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
+--             WHERE system_id = NEW.system_id AND port = NEW.system_working_interface;
+--         END IF;
+
+--         -- B. Update Destination Side
+--         IF NEW.en_id IS NOT NULL AND NEW.en_interface IS NOT NULL THEN
+--             IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = NEW.en_id AND port = NEW.en_interface) THEN
+
+--                 SELECT COUNT(*) INTO v_count FROM public.system_connections
+--                 WHERE (en_id = NEW.en_id AND en_interface = NEW.en_interface)
+--                    OR (system_id = NEW.en_id AND system_working_interface = NEW.en_interface);
+
+--                 UPDATE public.ports_management
+--                 SET
+--                     services_count = v_count,
+--                     port_utilization = (v_count > 0),
+--                     port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
+--                 WHERE system_id = NEW.en_id AND port = NEW.en_interface;
+--             END IF;
+--         END IF;
+--     END IF;
+
+--     RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- -- Re-attach Trigger
+-- DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
+-- CREATE TRIGGER trg_update_port_utilization
+-- AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
+-- FOR EACH ROW
+-- EXECUTE FUNCTION public.fn_update_port_utilization();
+
+-- path: data/migrations/06_utilities/19_fix_port_utilization_comprehensive.sql
+-- Description: Completely rewrites port utilization logic to handle ALL interface types (Working/Protection) on both Source and Destination.
+
+-- 1. Helper Function: Recalculate a single port's status
+CREATE OR REPLACE FUNCTION public.recalculate_port_utilization(p_system_id UUID, p_port_name TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    IF p_system_id IS NULL OR p_port_name IS NULL THEN
+        RETURN;
+    END IF;
+
+    -- Count ALL occurrences of this port in system_connections
+    -- It matches if the system matches the ID AND the port matches any of the 4 interface columns appropriate for that side
+    SELECT COUNT(*) INTO v_count
+    FROM public.system_connections sc
+    WHERE
+       -- Case 1: System is the Source
+       (sc.system_id = p_system_id AND (
+            sc.system_working_interface = p_port_name OR
+            sc.system_protection_interface = p_port_name
+       ))
+       OR
+       -- Case 2: System is the Destination
+       (sc.en_id = p_system_id AND (
+            sc.en_interface = p_port_name OR
+            sc.en_protection_interface = p_port_name
+       ));
+
+    -- Update the port record
+    -- We only update if the port actually exists in the management table
+    UPDATE public.ports_management
+    SET
+        services_count = v_count,
+        port_utilization = (v_count > 0),
+        -- Optional: Auto-set admin status to UP if used, otherwise leave it alone
+        port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END,
+        updated_at = NOW()
+    WHERE system_id = p_system_id AND port = p_port_name;
+
+END;
+$$;
+
+-- 2. Trigger Function: orchestrates updates for all touched ports
 CREATE OR REPLACE FUNCTION public.fn_update_port_utilization()
 RETURNS TRIGGER AS $$
-DECLARE
-    v_count integer;
 BEGIN
     -- ========================================================================
-    -- PART 1: CLEANUP OLD VALUES (Source & Destination)
-    -- Runs on DELETE, or on UPDATE (to clear previous ports)
+    -- PART 1: Handle OLD values (DELETE or UPDATE) - Decrement/Recalc
     -- ========================================================================
     IF (TG_OP = 'DELETE') OR (TG_OP = 'UPDATE') THEN
+        -- Source Side
+        PERFORM public.recalculate_port_utilization(OLD.system_id, OLD.system_working_interface);
+        PERFORM public.recalculate_port_utilization(OLD.system_id, OLD.system_protection_interface);
 
-        -- A. Clean Source Side (system_id)
-        IF OLD.system_working_interface IS NOT NULL THEN
-            SELECT COUNT(*) INTO v_count FROM public.system_connections
-            WHERE system_id = OLD.system_id AND system_working_interface = OLD.system_working_interface;
-
-            UPDATE public.ports_management
-            SET services_count = v_count, port_utilization = (v_count > 0)
-            WHERE system_id = OLD.system_id AND port = OLD.system_working_interface;
-        END IF;
-
-        -- B. Clean Destination Side (en_id) - ONLY if it refers to a System in our DB
-        IF OLD.en_id IS NOT NULL AND OLD.en_interface IS NOT NULL THEN
-            -- Check if en_id is actually a system (optimization: check ports table existence)
-            IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = OLD.en_id AND port = OLD.en_interface) THEN
-                -- Count connections where this system is the Destination OR the Source using this port
-                SELECT COUNT(*) INTO v_count FROM public.system_connections
-                WHERE (en_id = OLD.en_id AND en_interface = OLD.en_interface)
-                   OR (system_id = OLD.en_id AND system_working_interface = OLD.en_interface);
-
-                UPDATE public.ports_management
-                SET services_count = v_count, port_utilization = (v_count > 0)
-                WHERE system_id = OLD.en_id AND port = OLD.en_interface;
-            END IF;
-        END IF;
+        -- Destination Side
+        PERFORM public.recalculate_port_utilization(OLD.en_id, OLD.en_interface);
+        PERFORM public.recalculate_port_utilization(OLD.en_id, OLD.en_protection_interface);
     END IF;
 
     -- ========================================================================
-    -- PART 2: APPLY NEW VALUES (Source & Destination)
-    -- Runs on INSERT, or on UPDATE
+    -- PART 2: Handle NEW values (INSERT or UPDATE) - Increment/Recalc
     -- ========================================================================
     IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
+        -- Source Side
+        PERFORM public.recalculate_port_utilization(NEW.system_id, NEW.system_working_interface);
+        PERFORM public.recalculate_port_utilization(NEW.system_id, NEW.system_protection_interface);
 
-        -- A. Update Source Side
-        IF NEW.system_working_interface IS NOT NULL THEN
-            SELECT COUNT(*) INTO v_count FROM public.system_connections
-            WHERE system_id = NEW.system_id AND system_working_interface = NEW.system_working_interface;
-
-            UPDATE public.ports_management
-            SET
-                services_count = v_count,
-                port_utilization = (v_count > 0),
-                port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
-            WHERE system_id = NEW.system_id AND port = NEW.system_working_interface;
-        END IF;
-
-        -- B. Update Destination Side
-        IF NEW.en_id IS NOT NULL AND NEW.en_interface IS NOT NULL THEN
-            IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = NEW.en_id AND port = NEW.en_interface) THEN
-
-                SELECT COUNT(*) INTO v_count FROM public.system_connections
-                WHERE (en_id = NEW.en_id AND en_interface = NEW.en_interface)
-                   OR (system_id = NEW.en_id AND system_working_interface = NEW.en_interface);
-
-                UPDATE public.ports_management
-                SET
-                    services_count = v_count,
-                    port_utilization = (v_count > 0),
-                    port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
-                WHERE system_id = NEW.en_id AND port = NEW.en_interface;
-            END IF;
-        END IF;
+        -- Destination Side
+        PERFORM public.recalculate_port_utilization(NEW.en_id, NEW.en_interface);
+        PERFORM public.recalculate_port_utilization(NEW.en_id, NEW.en_protection_interface);
     END IF;
 
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Re-attach Trigger
+-- 3. Re-attach Trigger
 DROP TRIGGER IF EXISTS trg_update_port_utilization ON public.system_connections;
 CREATE TRIGGER trg_update_port_utilization
 AFTER INSERT OR UPDATE OR DELETE ON public.system_connections
 FOR EACH ROW
 EXECUTE FUNCTION public.fn_update_port_utilization();
+
+-- 4. ONE-TIME CLEANUP: Recalculate EVERYTHING to fix existing data inconsistencies
+-- This iterates through all ports that currently exist and ensures their status matches the connections table.
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN SELECT system_id, port FROM public.ports_management LOOP
+        PERFORM public.recalculate_port_utilization(r.system_id, r.port);
+    END LOOP;
+END;
+$$;
 ```
 
 <!-- path: data/migrations/06_utilities/10_disassociate_system.sql -->
@@ -29113,16 +29546,6 @@ GRANT EXECUTE ON FUNCTION public.disassociate_system_from_ring(UUID, UUID) TO au
 -- Section 3: Specialized Utility Functions (No Pagination)
 -- =================================================================
 
--- CREATE OR REPLACE FUNCTION public.get_system_path_details(p_path_id UUID)
--- RETURNS SETOF public.v_system_ring_paths_detailed LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
--- BEGIN
---     IF NOT EXISTS (SELECT 1 FROM public.logical_fiber_paths lfp WHERE lfp.id = p_path_id AND EXISTS (SELECT 1 FROM public.systems s WHERE s.id = lfp.source_system_id)) THEN
---         RETURN;
---     END IF;
---     RETURN QUERY SELECT * FROM public.v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC;
--- END; $$;
--- GRANT EXECUTE ON FUNCTION public.get_system_path_details(UUID) TO authenticated;
-
 CREATE OR REPLACE FUNCTION public.get_continuous_available_fibers(p_path_id UUID)
 RETURNS TABLE(fiber_no INT) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE path_cable_count INT;
@@ -29154,56 +29577,6 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.find_cable_between_nodes(UUID, UUID) TO authenticated;
-
--- CREATE OR REPLACE FUNCTION public.validate_ring_path(p_path_id UUID)
--- RETURNS JSONB
--- LANGUAGE plpgsql
--- SECURITY DEFINER
--- SET search_path = public
--- AS $$
--- DECLARE
---     v_segment_count INT;
---     v_first_segment RECORD;
---     v_last_segment RECORD;
---     v_is_continuous BOOLEAN;
---     v_is_closed_loop BOOLEAN;
--- BEGIN
---     -- Count segments in the path
---     SELECT COUNT(*) INTO v_segment_count FROM logical_path_segments WHERE logical_path_id = p_path_id;
-
---     IF v_segment_count = 0 THEN
---         RETURN jsonb_build_object('status', 'empty', 'message', 'Path has no segments.');
---     END IF;
-
---     -- Get first and last segments using the detailed view
---     SELECT * INTO v_first_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order ASC LIMIT 1;
---     SELECT * INTO v_last_segment FROM v_system_ring_paths_detailed WHERE logical_path_id = p_path_id ORDER BY path_order DESC LIMIT 1;
-
---     -- Check for continuity (every segment's start node matches the previous segment's end node)
---     SELECT NOT EXISTS (
---         SELECT 1
---         FROM v_system_ring_paths_detailed s1
---         LEFT JOIN v_system_ring_paths_detailed s2 ON s1.logical_path_id = s2.logical_path_id AND s2.path_order = s1.path_order + 1
---         WHERE s1.logical_path_id = p_path_id AND s2.id IS NOT NULL AND s1.end_node_id <> s2.start_node_id
---     ) INTO v_is_continuous;
-
---     IF NOT v_is_continuous THEN
---         RETURN jsonb_build_object('status', 'broken', 'message', 'Path is not continuous. A segment connection is mismatched.');
---     END IF;
-
---     -- Check if the path forms a closed loop
---     v_is_closed_loop := v_first_segment.start_node_id = v_last_segment.end_node_id;
-
---     IF v_is_closed_loop THEN
---         RETURN jsonb_build_object('status', 'valid_ring', 'message', 'Path forms a valid closed-loop ring.');
---     ELSE
---         RETURN jsonb_build_object('status', 'open_path', 'message', 'Path is a valid point-to-point route but not a closed ring.');
---     END IF;
--- END;
--- $$;
-
--- GRANT EXECUTE ON FUNCTION public.validate_ring_path(UUID) TO authenticated;
-
 
 CREATE OR REPLACE FUNCTION public.deprovision_logical_path(p_path_id UUID)
 RETURNS VOID
@@ -33422,7 +33795,13 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
-import { MapLegend } from '@/components/map/MapLegend'; // THE FIX: Import Legend
+import { MapLegend } from '@/components/map/MapLegend';
+
+// Interface for nodes with display coordinates (potentially offset)
+interface DisplayNode extends BsnlNode {
+  displayLat: number;
+  displayLng: number;
+}
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -33481,57 +33860,116 @@ const MapContent = ({
   mapAttribution: string;
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
-}) => (
-  <>
-    <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
-    <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
+}) => {
 
-    {visibleLayers.cables && cables.map((cable: BsnlCable) => {
-        const startNode = nodeMap.get(cable.sn_id!);
-        const endNode = nodeMap.get(cable.en_id!);
-        if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
-            return (
-                <Polyline
-                    key={cable.id}
-                    positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
-                    pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
-                >
-                  <Popup>
-                      <div className="min-w-48 max-w-72">
-                          <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                          <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                          <p className="text-sm">Capacity: {cable.capacity}F</p>
-                          <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                          <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
-                      </div>
-                  </Popup>
-                </Polyline>
-            );
-        }
-        return null;
-    })}
+  // --- JITTER LOGIC: Spread out overlapping nodes ---
+  const displayNodes = useMemo(() => {
+    const groupedNodes = new Map<string, BsnlNode[]>();
 
-    {visibleNodes.map((node: BsnlNode) => {
-        const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
-        const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
+    // 1. Group nodes by exact coordinate
+    visibleNodes.forEach(node => {
+      if(node.latitude && node.longitude) {
+        // Create a key based on coordinates (rounded slightly to catch very close nodes)
+        const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
+        if (!groupedNodes.has(key)) groupedNodes.set(key, []);
+        groupedNodes.get(key)!.push(node);
+      }
+    });
 
-        return (node.latitude && node.longitude) && (
-          <Marker key={node.id} position={[node.latitude, node.longitude]} icon={icon}>
-              <Popup>
-                  <div className="min-w-48 max-w-72">
-                      <h3 className="font-semibold text-base">{node.name}</h3>
-                      <p className="text-sm">Type: {node.node_type_code}</p>
-                      <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                      {systemTypesAtNode && <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>}
-                      {node.latitude && <p className="text-sm mt-1 text-gray-500">{node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}</p>}
-                      {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
-                  </div>
-              </Popup>
-          </Marker>
-      )
-    })}
-  </>
-);
+    const results: DisplayNode[] = [];
+    // 2. Apply offset
+    groupedNodes.forEach((nodesAtLoc) => {
+      if (nodesAtLoc.length === 1) {
+        // No overlap, keep original position
+        results.push({
+          ...nodesAtLoc[0],
+          displayLat: nodesAtLoc[0].latitude!,
+          displayLng: nodesAtLoc[0].longitude!
+        });
+      } else {
+        // Overlap detected: Spiral them out
+        // 0.00015 degrees is roughly 15-20 meters
+        const radius = 0.00015;
+        const angleStep = (2 * Math.PI) / nodesAtLoc.length;
+
+        nodesAtLoc.forEach((node, i) => {
+          const angle = i * angleStep;
+          results.push({
+            ...node,
+            displayLat: node.latitude! + (radius * Math.sin(angle)),
+            displayLng: node.longitude! + (radius * Math.cos(angle))
+          });
+        });
+      }
+    });
+    return results;
+  }, [visibleNodes]);
+
+
+  return (
+    <>
+      <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
+      <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
+
+      {visibleLayers.cables && cables.map((cable: BsnlCable) => {
+          const startNode = nodeMap.get(cable.sn_id!);
+          const endNode = nodeMap.get(cable.en_id!);
+
+          if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
+              return (
+                  <Polyline
+                      key={cable.id}
+                      // Use original coordinates for lines so the geometry stays true
+                      positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
+                      pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
+                  >
+                    <Popup>
+                        <div className="min-w-48 max-w-72">
+                            <h3 className="font-semibold text-base">{cable.route_name}</h3>
+                            <p className="text-sm">Type: {cable.ofc_type_name}</p>
+                            <p className="text-sm">Capacity: {cable.capacity}F</p>
+                            <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
+                            <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
+                        </div>
+                    </Popup>
+                  </Polyline>
+              );
+          }
+          return null;
+      })}
+
+      {displayNodes.map((node: DisplayNode) => {
+          const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
+          const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
+
+          return (
+            <Marker
+              key={node.id}
+              // Use calculated display coordinates (spread out)
+              position={[node.displayLat, node.displayLng]}
+              icon={icon}
+              // THE FIX: riseOnHover allows accessing partially overlapped markers
+              riseOnHover={true}
+              // Ensure overlapping markers have stacking context logic if needed
+              zIndexOffset={10}
+            >
+                <Popup>
+                    <div className="min-w-48 max-w-72">
+                        <h3 className="font-semibold text-base">{node.name}</h3>
+                        <p className="text-sm">Type: {node.node_type_code}</p>
+                        <p className="text-sm">Region: {node.maintenance_area_name}</p>
+                        {systemTypesAtNode && <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>}
+                        {node.latitude && <p className="text-sm mt-1 text-gray-500">{node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}</p>}
+                        {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
+                    </div>
+                </Popup>
+            </Marker>
+        )
+      })}
+    </>
+  );
+}
+
 MapContent.displayName = 'MapContent';
 
 interface OptimizedNetworkMapProps {
@@ -33587,10 +34025,10 @@ export function OptimizedNetworkMap({
   const nodeSystemMap = useMemo(() => {
     const map = new Map<string, string>();
     systems.forEach(sys => {
-        if (sys.node_id && sys.system_type_name) {
+        if (sys.node_id && sys.system_type_code) {
             const current = map.get(sys.node_id) || '';
-            if (!current.includes(sys.system_type_name)) {
-                map.set(sys.node_id, current ? `${current}, ${sys.system_type_name}` : sys.system_type_name);
+            if (!current.includes(sys.system_type_code)) {
+                map.set(sys.node_id, current ? `${current}, ${sys.system_type_code}` : sys.system_type_code);
             }
         }
     });
@@ -33623,7 +34061,6 @@ export function OptimizedNetworkMap({
     <>
       <div className={`relative h-full w-full transition-all duration-300 ${isFullScreen ? 'invisible' : 'visible'}`}>
 
-        {/* THE FIX: Add Legend */}
         <MapLegend />
 
         <MapContainer key="normal" bounds={initialBounds!} className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800">
@@ -33641,15 +34078,15 @@ export function OptimizedNetworkMap({
         </MapContainer>
         <button
           onClick={() => setIsFullScreen(true)}
-          className="absolute top-4 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="absolute top-4 right-4 z-1000 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Enter Full Screen"
         >
           <Maximize className="h-5 w-5" />
         </button>
       </div>
       {isFullScreen && (
-        <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-900">
-          <MapLegend /> {/* Legend for fullscreen too */}
+        <div className="fixed inset-0 z-9999 bg-white dark:bg-gray-900">
+          <MapLegend />
           <MapContainer key="fullscreen" bounds={initialBounds!} className="h-full w-full bg-gray-200 dark:bg-gray-800">
             <MapContent
               cables={cables}
@@ -33665,7 +34102,7 @@ export function OptimizedNetworkMap({
           </MapContainer>
           <button
             onClick={() => setIsFullScreen(false)}
-            className="absolute top-4 right-4 z-[10000] p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="absolute top-4 right-4 z-10000 p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Exit Full Screen"
           >
             <Minimize className="h-6 w-6" />
@@ -33904,7 +34341,7 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             <GitBranch className="h-6 w-6 text-green-600 mr-3" />
@@ -34119,7 +34556,7 @@ export const DashboardStatsGrid: React.FC = () => {
 
 import { useMemo, useEffect } from "react";
 import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect } from "@/components/common/form";
+import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect, FormRichTextEditor } from "@/components/common/form"; // Added FormRichTextEditor
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34152,8 +34589,8 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Initiate New E-File" size="lg">
-      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone>
+    <Modal isOpen={isOpen} onClose={onClose} title="Initiate New E-File" className="w-0 h-0 bg-transparent">
+      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone widthClass="full">
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput name="file_number" label="File Number *" register={register} error={errors.file_number} placeholder="e.g. FILE/2024/001" required />
@@ -34194,7 +34631,13 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
 
             <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
 
-            <FormTextarea name="description" label="Description" control={control} rows={3} />
+            {/* Replaced Textarea with WYSIWYG */}
+            <FormRichTextEditor
+                name="description"
+                label="Description"
+                control={control}
+                error={errors.description}
+            />
 
             <FormTextarea name="remarks" label="Initial Note" control={control} rows={2} placeholder="e.g. Starting new file..." />
         </div>
@@ -34203,7 +34646,7 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
   );
 };
 
-// --- FORWARD MODAL ---
+// --- FORWARD MODAL (Kept text area as it's a short remark usually) ---
 export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean; onClose: () => void; fileId: string }) => {
     const { mutate, isPending } = useForwardFile();
     const { data: employeeData } = useEmployeeOptions();
@@ -34245,7 +34688,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
 };
 
 
-// --- EDIT DETAILS MODAL (NEW) ---
+// --- EDIT DETAILS MODAL ---
 
 const editSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
@@ -34286,8 +34729,8 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Edit File Details">
-            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update">
+        <Modal isOpen={isOpen} onClose={onClose} title="Edit File Details" className="w-0 h-0 bg-transparent">
+            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update" widthClass="full">
                  <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
                  <div className="grid grid-cols-2 gap-4">
                     <FormInput name="category" label="Category *" register={register} error={errors.category} required />
@@ -34302,7 +34745,12 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
                         ]}
                     />
                  </div>
-                 <FormTextarea name="description" label="Description" control={control} rows={4} />
+                 {/* Replaced Textarea with WYSIWYG */}
+                 <FormRichTextEditor
+                    name="description"
+                    label="Description"
+                    control={control}
+                 />
             </FormCard>
         </Modal>
     );
@@ -34697,10 +35145,8 @@ import { Column, DownloadOptions, RPCConfig } from "@/hooks/database/excel-queri
 import { cn } from "@/lib/utils";
 import { Card } from "../common/ui";
 
-// Define a type for your row that guarantees a unique identifier
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
-// ... (State Management types remain the same as previous)
 type TableState<T extends PublicTableOrViewName> = {
   searchQuery: string;
   sortConfig: SortConfig<Row<T>> | null;
@@ -34713,7 +35159,6 @@ type TableState<T extends PublicTableOrViewName> = {
   showFilters: boolean;
 };
 
-// ... (BaseTableAction and TableAction types remain the same)
 type BaseTableAction<R> =
   | { type: "SET_SEARCH_QUERY"; payload: string }
   | { type: "SET_SELECTED_ROWS"; payload: R[] }
@@ -34736,7 +35181,6 @@ function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
   action: TableActionReducer<T> | BaseTableAction<DataRow<T>>
 ): TableState<T> {
-  // ... (Reducer logic remains identical)
    switch (action.type) {
     case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
@@ -34803,7 +35247,8 @@ export function DataTable<T extends PublicTableOrViewName>({
   showColumnsToggle,
   exportOptions,
   onSearchChange,
-  renderMobileItem, // NEW PROP
+  renderMobileItem,
+  autoHideEmptyColumns = false, // Default to false
 }: DataTableProps<T>): React.ReactElement {
 
   const initialState: TableState<T> = {
@@ -34931,8 +35376,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     serverSearch,
   ]);
 
-  // ... (handleSort, handleRowSelect, handleSelectAll, handleCellEdit, saveCellEdit, cancelCellEdit, visibleColumnsData, setSearchQueryCb, handleExport) - Same as before
-
   const handleSort = useCallback(
     (columnKey: keyof Row<T> & string) => {
       if (!sortable) return;
@@ -34997,9 +35440,44 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   const cancelCellEdit = useCallback(() => dispatch({ type: "CANCEL_EDIT" }), []);
 
+  // --- LOGIC: Calculate Empty Columns ---
+  // Identify columns where ALL rows have null/undefined/empty string
+  const emptyColumnKeys = useMemo(() => {
+    if (!autoHideEmptyColumns || processedData.length === 0) return new Set<string>();
+
+    const nonEmptyKeys = new Set<string>();
+
+    columns.forEach(col => {
+      // Check if ANY row has a valid value for this column
+      const hasValue = processedData.some(row => {
+        const val = row[col.dataIndex as keyof typeof row];
+
+        // Value is considered valid if it's not null, undefined, or empty string
+        // Note: We deliberately treat 0 and false as valid values
+        if (val === null || val === undefined) return false;
+        if (typeof val === 'string' && val.trim() === '') return false;
+        if (Array.isArray(val) && val.length === 0) return false;
+
+        return true;
+      });
+
+      if (hasValue) {
+        nonEmptyKeys.add(col.key);
+      }
+    });
+
+    // Return all column keys that are NOT in the non-empty set
+    return new Set(columns.filter(c => !nonEmptyKeys.has(c.key)).map(c => c.key));
+  }, [autoHideEmptyColumns, columns, processedData]);
+
+  // --- LOGIC: Filter Visible Columns ---
   const visibleColumnsData = useMemo<Column<Row<T>>[]>(
-    () => columns.filter((col) => visibleColumns.includes(col.key) && !col.hidden),
-    [columns, visibleColumns]
+    () => columns.filter((col) =>
+        visibleColumns.includes(col.key) &&
+        !col.hidden &&
+        !emptyColumnKeys.has(col.key) // Hide if empty
+    ),
+    [columns, visibleColumns, emptyColumnKeys]
   );
 
   const setSearchQueryCb = useCallback((query: string) => {
@@ -35080,7 +35558,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   const hasActions = actions.length > 0;
   const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
-  // Render Mobile Actions Dropdown or Row
   const renderActions = (record: DataRow<T>, index: number) => {
     if (!hasActions) return null;
     return (
@@ -35177,7 +35654,6 @@ export function DataTable<T extends PublicTableOrViewName>({
                 ) : (
                     processedData.map((record, idx) => (
                         <Card key={record.id} className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative">
-                             {/* If selectable, add checkbox overlay or header */}
                              {selectable && (
                                 <div className="absolute top-4 left-4">
                                      <input
@@ -35287,7 +35763,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   loading?: boolean;
   isFetching?: boolean;
   showColumnSelector?: boolean;
-  // Controls visibility of the Columns toggle button in the toolbar
   showColumnsToggle?: boolean;
   pagination?: {
     current: number;
@@ -35299,7 +35774,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   };
   actions?: TableAction<T>[];
   searchable?: boolean;
-  // If true, DataTable will not perform client-side search and will delegate to parent via onSearchChange
   serverSearch?: boolean;
   filterable?: boolean;
   sortable?: boolean;
@@ -35314,7 +35788,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   emptyText?: string;
   title?: string;
   onRefresh?: () => void;
-  // Called when the search query changes; useful for server-side search or fetching more rows
   onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
@@ -35328,8 +35801,10 @@ export interface DataTableProps<T extends TableOrViewName> {
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
   } & Omit<DownloadOptions<T>, "rpcConfig">;
-  // NEW: Optional render function for mobile view
   renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
+
+  // NEW PROP
+  autoHideEmptyColumns?: boolean;
 }
 
 export type SortDirection = "asc" | "desc";
@@ -35339,7 +35814,6 @@ export interface SortConfig<T> {
 }
 
 export type TablePaginationProps = Pick<DataTableProps<TableOrViewName>, 'pagination' | 'bordered'>;
-
 ```
 
 <!-- path: components/table/TablePagination.tsx -->
@@ -36923,7 +37397,8 @@ export const InventoryHistoryModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`History: ${itemName}`} size="xl">
       <div className="p-6">
-        <DataTable
+             <DataTable
+      autoHideEmptyColumns={true}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           tableName={'v_inventory_transactions_extended' as any} // Type assertion to bypass strict literal check for this specific view
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37265,7 +37740,7 @@ import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
 import { FaRoute } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
-import { FileText } from 'lucide-react';
+import { FileText, GitBranch } from 'lucide-react';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -37459,6 +37934,13 @@ function NavItems() {
             label: 'Systems',
             href: '/dashboard/systems',
             icon: <GoServer className="h-5 w-5" />,
+            roles: [UserRole.ADMIN],
+          },
+          {
+            id: 'global-connections',
+            label: 'Global Connections',
+            href: '/dashboard/connections',
+            icon: <GitBranch className="h-5 w-5" />,
             roles: [UserRole.ADMIN],
           },
           {
@@ -44594,285 +45076,12 @@ export function NodeFormModal({
 }
 ```
 
-<!-- path: components/systems/RingProvisioningModal.tsx -->
-```typescript
-// path: components/systems/RingProvisioningModal.tsx
-"use client";
-
-import { useState, useEffect, useMemo, FC } from 'react';
-import { Modal, Button, SearchableSelect } from '@/components/common/ui';
-import { useAvailableCables, useAvailableFibers, useAssignSystemToFibers } from '@/hooks/database/ring-provisioning-hooks';
-import { Logical_pathsRowSchema } from '@/schemas/zod-schemas';
-import { Check, ChevronsRight } from 'lucide-react';
-import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-
-// --- TYPE DEFINITIONS ---
-
-interface ProvisioningStep {
-  stepIndex: number;
-  startNodeId: string;
-  startNodeName: string;
-  endNodeId: string; // The ultimate end of the logical path for this step
-  endNodeName: string;
-  cableId: string | null;
-  fiberTx: number | null;
-  fiberRx: number | null;
-  isComplete: boolean;
-}
-
-interface RingProvisioningModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  logicalPath: (Logical_pathsRowSchema & { start_node: { name: string } | null, end_node: { name: string } | null }) | null;
-  systemId: string | null;
-}
-
-// --- SUB-COMPONENT FOR A SINGLE STEP ---
-
-const ProvisioningStepView: FC<{
-  step: ProvisioningStep;
-  isActive: boolean;
-  onCableSelect: (cableId: string | null) => void;
-  onFiberSelect: (type: 'tx' | 'rx', fiber: number | null) => void;
-}> = ({ step, isActive, onCableSelect, onFiberSelect }) => {
-
-  // CORRECTED: Fetch cables only for the active step, using the reliable startNodeId from props.
-  const { data: availableCables = [], isLoading: isLoadingCables } = useAvailableCables(isActive ? step.startNodeId : null);
-  const { data: availableFibers = [], isLoading: isLoadingFibers } = useAvailableFibers(isActive ? step.cableId : null);
-
-  console.log("availableCables", availableCables);
-  console.log("availableFibers", availableFibers);
-
-
-  const cableOptions = useMemo(() => availableCables.map(c => ({ value: c.id, label: c.route_name })), [availableCables]);
-  const fiberOptions = useMemo(() => availableFibers.map(f => ({ value: f.fiber_no.toString(), label: `Fiber #${f.fiber_no}` })), [availableFibers]);
-
-  // Fetch the full details of the selected cable to show its endpoints
-  const { data: selectedCable } = useQuery({
-      queryKey: ['cable-details-for-step', step.cableId],
-      queryFn: async () => {
-          if (!step.cableId) return null;
-          const { data } = await createClient().from('v_ofc_cables_complete').select('sn_name, en_name').eq('id', step.cableId).single();
-          return data;
-      },
-      enabled: !!step.cableId
-  });
-
-  return (
-    <div className={`p-4 border rounded-lg transition-all ${isActive ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-lg' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-white font-bold ${step.isComplete ? 'bg-green-500' : 'bg-blue-500'}`}>
-          {step.isComplete ? <Check size={18} /> : step.stepIndex + 1}
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-800 dark:text-gray-200">Step {step.stepIndex + 1}: Path Segment</h4>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            From <span className="font-medium text-gray-700 dark:text-gray-300">{step.startNodeName}</span>
-          </p>
-        </div>
-      </div>
-
-      {isLoadingCables && isActive && <div className="text-sm text-gray-500">Loading available cables...</div>}
-
-      {isActive && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SearchableSelect
-            label="Select Cable"
-            options={cableOptions}
-            value={step.cableId}
-            onChange={onCableSelect}
-            placeholder="Choose a physical cable..."
-            disabled={!isActive}
-          />
-          <SearchableSelect
-            label="Select TX Fiber"
-            options={fiberOptions.filter(f => f.value !== step.fiberRx?.toString())}
-            value={step.fiberTx?.toString() ?? null}
-            onChange={(val) => onFiberSelect('tx', val ? parseInt(val) : null)}
-            placeholder="Select TX..."
-            disabled={!isActive || !step.cableId || isLoadingFibers}
-          />
-          <SearchableSelect
-            label="Select RX Fiber"
-            options={fiberOptions.filter(f => f.value !== step.fiberTx?.toString())}
-            value={step.fiberRx?.toString() ?? null}
-            onChange={(val) => onFiberSelect('rx', val ? parseInt(val) : null)}
-            placeholder="Select RX..."
-            disabled={!isActive || !step.cableId || isLoadingFibers}
-          />
-        </div>
-      )}
-
-      {step.isComplete && selectedCable && (
-        <div className="text-sm text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
-          <p><strong>Cable:</strong> {selectedCable.sn_name} → {selectedCable.en_name}</p>
-          <p><strong>Fibers:</strong> TX #{step.fiberTx}, RX #{step.fiberRx}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- MAIN MODAL COMPONENT ---
-
-export const RingProvisioningModal: React.FC<RingProvisioningModalProps> = ({ isOpen, onClose, logicalPath, systemId }) => {
-  const [cascade, setCascade] = useState<ProvisioningStep[]>([]);
-  const assignMutation = useAssignSystemToFibers();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (isOpen && logicalPath) {
-      setCascade([{
-        stepIndex: 0,
-        startNodeId: logicalPath.start_node_id!,
-        startNodeName: logicalPath.start_node?.name || 'Unknown Start',
-        endNodeId: logicalPath.end_node_id!,
-        endNodeName: logicalPath.end_node?.name || 'Unknown End',
-        cableId: null,
-        fiberTx: null,
-        fiberRx: null,
-        isComplete: false,
-      }]);
-    } else {
-      setCascade([]);
-    }
-  }, [isOpen, logicalPath]);
-
-  const handleCableSelect = (stepIndex: number, cableId: string | null) => {
-    setCascade(prev => {
-      const newCascade = [...prev];
-      newCascade[stepIndex].cableId = cableId;
-      newCascade[stepIndex].fiberTx = null;
-      newCascade[stepIndex].fiberRx = null;
-      newCascade[stepIndex].isComplete = false;
-      return newCascade.slice(0, stepIndex + 1);
-    });
-  };
-
-  const handleFiberSelect = (stepIndex: number, type: 'tx' | 'rx', fiber: number | null) => {
-    setCascade(prev => {
-      const newCascade = [...prev];
-      if (type === 'tx') newCascade[stepIndex].fiberTx = fiber;
-      if (type === 'rx') newCascade[stepIndex].fiberRx = fiber;
-      return newCascade;
-    });
-  };
-
-  useEffect(() => {
-    if (cascade.length === 0) return;
-    const lastStep = cascade[cascade.length - 1];
-
-    if (lastStep.cableId && lastStep.fiberTx && lastStep.fiberRx && !lastStep.isComplete) {
-      queryClient.fetchQuery({
-        queryKey: ['cable-details-for-cascade', lastStep.cableId],
-        queryFn: async () => {
-          const { data } = await createClient().from('v_ofc_cables_complete').select('sn_id, en_id, sn_name, en_name').eq('id', lastStep.cableId!).single();
-          return data;
-        }
-      }).then(cable => {
-        if (!cable) return;
-
-        const exitNodeId = cable.sn_id === lastStep.startNodeId ? cable.en_id : cable.sn_id;
-        const exitNodeName = cable.sn_id === lastStep.startNodeId ? cable.en_name : cable.sn_name;
-
-        setCascade(prev => {
-          const newCascade = JSON.parse(JSON.stringify(prev));
-          newCascade[newCascade.length - 1].isComplete = true;
-
-          if (exitNodeId !== logicalPath?.end_node_id) {
-            newCascade.push({
-              stepIndex: newCascade.length,
-              startNodeId: exitNodeId,
-              startNodeName: exitNodeName,
-              endNodeId: logicalPath!.end_node_id!,
-              endNodeName: logicalPath!.end_node?.name || 'Unknown End',
-              cableId: null,
-              fiberTx: null,
-              fiberRx: null,
-              isComplete: false,
-            });
-          }
-          return newCascade;
-        });
-      });
-    }
-  }, [cascade, logicalPath, queryClient]);
-
-  const isPathComplete = useMemo(() => {
-    return cascade.length > 0 && cascade.every(step => step.isComplete);
-  }, [cascade]);
-
-  const handleProvision = async () => {
-    if (!isPathComplete || !systemId || !logicalPath) return;
-
-    toast.info(`Provisioning ${cascade.length} segment(s)...`);
-
-    try {
-      for (const step of cascade) {
-        await assignMutation.mutateAsync({
-          systemId,
-          cableId: step.cableId!,
-          fiberTx: step.fiberTx!,
-          fiberRx: step.fiberRx!,
-          logicalPathId: logicalPath.id
-        });
-      }
-      onClose();
-    } catch (error) {
-      // Error is handled by the mutation's onError
-      console.log(error);
-
-    }
-  };
-
-  if (!logicalPath) return null;
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Provision Path: ${logicalPath.name}`} size="full">
-      <div className="p-6">
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-600/50">
-          <p className="font-semibold text-gray-800 dark:text-gray-200">
-            System: <span className="font-mono text-blue-600 dark:text-blue-400">{systemId?.slice(0, 8)}...</span>
-          </p>
-          <p className="font-semibold text-gray-800 dark:text-gray-200">
-            Logical Path: <span className="text-gray-600 dark:text-gray-300 font-normal">{logicalPath.start_node?.name}</span>
-            <ChevronsRight className="inline mx-2 h-4 w-4 text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-300 font-normal">{logicalPath.end_node?.name}</span>
-          </p>
-        </div>
-
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {cascade.map((step, index) => (
-            <ProvisioningStepView
-              key={step.stepIndex}
-              step={step}
-              isActive={index === cascade.length - 1 && !step.isComplete}
-              onCableSelect={(cableId) => handleCableSelect(index, cableId)}
-              onFiberSelect={(type, fiber) => handleFiberSelect(index, type, fiber)}
-            />
-          ))}
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleProvision} disabled={!isPathComplete || assignMutation.isPending}>
-            {assignMutation.isPending ? 'Provisioning...' : 'Confirm & Provision Path'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
-```
-
 <!-- path: components/systems/SystemPortsManagerModal.tsx -->
 ```typescript
 // components/systems/SystemPortsManagerModal.tsx
 "use client";
 
-import { useMemo, useRef, useCallback, useState } from 'react';
+import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
@@ -44898,8 +45107,9 @@ import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { PortHeatmap } from '@/components/systems/PortHeatmap'; // IMPORTED
+import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
+import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 
 // Extended type to handle the new column before codegen updates
 type ExtendedConnection = V_system_connections_completeRowSchema & {
@@ -44932,6 +45142,18 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     searchColumn: ['port', 'port_type_name', 'sfp_serial_no']
   });
 
+  // Set default filters on mount
+  useEffect(() => {
+    if (isOpen) {
+        filters.setFilters(prev => ({
+            ...prev,
+            // Default select GE(O), GE(E), and 10GE
+            port_type_code: ['GE(O)', 'GE(E)', '10GE']
+        }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]); // Run once when modal opens
+
   // 2. Fetch Port Types for Filter
   const { data: portTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['port-types-filter'],
@@ -44939,10 +45161,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
   );
 
-  const portTypeOptions = useMemo(() => {
+  const portTypeCodeOptions = useMemo(() => {
     return (portTypesData || [])
-        .filter(t => t.name !== 'DEFAULT')
-        .map(t => ({ value: t.name, label: t.name }));
+        .filter(t => t.name !== 'DEFAULT' && t.code)
+        .map(t => ({
+          value: t.name!,
+          // Coerce to string to satisfy Option['label'] which requires string
+          label: t.code ?? t.name ?? ''
+        }));
   }, [portTypesData]);
 
 
@@ -45094,7 +45320,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
 
   const renderMobileItem = useCallback((record: Row<'v_ports_management_complete'>, actions: React.ReactNode) => {
-    // Lookup services from the map we built earlier
     const portName = record.port;
     const services = portName ? portServicesMap[portName] : [];
 
@@ -45116,7 +45341,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           {actions}
         </div>
 
-        {/* Service Allocation Section */}
         {services && services.length > 0 ? (
            <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
@@ -45178,10 +45402,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
             isFetching={isFetching}
         />
 
-        {/* HEATMAP ADDED HERE */}
         <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
 
-        <DataTable
+             <DataTable
+      autoHideEmptyColumns={true}
           tableName="v_ports_management_complete"
           data={ports}
           columns={columns}
@@ -45205,18 +45429,23 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
                 onSearchChange={search.setSearchQuery}
                 showFilters={showFilters}
                 onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+                onClearFilters={() => {
+                  search.setSearchQuery('');
+                  // THE FIX: Reset filters to empty object to actually clear all filters
+                  filters.setFilters({});
+                }}
                 hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
                 activeFilterCount={Object.keys(filters.filters).length}
                 searchPlaceholder="Search ports, serials..."
             >
-                <SelectFilter
-                    label="Port Type"
-                    filterKey="port_type_name"
+                <MultiSelectFilter
+                    label="Port Types"
+                    filterKey="port_type_code"
                     filters={filters.filters}
                     setFilters={filters.setFilters}
-                    options={portTypeOptions}
+                    options={portTypeCodeOptions}
                 />
+
                 <SelectFilter
                     label="Utilization"
                     filterKey="port_utilization"
@@ -46958,12 +47187,14 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
 
 <!-- path: components/diary/DiaryFormModal.tsx -->
 ```typescript
+"use client"
+
 // components/diary/DiaryFormModal.tsx
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { diary_notesInsertSchema, Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { Modal } from '@/components/common/ui';
-import { FormCard, FormDateInput, FormTextarea } from '@/components/common/form';
+import { FormCard, FormDateInput, FormRichTextEditor } from '@/components/common/form'; // Changed FormTextarea to FormRichTextEditor
 import { useEffect } from 'react';
 
 interface DiaryFormModalProps {
@@ -46972,7 +47203,7 @@ interface DiaryFormModalProps {
   onSubmit: (data: Diary_notesInsertSchema) => void;
   isLoading: boolean;
   editingNote?: Diary_notesInsertSchema | null;
-  selectedDate?: Date; // New prop for pre-filling date
+  selectedDate?: Date;
 }
 
 export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNote, selectedDate }: DiaryFormModalProps) => {
@@ -46988,7 +47219,6 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
           content: editingNote.content,
         });
       } else {
-        // Pre-fill with the selected date from the calendar
         const formatLocalYMD = (d: Date) => {
           const y = d.getFullYear();
           const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -47014,10 +47244,19 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
         isLoading={isLoading}
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
         standalone
+        widthClass="full" // Wider for WYSIWYG
       >
         <div className="space-y-4">
           <FormDateInput name="note_date" label="Note Date" control={control} error={errors.note_date} required pickerProps={{ readOnly: !editingNote }} />
-          <FormTextarea name="content" label="Content" control={control} error={errors.content} rows={8} placeholder="Write your daily notes here..." />
+
+          {/* Replaced Textarea with RichTextEditor */}
+          <FormRichTextEditor
+            name="content"
+            label="Content"
+            control={control}
+            error={errors.content}
+            placeholder="Write your daily notes here..."
+          />
         </div>
       </FormCard>
     </Modal>
@@ -47070,6 +47309,7 @@ import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 import { Button } from '@/components/common/ui';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { HtmlContent } from '@/components/common/ui/HtmlContent'; // Import HtmlContent
 
 interface DiaryEntryCardProps {
   entry: Diary_notesRowSchema & { full_name?: string | null };
@@ -47079,7 +47319,6 @@ interface DiaryEntryCardProps {
 }
 
 export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntryCardProps) => {
-  // THE FIX: Destructure `role` from useUser and alias it to `currentUserRole`.
   const { isSuperAdmin, role: currentUserRole } = useUser();
   const formattedDate = new Date(entry.note_date!).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -47110,7 +47349,6 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntr
           )}
         </div>
 
-        {/* THE FIX: This conditional now works because `currentUserRole` is defined. */}
         {(isSuperAdmin || currentUserRole === UserRole.ADMIN) && entry.full_name && (
           <div className="flex items-center gap-2 mt-2 pl-8 text-sm text-gray-500 dark:text-gray-400">
             <FiUser className="w-4 h-4" />
@@ -47119,7 +47357,8 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canMutate }: DiaryEntr
         )}
 
         <div className="mt-4 pl-8 border-l-2 border-gray-200 dark:border-gray-700">
-          <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{entry.content}</p>
+          {/* THE FIX: Use HtmlContent for WYSIWYG output */}
+          <HtmlContent content={entry.content} className="text-gray-700 dark:text-gray-300" />
         </div>
       </div>
     </motion.div>
@@ -49392,6 +49631,204 @@ const OutdatedBrowserModal: React.FC<OutdatedBrowserModalProps> = ({ handleClose
 export default OutdatedBrowserModal
 ```
 
+<!-- path: components/common/filters/MultiSelectFilter.tsx -->
+```typescript
+// components/common/filters/MultiSelectFilter.tsx
+"use client";
+
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import { FiChevronDown, FiCheck } from "react-icons/fi";
+import { Filters } from "@/hooks/database";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
+import { Label } from "@/components/common/ui/label/Label";
+
+interface MultiSelectFilterProps {
+  label: string;
+  filterKey: string;
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  options: Option[];
+}
+
+export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
+  label,
+  filterKey,
+  filters,
+  setFilters,
+  options,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Use state for dropdown positioning to ensure it re-renders
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const selectedValues = (filters[filterKey] as string[]) || [];
+
+  // Handle outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Update position when opening or scrolling
+  const updatePosition = () => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: `${rect.bottom + 4}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: 9999,
+      });
+    }
+  };
+
+  useLayoutEffect(() => {
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
+
+  const handleToggleOption = (value: string) => {
+    setFilters((prev) => {
+      const current = (prev[filterKey] as string[]) || [];
+      let newValues;
+
+      if (current.includes(value)) {
+        newValues = current.filter((v) => v !== value);
+      } else {
+        newValues = [...current, value];
+      }
+
+      const newFilters = { ...prev };
+      if (newValues.length > 0) {
+        newFilters[filterKey] = newValues;
+      } else {
+        delete newFilters[filterKey];
+      }
+      return newFilters;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allValues = options.map((o) => o.value);
+    setFilters((prev) => ({ ...prev, [filterKey]: allValues }));
+  };
+
+  const handleClear = () => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+      delete newFilters[filterKey];
+      return newFilters;
+    });
+  };
+
+  const DropdownContent = (
+    <div
+      ref={dropdownRef}
+      style={dropdownStyle}
+      className="absolute mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top"
+    >
+      <div className="p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between">
+        <button
+          onClick={handleSelectAll}
+          className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+        >
+          Select All
+        </button>
+        <button
+          onClick={handleClear}
+          className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400"
+        >
+          Clear
+        </button>
+      </div>
+      <div className="max-h-60 overflow-auto p-1 custom-scrollbar">
+        {options.map((option) => {
+          const isSelected = selectedValues.includes(option.value);
+          return (
+            <div
+              key={option.value}
+              onClick={() => handleToggleOption(option.value)}
+              className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors ${
+                isSelected
+                  ? "bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100"
+                  : "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+              }`}
+            >
+              {isSelected && (
+                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                  <FiCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </span>
+              )}
+              <span className="block truncate font-medium">{option.label}</span>
+            </div>
+          );
+        })}
+        {options.length === 0 && (
+          <div className="py-2 px-2 text-xs text-gray-500 text-center">No options available</div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-2 relative" ref={containerRef}>
+      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 ${
+          selectedValues.length > 0
+            ? "border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400"
+            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+        }`}
+      >
+        <span
+          className={`block truncate ${
+            selectedValues.length === 0
+              ? "text-gray-500 dark:text-gray-400"
+              : "text-gray-900 dark:text-white"
+          }`}
+        >
+          {selectedValues.length === 0
+            ? `Select ${label}...`
+            : selectedValues.length === options.length
+            ? `All ${label} (${selectedValues.length})`
+            : `${selectedValues.length} selected`}
+        </span>
+        <FiChevronDown
+          className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* THE FIX: Use createPortal to render the dropdown outside the parent container */}
+      {isOpen && typeof document !== 'undefined' && createPortal(DropdownContent, document.body)}
+    </div>
+  );
+};
+```
+
 <!-- path: components/common/filters/SearchAndFilters.tsx -->
 ```typescript
 import { motion } from "framer-motion";
@@ -49616,6 +50053,7 @@ export const InputFilter: React.FC<InputFilterProps> = ({
 ```typescript
 import React from 'react';
 import { BaseEntity } from '@/components/common/entity-management/types';
+import { HtmlContent } from '@/components/common/ui/HtmlContent';
 
 interface DetailItemProps<T extends BaseEntity> {
   label: string;
@@ -49669,7 +50107,7 @@ export function DetailItem<T extends BaseEntity>({
       case 'custom':
         if (typeof value === 'string') {
           // 🧩 Render as HTML
-          return <div dangerouslySetInnerHTML={{ __html: value }} />;
+          return <HtmlContent content={value} />;
         }
         return String(value);
 
@@ -52549,7 +52987,6 @@ export { ProgressBar } from './ProgressBar';
 // src/components/common/ProgressBar/ProgressBar.tsx
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/classNames';
-import { type ReactNode } from 'react';
 
 // Common types
 export type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info';
@@ -52630,121 +53067,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
         />
       </div>
-    </div>
-  );
-};
-
-// Stacked Progress Bars
-interface StackedProgressBarProps {
-  segments: { value: number; variant?: Variant }[];
-  max?: number;
-  size?: keyof typeof sizeClasses;
-  animated?: boolean;
-  className?: string;
-}
-
-export const StackedProgressBar: React.FC<StackedProgressBarProps> = ({
-  segments,
-  max = 100,
-  size = 'md',
-  animated = true,
-  className,
-}) => {
-  return (
-    <div className={cn('flex w-full overflow-hidden rounded-full', sizeClasses[size], className)}>
-      {segments.map((seg, idx) => {
-        const width = `${(seg.value / max) * 100}%`;
-        const color = variantClasses[seg.variant || 'default'];
-        return (
-          <motion.div
-            key={idx}
-            className={cn('h-full', color)}
-            initial={{ width: 0 }}
-            animate={{ width }}
-            transition={{ duration: animated ? 0.8 : 0, ease: 'easeOut' as const }}
-          />
-        );
-      })}
-    </div>
-  );
-};
-
-// Step Progress Bar with icons
-interface StepProgressProps {
-  steps: Array<{
-    id: string;
-    label: string;
-    description?: string;
-    icon?: ReactNode;
-  }>;
-  currentStep: number;
-  orientation?: 'horizontal' | 'vertical';
-  className?: string;
-}
-
-export const StepProgress: React.FC<StepProgressProps> = ({
-  steps,
-  currentStep,
-  orientation = 'horizontal',
-  className,
-}) => {
-  const isHorizontal = orientation === 'horizontal';
-
-  return (
-    <div className={cn('flex', isHorizontal ? 'items-center space-x-4' : 'flex-col space-y-4', className)}>
-      {steps.map((step, index) => {
-        const isActive = index === currentStep;
-        const isCompleted = index < currentStep;
-        const isUpcoming = index > currentStep;
-
-        return (
-          <div key={step.id} className={cn('flex items-center', isHorizontal ? 'flex-row' : 'flex-col')}>
-            <div className="flex items-center">
-              <div
-                className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium',
-                  isCompleted && 'bg-green-500 text-white',
-                  isActive && 'bg-blue-500 text-white',
-                  isUpcoming && 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-                )}
-              >
-                {step.icon || (isCompleted ? (
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  index + 1
-                ))}
-              </div>
-              {index < steps.length - 1 && (
-                <div
-                  className={cn(
-                    isHorizontal ? 'h-0.5 w-12' : 'h-12 w-0.5',
-                    isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
-                  )}
-                />
-              )}
-            </div>
-            <div className={cn('ml-3', !isHorizontal && 'ml-0 mt-2')}>
-              <p
-                className={cn(
-                  'text-sm font-medium',
-                  isActive && 'text-blue-600 dark:text-blue-400',
-                  isCompleted && 'text-green-600 dark:text-green-400',
-                  isUpcoming && 'text-gray-500 dark:text-gray-400'
-                )}
-              >
-                {step.label}
-              </p>
-              {step.description && <p className="text-xs text-gray-500 dark:text-gray-400">{step.description}</p>}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 };
@@ -52855,43 +53177,6 @@ export const PageSpinner: React.FC<{ text?: string }> = ({ text = "Loading..." }
 export const CardSpinner: React.FC<{ text?: string }> = ({ text }) => (
   <div className='flex items-center justify-center py-12'>
     <LoadingSpinner size='md' text={text} />
-  </div>
-);
-
-// Loading skeleton components
-export const LoadingSkeleton: React.FC<{
-  className?: string;
-  rows?: number;
-}> = ({ className, rows = 1 }) => (
-  <div className={cn("animate-pulse space-y-3", className)}>
-    {Array.from({ length: rows }).map((_, index) => (
-      <div
-        key={index}
-        className='h-4 rounded bg-gray-200 dark:bg-gray-700'
-        style={{
-          width: `${Math.random() * 40 + 60}%`,
-        }}
-      />
-    ))}
-  </div>
-);
-
-export const LoadingCard: React.FC<{
-  className?: string;
-}> = ({ className }) => (
-  <div
-    className={cn(
-      "animate-pulse rounded-lg border border-gray-200 dark:border-gray-700 p-6",
-      className
-    )}>
-    <div className='space-y-4'>
-      <div className='h-6 w-3/4 rounded bg-gray-200 dark:bg-gray-700' />
-      <div className='space-y-2'>
-        <div className='h-4 rounded bg-gray-200 dark:bg-gray-700' />
-        <div className='h-4 w-5/6 rounded bg-gray-200 dark:bg-gray-700' />
-      </div>
-      <div className='h-10 w-24 rounded bg-gray-200 dark:bg-gray-700' />
-    </div>
   </div>
 );
 
@@ -53644,7 +53929,8 @@ export const Modal = ({
     md: "max-w-lg",
     lg: "max-w-2xl",
     xl: "max-w-4xl",
-    full: "max-w-[95vw] max-h-[95vh]",
+    xxl: "max-w-6xl",
+    full: "max-w-[98vw] max-h-[95vh]",
   };
 
   // 1. Track where the mouse was pressed down
@@ -54844,7 +55130,12 @@ export const HtmlContent: React.FC<HtmlContentProps> = ({ content, className }) 
 
   return (
     <div
-      className={cn("prose dark:prose-invert prose-sm max-w-none leading-snug", className)}
+      className={cn(
+        "prose dark:prose-invert prose-sm max-w-none leading-snug",
+        // THE FIX: Add horizontal scrolling for the container and force tables to be at least 100% width
+        "overflow-x-auto [&_table]:min-w-full",
+        className
+      )}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );
@@ -56560,7 +56851,6 @@ export const StatCard: React.FC<StatProps> = ({
 ```typescript
 export * from './FormCard';
 export * from './FormControls';
-export * from './SectionCard';
 export * from './IPAddressInput';
 
 
@@ -57051,6 +57341,7 @@ import {
   SelectValue,
 } from '@/components/common/ui/select/Select';
 import IPAddressInput from '@/components/common/form/IPAddressInput';
+import { RichTextEditor } from '@/components/common/form/RichTextEditor';
 
 // --- TYPE DEFINITIONS for Generic Components ---
 
@@ -57199,7 +57490,6 @@ export function FormSearchableSelect<T extends FieldValues>({
   labelClassName,
   ...props
 }: FormSearchableSelectProps<T>) {
-  // console.log("options",options);
 
   return (
     <div className={className}>
@@ -57548,6 +57838,40 @@ export function FormIPAddressInput<T extends FieldValues>({
   );
 }
 
+interface FormRichTextEditorProps<T extends FieldValues> extends BaseProps<T> {
+  control: Control<T, any, any>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+export function FormRichTextEditor<T extends FieldValues>({
+  name,
+  control,
+  label,
+  error,
+  className,
+  ...props
+}: FormRichTextEditorProps<T>) {
+  return (
+    <div className={className}>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <RichTextEditor
+            label={label}
+            value={field.value ?? ""}
+            onChange={field.onChange}
+            error={typeof error?.message === 'string' ? error.message : undefined}
+            disabled={props.disabled}
+            placeholder={props.placeholder}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
 ```
 
 <!-- path: components/common/form/IPAddressInput.tsx -->
@@ -57795,67 +58119,321 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
 export default IPAddressInput;
 ```
 
-<!-- path: components/common/form/SectionCard.tsx -->
+<!-- path: components/common/form/RichTextEditor.tsx -->
 ```typescript
-import { ReactNode } from "react";
-import { cn } from "@/utils/classNames";
+"use client";
 
-interface SectionCardProps {
-  title: string;
-  icon?: ReactNode;
-  children: ReactNode;
-  className?: string;
+import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import LinkExtension from "@tiptap/extension-link";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+  Undo,
+  Redo,
+  Code,
+  Heading1,
+  Heading2,
+  Table as TableIcon,
+  PlusSquare,
+  MinusSquare,
+  Trash2,
+  Merge,
+  Split
+} from "lucide-react";
+import { useEffect } from "react";
+import { Label } from "@/components/common/ui/label/Label";
+import { Table } from "@tiptap/extension-table";
+
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+  error?: string;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-export default function SectionCard({
-  title,
-  icon,
-  children,
-  className,
-}: SectionCardProps) {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
+  if (!editor) {
+    return null;
+  }
+
+  const baseBtn = "p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300";
+  const activeBtn = "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+
   return (
-    <div
-      className={cn(
-        "border rounded-xl p-4 space-y-4 bg-white shadow-sm",
-        "transition-all duration-200 hover:shadow-md",
-        className
+    <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg items-center">
+      {/* Basic Formatting */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        disabled={!editor.can().chain().focus().toggleBold().run()}
+        className={`${baseBtn} ${editor.isActive("bold") ? activeBtn : ""}`}
+        title="Bold"
+      >
+        <Bold size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        disabled={!editor.can().chain().focus().toggleItalic().run()}
+        className={`${baseBtn} ${editor.isActive("italic") ? activeBtn : ""}`}
+        title="Italic"
+      >
+        <Italic size={16} />
+      </button>
+
+      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      {/* Headings */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        className={`${baseBtn} ${editor.isActive("heading", { level: 1 }) ? activeBtn : ""}`}
+        title="Heading 1"
+      >
+        <Heading1 size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={`${baseBtn} ${editor.isActive("heading", { level: 2 }) ? activeBtn : ""}`}
+        title="Heading 2"
+      >
+        <Heading2 size={16} />
+      </button>
+
+      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      {/* Lists */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`${baseBtn} ${editor.isActive("bulletList") ? activeBtn : ""}`}
+        title="Bullet List"
+      >
+        <List size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={`${baseBtn} ${editor.isActive("orderedList") ? activeBtn : ""}`}
+        title="Ordered List"
+      >
+        <ListOrdered size={16} />
+      </button>
+
+      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      {/* Blocks */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        className={`${baseBtn} ${editor.isActive("blockquote") ? activeBtn : ""}`}
+        title="Quote"
+      >
+        <Quote size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        className={`${baseBtn} ${editor.isActive("codeBlock") ? activeBtn : ""}`}
+        title="Code Block"
+      >
+        <Code size={16} />
+      </button>
+
+      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      {/* Table Controls */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        className={`${baseBtn}`}
+        title="Insert Table"
+      >
+        <TableIcon size={16} />
+      </button>
+
+      {/* Conditional Table Controls - Only show when cursor is in a table */}
+      {editor.isActive('table') && (
+        <>
+           <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+           <button
+            type="button"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            className={`${baseBtn}`}
+            title="Add Column"
+          >
+            <PlusSquare size={16} className="rotate-90" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            className={`${baseBtn} hover:text-red-500`}
+            title="Delete Column"
+          >
+            <MinusSquare size={16} className="rotate-90" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            className={`${baseBtn}`}
+            title="Add Row"
+          >
+            <PlusSquare size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            className={`${baseBtn} hover:text-red-500`}
+            title="Delete Row"
+          >
+            <MinusSquare size={16} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().mergeCells().run()}
+            className={`${baseBtn}`}
+            title="Merge Cells"
+          >
+            <Merge size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().splitCell().run()}
+            className={`${baseBtn}`}
+            title="Split Cell"
+          >
+            <Split size={16} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            className={`${baseBtn} text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`}
+            title="Delete Table"
+          >
+            <Trash2 size={16} />
+          </button>
+        </>
       )}
-    >
-      <div className="flex items-center space-x-2 border-b pb-2">
-        {icon && <span className="text-xl text-primary">{icon}</span>}
-        <h3 className="font-semibold text-gray-800 text-base">{title}</h3>
-      </div>
-      <div className="grid gap-4">{children}</div>
+
+      <div className="flex-1" />
+
+      {/* History */}
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().chain().focus().undo().run()}
+        className={`${baseBtn} disabled:opacity-50`}
+        title="Undo"
+      >
+        <Undo size={16} />
+      </button>
+      <button
+        type="button"
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().chain().focus().redo().run()}
+        className={`${baseBtn} disabled:opacity-50`}
+        title="Redo"
+      >
+        <Redo size={16} />
+      </button>
     </div>
   );
-}
-
-```
-
-<!-- path: components/ofc/ofc-types.ts -->
-```typescript
-// components/ofc/ofc-types.ts
-import { z } from 'zod';
-import { v_ofc_cables_completeRowSchema } from "@/schemas/zod-schemas";
-
-export interface OfcCablesFilters {
-  search: string;
-  ofc_type_id: string;
-  status: "true" | "false" | "";
-  maintenance_terminal_id: string;
-}
-
-export type OfcCablesWithRelations = z.infer<typeof v_ofc_cables_completeRowSchema> & {
-  ofc_type: {
-    id: string;
-    name: string;
-  } | null;
-  maintenance_area: {
-    id: string;
-    name: string;
-  } | null;
 };
 
+export const RichTextEditor = ({ value, onChange, label, error, disabled, placeholder }: RichTextEditorProps) => {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        // Disable the default link extension from StarterKit to avoid conflicts
+        link: false,
+      }),
+      LinkExtension.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-500 hover:underline cursor-pointer',
+        },
+      }),
+      // Table Extensions with Tailwind styling
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          // THE FIX: Enforce min-width to ensure horizontal scrolling triggers
+          class: 'border-collapse table-auto min-w-full my-4 border border-gray-300 dark:border-gray-600',
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          // THE FIX: Added !px-3 !py-2 to force padding even if typography resets it
+          class: 'border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 !px-3 !py-2 font-semibold text-left',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          // THE FIX: Added !px-3 !py-2 to force padding
+          class: 'border border-gray-300 dark:border-gray-600 !px-3 !py-2 align-top relative',
+        },
+      }),
+    ],
+    content: value,
+    editable: !disabled,
+    editorProps: {
+      attributes: {
+        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+    immediatelyRender: false,
+  }, []);
+
+  // Handle form reset or external updates
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      if (editor.isEmpty && value) {
+         editor.commands.setContent(value);
+      }
+      if (value === "" && !editor.isEmpty) {
+        editor.commands.clearContent();
+      }
+    }
+  }, [value, editor]);
+
+  return (
+    <div className="w-full">
+      {label && <Label className="mb-2">{label}</Label>}
+      <div className={`
+        border rounded-lg bg-white dark:bg-gray-900 transition-colors
+        ${error
+          ? "border-red-500 dark:border-red-500"
+          : "border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
+        }
+        ${disabled ? "opacity-60 cursor-not-allowed" : ""}
+        // Overflow handling for tables during edit
+        overflow-x-auto
+      `}>
+        <MenuBar editor={editor} />
+        <EditorContent editor={editor} placeholder={placeholder} />
+      </div>
+      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+    </div>
+  );
+};
 ```
 
 <!-- path: components/ofc/OfcForm/RouteConfigurationSection.tsx -->
@@ -60232,7 +60810,7 @@ const SystemFiberTraceModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         {/* FIX: Added bg-blue-600 as fallback */}
         <div className="bg-blue-600 bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
@@ -60342,7 +60920,8 @@ import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiActivity, FiHash, FiServer, FiTag } from 'react-icons/fi';
+import { FiActivity, FiHash, FiServer, FiTag, FiGlobe, FiCpu } from 'react-icons/fi';
+import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -60454,6 +61033,24 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         dataIndex: 'connected_link_type_name',
         width: 120,
       },
+      // Added Service IP Column
+      {
+        key: 'services_ip',
+        title: 'Service IP',
+        dataIndex: 'services_ip',
+        editable: true,
+        width: 130,
+        render: (val) => val ? <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{formatIP(val)}</span> : <span className="text-gray-400 italic text-xs">-</span>
+      },
+      // Added Service Interface Column
+      {
+        key: 'services_interface',
+        title: 'Service Port',
+        dataIndex: 'services_interface',
+        editable: true,
+        width: 120,
+        render: (val) => val ? <span className="font-mono text-sm">{val as string}</span> : <span className="text-gray-400 italic text-xs">-</span>
+      },
       { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
       {
         key: 'bandwidth_allocated',
@@ -60556,6 +61153,28 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                     {record.connected_link_type_name || 'Link'}
                 </div>
             </div>
+
+            {/* Service Connectivity Details (IP/Interface) */}
+            {(record.services_ip || record.services_interface) && (
+              <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">
+                 {record.services_ip && (
+                   <div className="flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold mb-0.5">
+                         <FiGlobe size={10} /> Service IP
+                      </div>
+                      <div className="font-mono text-sm font-medium">{formatIP(record.services_ip)}</div>
+                   </div>
+                 )}
+                 {record.services_interface && (
+                   <div className="flex flex-col">
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold mb-0.5">
+                         <FiCpu size={10} /> Service Port
+                      </div>
+                      <div className="font-mono text-sm font-medium">{record.services_interface}</div>
+                   </div>
+                 )}
+              </div>
+            )}
 
             {/* Bandwidth Card */}
             <div className="grid grid-cols-2 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -60671,7 +61290,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
-              <DataTable
+                   <DataTable
+      autoHideEmptyColumns={true}
                 tableName="v_system_connections_complete"
                 data={[connection]}
                 columns={circuitColumns}
@@ -60690,7 +61310,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-              <DataTable
+                   <DataTable
+      autoHideEmptyColumns={true}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 tableName={'v_system_connections_complete' as any}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60737,7 +61358,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                       </p>
                     </div>
                   ) : (
-                    <DataTable
+                         <DataTable
+      autoHideEmptyColumns={true}
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}
@@ -61443,6 +62065,7 @@ import { toast } from 'sonner';
 import { Network, Settings, Activity, RefreshCw } from 'lucide-react';
 import { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
 import { formatIP } from '@/utils/formatters';
+import Link from 'next/link';
 
 // Update schema to include the new field
 const formSchema = z.object({
@@ -61886,9 +62509,17 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         }
         subtitle={
           isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
-            <span className="text-red-100 bg-red-500 rounded-2xl px-2 py-1">
-              ⚠️ Editing Physical Source: {pristineRecord.system_name}
-            </span> // Alert user they are editing the remote end source
+            <span className="inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs">
+              <span className="shrink-0">⚠️ Editing Physical Source:</span>
+              <Link
+                href={`/dashboard/systems/${pristineRecord.system_id}`}
+                className="underline hover:text-white font-bold truncate max-w-[200px]"
+                title={`Go to ${pristineRecord.system_name}`}
+                target="_blank"
+              >
+                {pristineRecord.system_name}
+              </Link>
+            </span>
           ) : (
             `System: ${parentSystem.system_name}`
           )
@@ -62285,7 +62916,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     </Modal>
   );
 };
-
 ```
 
 <!-- path: components/dashboard/SyncStatusModal.tsx -->
@@ -62449,19 +63079,17 @@ import { useCallback, useState, useRef, useEffect } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
-import { SyncStatusModal } from "./SyncStatusModal"; // IMPORTED
+import { SyncStatusModal } from "./SyncStatusModal";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
   title?: string;
 }
 
-// Sync Status Indicator Component
 const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
   const { pendingCount, failedCount } = useMutationQueue();
   const isOnline = useOnlineStatus();
 
-  // Offline State
   if (!isOnline) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
@@ -62474,7 +63102,6 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Failed State
   if (failedCount > 0) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors animate-pulse">
@@ -62484,7 +63111,6 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Pending State
   if (pendingCount > 0) {
     return (
       <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
@@ -62494,9 +63120,8 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
     );
   }
 
-  // Synced State
   return (
-    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
+    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-red-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
       <Cloud className="w-4 h-4 text-green-600 dark:text-green-400" />
       <span className="text-xs font-medium text-green-700 dark:text-green-300 hidden sm:inline">Synced</span>
     </button>
@@ -62512,7 +63137,7 @@ export default function DashboardHeader({
   const { isSyncing, sync } = useDataSync();
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // New State
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = useCallback(() => {
@@ -62543,7 +63168,6 @@ export default function DashboardHeader({
 
             <div className="relative flex items-center space-x-2 sm:space-x-4">
 
-              {/* Sync Indicator acts as button to open modal */}
               <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
 
               <button
@@ -62552,6 +63176,7 @@ export default function DashboardHeader({
                 className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh all data"
               >
+                {/* THE FIX: isSyncing now includes manual fetches, triggering the spin */}
                 <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
 
@@ -62611,7 +63236,7 @@ export default function DashboardHeader({
                         </div>
                       )}
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden lg:block">
-                        {user?.user_metadata?.first_name || "User"}
+                        {user?.user_metadata?.first_name || user?.user_metadata?.name || "User"}
                       </span>
                     </Link>
                     <div className="absolute top-full right-0 mt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -62628,7 +63253,6 @@ export default function DashboardHeader({
         </div>
       </header>
 
-      {/* Modal is rendered here */}
       <SyncStatusModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} />
     </>
   );
@@ -66275,11 +66899,22 @@ const useOrderedColumns = <T extends { key: string | number | boolean }>(
     // Create a Set of normalized desired keys for efficient lookup
     const desiredOrderSet = new Set(desiredOrder.map(normalizeKey));
 
+    // Track keys we've already added to avoid duplicates from desiredOrder
+    const addedKeys = new Set<string>();
+
     // Order columns according to desiredOrder
     const ordered = desiredOrder
       .map(desiredKey => {
         const normalizedDesiredKey = normalizeKey(desiredKey);
-        return columns.find(col => normalizeKey(col.key) === normalizedDesiredKey);
+
+        // Prevent duplicates if desiredOrder has the same key multiple times
+        if (addedKeys.has(normalizedDesiredKey)) return undefined;
+
+        const column = columns.find(col => normalizeKey(col.key) === normalizedDesiredKey);
+        if (column) {
+            addedKeys.add(normalizedDesiredKey);
+        }
+        return column;
       })
       .filter((col): col is T => col !== undefined);
 
@@ -74311,6 +74946,131 @@ export const useUsersData = (
 };
 ```
 
+<!-- path: hooks/data/useAllSystemConnectionsData.ts -->
+```typescript
+// hooks/data/useAllSystemConnectionsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
+
+export const useAllSystemConnectionsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_system_connections_completeRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // 1. Online Fetcher using Generic Pagination RPC
+  const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
+
+    // Construct robust search string for SQL OR condition
+    let searchString: string | undefined;
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''");
+      searchString = `(` +
+        `service_name ILIKE '%${term}%' OR ` +
+        `system_name ILIKE '%${term}%' OR ` + // Important for global view
+        `connected_system_name ILIKE '%${term}%' OR ` +
+        `bandwidth_allocated ILIKE '%${term}%' OR ` +
+        `unique_id ILIKE '%${term}%' OR ` +
+        `lc_id ILIKE '%${term}%'` +
+      `)`;
+    }
+
+    const rpcFilters = buildRpcFilters({
+      ...filters,
+      or: searchString,
+    });
+
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_system_connections_complete',
+      p_limit: DEFAULTS.PAGE_SIZE,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'created_at',
+      p_order_dir: 'desc',
+    });
+
+    if (error) throw error;
+    return (data as { data: V_system_connections_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters]);
+
+  // 2. Offline Fetcher (Dexie)
+  const localQueryFn = useCallback(() => {
+    // Fetch all for client-side filtering
+    return localDb.v_system_connections_complete.orderBy('created_at').reverse().toArray();
+  }, []);
+
+  // 3. Local-First Query Execution
+  const {
+    data: allConnections = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_system_connections_complete'>({
+    queryKey: ['all-system-connections', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_system_connections_complete,
+  });
+
+  // 4. Client-Side Processing (Filtering, Sorting, Pagination)
+  const processedData = useMemo(() => {
+    if (!allConnections) {
+      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    }
+
+    let filtered = allConnections;
+
+    // Search Logic
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter((conn) =>
+        conn.service_name?.toLowerCase().includes(lowerQuery) ||
+        conn.system_name?.toLowerCase().includes(lowerQuery) ||
+        conn.connected_system_name?.toLowerCase().includes(lowerQuery) ||
+        conn.bandwidth_allocated?.toLowerCase().includes(lowerQuery) ||
+        conn.unique_id?.toLowerCase().includes(lowerQuery) ||
+        conn.lc_id?.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    // Filter Logic
+    if (filters.media_type_id) {
+        filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
+    }
+    if (filters.connected_link_type_id) {
+        filtered = filtered.filter(c => c.connected_link_type_id === filters.connected_link_type_id);
+    }
+    if (filters.status) {
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter(c => c.status === statusBool);
+    }
+
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter((c) => !!c.status).length;
+    const inactiveCount = totalCount - activeCount;
+
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = filtered.slice(start, end);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount
+    };
+  }, [allConnections, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
 <!-- path: hooks/data/useDesignationsData.ts -->
 ```typescript
 // hooks/data/useDesignationsData.ts
@@ -74697,7 +75457,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'systems',
   'ring_based_systems',
   'ports_management',
-  'logical_fiber_paths', // Added
+  'logical_fiber_paths',
   'v_nodes_complete',
   'v_ofc_cables_complete',
   'v_systems_complete',
@@ -74712,7 +75472,7 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_ofc_connections_complete',
   'v_system_connections_complete',
   'v_ports_management_complete',
-  'v_end_to_end_paths', // Added
+  'v_end_to_end_paths',
   'v_services',
 ];
 
@@ -74732,7 +75492,6 @@ export async function syncEntity(
     const allFetchedData: any[] = [];
 
     while (hasMore) {
-        // Fetch data in chunks using the RPC
         const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
             p_view_name: entityName,
             p_limit: BATCH_SIZE,
@@ -74750,7 +75509,6 @@ export async function syncEntity(
             allFetchedData.push(...validData);
         }
 
-        // Check if we reached the end
         if (responseData.length < BATCH_SIZE) {
             hasMore = false;
         } else {
@@ -74758,7 +75516,6 @@ export async function syncEntity(
         }
     }
 
-    // Safe transactional update
     await db.transaction('rw', table, async () => {
         await table.clear();
         if (allFetchedData.length > 0) {
@@ -74786,7 +75543,7 @@ export function useDataSync() {
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
 
-  const { isLoading, error, refetch } = useQuery({
+  const { isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: async () => {
       try {
@@ -74812,12 +75569,10 @@ export function useDataSync() {
           predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
 
-        // Success Feedback
         toast.success('Local data is up to date.');
 
         return { lastSynced: new Date().toISOString() };
       } catch (err) {
-        // Error Feedback
         const message = (err as Error).message;
         toast.error(`Data sync failed: ${message}`);
         throw err;
@@ -74832,7 +75587,7 @@ export function useDataSync() {
   });
 
   return {
-    isSyncing: isLoading,
+    isSyncing: isLoading || isFetching,
     syncError: error,
     syncStatus,
     sync: refetch
@@ -75560,9 +76315,7 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // UPDATED: Version 20
-    // Changes: Added 'en_id' to v_system_connections_complete indexes
-    this.version(20).stores({
+    this.version(21).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -75596,8 +76349,7 @@ export class HNVTMDatabase extends Dexie {
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      // FIX HERE: Added en_id to allow querying both ends of a connection locally
-      v_system_connections_complete: '&id, system_id, en_id, connected_system_name',
+      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',
@@ -76039,6 +76791,7 @@ export const usePortsData = (
           searchString = `(` +
             `port ILIKE '%${term}%' OR ` +
             `port_type_name ILIKE '%${term}%' OR ` +
+            `port_type_code ILIKE '%${term}%' OR ` +
             `sfp_serial_no ILIKE '%${term}%'` +
           `)`;
       }
@@ -76098,14 +76851,24 @@ export const usePortsData = (
         filtered = filtered.filter((p) =>
           p.port?.toLowerCase().includes(lowerQuery) ||
           p.port_type_name?.toLowerCase().includes(lowerQuery) ||
+          p.port_type_code?.toLowerCase().includes(lowerQuery) ||
           p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
         );
       }
 
-      // 2. Explicit Field Filtering (THE FIX)
-      if (filters.port_type_name) {
-          filtered = filtered.filter(p => p.port_type_name === filters.port_type_name);
+      // 2. Explicit Field Filtering
+
+      // NEW: Handle Multi-Select for Port Type Code
+      if (filters.port_type_code) {
+          const codes = Array.isArray(filters.port_type_code)
+              ? (filters.port_type_code as string[])
+              : [filters.port_type_code as string];
+
+          if (codes.length > 0) {
+              filtered = filtered.filter(p => p.port_type_code && codes.includes(p.port_type_code));
+          }
       }
+
       if (filters.port_utilization) {
           const utilBool = filters.port_utilization === 'true';
           filtered = filtered.filter(p => p.port_utilization === utilBool);
@@ -76120,7 +76883,7 @@ export const usePortsData = (
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      const activeCount = filtered.filter(p => p.port_admin_status).length; // "Active" here implies Admin Up
+      const activeCount = filtered.filter(p => p.port_admin_status).length;
 
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
@@ -77652,11 +78415,20 @@ export default useIsMobile;
     "@serwist/webpack-plugin": "^9.2.1",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.56.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@tanstack/query-async-storage-persister": "^5.90.4",
     "@tanstack/query-sync-storage-persister": "^5.90.4",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-query-devtools": "^5.85.1",
     "@tanstack/react-query-persist-client": "^5.90.4",
+    "@tiptap/extension-link": "^3.13.0",
+    "@tiptap/extension-table": "^3.13.0",
+    "@tiptap/extension-table-cell": "^3.13.0",
+    "@tiptap/extension-table-header": "^3.13.0",
+    "@tiptap/extension-table-row": "^3.13.0",
+    "@tiptap/pm": "^3.13.0",
+    "@tiptap/react": "^3.13.0",
+    "@tiptap/starter-kit": "^3.13.0",
     "@types/bcrypt": "^6.0.0",
     "@types/pg": "^8.15.5",
     "@types/qrcode.react": "^1.0.5",
@@ -78203,333 +78975,6 @@ export function renderKeyValueCell(value: unknown): JSX.Element {
 }
 ```
 
-<!-- path: utils/caseConverter.ts -->
-```typescript
-/**
- * Type-safe case conversion utilities for JavaScript objects
- * Supports deep nested objects and arrays with proper TypeScript inference
- */
-
-// === TYPE DEFINITIONS ===
-
-/**
- * Primitive values that don't need transformation
- * Note: Functions are treated as primitives and returned as-is
- */
-type Primitive = string | number | boolean | null | undefined | Date | RegExp;
-
-/**
- * Check if a value is a plain object (not Date, Array, etc.)
- */
-type IsPlainObject<T> = T extends Primitive
-  ? false
-  : T extends readonly unknown[]
-  ? false
-  : T extends Record<string, unknown>
-  ? true
-  : false;
-
-/**
- * Transform object keys while preserving type structure
- */
-type TransformKeys<T, U extends string> = T extends Primitive
-  ? T
-  : T extends readonly (infer Item)[]
-  ? readonly TransformKeys<Item, U>[]
-  : IsPlainObject<T> extends true
-  ? {
-      [K in keyof T as K extends string ? U : K]: TransformKeys<T[K], U>
-    }
-  : T;
-
-// Case transformation type mappings
-type CamelCase<S extends string> = S extends `${infer P1}_${infer P2}`
-  ? `${P1}${Capitalize<CamelCase<P2>>}`
-  : S;
-
-type SnakeCase<S extends string> = S extends `${infer C}${infer T}`
-  ? C extends Lowercase<C>
-    ? `${C}${SnakeCase<T>}`
-    : `_${Lowercase<C>}${SnakeCase<T>}`
-  : S;
-
-type KebabCase<S extends string> = S extends `${infer C}${infer T}`
-  ? C extends Lowercase<C>
-    ? `${C}${KebabCase<T>}`
-    : `-${Lowercase<C>}${KebabCase<T>}`
-  : S;
-
-type PascalCase<S extends string> = Capitalize<CamelCase<S>>;
-
-type ScreamingSnakeCase<S extends string> = Uppercase<
-  S extends `${infer C}${infer T}`
-    ? C extends Lowercase<C>
-      ? `${C}${ScreamingSnakeCase<T>}`
-      : `_${Lowercase<C>}${ScreamingSnakeCase<T>}`
-    : S
->;
-
-// === UTILITY FUNCTIONS ===
-
-/**
- * Type guard to check if a value is a plain object
- */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    !(value instanceof Date) &&
-    !(value instanceof RegExp) &&
-    typeof value !== 'function'
-  );
-}
-
-/**
- * Type guard to check if a value is primitive
- */
-function isPrimitive(value: unknown): value is Primitive {
-  return (
-    value === null ||
-    value === undefined ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value instanceof Date ||
-    value instanceof RegExp ||
-    typeof value === 'function'
-  );
-}
-
-// === KEY TRANSFORMATION FUNCTIONS ===
-
-/**
- * Convert string to camelCase
- */
-function toCamelCaseKey(key: string): string {
-  return key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
-}
-
-/**
- * Convert string to snake_case
- */
-function toSnakeCaseKey(key: string): string {
-  return key.replace(/[A-Z]/g, (letter: string) => `_${letter.toLowerCase()}`);
-}
-
-/**
- * Convert string to PascalCase
- */
-function toPascalCaseKey(key: string): string {
-  const camelKey = toCamelCaseKey(key);
-  return camelKey.charAt(0).toUpperCase() + camelKey.slice(1);
-}
-
-/**
- * Convert string to kebab-case
- */
-function toKebabCaseKey(key: string): string {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-    .replace(/_/g, '-')
-    .toLowerCase();
-}
-
-/**
- * Convert string to SCREAMING_SNAKE_CASE
- */
-function toScreamingSnakeCaseKey(key: string): string {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replace(/-/g, '_')
-    .toUpperCase();
-}
-
-// === GENERIC CONVERTER FACTORY ===
-
-/**
- * Key transformation function type
- */
-type KeyTransformer = (key: string) => string;
-
-/**
- * Creates a type-safe object converter function
- */
-function createConverter<T extends KeyTransformer>(transformer: T) {
-  function convert<TInput>(input: TInput): TransformKeys<TInput, string> {
-    if (isPrimitive(input)) {
-      return input as TransformKeys<TInput, string>;
-    }
-
-    if (Array.isArray(input)) {
-      return input.map(convert) as TransformKeys<TInput, string>;
-    }
-
-    if (isPlainObject(input)) {
-      const result: Record<string, unknown> = {};
-
-      for (const [key, value] of Object.entries(input)) {
-        const transformedKey = transformer(key);
-        result[transformedKey] = convert(value);
-      }
-
-      return result as TransformKeys<TInput, string>;
-    }
-
-    return input as TransformKeys<TInput, string>;
-  }
-
-  return convert;
-}
-
-// === EXPORTED CONVERTERS ===
-
-/**
- * Converts object keys to camelCase
- *
- * @example
- * ```typescript
- * const input = { user_name: 'John', user_age: 30 };
- * const output = toCamelCase(input);
- * // Result: { userName: 'John', userAge: 30 }
- * ```
- */
-export const toCamelCase = createConverter(toCamelCaseKey);
-
-/**
- * Converts object keys to snake_case
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toSnakeCase(input);
- * // Result: { user_name: 'John', user_age: 30 }
- * ```
- */
-export const toSnakeCase = createConverter(toSnakeCaseKey);
-
-/**
- * Converts object keys to PascalCase
- *
- * @example
- * ```typescript
- * const input = { user_name: 'John', user_age: 30 };
- * const output = toPascalCase(input);
- * // Result: { UserName: 'John', UserAge: 30 }
- * ```
- */
-export const toPascalCase = createConverter(toPascalCaseKey);
-
-/**
- * Converts object keys to kebab-case
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toKebabCase(input);
- * // Result: { 'user-name': 'John', 'user-age': 30 }
- * ```
- */
-export const toKebabCase = createConverter(toKebabCaseKey);
-
-/**
- * Converts object keys to SCREAMING_SNAKE_CASE
- *
- * @example
- * ```typescript
- * const input = { userName: 'John', userAge: 30 };
- * const output = toScreamingSnakeCase(input);
- * // Result: { USER_NAME: 'John', USER_AGE: 30 }
- * ```
- */
-export const toScreamingSnakeCase = createConverter(toScreamingSnakeCaseKey);
-
-// === ADVANCED USAGE ===
-
-/**
- * Creates a custom converter with a user-defined transformation function
- *
- * @param transformer - Function that transforms a single key
- * @returns A converter function that applies the transformation recursively
- *
- * @example
- * ```typescript
- * const addPrefix = createCustomConverter(key => `prefix_${key}`);
- * const input = { name: 'John', age: 30 };
- * const output = addPrefix(input);
- * // Result: { prefix_name: 'John', prefix_age: 30 }
- * ```
- */
-export const createCustomConverter = createConverter;
-
-// === TYPE EXPORTS FOR ADVANCED USAGE ===
-
-export type {
-  TransformKeys,
-  KeyTransformer,
-  CamelCase,
-  SnakeCase,
-  KebabCase,
-  PascalCase,
-  ScreamingSnakeCase,
-  Primitive,
-  IsPlainObject
-};
-
-// === USAGE EXAMPLES ===
-
-/**
- * Example usage with Supabase or similar database libraries
- *
- * @example
- * ```typescript
- * interface UserProfile {
- *   id: string;
- *   firstName: string;
- *   lastName: string;
- *   createdAt: Date;
- * }
- *
- * // Converting from database (snake_case) to frontend (camelCase)
- * const { data } = await supabase.from('user_profiles').select('*');
- * const profiles: UserProfile[] = data?.map(toCamelCase) ?? [];
- *
- * // Converting from frontend (camelCase) to database (snake_case)
- * const newProfile: Partial<UserProfile> = {
- *   firstName: 'John',
- *   lastName: 'Doe'
- * };
- * await supabase.from('user_profiles').insert(toSnakeCase(newProfile));
- * ```
- */
-
-/**
- * Example with nested objects and arrays
- *
- * @example
- * ```typescript
- * const complexData = {
- *   user_profile: {
- *     personal_info: {
- *       first_name: 'Jane',
- *       last_name: 'Smith'
- *     },
- *     contact_methods: [
- *       { method_type: 'email', contact_value: 'jane@example.com' },
- *       { method_type: 'phone', contact_value: '+1234567890' }
- *     ]
- *   },
- *   created_at: new Date(),
- *   is_active: true
- * };
- *
- * const camelCaseData = toCamelCase(complexData);
- * // TypeScript knows the exact shape of the result!
- * // camelCaseData.userProfile.personalInfo.firstName is properly typed
- * ```
- */
-```
-
 <!-- path: utils/getNodeIcons.ts -->
 ```typescript
 // path: utils/getNodeIcons.ts
@@ -79049,7 +79494,10 @@ export interface ValidationError {
   code?: string;
 }
 
-const formattersCache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>();
+const formattersCache = new Map<
+  string,
+  Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat
+>();
 
 function getCachedFormatter(
   type: 'number',
@@ -79097,10 +79545,7 @@ function getCachedFormatter(
 // =============================================================================
 // =============================================================================
 
-export const formatNumber = (
-  num: number,
-  options: NumberFormatOptions = {}
-): string => {
+export const formatNumber = (num: number, options: NumberFormatOptions = {}): string => {
   if (!Number.isFinite(num)) {
     return num.toString();
   }
@@ -79122,44 +79567,8 @@ export const formatCurrency = (
     locale,
     style: 'currency',
     currency,
-    ...options
+    ...options,
   });
-};
-
-export const formatPercentage = (
-  value: number,
-  decimals: number = 1,
-  locale: string = 'en-US'
-): string => {
-  return formatNumber(value / 100, {
-    locale,
-    style: 'percent',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
-};
-
-export const formatScore = (
-  score: number,
-  total: number,
-  options: {
-    showFraction?: boolean;
-    decimals?: number;
-    locale?: string;
-  } = {}
-): string => {
-  const { showFraction = true, decimals = 1, locale = 'en-US' } = options;
-
-  if (total <= 0) {
-    return showFraction ? `${score}/0 (0%)` : '0%';
-  }
-
-  const percentage = (score / total) * 100;
-  const formattedPercentage = formatPercentage(percentage, decimals, locale);
-
-  return showFraction
-    ? `${formatNumber(score, { locale })}/${formatNumber(total, { locale })} (${formattedPercentage})`
-    : formattedPercentage;
 };
 
 export const formatFileSize = (
@@ -79186,22 +79595,39 @@ export const formatFileSize = (
   return `${formatNumber(size, {
     locale,
     minimumFractionDigits: i === 0 ? 0 : decimals,
-    maximumFractionDigits: i === 0 ? 0 : decimals
+    maximumFractionDigits: i === 0 ? 0 : decimals,
   })} ${sizes[i]}`;
 };
 
 // =============================================================================
 // =============================================================================
 
-export const toTitleCase = (
-  str: string,
-  options: StringCaseOptions = {}
-): string => {
+export const toTitleCase = (str: string, options: StringCaseOptions = {}): string => {
   if (!str) return '';
 
   const { preserveAcronyms = true } = options;
 
-  const articles = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet']);
+  const articles = new Set([
+    'a',
+    'an',
+    'and',
+    'as',
+    'at',
+    'but',
+    'by',
+    'for',
+    'if',
+    'in',
+    'nor',
+    'of',
+    'on',
+    'or',
+    'so',
+    'the',
+    'to',
+    'up',
+    'yet',
+  ]);
 
   return str
     .toLowerCase()
@@ -79223,160 +79649,8 @@ export const snakeToTitleCase = (str: string): string => {
 
   return str
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
-};
-
-export const camelToKebab = (str: string): string => {
-  if (!str) return '';
-
-  return str
-    .replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2')
-    .toLowerCase();
-};
-
-export const kebabToCamel = (str: string): string => {
-  if (!str) return '';
-
-  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-export const snakeToCamel = (str: string): string => {
-  if (!str) return '';
-
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-};
-
-export const camelToSnake = (str: string): string => {
-  if (!str) return '';
-
-  return str.replace(/([A-Z])/g, '_$1').toLowerCase();
-};
-
-export const createSlug = (
-  text: string,
-  options: {
-    maxLength?: number;
-    separator?: string;
-    lowercase?: boolean;
-  } = {}
-): string => {
-  const { maxLength = 50, separator = '-', lowercase = true } = options;
-
-  if (!text) return '';
-
-  let slug = text
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, separator) // Replace spaces with separator
-    .replace(new RegExp(`${separator}+`, 'g'), separator) // Replace multiple separators
-    .replace(new RegExp(`^${separator}|${separator}$`, 'g'), ''); // Remove leading/trailing separators
-
-  if (lowercase) {
-    slug = slug.toLowerCase();
-  }
-
-  if (maxLength && slug.length > maxLength) {
-    slug = slug.substring(0, maxLength).replace(new RegExp(`${separator}$`), '');
-  }
-
-  return slug;
-};
-
-export const truncateText = (
-  text: string,
-  maxLength: number,
-  options: {
-    suffix?: string;
-    preserveWords?: boolean;
-  } = {}
-): string => {
-  const { suffix = '...', preserveWords = true } = options;
-
-  if (!text || text.length <= maxLength) return text;
-
-  if (!preserveWords) {
-    return text.substring(0, maxLength - suffix.length) + suffix;
-  }
-
-  const words = text.split(' ');
-  let truncated = '';
-
-  for (const word of words) {
-    const nextText = truncated ? `${truncated} ${word}` : word;
-    if (nextText.length > maxLength - suffix.length) {
-      break;
-    }
-    truncated = nextText;
-  }
-
-  return truncated ? truncated + suffix : text.substring(0, maxLength - suffix.length) + suffix;
-};
-
-// =============================================================================
-// =============================================================================
-
-export const formatUserName = (
-  firstName: string,
-  lastName: string,
-  format: 'full' | 'lastFirst' | 'initials' | 'firstInitial' = 'full'
-): string => {
-  const first = firstName?.trim() || '';
-  const last = lastName?.trim() || '';
-
-  if (!first && !last) return '';
-
-  switch (format) {
-    case 'full':
-      return `${first} ${last}`.trim();
-    case 'lastFirst':
-      return last ? `${last}, ${first}`.trim() : first;
-    case 'initials':
-      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
-    case 'firstInitial':
-      return `${first.charAt(0).toUpperCase()}. ${last}`.trim();
-    default:
-      return `${first} ${last}`.trim();
-  }
-};
-
-export const formatPhoneNumber = (
-  phone: string,
-  options: PhoneFormatOptions = {}
-): string => {
-  const { format = 'US' } = options;
-
-  if (!phone) return '';
-
-  const cleaned = phone.replace(/\D/g, '');
-
-  switch (format) {
-    case 'US':
-      if (cleaned.length === 10) {
-        return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-      }
-      if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
-      }
-      break;
-
-    case 'E164':
-      if (cleaned.length === 10) {
-        return `+1${cleaned}`;
-      }
-      if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        return `+${cleaned}`;
-      }
-      break;
-
-    case 'international':
-      if (cleaned.length >= 10) {
-        return `+${cleaned}`;
-      }
-      break;
-  }
-
-  return phone; // Return original if can't format
 };
 
 export const formatEmail = (email: string): string => {
@@ -79390,13 +79664,20 @@ export const formatEmail = (email: string): string => {
 
 type FormatDateOptions = Intl.DateTimeFormatOptions & {
   locale?: string;
-  format?: 'short' | 'medium' | 'long' | 'full' | 'ddmmyyyy' | 'yyyy-mm-dd' | 'dd/mm/yyyy' | 'mm/dd/yyyy' | 'dd MMM yyyy' | 'dd-mm-yyyy';
+  format?:
+    | 'short'
+    | 'medium'
+    | 'long'
+    | 'full'
+    | 'ddmmyyyy'
+    | 'yyyy-mm-dd'
+    | 'dd/mm/yyyy'
+    | 'mm/dd/yyyy'
+    | 'dd MMM yyyy'
+    | 'dd-mm-yyyy';
 };
 
-const DATE_FORMATS: Record<
-  'short' | 'medium' | 'long' | 'full',
-  Intl.DateTimeFormatOptions
-> = {
+const DATE_FORMATS: Record<'short' | 'medium' | 'long' | 'full', Intl.DateTimeFormatOptions> = {
   short: { year: '2-digit', month: 'numeric', day: 'numeric' },
   medium: { year: 'numeric', month: 'short', day: 'numeric' },
   long: { year: 'numeric', month: 'long', day: 'numeric' },
@@ -79436,7 +79717,20 @@ export const formatDate = (
       const day = dateObj.getDate().toString().padStart(2, '0');
       const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
       const year = dateObj.getFullYear().toString();
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthNames = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       const monthName = monthNames[dateObj.getMonth()];
 
       switch (format) {
@@ -79495,123 +79789,18 @@ function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: D
       '1/1/1970',
       '01-01-1970',
       '1970-01-01T00:00:00.000Z',
-      '1970-01-01T00:00:00Z'
+      '1970-01-01T00:00:00Z',
     ];
 
-    const isExactMatch = validUnixEpochStrings.includes(trimmed) ||
-                        validUnixEpochStrings.includes(trimmed.toLowerCase());
+    const isExactMatch =
+      validUnixEpochStrings.includes(trimmed) ||
+      validUnixEpochStrings.includes(trimmed.toLowerCase());
 
     return !isExactMatch;
   }
 
   return true;
 }
-
-
-export const formatTimeRange = (
-  startTime: Date | string,
-  endTime: Date | string,
-  options: Intl.DateTimeFormatOptions & { locale?: string } = {}
-): string => {
-  const { locale = 'en-IN', ...intlOptions } = options;
-
-  const formatOptions = {
-    hour: 'numeric' as const,
-    minute: '2-digit' as const,
-    ...intlOptions
-  };
-
-  const start = formatDate(startTime, { locale, ...formatOptions });
-  const end = formatDate(endTime, { locale, ...formatOptions });
-
-  return `${start} - ${end}`;
-};
-
-export const formatRelativeTime = (
-  date: Date | string | number,
-  locale: string = 'en-US'
-): string => {
-  try {
-    const dateObj = new Date(date);
-    const now = new Date();
-    const diffMs = now.getTime() - dateObj.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-
-    if (diffSec < 60) return 'just now';
-    if (diffMin < 60) return `${diffMin} minute${diffMin !== 1 ? 's' : ''} ago`;
-    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
-    if (diffDay < 30) return `${diffDay} day${diffDay !== 1 ? 's' : ''} ago`;
-
-    return formatDate(dateObj, { locale, dateStyle: 'medium' });
-  } catch {
-    return 'No Date';
-  }
-};
-
-// =============================================================================
-// =============================================================================
-
-export const formatList = (
-  items: (string | number)[],
-  options: ListFormatOptions & { locale?: string } = {}
-): string => {
-  const { locale = 'en-US', conjunction = 'and', ...intlOptions } = options;
-
-  if (!Array.isArray(items) || items.length === 0) return '';
-
-  const stringItems = items.map(String).filter(Boolean);
-
-  if (stringItems.length === 0) return '';
-  if (stringItems.length === 1) return stringItems[0];
-
-  try {
-    const listFormatOptions: Intl.ListFormatOptions = {
-      style: 'long',
-      type: conjunction === 'or' ? 'disjunction' : 'conjunction',
-      ...intlOptions
-    };
-
-    const formatter = getCachedFormatter('list', locale, listFormatOptions);
-
-    return formatter.format(stringItems);
-  } catch {
-    if (stringItems.length === 2) {
-      return `${stringItems[0]} ${conjunction} ${stringItems[1]}`;
-    }
-
-    const lastItem = stringItems[stringItems.length - 1];
-    const otherItems = stringItems.slice(0, -1);
-    return `${otherItems.join(', ')}, ${conjunction} ${lastItem}`;
-  }
-};
-
-export const formatArrayWithLimit = (
-  items: (string | number)[],
-  options: {
-    maxItems?: number;
-    moreText?: string;
-    conjunction?: 'and' | 'or';
-    locale?: string;
-  } = {}
-): string => {
-  const { maxItems = 5, moreText = 'more', conjunction = 'and', locale = 'en-US' } = options;
-
-  if (!Array.isArray(items) || items.length === 0) return '';
-
-  const stringItems = items.map(String).filter(Boolean);
-
-  if (stringItems.length <= maxItems) {
-    return formatList(stringItems, { conjunction, locale });
-  }
-
-  const visibleItems = stringItems.slice(0, maxItems);
-  const remainingCount = stringItems.length - maxItems;
-
-  return `${formatList(visibleItems, { conjunction, locale })} and ${remainingCount} ${moreText}`;
-};
 
 // =============================================================================
 // =============================================================================
@@ -79635,8 +79824,8 @@ export const formatValidationErrors = (
 ): string[] => {
   if (Array.isArray(errors)) {
     return errors
-      .filter(error => error.message?.trim())
-      .map(error => `${toTitleCase(error.field.replace(/([A-Z])/g, ' $1'))}: ${error.message}`);
+      .filter((error) => error.message?.trim())
+      .map((error) => `${toTitleCase(error.field.replace(/([A-Z])/g, ' $1'))}: ${error.message}`);
   }
 
   return Object.entries(errors)
@@ -79674,7 +79863,7 @@ export const highlightSearchTerms = (
 
   let result = text;
 
-  terms.forEach(term => {
+  terms.forEach((term) => {
     if (!term.trim()) return;
 
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -79689,9 +79878,9 @@ export const highlightSearchTerms = (
 
 export const sanitizeSheetFileName = (name: string) => {
   return name
-    .replace(/[*?:\\/\[\]]/g, "_")  // replace invalid chars
-    .substring(0, 31);              // Excel limit (31 chars)
-}
+    .replace(/[*?:\\/\[\]]/g, '_') // replace invalid chars
+    .substring(0, 31); // Excel limit (31 chars)
+};
 
 export const formatIP = (ip: unknown): string => {
   if (!ip || typeof ip !== 'string') return '';
@@ -79705,29 +79894,13 @@ export const formatIP = (ip: unknown): string => {
 const formatters = {
   formatNumber,
   formatCurrency,
-  formatPercentage,
-  formatScore,
   formatFileSize,
 
   toTitleCase,
   snakeToTitleCase,
-  camelToKebab,
-  kebabToCamel,
-  snakeToCamel,
-  camelToSnake,
-  createSlug,
-  truncateText,
-
-  formatUserName,
-  formatPhoneNumber,
   formatEmail,
 
   formatDate,
-  formatTimeRange,
-  formatRelativeTime,
-
-  formatList,
-  formatArrayWithLimit,
 
   formatErrorMessage,
   formatValidationErrors,
@@ -79739,6 +79912,7 @@ const formatters = {
 };
 
 export default formatters;
+
 ```
 
 <!-- path: utils/validationUtils.ts -->
@@ -80003,37 +80177,6 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
   };
 };
 
-// Enhanced time validation with format options
-export const isValidTime = (time: string, format: '12' | '24' = '24'): ValidationResult => {
-  const errors: string[] = [];
-
-  if (!time || typeof time !== 'string') {
-    errors.push('Time is required');
-    return { isValid: false, errors };
-  }
-
-  const trimmedTime = time.trim();
-
-  if (format === '24') {
-    // 24-hour format: HH:MM or HH:MM:SS
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-    if (!timeRegex.test(trimmedTime)) {
-      errors.push('Time must be in HH:MM or HH:MM:SS format (24-hour)');
-    }
-  } else {
-    // 12-hour format: HH:MM AM/PM
-    const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM|am|pm)$/;
-    if (!timeRegex.test(trimmedTime)) {
-      errors.push('Time must be in HH:MM AM/PM format');
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
 // Enhanced date validation
 export const isValidDate = (date: string | Date): ValidationResult => {
   const errors: string[] = [];
@@ -80069,104 +80212,6 @@ export const isValidDate = (date: string | Date): ValidationResult => {
   };
 };
 
-// Enhanced future date validation
-export const isFutureDate = (date: string | Date, allowToday = false): ValidationResult => {
-  const dateValidation = isValidDate(date);
-  if (!dateValidation.isValid) {
-    return dateValidation;
-  }
-
-  const errors: string[] = [];
-  const inputDate = typeof date === 'string' ? new Date(date.trim()) : date;
-  const now = new Date();
-
-  // Set time to start of day for comparison
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-
-  if (allowToday ? compareDate < today : compareDate <= today) {
-    errors.push(allowToday ? 'Date must be today or in the future' : 'Date must be in the future');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-// Enhanced past date validation
-export const isPastDate = (date: string | Date, allowToday = false): ValidationResult => {
-  const dateValidation = isValidDate(date);
-  if (!dateValidation.isValid) {
-    return dateValidation;
-  }
-
-  const errors: string[] = [];
-  const inputDate = typeof date === 'string' ? new Date(date.trim()) : date;
-  const now = new Date();
-
-  // Set time to start of day for comparison
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-
-  if (allowToday ? compareDate > today : compareDate >= today) {
-    errors.push(allowToday ? 'Date must be today or in the past' : 'Date must be in the past');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-// Enhanced file validation
-export const validateFile = (
-  file: File,
-  options: FileValidationOptions = {}
-): ValidationResult => {
-  const errors: string[] = [];
-
-  if (!file || !(file instanceof File)) {
-    errors.push('Valid file is required');
-    return { isValid: false, errors };
-  }
-
-  // Check minimum file size
-  if (options.minSize && file.size < options.minSize) {
-    errors.push(`File size must be at least ${formatFileSize(options.minSize)}`);
-  }
-
-  // Check maximum file size
-  if (options.maxSize && file.size > options.maxSize) {
-    errors.push(`File size must be less than ${formatFileSize(options.maxSize)}`);
-  }
-
-  // Check file type
-  if (options.allowedTypes && options.allowedTypes.length > 0) {
-    if (!options.allowedTypes.includes(file.type)) {
-      errors.push(`File type "${file.type}" is not allowed. Allowed types: ${options.allowedTypes.join(', ')}`);
-    }
-  }
-
-  // Check file extension
-  if (options.allowedExtensions && options.allowedExtensions.length > 0) {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    if (!extension || !options.allowedExtensions.map(ext => ext.toLowerCase()).includes(extension)) {
-      errors.push(`File extension must be one of: ${options.allowedExtensions.join(', ')}`);
-    }
-  }
-
-  // Check for potentially dangerous file names
-  if (/[<>:"|?*]/.test(file.name)) {
-    errors.push('File name contains invalid characters');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
 // Enhanced file size formatter
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
@@ -80182,148 +80227,6 @@ export const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`;
 };
 
-// Enhanced sanitization with more comprehensive XSS prevention
-export const sanitizeInput = (input: string): string => {
-  if (!input || typeof input !== 'string') return '';
-
-  return input
-    .replace(/&/g, '&amp;')    // Must be first
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/\\/g, '&#x5C;')
-    .replace(/`/g, '&#x60;')
-    .replace(/=/g, '&#x3D;');
-};
-
-// Credit card validation (Luhn algorithm)
-export const isValidCreditCard = (cardNumber: string): ValidationResult => {
-  const errors: string[] = [];
-
-  if (!cardNumber || typeof cardNumber !== 'string') {
-    errors.push('Card number is required');
-    return { isValid: false, errors };
-  }
-
-  // Remove spaces and hyphens
-  const cleanCard = cardNumber.replace(/[\s-]/g, '');
-
-  // Check if all digits
-  if (!/^\d+$/.test(cleanCard)) {
-    errors.push('Card number must contain only digits');
-    return { isValid: false, errors };
-  }
-
-  // Check length
-  if (cleanCard.length < 13 || cleanCard.length > 19) {
-    errors.push('Card number must be between 13 and 19 digits');
-    return { isValid: false, errors };
-  }
-
-  // Luhn algorithm
-  let sum = 0;
-  let alternate = false;
-
-  for (let i = cleanCard.length - 1; i >= 0; i--) {
-    let n = parseInt(cleanCard.charAt(i), 10);
-
-    if (alternate) {
-      n *= 2;
-      if (n > 9) {
-        n = (n % 10) + 1;
-      }
-    }
-
-    sum += n;
-    alternate = !alternate;
-  }
-
-  if (sum % 10 !== 0) {
-    errors.push('Invalid card number');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-// Enhanced validation schemas
-export const validationSchemas = {
-  register: {
-    firstName: (value: string) => {
-      const nameValidation = isValidName(value);
-      return {
-        isValid: isRequired(value) && nameValidation.isValid,
-        error: !isRequired(value) ? 'First name is required' : nameValidation.errors[0] || ''
-      };
-    },
-    lastName: (value: string) => {
-      const nameValidation = isValidName(value);
-      return {
-        isValid: isRequired(value) && nameValidation.isValid,
-        error: !isRequired(value) ? 'Last name is required' : nameValidation.errors[0] || ''
-      };
-    },
-    email: (value: string) => ({
-      isValid: isRequired(value) && isValidEmail(value),
-      error: !isRequired(value) ? 'Email is required' :
-             !isValidEmail(value) ? 'Please enter a valid email address' : ''
-    }),
-    password: (value: string) => {
-      const validation = validatePassword(value);
-      return {
-        isValid: validation.isValid,
-        error: validation.errors[0] || ''
-      };
-    },
-    confirmPassword: (value: string, password: string) => ({
-      isValid: isRequired(value) && value === password,
-      error: !isRequired(value) ? 'Please confirm your password' :
-             value !== password ? 'Passwords do not match' : ''
-    })
-  },
-
-  login: {
-    email: (value: string) => ({
-      isValid: isRequired(value) && isValidEmail(value),
-      error: !isRequired(value) ? 'Email is required' :
-             !isValidEmail(value) ? 'Please enter a valid email address' : ''
-    }),
-    password: (value: string) => ({
-      isValid: isRequired(value),
-      error: !isRequired(value) ? 'Password is required' : ''
-    })
-  }
-};
-
-// Enhanced generic form validator with better type safety
-export const validateForm = <T extends Record<string, unknown>>(
-  data: T,
-  schema: Record<keyof T, (value: T[keyof T], ...args: unknown[]) => { isValid: boolean; error: string }>
-): { isValid: boolean; errors: Record<keyof T, string> } => {
-  const errors = {} as Record<keyof T, string>;
-  let isValid = true;
-
-  (Object.keys(schema) as Array<keyof T>).forEach(key => {
-    try {
-      const validation = schema[key](data[key]);
-      if (!validation.isValid) {
-        errors[key] = validation.error;
-        isValid = false;
-      }
-    } catch (error) {
-      console.error(`Validation error for field ${String(key)}:`, error);
-      errors[key] = 'Validation error occurred';
-      isValid = false;
-    }
-  });
-
-  return { isValid, errors };
-};
-
 // Comprehensive validation utilities object
 const validationUtils = {
   isValidEmail,
@@ -80334,16 +80237,8 @@ const validationUtils = {
   isRequired,
   isValidNumber,
   isValidInteger,
-  isValidTime,
   isValidDate,
-  isFutureDate,
-  isPastDate,
-  validateFile,
-  formatFileSize,
-  sanitizeInput,
-  isValidCreditCard,
-  validationSchemas,
-  validateForm
+  formatFileSize
 };
 
 export default validationUtils;
@@ -80891,34 +80786,6 @@ export const getOptimalImageSettings = (file: File) => {
   }
 };
 
-// 9. Batch optimization function
-export const optimizeFilesBatch = async (files: File[]): Promise<File[]> => {
-  const optimizationPromises = files.map(async (file) => {
-    console.log(
-      "Original file:",
-      file.name,
-      "Size:",
-      file.size,
-      "Type:",
-      file.type,
-    );
-
-    if (file.type.startsWith("image/") && file.size > 0) {
-      try {
-        const optimized = await smartCompress(file);
-        return optimized.size > 0 ? optimized : file; // Fallback to original if compression fails
-      } catch (error) {
-        console.warn(`Batch optimization failed for ${file.name}:`, error);
-        return file; // Return original on error
-      }
-    }
-
-    return file;
-  });
-
-  return Promise.all(optimizationPromises);
-};
-
 ```
 
 <!-- path: utils/supabase/middleware.ts -->
@@ -81051,7 +80918,11 @@ export function createClient() {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -81061,10 +80932,12 @@ export function createClient() {
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
     "plugins": [
       {
@@ -81072,7 +80945,13 @@ export function createClient() {
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", ".next/types/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.d.ts",
+    ".next/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "components/table/DataTableDemo.tsx",

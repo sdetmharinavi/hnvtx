@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, lets create one more page in which we will show all system connections records for easy searching and filtering instead of only systems/id records.
+Let's begin! First of all, Our first concentration will be enhancement of UI and UX.In dashboard page we are showing only utilization of cables, it will be better if we show utilization of systems also. You can also decide yourself if any more enhancement needed in this page.

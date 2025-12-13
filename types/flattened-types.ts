@@ -295,6 +295,27 @@ export type AuthOauth_authorizationsUpdate = {
     user_id?: string | null;
 };
 
+export type AuthOauth_client_statesRow = {
+    code_verifier: string | null;
+    created_at: string;
+    id: string;
+    provider_type: string;
+};
+
+export type AuthOauth_client_statesInsert = {
+    code_verifier?: string | null;
+    created_at: string;
+    id: string;
+    provider_type: string;
+};
+
+export type AuthOauth_client_statesUpdate = {
+    code_verifier?: string | null;
+    created_at?: string;
+    id?: string;
+    provider_type?: string;
+};
+
 export type AuthOauth_clientsRow = {
     client_name: string | null;
     client_secret_hash: string | null;
@@ -2536,6 +2557,7 @@ export const tableNames = [
   "mfa_challenges",
   "mfa_factors",
   "oauth_authorizations",
+  "oauth_client_states",
   "oauth_clients",
   "oauth_consents",
   "one_time_tokens",
