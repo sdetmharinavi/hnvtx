@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useCallback } from "react";
-import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList } from "react-icons/fi";
+import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList, FiClock } from "react-icons/fi";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
 
@@ -22,6 +22,7 @@ import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { useDiaryData } from "@/hooks/data/useDiaryData";
 import { UserRole } from "@/types/user-roles";
 import { Input } from "@/components/common/ui/Input";
+import { Button } from "@/components/common/ui/Button";
 
 type ViewMode = 'day' | 'feed';
 
@@ -152,6 +153,13 @@ export default function DiaryPage() {
     setCurrentDate(date);
   }, []);
 
+  const jumpToToday = () => {
+    const now = new Date();
+    setSelectedDate(now);
+    setCurrentDate(now);
+    setViewMode('day');
+  };
+
   const headerActions = useStandardHeaderActions({
     data: allNotesForMonth,
     onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
@@ -194,8 +202,9 @@ export default function DiaryPage() {
 
         <div className='grid grid-cols-1 xl:grid-cols-12 gap-6'>
           
+          {/* Calendar Sidebar */}
           <div className='xl:col-span-4 space-y-6'>
-            <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
+            <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative'>
               <div className='p-4'>
                 <DiaryCalendar
                   selectedDate={selectedDate}
@@ -204,24 +213,31 @@ export default function DiaryPage() {
                   highlightedDates={highlightedDates}
                 />
               </div>
+              <div className="absolute top-4 right-4 z-20">
+                 <Button size="xs" variant="ghost" onClick={jumpToToday} title="Jump to Today">
+                    Today
+                 </Button>
+              </div>
             </div>
             
             <div className="hidden xl:block bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
                 <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
-                    <FiCalendar /> Navigation Tips
+                    <FiCalendar /> Usage Tips
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Click dates to view specific entries. Use the view toggles to see a full monthly feed. Search works across the currently selected month.
+                    Use the calendar to filter entries by specific dates. Switch to &quot;Feed&quot; view to see all activities for the current month in chronological order.
                 </p>
             </div>
           </div>
 
+          {/* Main Content Area */}
           <div className='xl:col-span-8 space-y-6'>
             
+            {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="relative w-full sm:w-72">
                     <Input 
-                        placeholder="Search notes or tags..." 
+                        placeholder="Search logs or tags..." 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         leftIcon={<FiSearch className="text-gray-400" />}
@@ -234,7 +250,7 @@ export default function DiaryPage() {
                         onClick={() => setViewMode('day')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'day' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                     >
-                        <FiCalendar className="w-4 h-4" /> Day
+                        <FiClock className="w-4 h-4" /> Day
                     </button>
                     <button 
                         onClick={() => setViewMode('feed')}
@@ -245,6 +261,7 @@ export default function DiaryPage() {
                 </div>
             </div>
 
+            {/* List Header */}
             <div className='flex items-center justify-between'>
                 <h2 className='text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2'>
                     {debouncedSearch ? (
@@ -252,7 +269,7 @@ export default function DiaryPage() {
                     ) : viewMode === 'day' ? (
                         <>{selectedDateString}</>
                     ) : (
-                        <>Feed for {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</>
+                        <>Activity Feed for {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</>
                     )}
                 </h2>
                 {!debouncedSearch && viewMode === 'day' && (
@@ -262,6 +279,7 @@ export default function DiaryPage() {
                 )}
             </div>
 
+            {/* Entries List */}
             {filteredNotes.length === 0 ? (
                 <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
                   <div className='text-center py-12 px-4'>
@@ -269,10 +287,10 @@ export default function DiaryPage() {
                       <FiBookOpen className='h-8 w-8 text-blue-400' />
                     </div>
                     <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
-                      {debouncedSearch ? 'No matching notes found' : 'No entries for this view'}
+                      {debouncedSearch ? 'No matching notes found' : 'No entries found'}
                     </h3>
                     <p className='text-sm text-gray-500 max-w-sm mx-auto mb-6'>
-                      {debouncedSearch ? 'Try different keywords or tags.' : 'Select a different date or create a new entry.'}
+                      {debouncedSearch ? 'Try different keywords or tags.' : 'No logs recorded for this selection. Create a new entry to get started.'}
                     </p>
                     {canEdit && !debouncedSearch && viewMode === 'day' && (
                       <button onClick={openAddModal} className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30'>
@@ -282,7 +300,7 @@ export default function DiaryPage() {
                   </div>
                 </div>
             ) : (
-                <div className='grid gap-4 sm:grid-cols-1 lg:grid-cols-1'>
+                <div className='grid gap-4'>
                   {filteredNotes.map((note) => (
                     <DiaryEntryCard
                         key={note.id}

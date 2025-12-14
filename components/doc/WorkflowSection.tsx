@@ -1,16 +1,11 @@
 // components/doc/WorkflowSection.tsx
-import { Separator } from "@/components/common/ui/separator";
-import StepList from "@/components/doc/StepList";
-import { WorkflowSectionProps } from "@/components/doc/types/workflowTypes";
-import { useUser } from "@/providers/UserProvider";
-import { User, Monitor, Zap } from "lucide-react";
+import { Separator } from '@/components/common/ui/separator';
+import StepList from '@/components/doc/StepList';
+import { WorkflowSectionProps } from '@/components/doc/types/workflowTypes';
+import { useUser } from '@/providers/UserProvider';
+import { User, Monitor, Zap } from 'lucide-react';
 
-export default function WorkflowSection({ 
-  workflow, 
-  index, 
-  colors, 
-  isLast 
-}: WorkflowSectionProps) {
+export default function WorkflowSection({ workflow, index, colors, isLast }: WorkflowSectionProps) {
   const { isSuperAdmin } = useUser();
   return (
     <div className="space-y-4">
@@ -34,13 +29,15 @@ export default function WorkflowSection({
         />
 
         {/* UI Response */}
-        <StepList
+        <>
+        {workflow.uiSteps && <StepList
           icon={Monitor}
           iconColor="text-blue-600 dark:text-blue-400"
           title="System Response (UI)"
           steps={workflow.uiSteps || []}
           stepColor="text-blue-600 dark:text-blue-400"
-        />
+        />}
+        </>
 
         {/* Technical Flow */}
         {isSuperAdmin && (
@@ -55,9 +52,7 @@ export default function WorkflowSection({
         )}
       </div>
 
-      {!isLast && (
-        <Separator className="bg-gray-200 dark:bg-gray-700 my-6" />
-      )}
+      {!isLast && <Separator className="bg-gray-200 dark:bg-gray-700 my-6" />}
     </div>
   );
 }

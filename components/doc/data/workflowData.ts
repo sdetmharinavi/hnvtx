@@ -38,6 +38,68 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
+  {
+    value: "log_book_diary",
+    icon: "FileClock",
+    title: "Log Book (Diary)",
+    subtitle: "Daily Logs & Events",
+    gradient: "from-pink-500 to-rose-600",
+    iconColor: "text-pink-400",
+    bgGlow: "bg-pink-500/10",
+    color: "orange", // Reusing orange theme for similar warmth
+    purpose: "To record daily maintenance activities, faults attended, and critical events in a structured timeline.",
+    workflows: [
+      {
+        title: "1. Viewing Daily Logs",
+        userSteps: [
+          "Navigate to `/dashboard/diary`.",
+          "The default view shows the **current month's calendar** on the left and selected day's entries on the right.",
+          "**Day View:** Click any date on the calendar. The list updates to show notes for *that specific day*.",
+          "**Feed View:** Click 'Month Feed' to see a scrolling list of ALL activities for the selected month.",
+          "Click 'Today' to instantly jump back to the current date.",
+        ],
+        uiSteps: [
+          "Dates with entries are highlighted on the calendar.",
+          "Search bar filters notes by content or tags across the *entire month*.",
+        ],
+        techSteps: [
+          "**Hook:** `useDiaryData` fetches a range (start of month to end of month).",
+          "**Optimization:** Data is fetched once for the month and filtered client-side for speed.",
+        ],
+      },
+      {
+        title: "2. Creating Entries",
+        userSteps: [
+          "Click 'Create Entry' (visible if you have Admin permissions).",
+          "The date defaults to the currently selected day on the calendar.",
+          "**Tags:** Enter comma-separated tags (e.g., 'fault, fiber cut, critical') for easier searching later.",
+          "**Content:** Use the Rich Text Editor to format your log (Bold, Lists, Tables, etc.).",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "The new note appears immediately in the list.",
+          "A toast notification confirms success.",
+        ],
+        techSteps: [
+          "**Component:** `DiaryFormModal` uses `FormRichTextEditor` based on Tiptap.",
+          "**Mutation:** `useTableInsert` sends data to `diary_notes` table.",
+        ],
+      },
+      {
+        title: "3. Bulk Import Logs",
+        userSteps: [
+          "Click 'Actions' -> 'Upload'.",
+          "Select an Excel file with columns: `note_date`, `content`, `tags`.",
+          "The system will upsert these records, matching by Date + User.",
+        ],
+        techSteps: [
+          "**Hook:** `useDiaryExcelUpload` handles parsing and batch insertion.",
+          "**Constraint:** `unique_note_per_user_per_day` ensures no duplicates for the same day/user.",
+        ],
+      },
+    ],
+  },
+
   // ============================================================================
   // MODULE 2: BASE MASTER DATA (Setup)
   // ============================================================================

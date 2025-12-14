@@ -102,7 +102,7 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
                     name="tagString"
                     label="Tags"
                     register={register}
-                    placeholder="e.g. maintenance, critical, visit"
+                    placeholder="e.g. maintenance, critical, fiber cut"
                     // Pass the error if tagString validation fails
                     error={errors.tagString}
                 />
