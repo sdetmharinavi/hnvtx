@@ -35,6 +35,9 @@ export const useLookupTypesData = (
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
+      // Default DB sort
+      p_order_by: 'sort_order', 
+      p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: Lookup_typesRowSchema[] })?.data || [];
@@ -77,13 +80,20 @@ export const useLookupTypesData = (
       );
     }
 
-    if (!filters.category) {
-        filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
-    }
+    // Explicitly hide 'DEFAULT' placeholder entries if they exist
+    filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
+
+    // SORTING: Priority 1: Sort Order, Priority 2: Name
+    filtered.sort((a, b) => {
+        const orderDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        if (orderDiff !== 0) return orderDiff;
+        return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+    });
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((l) => l.status === true).length;
 
+    // Pagination
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);

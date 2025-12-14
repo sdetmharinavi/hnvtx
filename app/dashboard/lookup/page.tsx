@@ -13,8 +13,6 @@ import {
 } from "@/components/lookup/LookupTypesEmptyStates";
 import { LookupTypesFilters } from "@/components/lookup/LookupTypesFilters";
 import { LookupTypesTable } from "@/components/lookup/LookupTypesTable";
-// REMOVED: Unused import
-// import { useDeleteManager } from "@/hooks/useDeleteManager";
 import { useSorting } from "@/hooks/useSorting";
 import { useMemo, useCallback, useEffect } from "react";
 import { FiList } from "react-icons/fi";
@@ -26,12 +24,20 @@ import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { createClient } from "@/utils/supabase/client";
 import { localDb } from "@/hooks/data/localDb";
 import { useLookupActions } from "@/components/lookup/lookup-hooks";
+import { useUser } from "@/providers/UserProvider";
+import { UserRole } from "@/types/user-roles";
 
 export default function LookupTypesPage() {
   const {
     handlers: { handleCategoryChange },
     selectedCategory,
   } = useLookupActions();
+  
+  const { isSuperAdmin, role } = useUser();
+
+  // --- PERMISSIONS ---
+  const canManage = isSuperAdmin || role === UserRole.ADMIN;
+  const canDelete = !!isSuperAdmin;
 
   const {
     data: lookupTypes,
@@ -45,7 +51,7 @@ export default function LookupTypesPage() {
     search,
     filters,
     editModal,
-    deleteModal, // THE FIX: Destructure deleteModal from useCrudManager
+    deleteModal,
     actions: crudActions,
   } = useCrudManager<"lookup_types", Lookup_typesRowSchema>({
     tableName: "lookup_types",
@@ -79,9 +85,6 @@ export default function LookupTypesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, filters.setFilters]);
 
-  // THE FIX: Removed the redundant local deleteManager. 
-  // useCrudManager handles this internally.
-
   const {
     sortedData: sortedLookupTypes,
     handleSort,
@@ -89,6 +92,7 @@ export default function LookupTypesPage() {
   } = useSorting({
     data: lookupTypes,
     defaultSortKey: "sort_order",
+    defaultDirection: "asc", // Ensure explicit ascending order
   });
 
   const handleRefresh = useCallback(async () => {
@@ -103,9 +107,10 @@ export default function LookupTypesPage() {
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
     onRefresh: handleRefresh,
-    onAddNew: hasSelectedCategory
-      ? editModal.openAdd
-      : () => toast.error("Please select a category first."),
+    // Gate Add New button
+    onAddNew: canManage 
+      ? (hasSelectedCategory ? editModal.openAdd : () => toast.error("Please select a category first."))
+      : undefined,
     isLoading: isLoading,
     exportConfig: {
       tableName: "lookup_types",
@@ -120,8 +125,8 @@ export default function LookupTypesPage() {
   });
 
   const headerStats = [
-    { value: totalCount - 1, label: "Total Types in Category" },
-    { value: activeCount - 1, label: "Active", color: "success" as const },
+    { value: totalCount, label: "Total Types" }, // Count is already accurate from hook
+    { value: activeCount, label: "Active", color: "success" as const },
     { value: inactiveCount, label: "Inactive", color: "danger" as const },
   ];
 
@@ -176,19 +181,20 @@ export default function LookupTypesPage() {
         <Card className='overflow-hidden'>
           <div className='border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4'>
             <p className='text-sm text-gray-600 dark:text-gray-400'>
-              Showing {lookupTypes.length} of {totalCount} lookup types for category:{" "}
+              Showing {lookupTypes.length} lookup types for category:{" "}
               <strong className='text-gray-900 dark:text-gray-100'>{`"${selectedCategory}"`}</strong>
             </p>
           </div>
           <LookupTypesTable
             lookups={sortedLookupTypes}
-            onEdit={editModal.openEdit}
-            onDelete={crudActions.handleDelete}
-            onToggleStatus={handleToggleStatusAdapter}
+            onEdit={canManage ? editModal.openEdit : undefined}
+            onDelete={canDelete ? crudActions.handleDelete : undefined}
+            onToggleStatus={canManage ? handleToggleStatusAdapter : undefined}
             selectedCategory={selectedCategory}
             searchTerm={search.searchQuery}
             onSort={handleSort}
             getSortDirection={getSortDirection}
+            canManage={canManage} // Pass permission for visual disabling if needed
           />
         </Card>
       )}
@@ -205,7 +211,6 @@ export default function LookupTypesPage() {
         categories={categories}
       />
 
-      {/* THE FIX: Use deleteModal object from useCrudManager */}
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}

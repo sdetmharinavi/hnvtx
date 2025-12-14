@@ -118,6 +118,52 @@ export const workflowSections: WorkflowSection[] = [
         ],
       },
       {
+        title: "3. Viewing & Filtering",
+        userSteps: [
+          "Navigate to `/dashboard/lookup`.",
+          "**Step 1:** Select a Category from the dropdown (e.g., `PORT_TYPES`).",
+          "**Step 2:** View the table of options.",
+          "**Search:** Use the search bar to find specific codes or names.",
+        ],
+        uiSteps: [
+          "Table displays Sort Order, Name, Short Code, and Description.",
+          "Defaults to sorting by `Order` then `Name`.",
+        ],
+        techSteps: [
+          "**Hook:** `useLookupTypesData` uses `useLocalFirstQuery`.",
+          "**Filtering:** RPC call filters by `category` column.",
+        ],
+      },
+      {
+        title: "3.1. Adding/Editing Options",
+        userSteps: [
+          "Click 'Add New' (Admin/Super Admin).",
+          "Enter Name. Code is auto-generated but can be edited.",
+          "Set 'Sort Order' to control dropdown position (Lower numbers appear first).",
+          "Click 'Create'.",
+        ],
+        uiSteps: [
+          "System Default items are marked with a 'Yes' badge and have disabled Edit/Delete buttons.",
+        ],
+        techSteps: [
+          "**Validation:** Prevent editing if `is_system_default` is true to avoid breaking application logic.",
+        ],
+      },
+      {
+        title: "3.2. Deletion Rules",
+        userSteps: [
+          "Click the Trash icon (Super Admin Only).",
+          "Confirm the action.",
+        ],
+        uiSteps: [
+          "Delete button is hidden for non-Super Admins.",
+          "Delete button is disabled for System Default items.",
+        ],
+        techSteps: [
+          "**Constraint:** Standard Foreign Key constraints prevent deleting lookups that are in use by other tables (e.g., a Port Type assigned to a Port).",
+        ],
+      },
+      {
         title: "3. Maintenance Areas (Geo-Hierarchy)",
         userSteps: [
           "Go to `/dashboard/maintenance-areas`.",
