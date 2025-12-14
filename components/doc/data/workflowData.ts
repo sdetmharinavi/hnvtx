@@ -856,13 +856,133 @@ export const workflowSections: WorkflowSection[] = [
   // ============================================================================
   // MODULE 12: RINGS MANAGEMENT
   // ============================================================================
+{
+    value: 'ring_manager',
+    icon: 'GiLinkedRings',
+    title: 'Ring Manager',
+    subtitle: 'Ring Association & Order',
+    gradient: 'from-pink-600 to-rose-600',
+    iconColor: 'text-pink-500',
+    bgGlow: 'bg-pink-500/10',
+    color: 'orange', // Reusing orange palette or create pink
+    purpose:
+      'To manage the logical membership of systems within rings, defining their sequence and hub/spur relationships.',
+    workflows: [
+      {
+        title: '1. Ring Definition',
+        userSteps: [
+          'Navigate to `/dashboard/ring-manager`.',
+          "Click 'Add New Ring' to create a named ring entity.",
+          "Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.",
+        ],
+        uiSteps: [
+          'The list shows all rings with their active system counts.',
+          'Expand a ring row to see the list of associated systems in order.',
+        ],
+        techSteps: [
+          '**Table:** `rings` stores the parent entity.',
+          '**Hook:** `useRingManagerData` fetches rings with stats.',
+        ],
+      },
+      {
+        title: '2. Adding Systems to Ring',
+        userSteps: [
+          "Click 'Add Systems to Ring'.",
+          "**Step 1:** Select the target Ring.",
+          "**Step 2:** Select the System to add (Search by Name/IP).",
+          "Set 'Order in Ring' (e.g., 1.0, 2.0). Decimals (1.1) indicate spurs.",
+          "Toggle 'Is Hub' if this system connects spurs to the backbone.",
+          "Click 'Save' (You can queue multiple adds before saving).",
+        ],
+        uiSteps: [
+          'Queued systems appear in a list below the form.',
+          'Clicking Save performs a batch update.',
+        ],
+        techSteps: [
+          '**RPC:** `upsert_system_with_details` handles the `ring_based_systems` association.',
+        ],
+      },
+      {
+        title: '3. Editing Associations',
+        userSteps: [
+          'Expand a ring row in the list.',
+          "Click the 'Edit' (Pencil) icon next to a system.",
+          'Update the Sequence Number or Hub Status.',
+          "Click 'Remove' (Trash icon) to disassociate the system from the ring.",
+        ],
+        techSteps: [
+          '**RPC:** `disassociate_system_from_ring` safely removes the link without deleting the system.',
+        ],
+      },
+    ],
+  },
 
-
+// ============================================================================
+  // MODULE 13: DIAGRAMS & FILES
   // ============================================================================
-  // MODULE 13: SERVICE PROVISIONING
-  // ============================================================================
-
-
+  {
+    value: 'diagrams_files',
+    icon: 'TfiLayoutMediaOverlayAlt',
+    title: 'Diagrams & Documents',
+    subtitle: 'File Storage & Management',
+    gradient: 'from-slate-500 to-gray-600',
+    iconColor: 'text-slate-500',
+    bgGlow: 'bg-slate-500/10',
+    color: 'teal',
+    purpose: 'To securely store network diagrams, manuals, and site photos with folder organization.',
+    workflows: [
+      {
+        title: '1. Folder Management',
+        userSteps: [
+          'Navigate to `/dashboard/diagrams`.',
+          "Click 'Show Upload' to reveal the control panel.",
+          "**Create:** Enter a new folder name and click 'Create'.",
+          "**Delete:** Select a folder and click the trash icon (Admin only).",
+        ],
+        uiSteps: [
+          'The file list filters automatically when a folder is selected.',
+        ],
+        techSteps: [
+          '**Hook:** `useFolders` manages folder state via React Query.',
+          '**Validation:** Prevents deleting non-empty folders (handled by DB constraint/UI check).',
+        ],
+      },
+      {
+        title: '2. Uploading Files',
+        userSteps: [
+          "Select a destination folder.",
+          "**Simple Upload:** Drag & drop files or click to browse.",
+          "**Advanced (Camera):** Switch to 'Advanced Upload' to use the webcam/camera directly.",
+          "Click 'Start Upload'.",
+        ],
+        uiSteps: [
+          'Image optimization (WebP conversion + resizing) happens client-side before upload.',
+          'Progress bars show upload status.',
+        ],
+        techSteps: [
+          '**Library:** `Uppy` handles chunked uploads.',
+          '**Storage:** Files are stored in Supabase Storage/Cloudinary via `/api/upload`.',
+          '**Optimization:** `smartCompress` reduces image size without quality loss.',
+        ],
+      },
+      {
+        title: '3. Viewing & Managing Files',
+        userSteps: [
+          'Switch between Grid and List view.',
+          '**Search:** Filter files by name within the selected folder.',
+          "**Action:** Click the eye icon to preview, download icon to save.",
+        ],
+        uiSteps: [
+          'PDFs open in a new tab.',
+          'Images show a thumbnail preview.',
+        ],
+        techSteps: [
+          '**Table:** `files` linked to `folders` and `users`.',
+        ],
+      },
+    ],
+  },
+  
   // ============================================================================
   // MODULE 14: UTILITIES & MAINTENANCE
   // ============================================================================

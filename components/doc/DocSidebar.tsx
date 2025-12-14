@@ -4,10 +4,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WorkflowSection } from "@/components/doc/types/workflowTypes";
-import { FeatureItem } from "@/components/doc/types/featureTypes"; // New Import
+import { FeatureItem } from "@/components/doc/types/featureTypes";
 import * as LucideIcons from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import AuthButton from "@/components/auth/authButton";
 import ThemeToggle from "@/components/common/ui/theme/ThemeToggle";
 import Image from "next/image";
@@ -33,19 +33,45 @@ const iconMap = {
   FileSpreadsheet: LucideIcons.FileSpreadsheet,
   Globe: LucideIcons.Globe,
   FileClock: LucideIcons.FileClock,
+  TfiLayoutMediaOverlayAlt: LucideIcons.LayoutTemplate,
+  GiLinkedRings: LucideIcons.Link,
+  GoServer: LucideIcons.Server,
+  AiFillMerge: LucideIcons.Merge,
+  FaRoute: LucideIcons.Route,
+  FileText: LucideIcons.FileText,
 } as const;
 
 interface DocSidebarProps {
   sections: WorkflowSection[];
-  features: FeatureItem[]; // New Prop
+  features: FeatureItem[];
 }
 
 export default function DocSidebar({ sections, features }: DocSidebarProps) {
   const pathname = usePathname();
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const user = useAuthStore((state) => state.user);
+
+  // Auto-expand section if we are on its page
+  useEffect(() => {
+    const activeSection = sections.find(s => `/doc/${s.value}` === pathname);
+    if (activeSection) {
+      setExpandedSections(prev => new Set(prev).add(activeSection.value));
+    }
+  }, [pathname, sections]);
+
+  const toggleSection = (value: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
+  };
 
   // Combined filter logic
   const filteredContent = useMemo(() => {
@@ -54,9 +80,20 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
 
     return {
       features: features.filter(f => f.title.toLowerCase().includes(query)),
-      sections: sections.filter(s => s.title.toLowerCase().includes(query))
+      sections: sections.filter(s => 
+        s.title.toLowerCase().includes(query) || 
+        s.workflows.some(w => w.title.toLowerCase().includes(query))
+      )
     };
   }, [sections, features, searchQuery]);
+
+  // Auto-expand if search matches inner workflows
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const matchedIDs = filteredContent.sections.map(s => s.value);
+      setExpandedSections(new Set(matchedIDs));
+    }
+  }, [searchQuery, filteredContent.sections]);
 
   const toggleUserMenu = useCallback(() => {
     setIsUserMenuOpen(prev => !prev);
@@ -69,12 +106,20 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
     return user?.user_metadata?.first_name?.[0]?.toUpperCase() || "U";
   }, [user]);
 
-  // Helper to render a link item
-  const renderLinkItem = (id: string, title: string, iconName: string, href: string, colorClass: string) => {
+  // Updated Item Renderer with support for Children (Workflows)
+  const renderSidebarItem = (
+    id: string, 
+    title: string, 
+    iconName: string, 
+    href: string, 
+    colorClass: string,
+    children?: { title: string, hash: string }[]
+  ) => {
     const isActive = pathname === href;
+    const isExpanded = expandedSections.has(id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Icon = (iconMap as any)[iconName] || LucideIcons.FileText;
-
+    
     return (
       <motion.div
         key={id}
@@ -82,42 +127,81 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
         initial={{ x: -10, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        onHoverStart={() => setHoveredItem(id)}
-        onHoverEnd={() => setHoveredItem(null)}
-        className="relative"
+        className="relative group mb-1"
       >
-        <Link
-          href={href}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden group ${
-            isActive
-              ? "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20"
-              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-          }`}
-        >
-          {/* Hover Background */}
-          {!isActive && hoveredItem === id && (
+        <div className="flex items-center">
+          <Link
+            href={href}
+            onClick={(e) => {
+              if (children && children.length > 0) {
+                 // If clicking the parent link while already active, just toggle expand
+                 if (isActive) {
+                    e.preventDefault();
+                    toggleSection(id);
+                 } else {
+                    // If navigating to it, ensure it expands
+                    if (!isExpanded) toggleSection(id);
+                 }
+              }
+            }}
+            className={`
+              flex flex-1 items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden
+              ${isActive 
+                ? "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 shadow-sm" 
+                : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }
+            `}
+          >
+            {/* Icon */}
+            <div className={`relative z-10 shrink-0 ${isActive ? colorClass : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300'}`}>
+              <Icon className="w-4 h-4" />
+            </div>
+
+            {/* Title */}
+            <span className="relative z-10 flex-1 truncate">{title}</span>
+
+            {/* Active Indicator */}
+            {isActive && (
+              <motion.div layoutId="activeDot" className="w-1.5 h-1.5 rounded-full bg-blue-500 relative z-10" />
+            )}
+          </Link>
+          
+          {/* Chevron for expansion if children exist */}
+          {children && children.length > 0 && (
+             <button 
+                onClick={(e) => { e.preventDefault(); toggleSection(id); }}
+                className={`p-1.5 mr-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${isExpanded ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400'}`}
+             >
+                <LucideIcons.ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+             </button>
+          )}
+        </div>
+
+        {/* Children (Workflows) Tree */}
+        <AnimatePresence>
+          {children && children.length > 0 && isExpanded && (
             <motion.div
-              layoutId="hoverBg"
-              className="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-lg"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-5 mt-1 pl-3 border-l-2 border-gray-100 dark:border-gray-800 space-y-1 pb-2">
+                {children.map((child, idx) => (
+                  <Link
+                    key={idx}
+                    href={`${href}${child.hash}`}
+                    className="block px-2 py-1.5 text-xs text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 truncate"
+                  >
+                    {child.title}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Icon */}
-          <div className={`relative z-10 ${isActive ? colorClass : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300'}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-
-          {/* Title */}
-          <span className="relative z-10 flex-1 truncate">{title}</span>
-
-          {/* Active Indicator */}
-          {isActive && (
-            <motion.div layoutId="activeDot" className="w-1.5 h-1.5 rounded-full bg-blue-500 relative z-10" />
-          )}
-        </Link>
       </motion.div>
     );
   };
@@ -129,7 +213,7 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="w-72 border-r border-gray-200 bg-white/50 dark:bg-gray-950/50 dark:border-gray-800 hidden md:flex flex-col sticky top-0 h-screen backdrop-blur-xl"
     >
-      {/* --- User Header (Same as before) --- */}
+      {/* --- User Header --- */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-20">
         <div className="flex items-center justify-between gap-2">
           {user ? (
@@ -231,7 +315,7 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
             </h3>
             <div className="space-y-0.5">
               {filteredContent.features.map(feature => 
-                renderLinkItem(feature.id, feature.title, feature.icon, `/doc/${feature.id}`, `text-${feature.color}-500`)
+                renderSidebarItem(feature.id, feature.title, feature.icon, `/doc/${feature.id}`, `text-${feature.color}-500`)
               )}
             </div>
           </div>
@@ -244,9 +328,22 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
                <LucideIcons.Workflow className="w-3 h-3" /> Workflows
             </h3>
              <div className="space-y-0.5">
-              {filteredContent.sections.map(section => 
-                 renderLinkItem(section.value, section.title, section.icon, `/doc/${section.value}`, section.iconColor.replace('text-', 'text-').split(' ')[0])
-              )}
+              {filteredContent.sections.map(section => {
+                 // Prepare children data
+                 const workflowChildren = section.workflows.map((w, idx) => ({
+                    title: w.title,
+                    hash: `#workflow-${idx}`
+                 }));
+
+                 return renderSidebarItem(
+                    section.value, 
+                    section.title, 
+                    section.icon, 
+                    `/doc/${section.value}`, 
+                    section.iconColor.replace('text-', 'text-').split(' ')[0],
+                    workflowChildren
+                 );
+              })}
             </div>
           </div>
         )}

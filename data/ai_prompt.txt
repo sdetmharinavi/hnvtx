@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, We will first check one by one each page for any error fix/UI-UX enchancement as well as update the doc page wise on how to use explaining each and every aspect.So lets start with diary.
+Let's begin! First of all, We have checked one by one each page for any error fix/UI-UX enchancement as well as update the doc page wise on how to use explaining each and every aspect.But it seems Ring manager, diagrams, kml manager sections are still pending. Lets first do that one by one.

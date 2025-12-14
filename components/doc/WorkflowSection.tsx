@@ -5,10 +5,17 @@ import { WorkflowSectionProps } from '@/components/doc/types/workflowTypes';
 import { useUser } from '@/providers/UserProvider';
 import { User, Monitor, Zap } from 'lucide-react';
 
-export default function WorkflowSection({ workflow, index, colors, isLast }: WorkflowSectionProps) {
+// Added 'id' to props interface
+interface ExtendedProps extends WorkflowSectionProps {
+  id?: string;
+}
+
+export default function WorkflowSection({ workflow, index, colors, isLast, id }: ExtendedProps) {
   const { isSuperAdmin } = useUser();
+  
   return (
-    <div className="space-y-4">
+    // Added id attribute here for anchor scrolling
+    <div id={id} className="space-y-4 scroll-mt-24">
       <div className="flex items-center gap-3">
         <div className={`px-3 py-1 rounded-full text-xs font-medium border ${colors.badge}`}>
           Workflow {String.fromCharCode(65 + index)}

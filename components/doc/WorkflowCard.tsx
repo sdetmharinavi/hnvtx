@@ -125,7 +125,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
             {/* Back button */}
             <motion.div variants={itemVariants}>
               <Link
-                href='/dashboard'
+                href='/doc'
                 className={`
                   inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
                   bg-gray-100 dark:bg-gray-800/50
@@ -136,7 +136,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                   transition-all duration-200 text-sm font-medium group
                 `}>
                 <ArrowLeft className='w-4 h-4 group-hover:-translate-x-0.5 transition-transform' />
-                Dashboard
+                Docs Home
               </Link>
             </motion.div>
 
@@ -205,6 +205,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                       ease: "easeOut" as const,
                     }}>
                     <WorkflowSectionComponent
+                      id={`workflow-${index}`} // PASSING THE ID HERE
                       workflow={workflow}
                       index={index}
                       colors={colors}
