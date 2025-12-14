@@ -8,7 +8,7 @@ import { GiLinkedRings } from 'react-icons/gi';
 import { FaNetworkWired } from 'react-icons/fa';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, StatusBadge } from '@/components/common/ui';
+import { ConfirmModal, StatusBadge, ErrorDisplay } from '@/components/common/ui'; // Added ErrorDisplay import
 import { RingModal } from '@/components/rings/RingModal';
 import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { DataTable, TableAction } from '@/components/table';
@@ -24,6 +24,26 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
 import { FiMapPin } from 'react-icons/fi';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
+
+const STATUS_OPTIONS = {
+    OFC: [
+        { value: 'Pending', label: 'Pending' },
+        { value: 'Partial Ready', label: 'Partial Ready' },
+        { value: 'Ready', label: 'Ready' }
+    ],
+    SPEC: [
+        { value: 'Pending', label: 'Pending' },
+        { value: 'Survey', label: 'Survey' },
+        { value: 'Issued', label: 'Issued' }
+    ],
+    BTS: [
+        { value: 'Pending', label: 'Pending' },
+        { value: 'Configured', label: 'Configured' },
+        { value: 'On-Air', label: 'On-Air' }
+    ]
+};
 
 export default function RingsPage() {
   const router = useRouter();
@@ -31,9 +51,13 @@ export default function RingsPage() {
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
 
+  const { isSuperAdmin, role } = useUser();
+
   const {
     data: rings,
-    totalCount, activeCount, inactiveCount,
+    totalCount,
+    // activeCount,
+    // inactiveCount,
     isLoading, isMutating, isFetching, error, refetch,
     pagination, search, filters,
     editModal, deleteModal, actions: crudActions
@@ -43,6 +67,10 @@ export default function RingsPage() {
     displayNameField: 'name',
     searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
   });
+
+  // --- PERMISSIONS ---
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canDelete = !!isSuperAdmin;
   
   const { ringTypeOptions, maintenanceAreaOptions } = useMemo(() => {
     const uniqueRingTypes = new Map<string, { id: string; name: string }>();
@@ -63,7 +91,38 @@ export default function RingsPage() {
     };
   }, [rings]);
 
-  // THE FIX: Call the hooks at the top level of the component.
+  // --- DYNAMIC STATS CALCULATION ---
+  const { stats, totalNodesAcrossRings } = useMemo(() => {
+    const s = {
+        spec: { issued: 0, pending: 0 },
+        ofc: { ready: 0, partial: 0, pending: 0 },
+        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+    };
+    
+    let nodesSum = 0;
+
+    rings.forEach(r => {
+        nodesSum += (r.total_nodes || 0);
+
+        if (r.spec_status === 'Issued') s.spec.issued++;
+        else s.spec.pending++;
+
+        if (r.ofc_status === 'Ready') s.ofc.ready++;
+        else if (r.ofc_status === 'Partial Ready') s.ofc.partial++;
+        else s.ofc.pending++;
+
+        if (r.bts_status === 'On-Air') {
+          s.bts.onAir++;
+          s.bts.nodesOnAir += (r.total_nodes ?? 0);
+        } else if (r.bts_status === 'Configured') {
+          s.bts.configuredCount++;
+        } else {
+          s.bts.pending++;
+        }
+    });
+    return { stats: s, totalNodesAcrossRings: nodesSum };
+  }, [rings]);
+
   const columns = RingsColumns(rings);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
 
@@ -78,9 +137,9 @@ export default function RingsPage() {
 
   const tableActions = useMemo((): TableAction<'v_rings'>[] => {
     const standardActions = createStandardActions<V_ringsRowSchema>({
-      onEdit: editModal.openEdit,
+      onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
-      onDelete: crudActions.handleDelete,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
     standardActions.unshift({
       key: 'manage-systems', label: 'Manage Systems',
@@ -88,22 +147,32 @@ export default function RingsPage() {
       onClick: handleManageSystems, variant: 'secondary'
     });
     return standardActions;
-  }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems]);
+  }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems, canEdit, canDelete]);
 
   const isInitialLoad = isLoading && rings.length === 0;
 
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: editModal.openAdd,
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'rings' },
   });
 
   const headerStats = [
-    { value: totalCount, label: 'Total Rings' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+    // THE FIX: Added Total Nodes sum to the first stat card
+    { value: `${totalNodesAcrossRings} / ${totalCount}`, label: 'Total Nodes / Rings' },
+    { value: `${stats.bts.nodesOnAir} / ${stats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
+    {
+      value: `${stats.spec.issued} / ${stats.spec.pending}`,
+      label: 'SPEC (Issued/Pend)',
+      color: 'primary' as const,
+    },
+    {
+      value: `${stats.ofc.ready} / ${stats.ofc.partial} / ${stats.ofc.pending}`,
+      label: 'OFC (Ready/Partial/Pend)',
+      color: 'warning' as const,
+    },
   ];
 
   const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
@@ -154,14 +223,14 @@ export default function RingsPage() {
   }, []);
 
   if (error) {
-    // You should handle the error state here, e.g., show an error message
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
   }
 
   return (
     <div className='mx-auto space-y-4 p-6'>
       <PageHeader
         title='Ring Management'
-        description='Manage network rings and their related information.'
+        description='Manage network rings, assign systems, and track phase progress.'
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
@@ -211,8 +280,30 @@ export default function RingsPage() {
               setFilters={filters.setFilters}
               options={maintenanceAreaOptions}
             />
+            {/* Extended Status Filters */}
             <SelectFilter
-              label="Status"
+              label="OFC Status"
+              filterKey="ofc_status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={STATUS_OPTIONS.OFC}
+            />
+            <SelectFilter
+              label="SPEC Status"
+              filterKey="spec_status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={STATUS_OPTIONS.SPEC}
+            />
+            <SelectFilter
+              label="BTS Status"
+              filterKey="bts_status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={STATUS_OPTIONS.BTS}
+            />
+            <SelectFilter
+              label="Active Record"
               filterKey="status"
               filters={filters.filters}
               setFilters={filters.setFilters}

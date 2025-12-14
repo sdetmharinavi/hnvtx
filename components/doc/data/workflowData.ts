@@ -195,6 +195,72 @@ export const workflowSections: WorkflowSection[] = [
           "**Hook:** `useMaintenanceAreasData` builds the tree structure in memory.",
         ],
       },
+      {
+        title: "5. Creating Nodes",
+        userSteps: [
+          "Navigate to `/dashboard/nodes`.",
+          "**Sorting:** Nodes are sorted alphabetically by 'Node Name' by default.",
+          "Click 'Add New' (Admin/Asset Admin/Super Admin).",
+          "Enter 'Name' (e.g., 'Kolkata Exchange').",
+          "Select 'Node Type' (e.g., Exchange, BTS, Joint) and 'Maintenance Area'.",
+          "Enter exact GPS coordinates (Latitude/Longitude).",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "Duplicates can be checked using the 'Find Duplicates' button.",
+        ],
+        techSteps: [
+          "**Hook:** `useNodesData` uses RPC for efficient fetching and sorting.",
+          "**Table:** `nodes`.",
+        ],
+      },
+      {
+        title: "5.1. Visualizing Nodes",
+        userSteps: [
+          "**Grid View:** Displays cards with Node Name, Type, and GPS coordinates.",
+          "**Table View:** Shows detailed columns including Status and Remarks.",
+          "Click on a card or 'View Details' to see full metadata in a modal.",
+        ],
+        uiSteps: [
+          "Icons on cards change dynamically based on Node Type (e.g., Tower vs. Building).",
+        ],
+        techSteps: [
+          "**Logic:** `getNodeIcon` helper determines the visual representation.",
+        ],
+      },
+      {
+        title: "6. Managing Rings",
+        userSteps: [
+          "Navigate to `/dashboard/rings`.",
+          "**Stats:** The header displays live counts of Nodes On-Air, OFC Ready status, and SPEC Issued status.",
+          "**Filtering:** Use the expanded filter panel to find rings by Phase Status (e.g., 'OFC Ready' or 'BTS On-Air').",
+          "Click 'Add New' to create a ring. Set its type (Access, Aggregation) and initial status.",
+        ],
+        uiSteps: [
+          "The 'Manage Systems' button opens a modal to add/remove systems from the ring.",
+        ],
+        techSteps: [
+          "**Hook:** `useRingsData` applies complex filtering locally for speed.",
+          "**Stats:** Calculated dynamically on the client based on the filtered dataset.",
+        ],
+      },
+      {
+        title: "6.1. Ring Topology Visualization",
+        userSteps: [
+          "Click the ring name or 'View Details' icon.",
+          "**Schematic View:** Shows a logical diagram with Hubs in the center and spurs radiating outward.",
+          "**Map View:** Shows systems plotted on a geographic map, connected by lines.",
+          "Click 'Configure Topology' to logically break links (e.g., open loop).",
+        ],
+        uiSteps: [
+          "Leaflet map renders custom icons based on the system/node type.",
+          "Connections are drawn based on `order_in_ring` sequence.",
+        ],
+        techSteps: [
+          "**View:** `v_ring_nodes` joins systems, nodes, and ring associations.",
+          "**Logic:** `ClientRingMap` handles the visual rendering.",
+        ],
+      },
     ],
   },
 

@@ -7,10 +7,6 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 
-/**
- * This is the refactored data fetching hook for the Rings page.
- * It now uses the `useLocalFirstQuery` hook to implement a local-first strategy.
- */
 export const useRingsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ringsRowSchema> => {
@@ -41,13 +37,15 @@ export const useRingsData = (
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
+      p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_ringsRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_rings.toArray();
+    // Sort by name locally
+    return localDb.v_rings.orderBy('name').toArray();
   }, []);
 
   const {
@@ -75,6 +73,7 @@ export const useRingsData = (
 
     let filtered = allRings;
 
+    // 1. Search Filter
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -85,10 +84,30 @@ export const useRingsData = (
           ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
       );
     }
+
+    // 2. Exact Match Filters (Dropdowns)
     if (filters.status) {
       filtered = filtered.filter(r => String(r.status) === filters.status);
     }
+    if (filters.ring_type_id) {
+        filtered = filtered.filter(r => r.ring_type_id === filters.ring_type_id);
+    }
+    if (filters.maintenance_terminal_id) {
+        filtered = filtered.filter(r => r.maintenance_terminal_id === filters.maintenance_terminal_id);
+    }
+    
+    // 3. New Status Filters
+    if (filters.ofc_status) {
+        filtered = filtered.filter(r => r.ofc_status === filters.ofc_status);
+    }
+    if (filters.spec_status) {
+        filtered = filtered.filter(r => r.spec_status === filters.spec_status);
+    }
+    if (filters.bts_status) {
+        filtered = filtered.filter(r => r.bts_status === filters.bts_status);
+    }
 
+    // 4. Sorting
     filtered.sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
     );
