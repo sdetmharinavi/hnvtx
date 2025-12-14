@@ -31,10 +31,11 @@ import { Row } from '@/hooks/database';
 import { EmployeeCard } from '@/components/employee/EmployeeCard'; // NEW IMPORT
 import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui';
+import { UserRole } from '@/types/user-roles';
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { isSuperAdmin } = useUser();
+  const { isSuperAdmin, role } = useUser();
 
   const {
     data: employees,
@@ -77,8 +78,14 @@ export default function EmployeesPage() {
   const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
 
   // Options Mappers
-  const desOptions = useMemo(() => designations.map(d => ({ value: d.id, label: d.name })), [designations]);
-  const areaOptions = useMemo(() => maintenanceAreas.map(a => ({ value: a.id, label: a.name })), [maintenanceAreas]);
+  const desOptions = useMemo(
+    () => designations.map((d) => ({ value: d.id, label: d.name })),
+    [designations]
+  );
+  const areaOptions = useMemo(
+    () => maintenanceAreas.map((a) => ({ value: a.id, label: a.name })),
+    [maintenanceAreas]
+  );
 
   // Table Logic
   const columns = useMemo(() => getEmployeeTableColumns(), []);
@@ -91,14 +98,23 @@ export default function EmployeesPage() {
         onView: viewModal.open,
         onEdit: editModal.openEdit,
         onToggleStatus: isSuperAdmin ? crudActions.handleToggleStatus : undefined,
-        onDelete:  isSuperAdmin ? crudActions.handleDelete : undefined,
+        onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
       }) as TableAction<'v_employees'>[],
-    [viewModal.open, editModal.openEdit, isSuperAdmin, crudActions.handleToggleStatus, crudActions.handleDelete]
+    [
+      viewModal.open,
+      editModal.openEdit,
+      isSuperAdmin,
+      crudActions.handleToggleStatus,
+      crudActions.handleDelete,
+    ]
   );
 
   const headerActions = useStandardHeaderActions<'employees'>({
     data: employees as EmployeesRowSchema[],
-    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
+    },
     onAddNew: editModal.openAdd,
     isLoading: isLoading,
     exportConfig: { tableName: 'employees' },
@@ -111,20 +127,29 @@ export default function EmployeesPage() {
   ];
 
   // Render Mobile (always List Card)
-  const renderMobileItem = useCallback((record: Row<'v_employees'>) => {
-     return (
-        <EmployeeCard 
-           employee={record as V_employeesRowSchema} 
-           onEdit={editModal.openEdit} 
-           onDelete={crudActions.handleDelete} 
-           canManage={!!isSuperAdmin}
-           viewMode="list"
+  const renderMobileItem = useCallback(
+    (record: Row<'v_employees'>) => {
+      return (
+        <EmployeeCard
+          employee={record as V_employeesRowSchema}
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          canDelete={!!isSuperAdmin}
+          canEdit={!!isSuperAdmin || !!(role === UserRole.ADMIN)}
+          viewMode="list"
         />
-     );
-  }, [editModal.openEdit, crudActions.handleDelete, isSuperAdmin]);
+      );
+    },
+    [editModal.openEdit, crudActions.handleDelete, isSuperAdmin, role]
+  );
 
-
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="mx-auto space-y-6 p-4 md:p-6">
@@ -137,56 +162,68 @@ export default function EmployeesPage() {
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-      
+
       {/* Controls Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search employees..." 
-                value={search.searchQuery} 
-                onChange={(e) => search.setSearchQuery(e.target.value)}
-                leftIcon={<FiSearch className="text-gray-400" />}
-                fullWidth
+        <div className="w-full lg:w-96">
+          <Input
+            placeholder="Search employees..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            leftIcon={<FiSearch className="text-gray-400" />}
+            fullWidth
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[180px]">
+            <SearchableSelect
+              placeholder="Designation"
+              options={desOptions}
+              value={filters.filters.employee_designation_id as string}
+              onChange={(v) =>
+                filters.setFilters((prev) => ({ ...prev, employee_designation_id: v }))
+              }
+              clearable
             />
           </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[180px]">
-                <SearchableSelect 
-                   placeholder="Designation"
-                   options={desOptions}
-                   value={filters.filters.employee_designation_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, employee_designation_id: v}))}
-                   clearable
-                />
-             </div>
-             <div className="min-w-[180px]">
-                 <SearchableSelect 
-                   placeholder="Area"
-                   options={areaOptions}
-                   value={filters.filters.maintenance_terminal_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, maintenance_terminal_id: v}))}
-                   clearable
-                />
-             </div>
-             {/* View Toggle (Hidden on Mobile) */}
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
-                   onClick={() => setViewMode('grid')}
-                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-                   title="Grid View"
-                >
-                    <FiGrid />
-                </button>
-                <button 
-                   onClick={() => setViewMode('table')}
-                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-                   title="Table View"
-                >
-                    <FiList />
-                </button>
-             </div>
+          <div className="min-w-[180px]">
+            <SearchableSelect
+              placeholder="Area"
+              options={areaOptions}
+              value={filters.filters.maintenance_terminal_id as string}
+              onChange={(v) =>
+                filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: v }))
+              }
+              clearable
+            />
           </div>
+          {/* View Toggle (Hidden on Mobile) */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <FiGrid />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <FiList />
+            </button>
+          </div>
+        </div>
       </div>
 
       <BulkActions
@@ -198,55 +235,56 @@ export default function EmployeesPage() {
         entityName="employee"
         showStatusUpdate={true}
       />
-      
+
       {/* Content Area */}
       {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-             {employees.map(emp => (
-                <EmployeeCard 
-                    key={emp.id} 
-                    employee={emp} 
-                    onEdit={editModal.openEdit} 
-                    onDelete={crudActions.handleDelete} 
-                    canManage={!!isSuperAdmin} 
-                />
-             ))}
-             {employees.length === 0 && !isLoading && (
-                 <div className="col-span-full py-12 text-center text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                    No employees found matching your criteria.
-                 </div>
-             )}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {employees.map((emp) => (
+            <EmployeeCard
+              key={emp.id}
+              employee={emp}
+              onEdit={editModal.openEdit}
+              onDelete={crudActions.handleDelete}
+              canDelete={!!isSuperAdmin}
+              canEdit={!!isSuperAdmin || !!(role === UserRole.ADMIN)}
+            />
+          ))}
+          {employees.length === 0 && !isLoading && (
+            <div className="col-span-full py-12 text-center text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+              No employees found matching your criteria.
+            </div>
+          )}
+        </div>
       ) : (
         <DataTable
-            tableName="v_employees"
-            data={employees}
-            columns={orderedColumns}
-            loading={isLoading}
-            isFetching={isFetching || isMutating}
-            actions={tableActions}
-            selectable={!!isSuperAdmin}
-            onRowSelect={(selectedRows) => {
-                const validRows = selectedRows.filter(
-                    (row): row is V_employeesRowSchema & { id: string } => row.id != null
-                );
-                bulkActions.handleRowSelect(validRows);
-            }}
-            onCellEdit={crudActions.handleCellEdit}
-            pagination={{
-                current: pagination.currentPage,
-                pageSize: pagination.pageLimit,
-                total: totalCount,
-                showSizeChanger: true,
-                onChange: (page, pageSize) => {
-                    pagination.setCurrentPage(page);
-                    pagination.setPageLimit(pageSize);
-                },
-            }}
-            // Disable default toolbar since we have a custom one above
-            customToolbar={<></>} 
-            // Mobile render
-            renderMobileItem={renderMobileItem}
+          tableName="v_employees"
+          data={employees}
+          columns={orderedColumns}
+          loading={isLoading}
+          isFetching={isFetching || isMutating}
+          actions={tableActions}
+          selectable={!!isSuperAdmin}
+          onRowSelect={(selectedRows) => {
+            const validRows = selectedRows.filter(
+              (row): row is V_employeesRowSchema & { id: string } => row.id != null
+            );
+            bulkActions.handleRowSelect(validRows);
+          }}
+          onCellEdit={crudActions.handleCellEdit}
+          pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            showSizeChanger: true,
+            onChange: (page, pageSize) => {
+              pagination.setCurrentPage(page);
+              pagination.setPageLimit(pageSize);
+            },
+          }}
+          // Disable default toolbar since we have a custom one above
+          customToolbar={<></>}
+          // Mobile render
+          renderMobileItem={renderMobileItem}
         />
       )}
 
@@ -260,13 +298,13 @@ export default function EmployeesPage() {
         designations={designations}
         maintenanceAreas={maintenanceAreas}
       />
-      
+
       <EmployeeDetailsModal
         employee={viewModal.record}
         onClose={viewModal.close}
         isOpen={viewModal.isOpen}
       />
-      
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -278,4 +316,4 @@ export default function EmployeesPage() {
       />
     </div>
   );
-};
+}

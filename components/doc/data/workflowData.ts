@@ -37,7 +37,9 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-
+  // ============================================================================
+  // MODULE 2: LOG BOOK (DIARY)
+  // ============================================================================
   {
     value: "log_book_diary",
     icon: "FileClock",
@@ -95,6 +97,58 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "**Hook:** `useDiaryExcelUpload` handles parsing and batch insertion.",
           "**Constraint:** `unique_note_per_user_per_day` ensures no duplicates for the same day/user.",
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 3: EMPLOYEE DIRECTORY
+  // ============================================================================
+  {
+    value: "employee_directory",
+    icon: "BsPeople",
+    title: "Employee Directory",
+    subtitle: "Staff & Contact Management",
+    gradient: "from-blue-400 to-cyan-500",
+    iconColor: "text-blue-500",
+    bgGlow: "bg-blue-500/10",
+    color: "blue",
+    purpose: "To maintain a centralized registry of all staff members, their contact details, designations, and assigned maintenance areas.",
+    workflows: [
+      {
+        title: "1. Adding Employees",
+        userSteps: [
+          "Navigate to `/dashboard/employees`.",
+          "Click 'Add New' in the top right corner.",
+          "Fill in 'Employee Name', 'Designation' (from dropdown), and 'Maintenance Area'.",
+          "Optional: Add Contact Number, Email, DOB, and Address.",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "The list automatically sorts alphabetically by name (Ascending).",
+          "Success toast appears confirming creation.",
+        ],
+        techSteps: [
+          "**Hook:** `useEmployeesData` fetches data via RPC/Local DB and applies `localeCompare` sort.",
+          "**Table:** `employees` linked to `employee_designations` and `maintenance_areas`.",
+        ],
+      },
+      {
+        title: "2. Managing Staff Details",
+        userSteps: [
+          "**Grid View:** Click the 'Edit' button on an employee card.",
+          "**List View:** Click the 'Edit' action in the table row.",
+          "Update fields like 'Contact Number' or change 'Designation'.",
+          "Toggle 'Status' to deactivate employees who have left/transferred.",
+        ],
+        uiSteps: [
+          "Inactive employees show a red status indicator.",
+          "Filters allow viewing only Active or Inactive staff.",
+        ],
+        techSteps: [
+          "**Mutation:** `useTableUpdate` handles partial updates.",
+          "**Validation:** Zod schema ensures required fields like Name are present.",
         ],
       },
     ],

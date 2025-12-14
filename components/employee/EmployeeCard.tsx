@@ -9,7 +9,8 @@ interface EmployeeCardProps {
   employee: V_employeesRowSchema;
   onEdit: (employee: V_employeesRowSchema) => void;
   onDelete: (employee: V_employeesRowSchema) => void;
-  canManage: boolean; // Combined edit/delete permission
+  canDelete: boolean;
+  canEdit: boolean;
   viewMode?: 'grid' | 'list';
 }
 
@@ -17,7 +18,8 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
   employee, 
   onEdit, 
   onDelete, 
-  canManage,
+  canDelete,
+  canEdit,
   viewMode = 'grid'
 }) => {
   const initials = employee.employee_name?.charAt(0).toUpperCase() || '?';
@@ -69,14 +71,14 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
           </div>
         </div>
 
-        {canManage && (
+        {canEdit && (
           <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(employee)}>
               Edit
             </Button>
-            <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2" onClick={() => onDelete(employee)}>
+            {canDelete && (<Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-2" onClick={() => onDelete(employee)}>
               <FiTrash2 className="w-4 h-4" />
-            </Button>
+            </Button>)}
           </div>
         )}
       </div>
@@ -119,10 +121,10 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
          <span className="truncate">{employee.maintenance_area_name}</span>
       </div>
 
-      {canManage && (
+      {canEdit && (
          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <Button size="xs" variant="ghost" onClick={() => onEdit(employee)}>Edit</Button>
-            <Button size="xs" variant="ghost" className="text-red-500" onClick={() => onDelete(employee)}>Delete</Button>
+            <Button size="xs" variant="outline" onClick={() => onEdit(employee)}>Edit</Button>
+            {canDelete && (<Button size="xs" variant="ghost" className="text-red-500" onClick={() => onDelete(employee)}>Delete</Button>)}
          </div>
       )}
     </div>

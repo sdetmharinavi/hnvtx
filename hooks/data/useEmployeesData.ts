@@ -36,13 +36,15 @@ export const useEmployeesData = (
       p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
+      p_order_by: 'employee_name', // Ensure DB sort matches client sort intent
+      p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_employeesRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_employees.toArray();
+    return localDb.v_employees.orderBy('employee_name').toArray();
   }, []);
 
   const {
@@ -86,8 +88,15 @@ export const useEmployeesData = (
       filtered = filtered.filter((emp) => emp.status === statusBool);
     }
 
+    // THE FIX: Explicit ascending sort by employee_name
+    filtered.sort((a, b) => 
+        (a.employee_name || '').localeCompare(b.employee_name || '', undefined, { sensitivity: 'base' })
+    );
+
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
+    const inactiveCount = totalCount - activeCount; // Calculate inactive count
+
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
@@ -96,7 +105,7 @@ export const useEmployeesData = (
       data: paginatedData,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount: inactiveCount,
     };
   }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
 
