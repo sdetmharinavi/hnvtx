@@ -36,15 +36,16 @@ export const useInventoryData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'created_at',
-      p_order_dir: 'desc',
+      p_order_by: 'name', // Changed from created_at to name
+      p_order_dir: 'asc', // Changed from desc to asc
     });
     if (error) throw error;
     return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_inventory_items.toArray();
+    // Sort by name locally as well
+    return localDb.v_inventory_items.orderBy('name').toArray();
   }, []);
 
   const {
@@ -75,9 +76,20 @@ export const useInventoryData = (
         item.asset_no?.toLowerCase().includes(lowerQuery)
       );
     }
+
+    // Apply Filters
+    if (filters.category_id) {
+        filtered = filtered.filter(item => item.category_id === filters.category_id);
+    }
+    if (filters.location_id) {
+        filtered = filtered.filter(item => item.location_id === filters.location_id);
+    }
     
+    // Explicit Client-Side Sort to ensure consistency
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
     const totalCount = filtered.length;
-    const activeCount = totalCount; // No status field
+    const activeCount = totalCount; // Inventory items don't have a standard boolean status field in this view context
 
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
@@ -89,7 +101,7 @@ export const useInventoryData = (
       activeCount,
       inactiveCount: 0,
     };
-  }, [allItems, searchQuery, currentPage, pageLimit]);
+  }, [allItems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
 };

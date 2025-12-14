@@ -155,6 +155,75 @@ export const workflowSections: WorkflowSection[] = [
   },
 
   // ============================================================================
+  // MODULE 6: INVENTORY & ASSETS
+  // ============================================================================
+  {
+    value: "inventory_assets",
+    icon: "Cpu",
+    title: "Inventory Management",
+    subtitle: "Assets, Tracking & QR Codes",
+    gradient: "from-indigo-500 to-purple-500",
+    iconColor: "text-indigo-400",
+    bgGlow: "bg-indigo-500/10",
+    color: "violet",
+    purpose: "To track physical stock, manage asset lifecycle, and generate identification labels.",
+    workflows: [
+      {
+        title: "1. Asset Tracking",
+        userSteps: [
+          "Go to `/dashboard/inventory`.",
+          "**Sorting:** Items are sorted alphabetically by 'Item Name' by default.",
+          "Click 'Add New' (Requires Admin or Asset Admin role).",
+          "Enter 'Asset No', Name, Quantity, and Cost.",
+          "Select 'Location' (Node) and 'Functional Location' (Area).",
+          "Click 'Save'.",
+        ],
+        uiSteps: [
+          "Search bar filters by Asset No, Name, or Description.",
+          "Cards show live stock status (In Stock/Low/Out).",
+          "Total Value is calculated based on visible items.",
+        ],
+        techSteps: [
+          "**Hook:** `useInventoryData` enforces name-based sorting (ascending).",
+          "**View:** `v_inventory_items` joins location IDs to names.",
+          "**Permissions:** Edit restricted to Admin/Asset Admin; Delete restricted to Super Admin.",
+        ],
+      },
+      {
+        title: "2. Issuing Stock",
+        userSteps: [
+          "Click the 'Issue' button (Minus Icon) on an item card.",
+          "Enter Quantity, Date, 'Issued To' (Person), and Reason.",
+          "Click 'Confirm Issue'.",
+        ],
+        uiSteps: [
+          "Stock count decreases immediately.",
+          "The 'History' log is updated with the transaction details.",
+        ],
+        techSteps: [
+          "**RPC:** `issue_inventory_item` performs atomic stock deduction and transaction logging.",
+          "**Validation:** Prevents issuing more than available quantity.",
+        ],
+      },
+      {
+        title: "3. QR Code Generation",
+        userSteps: [
+          "Click the 'QR Code' icon on an item.",
+          "A dedicated page opens with a high-res QR code containing asset metadata.",
+          "Click 'Print QR Code'.",
+        ],
+        uiSteps: [
+          "The print layout strips navigation and sidebars.",
+        ],
+        techSteps: [
+          "**Library:** `qrcode.react`.",
+          "**Route:** `/dashboard/inventory/qr/[id]`.",
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
   // MODULE 2: BASE MASTER DATA (Setup)
   // ============================================================================
   {
@@ -448,56 +517,6 @@ export const workflowSections: WorkflowSection[] = [
         techSteps: [
           "**Component:** `SystemConnectionDetailsModal`.",
           "**Logic:** Uses `useTableRecord` to fetch the parent system and populate missing `sn_ip` or `sn_name` fields on the fly.",
-        ],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 6: INVENTORY & ASSETS
-  // ============================================================================
-  {
-    value: "inventory_assets",
-    icon: "Cpu",
-    title: "Inventory Management",
-    subtitle: "Assets, Tracking & QR Codes",
-    gradient: "from-indigo-500 to-purple-500",
-    iconColor: "text-indigo-400",
-    bgGlow: "bg-indigo-500/10",
-    color: "violet",
-    purpose: "To track physical stock and generate labels.",
-    workflows: [
-      {
-        title: "1. Asset Tracking",
-        userSteps: [
-          "Go to `/dashboard/inventory`.",
-          "Click 'Add New'.",
-          "Enter 'Asset No', Name, Quantity.",
-          "Select 'Location' (Node) and 'Functional Location' (Area).",
-          "Save.",
-        ],
-        uiSteps: [
-          "Search bar allows filtering by Asset No or Name.",
-        ],
-        techSteps: [
-          "**Hook:** `useInventoryData`.",
-          "**View:** `v_inventory_items` joins location IDs to names.",
-        ],
-      },
-      {
-        title: "2. QR Code Generation",
-        userSteps: [
-          "In the Inventory list, click the 'QR Code' icon on an item.",
-          "A new page opens displaying a large QR code containing asset details.",
-          "Click 'Print QR Code'.",
-        ],
-        uiSteps: [
-          "The print view hides navigation/sidebars, printing only the label.",
-        ],
-        techSteps: [
-          "**Library:** `qrcode.react`.",
-          "**Route:** `/dashboard/inventory/qr/[id]`.",
-          "**CSS:** `@media print` styles ensure clean label printing.",
         ],
       },
     ],

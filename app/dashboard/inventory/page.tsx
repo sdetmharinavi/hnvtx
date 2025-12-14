@@ -28,6 +28,7 @@ import { BulkActions } from "@/components/common/BulkActions";
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { createClient } from "@/utils/supabase/client";
 import { localDb } from "@/hooks/data/localDb";
+import { UserRole } from "@/types/user-roles";
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -71,8 +72,8 @@ export default function InventoryPage() {
   const locationOptions = useMemo(() => (locations || []).map(l => ({ value: l.id!, label: l.name! })), [locations]);
 
   // Permission Logic
-  const canManage = useMemo(() => isSuperAdmin || role === 'admin' || role === 'asset_admin', [isSuperAdmin, role]);
-  const canDelete = isSuperAdmin === true;
+  const canEdit = useMemo(() => !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN, [isSuperAdmin, role]);
+  const canDelete = !!isSuperAdmin;
 
   // Calculate Total Value of visible items
   const totalInventoryValue = useMemo(() => {
@@ -106,13 +107,13 @@ export default function InventoryPage() {
   const columns = getInventoryTableColumns();
   const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
     const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
-      onEdit: canManage ? editModal.openEdit : undefined,
-      onDelete: canDelete ? crudActions.handleDelete : undefined, // Only super admin
+      onEdit: canEdit ? editModal.openEdit : undefined,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
     standardActions.unshift({
         key: 'history', label: 'History', icon: <FiClock />, onClick: (r) => handleOpenHistory(r), variant: 'secondary'
     });
-    if (canManage) {
+    if (canEdit) {
         standardActions.unshift({
           key: 'issue', label: 'Issue', icon: <FiMinusCircle className="text-orange-600" />, onClick: (r) => handleOpenIssueModal(r), variant: 'secondary', disabled: (r) => (r.quantity || 0) <= 0,
         });
@@ -121,17 +122,17 @@ export default function InventoryPage() {
       key: 'qr-code', label: 'QR', icon: <FaQrcode />, onClick: (r) => router.push(`/dashboard/inventory/qr/${r.id}`), variant: 'secondary'
     });
     return standardActions;
-  }, [editModal.openEdit, crudActions.handleDelete, canManage, canDelete, router]);
+  }, [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router]);
 
   const headerActions = useStandardHeaderActions<'v_inventory_items'>({
     data: inventory as Row<'v_inventory_items'>[],
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
-    onAddNew: canManage ? editModal.openAdd : undefined,
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading,
     exportConfig: { tableName: 'v_inventory_items', useRpc: true }
   });
 
-  if (canManage) {
+  if (canEdit) {
     headerActions.splice(1, 0, {
         label: isUploading ? 'Importing...' : 'Import', variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading || isLoading, onClick: () => fileInputRef.current?.click(), hideTextOnMobile: true
     });
@@ -217,7 +218,7 @@ export default function InventoryPage() {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="item"
         showStatusUpdate={false}
-        canDelete={() => !!canDelete} // Only show delete if user is super admin
+        canDelete={() => canDelete}
       />
 
       {/* Content Area */}
@@ -232,8 +233,8 @@ export default function InventoryPage() {
                     onIssue={handleOpenIssueModal}
                     onHistory={handleOpenHistory}
                     onQr={(r) => router.push(`/dashboard/inventory/qr/${r.id}`)}
-                    canManage={!!canManage}
-                    canDelete={!!canDelete} // Pass specific delete permission
+                    canManage={canEdit}
+                    canDelete={canDelete}
                 />
              ))}
              {inventory.length === 0 && !isLoading && (
