@@ -436,6 +436,67 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+// ============================================================================
+  // MODULE 21: SYSTEMS MANAGEMENT
+  // ============================================================================
+  {
+    value: "systems_management",
+    icon: "GoServer",
+    title: "Systems",
+    subtitle: "Active Network Elements",
+    gradient: "from-blue-600 to-cyan-600",
+    iconColor: "text-blue-500",
+    bgGlow: "bg-blue-500/10",
+    color: "blue",
+    purpose: "To manage the active network elements (CPAN, SDH, MAAN, OLT) that light up the fiber network.",
+    workflows: [
+      {
+        title: "1. Adding Systems",
+        userSteps: [
+          "Navigate to `/dashboard/systems`.",
+          "Click 'Add New' (Restricted to specific Admins).",
+          "Enter 'System Name', select 'Type' (e.g., CPAN) and 'Location' (Node).",
+          "If it's a Ring-Based system, assign the Ring immediately.",
+          "Add IP Address (automatically formats without subnet) and other details.",
+        ],
+        uiSteps: [
+          "Multi-step modal guides through basic info and topology configuration.",
+        ],
+        techSteps: [
+          "**RPC:** `upsert_system_with_details` transactionally handles system creation and ring association.",
+        ],
+      },
+      {
+        title: "2. Port Management",
+        userSteps: [
+          "Click the 'Manage Ports' (Server icon) on a system card.",
+          "**Templates:** Click 'Apply Template' to auto-generate standard port configs (e.g., 'A1 Config').",
+          "**Heatmap:** View port status (Up/Down/Used) visually.",
+          "Click a port to manually edit its status or capacity.",
+        ],
+        uiSteps: [
+          "Heatmap uses color coding: Green (Free), Blue (Used), Red (Admin Down).",
+        ],
+        techSteps: [
+          "**Bulk Upsert:** Uses `useTableBulkOperations` to efficiently create/update hundreds of ports.",
+          "**View:** `v_ports_management_complete` aggregates status.",
+        ],
+      },
+      {
+        title: "3. System Connections",
+        userSteps: [
+          "Click 'View Details' to see connections originating from or terminating at this system.",
+          "Navigate to `/dashboard/connections` for a global view of all logical links.",
+        ],
+        uiSteps: [
+          "Bi-directional view logic ensures connections are visible from both ends.",
+        ],
+        techSteps: [
+          "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective.",
+        ],
+      },
+    ],
+  },
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)

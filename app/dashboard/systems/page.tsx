@@ -31,7 +31,7 @@ import { useUser } from "@/providers/UserProvider";
 import { Input, SearchableSelect } from "@/components/common/ui";
 import { BulkActions } from "@/components/common/BulkActions";
 import { SystemCard } from "@/components/systems/SystemCard";
-import { UserRole } from "@/types/user-roles";
+import { UserRole } from '@/types/user-roles';
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -67,7 +67,7 @@ export default function SystemsPage() {
 
   // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.CPANADMIN, UserRole.MAANADMIN, UserRole.SDHADMIN].includes(role as UserRole);
-  const canDelete = isSuperAdmin === true;
+  const canDelete = !!isSuperAdmin;
 
   // --- UPLOAD / EXPORT ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
@@ -130,9 +130,12 @@ export default function SystemsPage() {
   
   const tableActions = useMemo(() => {
     const actions = createStandardActions<V_systems_completeRowSchema>({
+      // Condition: Edit
       onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
+      // Condition: Delete
       onDelete: canDelete ? crudActions.handleDelete : undefined,
+      // Condition: Toggle Status
       onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
     });
     actions.unshift({
@@ -173,25 +176,34 @@ export default function SystemsPage() {
     });
   }, [exportSystems, allExportColumns, filters.filters]);
 
-  const headerActions = useMemo((): ActionButton[] => [
+  const headerActions = useMemo((): ActionButton[] => {
+    const actions: ActionButton[] = [
       {
         label: "Refresh", onClick: () => { refetch(); toast.success("Systems refreshed."); },
         variant: "outline", leftIcon: <FiRefreshCw className={isLoading ? "animate-spin" : ""} />, disabled: isLoading,
       },
       {
-        label: isUploading ? "Uploading..." : "Upload", onClick: handleUploadClick,
-        variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,
-        hideTextOnMobile: true
-      },
-      {
         label: isExporting ? "Exporting..." : "Export", onClick: handleExport,
         variant: "outline", leftIcon: <FiDownload />, disabled: isExporting || isLoading,
         hideTextOnMobile: true
-      },
-      {
+      }
+    ];
+
+    // Conditionally Add "Upload" and "Add New"
+    if (canEdit) {
+      actions.splice(1, 0, {
+        label: isUploading ? "Uploading..." : "Upload", onClick: handleUploadClick,
+        variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,
+        hideTextOnMobile: true
+      });
+      
+      actions.push({
         label: "Add New", onClick: editModal.openAdd, variant: "primary", leftIcon: <FiDatabase />, disabled: isLoading,
-      },
-    ], [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd]);
+      });
+    }
+
+    return actions;
+  }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd, canEdit]);
 
   const headerStats = [
     { value: totalCount, label: "Total Systems" },
@@ -303,7 +315,8 @@ export default function SystemsPage() {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="system"
         showStatusUpdate={true}
-        canDelete={() => !!canDelete}
+        // THE FIX: Delete capability
+        canDelete={() => canDelete}
       />
 
       {viewMode === 'grid' ? (

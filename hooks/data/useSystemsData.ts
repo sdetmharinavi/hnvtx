@@ -41,7 +41,9 @@ export const useSystemsData = (
       p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
+      // THE FIX: Explicit ascending sort
       p_order_by: 'system_name',
+      p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];

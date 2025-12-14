@@ -99,6 +99,7 @@
       "Targetable",
       "tgname",
       "totp",
+      "transactionally",
       "transnet",
       "tsvector",
       "turbopack",
