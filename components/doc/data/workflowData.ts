@@ -297,89 +297,53 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
-  // ============================================================================
-  // MODULE 3: CORE INFRASTRUCTURE (Physical Layer)
+ // ============================================================================
+  // MODULE 18: OFC & ROUTES
   // ============================================================================
   {
-    value: "core_infrastructure",
-    icon: "MapPin",
-    title: "Physical Infrastructure",
-    subtitle: "Nodes, OFC Routes & Topology",
-    gradient: "from-teal-500 to-emerald-600",
-    iconColor: "text-teal-400",
-    bgGlow: "bg-teal-500/10",
-    color: "teal",
-    purpose: "To map the physical reality of the network: Where nodes are located and how physical cables connect them.",
+    value: "ofc_management",
+    icon: "AiFillMerge",
+    title: "OFC Management",
+    subtitle: "Physical Fiber Routes",
+    gradient: "from-orange-500 to-amber-500",
+    iconColor: "text-orange-500",
+    bgGlow: "bg-orange-500/10",
+    color: "orange",
+    purpose: "To manage the physical Optical Fiber Cables (OFC) connecting the network nodes.",
     workflows: [
       {
-        title: "1. Creating Network Nodes",
+        title: "1. Creating Routes",
         userSteps: [
-          "Go to `/dashboard/nodes`.",
-          "Click 'Add New'.",
-          "Enter Node Name (e.g., 'Harinavi Exch'), Select Type (e.g., 'Exchange') and Maintenance Area.",
-          "Enter Latitude/Longitude (Required for maps).",
-          "Click 'Create Node'.",
+          "Navigate to `/dashboard/ofc`.",
+          "**Sorting:** Routes are sorted alphabetically by 'Route Name'.",
+          "Click 'Add New' (Admin/Asset Admin).",
+          "Select 'Start Node' and 'End Node'. The system auto-checks for existing routes between these points.",
+          "Select 'OFC Type' (e.g., 24F, 48F). Capacity is auto-populated and locked.",
+          "Enter 'Asset No' and 'Current RKM' (Route Km).",
+          "Click 'Submit'.",
         ],
         uiSteps: [
-          "Validates coordinates are numbers.",
-          "Success toast appears.",
+          "Route Name is auto-generated (`Start⇔End_N`) but can be manually edited.",
+          "Success message appears, and initial fiber strands are generated in the background.",
         ],
         techSteps: [
-          "**Hook:** `useNodesData` (Offline-first).",
-          "**Table:** `nodes`.",
-          "**View:** `v_nodes_complete` is refreshed.",
+          "**Hook:** `useOfcData` handles searching and filtering.",
+          "**Trigger:** Database trigger `create_initial_connections_for_cable` populates `ofc_connections`.",
         ],
       },
       {
-        title: "2. OFC Route Creation",
+        title: "2. Cable Details",
         userSteps: [
-          "Go to `/dashboard/ofc` -> 'Add New'.",
-          "Select 'Start Node' and 'End Node'.",
-          "Select 'OFC Type' (e.g., 24F). Capacity is auto-locked.",
-          "Click 'Create'.",
+          "Click on a cable card or the 'View' icon.",
+          "**Header:** Shows Summary (Asset No, Route Name) and Metadata (Owner, Comm. Date).",
+          "**Visualization:** Switch to 'Route Visualization' to add JCs (Joints).",
+          "**Fibers:** The table below shows the status of every fiber strand (Available/Occupied).",
         ],
         uiSteps: [
-          "The system auto-generates a route name: `StartNode⇔EndNode_1`.",
-          "Shows a warning if a route already exists between these nodes.",
+          "Utilization stats are shown in the header (e.g., '12/24 Used').",
         ],
         techSteps: [
-          "**Trigger:** `create_initial_connections_for_cable` fires on insert.",
-          "**Automation:** It automatically generates `N` rows in `ofc_connections` (where N=Capacity).",
-        ],
-      },
-      {
-        title: "3. Route Topology (JCs)",
-        userSteps: [
-          "In OFC List, click 'View Details' -> 'Route Visualization' tab.",
-          "Click 'Add Junction Closure'.",
-          "Select a 'Joint' node from the dropdown and enter 'Position (KM)'.",
-          "Click 'Save'.",
-        ],
-        uiSteps: [
-          "The linear graph redraws. The cable line is split visually by the new JC icon.",
-          "Segment list below updates: 'Segment 1' and 'Segment 2'.",
-        ],
-        techSteps: [
-          "**RPC:** `add_junction_closure`.",
-          "**Trigger:** `manage_cable_segments` fires. It calls `recalculate_segments_for_cable` which splits the cable into `cable_segments` based on JC positions.",
-        ],
-      },
-      {
-        title: "4. Fiber Splicing",
-        userSteps: [
-          "In Route Visualization, click a JC icon.",
-          "Switch tab to 'Splice Management'.",
-          "**Manual:** Click Fiber 1 on Left (Incoming) -> Click Fiber 1 on Right (Outgoing) -> 'Confirm'.",
-          "**Auto:** Click 'Auto-Splice' between two segments -> 'Confirm'.",
-          "**Important:** After this, go to `/dashboard/ofc/id` open ***Trace Fiber Path*** and click ***Sync Path to DB***.",
-        ],
-        uiSteps: [
-          "Visual lines connect the fiber indicators.",
-          "Colors change to indicate 'Occupied'.",
-        ],
-        techSteps: [
-          "**RPC:** `manage_splice` (for single) or `auto_splice_straight_segments` (for bulk).",
-          "**Table:** `fiber_splices`. Tracks which segment-fiber connects to which segment-fiber.",
+          "**View:** `v_ofc_connections_complete` joins detailed fiber status.",
         ],
       },
     ],

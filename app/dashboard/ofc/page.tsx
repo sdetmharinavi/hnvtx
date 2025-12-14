@@ -36,7 +36,6 @@ import { UserRole } from '@/types/user-roles';
 const OfcPage = () => {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  // const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSuperAdmin, role } = useUser();
 
   const {
@@ -65,8 +64,10 @@ const OfcPage = () => {
   const isInitialLoad = isLoading && ofcData.length === 0;
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.MAANADMIN || role === UserRole.CPANADMIN;
-  const canDelete = isSuperAdmin === true;
+  // Only Asset Admins, Generic Admins, or Super Admins can edit physical infra
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  // Strictly Super Admin for deletion
+  const canDelete = !!isSuperAdmin;
 
   // Fetch Options
   const { data: ofcTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -74,12 +75,6 @@ const OfcPage = () => {
     async () => (await createClient().from('lookup_types').select('*').eq('category', 'OFC_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'OFC_TYPES' }).toArray()
   );
-  
-  // const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-  //   ['maintenance-areas-for-filter'],
-  //   async () => (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
-  //   async () => await localDb.maintenance_areas.where({ status: true }).toArray()
-  // );
 
   const { data: ofcOwnersData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ofc-owners-for-filter'],
@@ -88,7 +83,6 @@ const OfcPage = () => {
   );
 
   const ofcTypes = useMemo(() => (ofcTypesData || []).filter(t => t.name !== 'DEFAULT'), [ofcTypesData]);
-  // const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
   const ofcOwners = useMemo(() => (ofcOwnersData || []).filter(o => o.name !== 'DEFAULT'), [ofcOwnersData]);
 
   // Table Config
@@ -98,10 +92,11 @@ const OfcPage = () => {
   const tableActions = useMemo(
     () =>
       createStandardActions<V_ofc_cables_completeRowSchema>({
+        // Conditionally pass edit handler
         onEdit: canEdit ? editModal.openEdit : undefined,
         onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
+        // Conditionally pass delete handler
         onDelete: canDelete ? crudActions.handleDelete : undefined,
-        canDelete: () => !!canDelete,
       }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions.handleDelete, canEdit, canDelete]
   );
@@ -109,6 +104,7 @@ const OfcPage = () => {
   const headerActions = useStandardHeaderActions({
     data: ofcData as Ofc_cablesRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    // Conditionally show Add New
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'ofc_cables' },
@@ -206,7 +202,8 @@ const OfcPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="ofc cable"
         showStatusUpdate={true}
-        canDelete={() => !!canDelete}
+        // THE FIX: Pass delete capability
+        canDelete={() => canDelete}
       />
       
       {/* Content */}
@@ -239,6 +236,7 @@ const OfcPage = () => {
             loading={isLoading}
             isFetching={isFetching || isMutating}
             actions={tableActions}
+            // THE FIX: Selectable only if user can delete
             selectable={canDelete}
             onRowSelect={(rows) => {
                 const validRows = rows.filter((row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null);
