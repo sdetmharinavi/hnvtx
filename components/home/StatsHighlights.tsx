@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 export default function StatsHighlights() {
   const stats = [
     { number: "99.9%", label: "Uptime Guarantee", icon: "⚡" },
-    { number: "256-bit", label: "AES Encryption", icon: "🔒" },
-    { number: "Real-Time", label: "Data Insights", icon: "📈" }
+    { number: "Secure", label: "military-grade security", icon: "🔒" },
+    { number: "Offline-capable", label: "high caching ability", icon: "📈" }
   ];
 
   return (

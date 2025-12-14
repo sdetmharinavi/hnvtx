@@ -6,42 +6,42 @@ import { createClient } from '@/utils/supabase/client';
 import { z } from 'zod';
 import { localDb } from '@/hooks/data/localDb';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 import {
-    V_nodes_completeRowSchema,
+    NodesRowSchema,
     V_cable_utilizationRowSchema,
     V_systems_completeRowSchema,
-    V_ports_management_completeRowSchema,
-    V_ofc_cables_completeRowSchema
+    V_ofc_cables_completeRowSchema,
+    V_ports_management_completeRowSchema
 } from '@/schemas/zod-schemas';
+import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 
-// Schema remains the same
+// THE FIX: Added .optional() to all nullable fields to handle 'undefined' responses gracefully
 const dashboardOverviewSchema = z.object({
   system_status_counts: z.object({
     Active: z.number().optional(),
     Inactive: z.number().optional(),
-  }).nullable(),
+  }).nullable().optional(),
   node_status_counts: z.object({
     Active: z.number().optional(),
     Inactive: z.number().optional(),
-  }).nullable(),
-  path_operational_status: z.record(z.string(), z.number()).nullable(),
+  }).nullable().optional(),
+  path_operational_status: z.record(z.string(), z.number()).nullable().optional(),
   cable_utilization_summary: z.object({
-    average_utilization_percent: z.number().nullable(),
-    high_utilization_count: z.number().nullable(),
-    total_cables: z.number().nullable(),
-  }).nullable(),
+    average_utilization_percent: z.number().nullable().optional(),
+    high_utilization_count: z.number().nullable().optional(),
+    total_cables: z.number().nullable().optional(),
+  }).nullable().optional(),
   port_utilization_by_type: z.array(z.object({
-    type_code: z.string().nullable(),
-    total: z.number(),
-    active: z.number(),
-    used: z.number()
+    type_code: z.string().nullable().optional(),
+    total: z.number().optional(),
+    active: z.number().optional(),
+    used: z.number().optional()
   })).optional().nullable(),
   user_activity_last_30_days: z.array(z.object({
-    date: z.string(),
-    count: z.number(),
-  })).nullable(),
-  systems_per_maintenance_area: z.record(z.string(), z.number()).nullable(),
+    date: z.string().optional(),
+    count: z.number().optional(),
+  })).nullable().optional(),
+  systems_per_maintenance_area: z.record(z.string(), z.number()).nullable().optional(),
 });
 
 export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
@@ -49,7 +49,7 @@ export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
 // Offline Stats Calculation with Filters
 const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<DashboardOverviewData> => {
   const [nodes, cableUtils, vSystems, ports, vCables] = await Promise.all([
-    localDb.v_nodes_complete.toArray() as Promise<V_nodes_completeRowSchema[]>,
+    localDb.v_nodes_complete.toArray() as Promise<NodesRowSchema[]>,
     localDb.v_cable_utilization.toArray() as Promise<V_cable_utilizationRowSchema[]>,
     localDb.v_systems_complete.toArray() as Promise<V_systems_completeRowSchema[]>,
     localDb.v_ports_management_complete.toArray() as Promise<V_ports_management_completeRowSchema[]>,
@@ -72,10 +72,10 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
     return true;
   };
 
-  const filterNode = (n: V_nodes_completeRowSchema) => {
+  const filterNode = (n: NodesRowSchema) => {
     if (statusBool !== null && n.status !== statusBool) return false;
-    if (nodeType && n.node_type_name !== nodeType) return false;
-    if (region && n.maintenance_area_name !== region) return false;
+    if (nodeType && n.node_type_id !== nodeType) return false;
+    if (region && n.maintenance_terminal_id !== region) return false;
     if (query && !n.name?.toLowerCase().includes(query)) return false;
     return true;
   };
@@ -84,8 +84,6 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
   const filteredSystems = vSystems.filter(filterSystem);
   const filteredNodes = nodes.filter(filterNode);
   
-  // For cables, we need to join v_ofc_cables_complete with utilization data
-  // Build a map of cable_id -> utilization data
   const utilMap = new Map(cableUtils.map(u => [u.cable_id, u]));
   const filteredCables = vCables.filter(c => {
       if (statusBool !== null && c.status !== statusBool) return false;
@@ -132,10 +130,19 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
     type_code, ...stats
   }));
 
+  // Systems per Area calculation
+  const systemsPerArea: Record<string, number> = {};
+  filteredSystems.forEach(s => {
+     if(s.system_maintenance_terminal_name) {
+        const area = s.system_maintenance_terminal_name;
+        systemsPerArea[area] = (systemsPerArea[area] || 0) + 1;
+     }
+  });
+
   return {
      system_status_counts: { Active: sysActive, Inactive: sysInactive },
      node_status_counts: { Active: nodeActive, Inactive: nodeInactive },
-     path_operational_status: {}, // Complex to filter locally efficiently without full graph
+     path_operational_status: {},
      cable_utilization_summary: {
         average_utilization_percent: Number(avgUtil.toFixed(2)),
         high_utilization_count: highUtil,
@@ -143,7 +150,7 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
      },
      port_utilization_by_type,
      user_activity_last_30_days: [],
-     systems_per_maintenance_area: {} // Not critical for top stats
+     systems_per_maintenance_area: systemsPerArea
   };
 };
 
@@ -152,7 +159,7 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
   const isOnline = useOnlineStatus();
 
   return useQuery({
-    queryKey: ['dashboard-overview', filters], // Include filters in key
+    queryKey: ['dashboard-overview', filters],
     queryFn: async (): Promise<DashboardOverviewData | null> => {
       if (isOnline) {
         try {
@@ -168,6 +175,7 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
           const parsed = dashboardOverviewSchema.safeParse(data);
           if (parsed.success) return parsed.data;
           console.error("Zod validation error:", parsed.error);
+          return null; // Return null instead of crashing if schema mismatch
         } catch (err) {
            console.warn("Online fetch failed, falling back to local calculation:", err);
         }

@@ -25,7 +25,7 @@ import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 import { formatIP } from '@/utils/formatters';
 
 const OptimizedNetworkMap = dynamic(
-  () => import('@/components/bsnl/OptimizedNetworkMap').then(mod => mod.OptimizedNetworkMap),
+  () => import('@/components/bsnl/OptimizedNetworkMap').then((mod) => mod.OptimizedNetworkMap),
   {
     ssr: false,
     loading: () => (
@@ -52,28 +52,26 @@ export default function ScalableFiberNetworkDashboard() {
     nodeType: undefined,
     priority: undefined,
   });
-  
+
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const [zoom, setZoom] = useState(13);
-  
+
   const debouncedMapBounds = useDebounce(mapBounds, 500);
 
   const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds[0]);
-  
+
   const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
-  
+
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
   }, []);
   const handleZoomChange = useCallback((newZoom: number) => {
     setZoom(newZoom);
   }, []);
-  const handleSaveAllocation = (
-    data: AllocationSaveData
-  ) => {
+  const handleSaveAllocation = (data: AllocationSaveData) => {
     toast.info('Allocation feature is a work in progress.');
     console.log(data);
   };
@@ -89,11 +87,17 @@ export default function ScalableFiberNetworkDashboard() {
   }, []);
 
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    const allSystemTypes = [...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean))];
+    const allSystemTypes = [
+      ...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean)),
+    ];
     const allCableTypes = [...new Set(data.ofcCables.map((c) => c.ofc_type_name).filter(Boolean))];
     const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
-    const allRegions = [...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean))].sort();
-    const allNodeTypes = [...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean))].sort();
+    const allRegions = [
+      ...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean)),
+    ].sort();
+    const allNodeTypes = [
+      ...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean)),
+    ].sort();
     return {
       typeOptions: uniqueTypes as string[],
       regionOptions: allRegions as string[],
@@ -101,54 +105,112 @@ export default function ScalableFiberNetworkDashboard() {
     };
   }, [data]);
 
-  const systemColumns = useMemo((): Column<Row<'v_systems_complete'>>[] => [
-    { key: 'system_name', title: 'System Name', dataIndex: 'system_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_code' },
-    { key: 'node_name', title: 'Node', dataIndex: 'node_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'ip_address', title: 'IP Address', dataIndex: 'ip_address', render: (val) => val ? <code>{formatIP(val)}</code> : null },
-    { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
-  ], []);
-
-  const cableColumns = useMemo((): Column<Row<'v_ofc_cables_complete'>>[] => [
-    { key: 'route_name', title: 'Route Name', dataIndex: 'route_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'ofc_type_name', title: 'Type', dataIndex: 'ofc_type_name' },
-    { key: 'capacity', title: 'Capacity', dataIndex: 'capacity' },
-    { key: 'sn_name', title: 'Start Node', dataIndex: 'sn_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'en_name', title: 'End Node', dataIndex: 'en_name', render: (val) => <TruncateTooltip text={String(val ?? '')} /> },
-    { key: 'status', title: 'Status', dataIndex: 'status', render: (val) => <StatusBadge status={val as boolean} /> },
-  ], []);
-
-  const systemTableActions = useMemo((): TableAction<'v_systems_complete'>[] => [
-    {
-      key: 'view-system',
-      label: 'View Details',
-      icon: <Eye />,
-      onClick: (record) => {
-        setSelectedSystem(record as BsnlSystem);
-        setIsSystemDetailsOpen(true);
+  const systemColumns = useMemo(
+    (): Column<Row<'v_systems_complete'>>[] => [
+      {
+        key: 'system_name',
+        title: 'System Name',
+        dataIndex: 'system_name',
+        render: (val) => <TruncateTooltip text={String(val ?? '')} />,
       },
-    },
-  ], []);
-  
-  const cableTableActions = useMemo((): TableAction<'v_ofc_cables_complete'>[] => [
-    {
-      key: 'view-cable',
-      label: 'View Details',
-      icon: <Eye />,
-      onClick: (record) => {
-        setSelectedCable(record as BsnlCable);
-        setIsCableDetailsOpen(true);
+      { key: 'system_type_name', title: 'Type', dataIndex: 'system_type_code' },
+      {
+        key: 'node_name',
+        title: 'Node',
+        dataIndex: 'node_name',
+        render: (val) => <TruncateTooltip text={String(val ?? '')} />,
       },
-    },
-  ], []);
+      {
+        key: 'ip_address',
+        title: 'IP Address',
+        dataIndex: 'ip_address',
+        render: (val) => (val ? <code>{formatIP(val)}</code> : null),
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        render: (val) => <StatusBadge status={val as boolean} />,
+      },
+    ],
+    []
+  );
 
+  const cableColumns = useMemo(
+    (): Column<Row<'v_ofc_cables_complete'>>[] => [
+      {
+        key: 'route_name',
+        title: 'Route Name',
+        dataIndex: 'route_name',
+        render: (val) => <TruncateTooltip text={String(val ?? '')} />,
+      },
+      {
+        key: 'transnet_id',
+        title: 'Transnet ID',
+        dataIndex: 'transnet_id',
+      },
+      { key: 'ofc_type_name', title: 'Type', dataIndex: 'ofc_type_name' },
+      { key: 'capacity', title: 'Capacity', dataIndex: 'capacity' },
+      {
+        key: 'sn_name',
+        title: 'Start Node',
+        dataIndex: 'sn_name',
+        render: (val) => <TruncateTooltip text={String(val ?? '')} />,
+      },
+      {
+        key: 'en_name',
+        title: 'End Node',
+        dataIndex: 'en_name',
+        render: (val) => <TruncateTooltip text={String(val ?? '')} />,
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        render: (val) => <StatusBadge status={val as boolean} />,
+      },
+    ],
+    []
+  );
 
-  const isInitialLoad = (isLoading || isOverviewLoading);
+  const systemTableActions = useMemo(
+    (): TableAction<'v_systems_complete'>[] => [
+      {
+        key: 'view-system',
+        label: 'View Details',
+        icon: <Eye />,
+        onClick: (record) => {
+          setSelectedSystem(record as BsnlSystem);
+          setIsSystemDetailsOpen(true);
+        },
+      },
+    ],
+    []
+  );
+
+  const cableTableActions = useMemo(
+    (): TableAction<'v_ofc_cables_complete'>[] => [
+      {
+        key: 'view-cable',
+        label: 'View Details',
+        icon: <Eye />,
+        onClick: (record) => {
+          setSelectedCable(record as BsnlCable);
+          setIsCableDetailsOpen(true);
+        },
+      },
+    ],
+    []
+  );
+
+  const isInitialLoad = isLoading || isOverviewLoading;
 
   if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
-  
-  const totalSystems = (overviewData?.system_status_counts?.Active ?? 0) + (overviewData?.system_status_counts?.Inactive ?? 0);
+
+  const totalSystems =
+    (overviewData?.system_status_counts?.Active ?? 0) +
+    (overviewData?.system_status_counts?.Inactive ?? 0);
   const totalCables = overviewData?.cable_utilization_summary?.total_cables ?? 0;
 
   return (
@@ -160,15 +222,15 @@ export default function ScalableFiberNetworkDashboard() {
               <Network className="h-8 w-8 text-blue-600 mr-3" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  BSNL Fiber Network Dashboard
+                  Harinavi Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {isOverviewLoading ? (
                     <span className="animate-pulse">... Systems | ... Cables</span>
                   ) : (
                     <>
-                      {totalSystems.toLocaleString()} Systems |{' '}
-                      {totalCables.toLocaleString()} Cables
+                      {totalSystems.toLocaleString()} Systems | {totalCables.toLocaleString()}{' '}
+                      Cables
                     </>
                   )}
                   {isLoading && (
@@ -227,7 +289,7 @@ export default function ScalableFiberNetworkDashboard() {
                 <OptimizedNetworkMap
                   nodes={data.nodes}
                   cables={data.ofcCables}
-                  systems={data.systems} 
+                  systems={data.systems}
                   selectedSystem={selectedSystem}
                   visibleLayers={{ nodes: true, cables: true, systems: true }}
                   mapBounds={mapBounds}
@@ -239,37 +301,25 @@ export default function ScalableFiberNetworkDashboard() {
             </div>
           )}
           {activeTab === 'systems' && (
-                 <DataTable
-      autoHideEmptyColumns={true}
+            <DataTable
+              autoHideEmptyColumns={true}
               tableName="v_systems_complete"
               data={data.systems}
               columns={systemColumns}
               loading={isLoading}
               actions={systemTableActions}
               sortable={true}
-              pagination={{
-                current: 1,
-                pageSize: 50,
-                total: data.systems.length,
-                onChange: () => {},
-              }}
             />
           )}
           {activeTab === 'routes' && (
-                 <DataTable
-      autoHideEmptyColumns={true}
+            <DataTable
+              autoHideEmptyColumns={true}
               tableName="v_ofc_cables_complete"
               data={data.ofcCables}
               columns={cableColumns}
               loading={isLoading}
               actions={cableTableActions}
               sortable={true}
-              pagination={{
-                current: 1,
-                pageSize: 25,
-                total: data.ofcCables.length,
-                onChange: () => {},
-              }}
             />
           )}
         </div>

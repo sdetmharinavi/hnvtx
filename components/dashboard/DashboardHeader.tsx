@@ -1,4 +1,4 @@
-// components/dashboard/DashboardHeader.tsx
+// path: components/dashboard/DashboardHeader.tsx
 "use client";
 
 import AuthButton from "@/components/auth/authButton";
@@ -19,7 +19,7 @@ import { SyncStatusModal } from "./SyncStatusModal";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
-  title?: string;
+  // title?: string;
 }
 
 const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
@@ -57,17 +57,16 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
   }
 
   return (
-    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-red-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
+    <button onClick={onClick} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
       <Cloud className="w-4 h-4 text-green-600 dark:text-green-400" />
       <span className="text-xs font-medium text-green-700 dark:text-green-300 hidden sm:inline">Synced</span>
     </button>
   );
 };
 
-
 export default function DashboardHeader({
   onMenuClick,
-  title = "Dashboard",
+  // title,
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const { isSyncing, sync } = useDataSync();
@@ -92,18 +91,16 @@ export default function DashboardHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <header className="border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
+            {/* Left side - Only Menu Button (no title) */}
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
-              <h1 className="ml-2 md:ml-6 text-xl font-bold text-gray-900 dark:text-white md:text-2xl">
-                {title}
-              </h1>
             </div>
 
+            {/* Right side - Actions and User Menu */}
             <div className="relative flex items-center space-x-2 sm:space-x-4">
-
               <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
 
               <button
@@ -112,7 +109,6 @@ export default function DashboardHeader({
                 className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh all data"
               >
-                {/* THE FIX: isSyncing now includes manual fetches, triggering the spin */}
                 <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
 

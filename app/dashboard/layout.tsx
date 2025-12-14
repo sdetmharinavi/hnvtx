@@ -21,8 +21,6 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const isMobile = useIsMobile();
 
-  // Determine widths based on state constants matching sidebar-types.ts variants
-  // Collapsed: 64px, Expanded: 260px
   const desktopSidebarWidth = isCollapsed ? 64 : 260;
   const marginValue = isMobile ? 0 : desktopSidebarWidth;
 
@@ -31,34 +29,39 @@ export default function DashboardLayout({
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
-            {/* INJECT GLOBAL COMPONENTS*/}
-            <CommandMenu /> 
-            {/* This div contains all the UI chrome and will be hidden during print */}
+            <CommandMenu />
+
+            {/* Sidebar - Fixed position */}
             <div className="no-print">
-              <Sidebar 
-                isCollapsed={isCollapsed} 
+              <Sidebar
+                isCollapsed={isCollapsed}
                 setIsCollapsed={setIsCollapsed}
                 showMenuFeatures={true}
               />
-              <div
-                className="transition-all duration-300 ease-in-out"
-                style={{
-                  marginLeft: `${marginValue}px`,
-                }}
-              >
-                <DashboardHeader title="" onMenuClick={() => setIsCollapsed(!isCollapsed)} />
-              </div>
             </div>
 
-            {/* Main Content Area - This will be visible on screen and potentially in print */}
-            <main
-              className="transition-all duration-300 ease-in-out"
+            {/* Main container that shifts with sidebar */}
+            <div
+              className="flex min-h-screen flex-col transition-all duration-300 ease-in-out"
               style={{
-                marginLeft: `${marginValue}px`
+                marginLeft: `${marginValue}px`,
               }}
             >
-              {children}
-            </main>
+              {/* 
+                OPTION 1: Remove title from header completely
+                Let each page control its own title
+              */}
+              <div className="no-print">
+                <DashboardHeader 
+                  onMenuClick={() => setIsCollapsed(!isCollapsed)} 
+                />
+              </div>
+
+              {/* Main Content */}
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
           </ViewSettingsProvider>
         </RouteBasedUploadConfigProvider>
       </Protected>
