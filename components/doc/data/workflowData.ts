@@ -348,6 +348,51 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+  {
+    value: "route_details",
+    icon: "GitBranch",
+    title: "OFC Details",
+    subtitle: "Fiber-Level Management",
+    gradient: "from-orange-400 to-amber-500",
+    iconColor: "text-orange-500",
+    bgGlow: "bg-orange-500/10",
+    color: "orange",
+    purpose: "To manage the granular details of a fiber route, including OTDR distances, splice losses, and end-to-end tracing.",
+    workflows: [
+      {
+        title: "1. Fiber Strand Management",
+        userSteps: [
+          "Navigate to `/dashboard/ofc` and click on a cable route.",
+          "The table lists every fiber strand (1 to Capacity).",
+          "**Edit:** Update OTDR distance, Power Levels (dBm), or Remarks for specific strands.",
+          "**Status:** See which fibers are 'Available', 'Working', or 'Protection'.",
+        ],
+        uiSteps: [
+          "Utilization percentage is shown in the header stats.",
+          "Connected System/Service names are clickable links.",
+        ],
+        techSteps: [
+          "**View:** `v_ofc_connections_complete`.",
+          "**Permissions:** Edit allowed for Admins/Asset Admins. Delete restricted to Super Admin (rarely used).",
+        ],
+      },
+      {
+        title: "2. Fiber Path Tracing",
+        userSteps: [
+          "Click the 'Trace Fiber Path' (Eye icon) on any fiber row.",
+          "A modal opens visualizing the complete path: Start Node -> Cable -> JC Splice -> Cable -> End Node.",
+          "Click 'Sync Path to DB' to update the logical connection references based on physical connectivity.",
+        ],
+        uiSteps: [
+          "Visualizer handles direction orientation (A->B vs B->A) automatically.",
+        ],
+        techSteps: [
+          "**RPC:** `trace_fiber_path` performs recursive traversal.",
+          "**Sync:** Updates `updated_sn_id`, `updated_en_id` columns.",
+        ],
+      },
+    ],
+  },
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)

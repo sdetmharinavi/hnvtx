@@ -30,14 +30,13 @@ import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 import { FiActivity, FiArrowRight } from 'react-icons/fi';
-
-// REMOVED: export const dynamic = 'force-dynamic';
+import { UserRole } from '@/types/user-roles';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
   const router = useRouter();
   const supabase = createClient();
-  const { isSuperAdmin } = useUser();
+  const { isSuperAdmin, role } = useUser();
 
   const {
     data: cableConnectionsData,
@@ -52,6 +51,13 @@ export default function OfcCableDetailsPage() {
     dataQueryHook: useOfcConnectionsData(cableId as string),
     displayNameField: ['system_name', 'ofc_route_name'],
   });
+
+  // --- PERMISSIONS ---
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  // Strictly Super Admin for deletion of fibers (should come from capacity)
+  const canDelete = !!isSuperAdmin;
+  // Adding new fibers manually is also restricted
+  const canAdd = !!isSuperAdmin;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(
     cableId as string
@@ -116,18 +122,19 @@ export default function OfcCableDetailsPage() {
         variant: 'secondary' as const,
       },
       ...createStandardActions({
-        onEdit: editModal.openEdit,
-        onDelete: crudActions.handleDelete,
-        onToggleStatus: crudActions.handleToggleStatus,
-        // STRICT CHECK: Only Super Admin can delete connections manually
-        canDelete: () => isSuperAdmin === true,
+        // Conditionally allow editing
+        onEdit: canEdit ? editModal.openEdit : undefined,
+        // Conditionally allow deletion
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
+        onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
       }),
     ],
     [
       editModal.openEdit,
       crudActions.handleDelete,
       crudActions.handleToggleStatus,
-      isSuperAdmin,
+      canEdit,
+      canDelete,
       cableSegments,
     ]
   );
@@ -138,7 +145,8 @@ export default function OfcCableDetailsPage() {
       await refetch();
       toast.success('Connections refreshed!');
     },
-    onAddNew: editModal.openAdd,
+    // Conditionally allow adding new fibers
+    onAddNew: canAdd ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: {
       tableName: 'ofc_connections',
@@ -262,7 +270,8 @@ export default function OfcCableDetailsPage() {
           columns={orderedColumns}
           loading={isLoading}
           actions={tableActions}
-          selectable={!!isSuperAdmin}
+          // THE FIX: Restrict bulk selection
+          selectable={canDelete}
           searchable={true}
           renderMobileItem={renderMobileItem}
           pagination={{

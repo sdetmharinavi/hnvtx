@@ -23,7 +23,7 @@ export const useOfcConnectionsData = (
           searchString = `(` +
             `system_name ILIKE '%${term}%' OR ` +
             `connection_type ILIKE '%${term}%' OR ` +
-            `updated_sn_name ILIKE '%${term}%' OR ` + // Added these helpful fields for user
+            `updated_sn_name ILIKE '%${term}%' OR ` +
             `updated_en_name ILIKE '%${term}%'` +
           `)`;
       }
@@ -39,6 +39,7 @@ export const useOfcConnectionsData = (
         p_limit: 5000,
         p_offset: 0,
         p_filters: rpcFilters,
+        // THE FIX: Sort by Fiber Number (Start Node)
         p_order_by: 'fiber_no_sn',
         p_order_dir: 'asc',
       });
@@ -52,7 +53,10 @@ export const useOfcConnectionsData = (
       if (!cableId) {
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
-      return localDb.v_ofc_connections_complete.where('ofc_id').equals(cableId).toArray();
+      // Sort locally by fiber number
+      return localDb.v_ofc_connections_complete
+        .where('ofc_id').equals(cableId)
+        .sortBy('fiber_no_sn');
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cableId]);
 
@@ -81,14 +85,19 @@ export const useOfcConnectionsData = (
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
           conn.system_name?.toLowerCase().includes(lowerQuery) ||
-          conn.connection_type?.toLowerCase().includes(lowerQuery)
+          conn.connection_type?.toLowerCase().includes(lowerQuery) ||
+          conn.updated_sn_name?.toLowerCase().includes(lowerQuery) ||
+          conn.updated_en_name?.toLowerCase().includes(lowerQuery)
         );
       }
 
+      // Explicit Sort (Safety fallback)
       filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
       const totalCount = filtered.length;
       const activeCount = filtered.filter((c) => !!c.status).length;
+      const inactiveCount = totalCount - activeCount;
+
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
       const paginatedData = filtered.slice(start, end);
@@ -97,7 +106,7 @@ export const useOfcConnectionsData = (
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: totalCount - activeCount,
+        inactiveCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allConnections, searchQuery, currentPage, pageLimit, cableId]);
