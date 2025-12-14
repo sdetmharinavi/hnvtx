@@ -8,6 +8,7 @@ id,category,name,code,description,sort_order,is_system_default,is_ring_based,sta
 0ac8fb30-626f-479e-bc12-d1312d6ba51c,INVENTORY_CATEGORY,OTDR,OTDR,,0,false,false,true,2025-11-01 00:00:00+00,2025-11-26 00:00:00+00
 0b702768-1c37-4e55-a948-b681b18ebe75,LINK_TYPES,WIFI SARBTRA,WIFISARBTRA,,0,false,false,true,2025-12-08 11:52:26.903845+00,2025-12-08 11:52:26.903845+00
 0c188ba2-689a-4bdc-9848-3b1112516f6b,MEDIA_TYPES,Satellite Link,SAT,Satellite-based telecom connection.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+0ce4e8c3-f59b-41e1-b50f-0397886b749e,RING_TYPES,MNGPAN RING,MNGPAN_RING,,0,false,false,true,2025-12-11 15:49:47.030878+00,2025-12-11 15:49:47.030878+00
 0dfc3ef0-d661-458a-b0b7-2b8b0975b6dd,RING_TYPES,Point-to-Point Ring,PTPR,Simplified two-node ring configuration.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 12e0d487-c11c-4432-89f4-3347070046ed,BUSINESS_AREA_TYPE,Mobile Services,MOB,BSNL GSM/4G/5G mobile offerings.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 14888b49-2f7d-4dbd-93c2-b19dcafbcd8c,PORT_TYPES,Fast Ethernet Port,FE,100 Mbps Ethernet.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -70,10 +71,11 @@ Protection (ring 1:1 or linear) takes reserved bandwidth",0,false,false,true,202
 62d801aa-b5cd-4245-b5dc-1fbc0f27a4cc,SYSTEM_TYPES,Broadband Network Gateway,BNG,"Upgraded to CUPS (Control and User Plane Separation) architecture, enhancing scalability and enterprise services",0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 63e6b674-0f24-4f0d-b224-a08944ca29e9,SYSTEM_CAPACITY,622.08 Mbps (STM-4),.622G,"STM-4. Usable for IP (approx)
 ~520 Mbps",0,false,false,true,2025-11-23 00:00:00+00,2025-11-27 00:00:00+00
-6458a347-e80c-4a62-9357-551487a07e3a,NODE_TYPES,Customer Premises,CP,Subscriber location (home/business) — customer termination equipment/site.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+6458a347-e80c-4a62-9357-551487a07e3a,NODE_TYPES,Customer Premises,CUSTOMER,Subscriber location (home/business) — customer termination equipment/site.,0,false,false,true,2025-08-10 00:00:00+00,2025-12-13 17:25:26.296138+00
 69c3298a-ce3d-47ba-a25d-cd9256fbf349,OFC_TYPES,DEFAULT,default,Default entry for OFC_TYPES category,6,true,false,true,2025-08-10 00:00:00+00,2025-12-07 14:45:21.765112+00
 6aa6c4c1-3a64-4b5e-a3f6-3f434ab0efb3,MEDIA_TYPES,E-LAN,ELAN,,0,false,false,true,2025-11-28 00:00:00+00,2025-11-28 00:00:00+00
 6ae7c8f8-7272-4a7f-a7c3-0fa2534bb2eb,MAINTENANCE_AREA_TYPES,Division,DIV,Smaller operational units inside an SSA for field maintenance.Often responsible for a cluster of exchanges or optical routes.,4,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,RING_TYPES,CPAN RING,CPAN_RING,,0,false,false,true,2025-12-11 15:48:29.538003+00,2025-12-11 15:48:29.538003+00
 6bcd3b56-60af-4378-93b2-87c0aee6f0e6,LINK_TYPES,MAAN TL,TL,,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 6c9460cb-22dd-4457-82e3-0ccebe0f3afc,PORT_TYPES,10 Gigabit Ethernet Port,10GE,High-capacity Ethernet port.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 72068662-ba21-4879-b1c3-b76e5f31d63b,MEDIA_TYPES,Coaxial Cable,COAX,Cable TV and RF applications.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -108,6 +110,7 @@ Real-world usable	40–50 Gbps",0,false,false,true,2025-11-23 00:00:00+00,2025-1
 982d70b1-f5c1-471a-ae07-51b9cd737859,SFP_TYPES,1G SFP Single Mode,SFP1GSM,1Gbps optical module for SMF.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 983fd25b-20e8-4aee-9cf9-7e286b7813da,LINK_TYPES,CPAN DL,DL,,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 9bb020d2-3cdd-441e-b322-949df3058ebd,OFC_TYPES,6F Armored,6F-A,Six-core steel-armored optical fiber cable for underground routes.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+9f80c728-faa3-40ce-bcd8-2d1dae84e2d5,RING_TYPES,NGSDH RING,NGSDH_RING,,0,false,false,true,2025-12-11 15:49:15.43616+00,2025-12-11 15:49:15.43616+00
 9fb0aefd-e904-43a2-9ac9-c1cf604fab94,OFC_PATH_STATUS,DEFAULT,default,Default entry for Ofc Path Statuses category,9,true,false,true,2025-08-21 00:00:00+00,2025-12-07 14:45:21.765112+00
 a1396206-9345-4b65-b7cb-b079e9e2731e,SPLICE_TYPES,cross,crs,"A connection where fibers are intentionally crossed (e.g., fiber 1 to fiber 2).",0,false,false,true,2025-10-04 00:00:00+00,2025-11-27 00:00:00+00
 a33ec7ee-b51c-4921-b0ec-bcf0caab3834,SYSTEM_TYPES,Multi-Access Aggregation Node,"MAAN ","Aggregates 2G/3G/4G traffic and routes it to the core network using MPLS IP technology, replacing older MPLS-TP systems for improved scalability and efficiency",0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -151,6 +154,7 @@ d749692f-5147-49b5-b1cf-8be443ad2de2,NODE_TYPES,BTS (running over radiolink),BTS
 d7600972-15b4-40e8-959c-56e21df24adf,BUSINESS_AREA_TYPE,International Long Distance,ILD,International telecom connectivity.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 d7d6d7dd-97fe-4193-a2d7-c75b01717a9f,MEDIA_TYPES,E-TREE,ETREE,,0,false,false,true,2025-12-08 11:27:47.121214+00,2025-12-08 11:27:47.121214+00
 d9fc31d3-9241-4d71-960f-181b36648ad0,SPLICE_TYPES,DEFAULT,default,Default entry for Splice Types category,10,true,false,true,2025-10-04 00:00:00+00,2025-12-07 14:45:21.765112+00
+dac50395-1317-40b3-9a57-cb9b5cd67d48,LINK_TYPES,ISDN PRI,ISDN,,0,false,false,true,2025-12-13 06:26:50.425824+00,2025-12-13 06:26:50.425824+00
 daef1801-b782-465e-a973-a9e4358e2e92,MEDIA_TYPES,Very High Frequency Link,VHF,Special frequency-based communication link.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 de9ccacb-2080-400e-8c57-2e2cf729f724,NODE_TYPES,Gram Panchayat,GP,Rural/local community aggregation point for last-mile access.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 df4fb383-2fcf-4171-9571-0566863778af,NODE_TYPES,Regenerator,Regenerator Node,For old SDH without optical amplification.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -171,3 +175,4 @@ f6cdce1d-fe11-4d40-8866-c509307f6150,NODE_TYPES,Transmission Nodes,TX Node,Inter
 f972bb0d-0e3b-41bb-951b-a23846bbe250,SYSTEM_CAPACITY,155.52 Mbps (STM-1),.155G,STM-1. Usable for IP (approx)~130 Mbps,0,false,false,true,2025-11-23 00:00:00+00,2025-11-27 00:00:00+00
 f9f13567-b5ff-4128-9e8f-8b1ce164413d,OFC_PATH_STATUS,active,ACTIVE,The logical path is active and in use.,0,false,false,true,2025-11-17 00:00:00+00,2025-11-27 00:00:00+00
 fc077b05-1bfc-414c-9549-13b0f6d3e230,SYSTEM_TYPES,Next Generation SDH,NGSDH,Enhanced SDH with Ethernet over SDH support.,0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+fe67aa4d-b141-467e-a9dd-58691c489abe,RING_TYPES,MAAN RING,MAAN_RING,,0,false,false,true,2025-12-11 15:48:51.660657+00,2025-12-11 15:48:51.660657+00
