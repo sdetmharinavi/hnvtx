@@ -497,6 +497,64 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+  // ============================================================================
+  // MODULE 22: SYSTEM CONNECTION DETAILS
+  // ============================================================================
+  {
+    value: "system_connection_details",
+    icon: "FiGitBranch",
+    title: "System Connections",
+    subtitle: "Bi-Directional Links & Ports",
+    gradient: "from-blue-500 to-indigo-600",
+    iconColor: "text-indigo-400",
+    bgGlow: "bg-indigo-500/10",
+    color: "blue",
+    purpose: "To manage individual physical and logical links from a specific system perspective.",
+    workflows: [
+      {
+        title: "1. Connection Management",
+        userSteps: [
+          "Navigate to `/dashboard/systems/[id]`.",
+          "**List View:** Shows all connections where this system is either the *Source* or *Destination*.",
+          "**Edit:** Update bandwidth, VLANs, or physical ports (Admin).",
+          "**Stats:** Header shows port utilization specific to this system.",
+        ],
+        uiSteps: [
+          "The 'End Node' column dynamically shows the *other* end of the link.",
+          "Port heatmap shows visual status of all slots/ports.",
+        ],
+        techSteps: [
+          "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective so the current system is always 'local'.",
+        ],
+      },
+      {
+        title: "2. Fiber Provisioning",
+        userSteps: [
+          "Click 'Allocate Fibers' on a connection.",
+          "Select the outgoing cable and specific fiber strand.",
+          "If the route is multi-hop, select subsequent cables/fibers until the destination is reached.",
+          "Click 'Confirm'.",
+        ],
+        uiSteps: [
+          "Dropdowns filter out already-occupied fibers.",
+        ],
+        techSteps: [
+          "**RPC:** `provision_service_path` atomically updates `logical_fiber_paths` and marks `ofc_connections` as used.",
+        ],
+      },
+      {
+        title: "3. Path Tracing",
+        userSteps: [
+          "Click the 'Eye' icon on a provisioned connection.",
+          "View the complete physical path: System A -> Cable -> JC -> Cable -> System B.",
+          "Shows total distance and loss budget.",
+        ],
+        techSteps: [
+          "**RPC:** `trace_fiber_path`.",
+        ],
+      },
+    ],
+  },
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)

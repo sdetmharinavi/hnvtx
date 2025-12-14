@@ -89,7 +89,7 @@ export default function SystemConnectionsPage() {
     UserRole.MNGADMIN
   ].includes(role as UserRole);
 
-  const canDelete = isSuperAdmin === true;
+  const canDelete = !!isSuperAdmin;
 
   // Fetch Options
   const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -300,7 +300,9 @@ export default function SystemConnectionsPage() {
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
+      // Condition: Edit
       onEdit: canEdit ? openEditModal : undefined,
+      // Condition: Delete (Super Admin)
       onDelete: canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined,
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) => Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
@@ -308,7 +310,7 @@ export default function SystemConnectionsPage() {
     return [
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
-      // Deprovision: Allow Admins
+      // Deprovision: Allow Admins to clear config (Edit action)
       { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) || !canEdit },
       // Allocate: Allow Admins
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) || !canEdit },

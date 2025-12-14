@@ -1,7 +1,6 @@
 "use client";
 
-// @/components/table/TableToolbar.tsx
-import React from "react";
+import React, { useRef } from "react";
 import { FiSearch, FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown } from "react-icons/fi";
 import { DataTableProps } from "@/components/table/datatable-types";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
@@ -61,6 +60,9 @@ export function TableToolbar<T extends TableOrViewName>({
 }: TableToolbarProps<T>) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { showToolbar, setShowToolbar } = useViewSettings();
+  
+  // Create a ref for the Columns toggle button
+  const columnsButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -107,28 +109,34 @@ export function TableToolbar<T extends TableOrViewName>({
               </div>
             )}
 
-            {/* Right-side controls should be available even when customToolbar is used */}
+            {/* Right-side controls */}
             <div className='flex w-full sm:w-auto sm:flex-none items-center gap-2 sm:gap-3 justify-end mt-1 sm:mt-0 ml-auto'>
               {(showColumnsToggle || (!customToolbar && true)) && (
-                <div className='relative'>
+                <>
                   <button
+                    ref={columnsButtonRef} // Attach ref here
                     onClick={() => setShowColumnSelector(!showColumnSelector)}
-                    className='flex items-center justify-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    className={`flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
+                       showColumnSelector 
+                         ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-300"
+                         : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    }`}
                     aria-label='Show/Hide Columns'>
                     <FiEye size={14} className='sm:w-4 sm:h-4' />
                     <span className='hidden sm:inline'>Columns</span>
-                    <FiChevronDown size={12} className='sm:w-3.5 sm:h-3.5' />
+                    <FiChevronDown size={12} className={`sm:w-3.5 sm:h-3.5 transition-transform ${showColumnSelector ? 'rotate-180' : ''}`} />
                   </button>
-                  <div className='absolute right-0 top-full z-50'>
-                    <TableColumnSelector
-                      columns={columns.filter((c) => !c.hidden)}
-                      visibleColumns={visibleColumns}
-                      setVisibleColumns={setVisibleColumns}
-                      showColumnSelector={showColumnSelector}
-                      setShowColumnSelector={setShowColumnSelector}
-                    />
-                  </div>
-                </div>
+                  
+                  {/* Selector Component (renders via Portal) */}
+                  <TableColumnSelector
+                    columns={columns.filter((c) => !c.hidden)}
+                    visibleColumns={visibleColumns}
+                    setVisibleColumns={setVisibleColumns}
+                    showColumnSelector={showColumnSelector}
+                    setShowColumnSelector={setShowColumnSelector}
+                    triggerRef={columnsButtonRef} // Pass ref
+                  />
+                </>
               )}
 
               {refreshable && onRefresh && (
