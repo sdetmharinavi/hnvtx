@@ -16,6 +16,8 @@ import { createClient } from "@/utils/supabase/client";
 import { FiUpload, FiDownload, FiPlus, FiRefreshCw } from "react-icons/fi";
 import { useExportRouteTopology, useImportRouteTopology } from "@/hooks/database/excel-queries/useRouteTopologyExcel";
 import { ActionButton } from "@/components/common/page-header";
+import { useUser } from "@/providers/UserProvider";
+import { UserRole } from "@/types/user-roles";
 
 export default function RouteManagerPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -25,6 +27,14 @@ export default function RouteManagerPage() {
   const [activeTab, setActiveTab] = useState("visualization");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+
+  const { isSuperAdmin, role } = useUser();
+
+  // --- PERMISSIONS ---
+  // Admins/Asset Admins can Edit (Create JCs, Splice)
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  // Super Admin can Delete (Deleting a JC is destructive to the route segments)
+  const canDelete = !!isSuperAdmin;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails, refetch: refetchRouteDetails, error: routeDetailsError, isError: routeDetailsIsError } = useRouteDetails(selectedRouteId as string);
   
@@ -98,36 +108,48 @@ export default function RouteManagerPage() {
     [allJointBoxesOnRoute, deleteManager]
   );
   
-  const headerActions = useMemo((): ActionButton[] => [
-    {
-      label: 'Refresh',
-      onClick: () => { refetchRouteDetails(); toast.success('Route details refreshed!'); },
-      variant: 'outline',
-      leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
-      disabled: isLoadingRouteDetails,
-    },
-    {
-      label: isExporting ? 'Exporting...' : 'Export Topology',
-      onClick: handleExportClick,
-      variant: 'outline',
-      leftIcon: <FiDownload />,
-      disabled: isExporting || !selectedRouteId,
-    },
-    {
-      label: isUploading ? 'Importing...' : 'Import Topology',
-      onClick: handleUploadClick,
-      variant: 'outline',
-      leftIcon: <FiUpload />,
-      disabled: isUploading || !selectedRouteId,
-    },
-    {
-      label: 'Add Junction Closure',
-      onClick: handleAddJunctionClosure,
-      variant: 'primary',
-      leftIcon: <FiPlus />,
-      disabled: !selectedRouteId || isLoadingRouteDetails,
-    },
-  ], [isLoadingRouteDetails, isExporting, isUploading, selectedRouteId, handleAddJunctionClosure, refetchRouteDetails, handleExportClick, handleUploadClick]);
+  const headerActions = useMemo((): ActionButton[] => {
+    const actions: ActionButton[] = [
+        {
+            label: 'Refresh',
+            onClick: () => { refetchRouteDetails(); toast.success('Route details refreshed!'); },
+            variant: 'outline',
+            leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
+            disabled: isLoadingRouteDetails,
+        },
+        {
+            label: isExporting ? 'Exporting...' : 'Export Topology',
+            onClick: handleExportClick,
+            variant: 'outline',
+            leftIcon: <FiDownload />,
+            disabled: isExporting || !selectedRouteId,
+        }
+    ];
+
+    // Restrict Import to Admins
+    if (canEdit) {
+        actions.push({
+            label: isUploading ? 'Importing...' : 'Import Topology',
+            onClick: handleUploadClick,
+            variant: 'outline',
+            leftIcon: <FiUpload />,
+            disabled: isUploading || !selectedRouteId,
+        });
+    }
+
+    // Restrict Add JC to Admins
+    if (canEdit) {
+        actions.push({
+            label: 'Add Junction Closure',
+            onClick: handleAddJunctionClosure,
+            variant: 'primary',
+            leftIcon: <FiPlus />,
+            disabled: !selectedRouteId || isLoadingRouteDetails,
+        });
+    }
+
+    return actions;
+  }, [isLoadingRouteDetails, isExporting, isUploading, selectedRouteId, handleAddJunctionClosure, refetchRouteDetails, handleExportClick, handleUploadClick, canEdit]);
 
   return (
     <div className='p-6 space-y-6'>
@@ -157,10 +179,20 @@ export default function RouteManagerPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value='visualization'>
-            <RouteVisualization routeDetails={{ ...routeDetails, jointBoxes: allJointBoxesOnRoute, segments: currentSegments }} onJcClick={handleJcClick} onEditJc={handleOpenEditJcModal} onDeleteJc={handleRemoveJc} />
+            <RouteVisualization 
+                routeDetails={{ ...routeDetails, jointBoxes: allJointBoxesOnRoute, segments: currentSegments }} 
+                onJcClick={handleJcClick} 
+                onEditJc={handleOpenEditJcModal} 
+                onDeleteJc={handleRemoveJc} 
+                canEdit={canEdit}
+                canDelete={canDelete}
+            />
           </TabsContent>
           <TabsContent value='splicing'>
-            <FiberSpliceManager junctionClosureId={selectedJc?.id ?? null} />
+            <FiberSpliceManager 
+                junctionClosureId={selectedJc?.id ?? null} 
+                canEdit={canEdit}
+            />
           </TabsContent>
         </Tabs>
       )}

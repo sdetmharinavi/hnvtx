@@ -10,12 +10,12 @@ import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVi
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { Loader2 } from 'lucide-react';
 
-// --- Local Type Definitions (Inferred from imported Zod schemas for clarity) ---
 type FiberStatus = JcSplicingDetails['segments_at_jc'][0]['fibers'][0]['status'];
 type FiberAtSegment = JcSplicingDetails['segments_at_jc'][0]['fibers'][0];
 
 interface FiberSpliceManagerProps {
     junctionClosureId: string | null;
+    canEdit: boolean;
 }
 
 interface SpliceAction {
@@ -58,13 +58,13 @@ const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
     return { normalizedData, isLoading, isError, error };
 };
 
-export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId }) => {
+export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId, canEdit }) => {
 
     const { normalizedData: spliceDetails, isLoading, isError, error } = useNormalizedSplicingDetails(junctionClosureId);
     
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
-    const syncPathUpdatesMutation = useSyncPathUpdates(); // NEW HOOK
+    const syncPathUpdatesMutation = useSyncPathUpdates();
 
     const [selectedFiber, setSelectedFiber] = useState<{ segmentId: string; fiberNo: number } | null>(null);
     const [showLossModal, setShowLossModal] = useState(false);
@@ -74,7 +74,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     const [autoSplicePairs, setAutoSplicePairs] = useState<AutoSplicePair[]>([]);
     const [showVisualizationModal, setShowVisualizationModal] = useState(false);
 
-    // (useEffect for auto-splice pairs remains the same)
     useEffect(() => {
         if (pendingSpliceAction?.type === 'auto' && pendingSpliceAction.autoData && spliceDetails) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
@@ -102,6 +101,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     }, [pendingSpliceAction, spliceDetails]);
 
     const handleFiberClick = (segmentId: string, fiberNo: number, status: FiberStatus) => {
+        if (!canEdit) return; // Disable for read-only users
         if (status === 'used_as_outgoing') return;
         if (selectedFiber && selectedFiber.segmentId === segmentId && selectedFiber.fiberNo === fiberNo) {
             setSelectedFiber(null);
@@ -111,7 +111,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     };
 
     const handleTargetFiberClick = (targetSegmentId: string, targetFiberNo: number) => {
-        if (!selectedFiber || !junctionClosureId) return;
+        if (!canEdit || !selectedFiber || !junctionClosureId) return;
         
         setPendingSpliceAction({
             type: 'manual',
@@ -126,7 +126,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     };
 
     const handleAutoSplice = (segment1Id: string, segment2Id: string) => {
-        if (!junctionClosureId || !spliceDetails) return;
+        if (!canEdit || !junctionClosureId || !spliceDetails) return;
         
         const segment1 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment1Id);
         const segment2 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment2Id);
@@ -204,7 +204,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
     };
 
     const handleRemoveSplice = (fiber: FiberAtSegment) => {
-      if (!junctionClosureId || !fiber.splice_id) return;
+      if (!canEdit || !junctionClosureId || !fiber.splice_id) return;
       if (window.confirm("Are you sure you want to remove this splice?")) {
         manageSpliceMutation.mutate({
           action: 'delete',
@@ -227,7 +227,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     const renderFiber = (fiber: FiberAtSegment, segmentId: string) => {
         const isSelected = selectedFiber?.segmentId === segmentId && selectedFiber.fiberNo === fiber.fiber_no;
-        const isTargetable = Boolean(selectedFiber) && selectedFiber?.segmentId !== segmentId && fiber.status === 'available';
+        const isTargetable = canEdit && Boolean(selectedFiber) && selectedFiber?.segmentId !== segmentId && fiber.status === 'available';
 
         const statusClasses: Record<FiberStatus, string> = {
             available: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
@@ -247,7 +247,8 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 className={`flex items-center justify-between p-2 rounded-md transition-all duration-200 ${
                     isSelected ? 'ring-2 ring-yellow-500 bg-yellow-100 dark:bg-yellow-900/40' :
                     isTargetable ? 'cursor-pointer hover:bg-green-200 dark:hover:bg-green-800/50' :
-                    fiber.status === 'used_as_outgoing' ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700'
+                    fiber.status === 'used_as_outgoing' ? 'cursor-not-allowed opacity-60' : 
+                    canEdit ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-default'
                 } ${statusClasses[fiber.status] || ''}`}
             >
                 <div className="flex items-center gap-2 min-w-0">
@@ -257,7 +258,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         {titleText}
                     </span>
                 </div>
-                {fiber.splice_id && fiber.status === 'used_as_incoming' && (
+                {canEdit && fiber.splice_id && fiber.status === 'used_as_incoming' && (
                     <button onClick={(e) => { e.stopPropagation(); handleRemoveSplice(fiber); }} className="p-1 rounded-full hover:bg-red-200 dark:hover:bg-red-800 text-red-500">
                         <FiX className="w-3 h-3" />
                     </button>
@@ -274,20 +275,21 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 <Button size="sm" onClick={() => setShowVisualizationModal(true)} variant="outline">
                     View All Splices
                 </Button>
-                {/* NEW SYNC BUTTON */}
-                <Button 
-                    size="sm" 
-                    variant="primary" 
-                    onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
-                    disabled={syncPathUpdatesMutation.isPending}
-                    leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
-                >
-                    {syncPathUpdatesMutation.isPending ? "Syncing..." : "Apply Path Updates"}
-                </Button>
+                {/* Ensure Apply Path Updates is also guarded */}
+                {canEdit && (
+                    <Button 
+                        size="sm" 
+                        variant="primary" 
+                        onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
+                        disabled={syncPathUpdatesMutation.isPending}
+                        leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
+                    >
+                        {syncPathUpdatesMutation.isPending ? "Syncing..." : "Apply Path Updates"}
+                    </Button>
+                )}
               </div>
             </div>
             
-            {/* ... rest of the component remains the same ... */}
             {selectedFiber && (
                 <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-center">
                     <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -302,7 +304,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         <h4 className="font-bold text-sm mb-2 truncate"><TruncateTooltip text={segment.segment_name} /></h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Fibers: {segment.fiber_count}</p>
                         
-                        {index < segments_at_jc.length - 1 && (
+                        {index < segments_at_jc.length - 1 && canEdit && (
                              <Button size="xs" onClick={() => handleAutoSplice(segment.segment_id, segments_at_jc[index + 1].segment_id)} className="w-full mb-3" variant="outline">
                                 <FiZap className="w-3 h-3 mr-1"/> Auto-Splice
                             </Button>
@@ -317,9 +319,12 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
             <SpliceVisualizationModal isOpen={showVisualizationModal} onClose={() => setShowVisualizationModal(false)} junctionClosureId={junctionClosureId} />
 
+            {/* Modal code remains the same */}
+            {/* ... (Loss Modal Logic) ... */}
             {showLossModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                         {/* ... modal contents ... */}
                         <h3 className="text-lg font-semibold mb-4">
                             {pendingSpliceAction?.type === 'auto' ? 'Auto-Splice Configuration' : 'Configure Splice Loss'}
                         </h3>

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
-import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload, FiberTraceSegment, PathToUpdate } from "@/schemas/custom-schemas";
+import { autoSpliceResultSchema, AutoSpliceResult, jcSplicingDetailsSchema, JcSplicingDetails, ofcForSelectionSchema, OfcForSelection, routeDetailsPayloadSchema, RouteDetailsPayload, PathToUpdate } from "@/schemas/custom-schemas";
 
 const supabase = createClient();
 
@@ -15,11 +15,11 @@ export function useOfcRoutesForSelection() {
     queryFn: async (): Promise<OfcForSelection[]> => {
       const { data, error } = await supabase
         .from("ofc_cables")
-        .select("id, route_name, capacity, ofc_connections!inner(id)") // Return ofc_cables that have at least one connection (ofc_connections)
-        .order("route_name");
+        .select("id, route_name, capacity, ofc_connections!inner(id)") // Return ofc_cables that have at least one connection
+        .order("route_name", { ascending: true }); // THE FIX: Explicit ascending sort
       if (error) throw error;
 
-      const parsed = z.array(ofcForSelectionSchema).safeParse(data); // Validate that data from Supabase is an array of objects matching ofcForSelectionSchema. If valid, give me typed parsed.data. If invalid, give me an error object instead of crashing.
+      const parsed = z.array(ofcForSelectionSchema).safeParse(data);
       if (!parsed.success) {
         console.error("Zod validation error for OfcForSelection:", parsed.error);
         throw new Error("Received invalid data structure for OFC routes.");
@@ -136,7 +136,6 @@ export function useSyncPathFromTrace() {
 
 
 /** Hook to call the `auto_splice_straight_segments` RPC function. */
-
 export function useAutoSplice() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -176,6 +175,7 @@ export function useSyncPathUpdates() {
   
   return useMutation({
     mutationFn: async ({ jcId }: { jcId: string }) => {
+       void jcId;
       // This is now an empty placeholder as the trigger handles everything.
       // We keep it to maintain the button's functionality, but it does nothing.
       return Promise.resolve();

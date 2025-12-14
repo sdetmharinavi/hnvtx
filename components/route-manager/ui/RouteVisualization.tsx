@@ -11,12 +11,20 @@ interface RouteVisualizationProps {
     onJcClick: (jc: JointBox) => void;
     onEditJc: (jc: JointBox) => void;
     onDeleteJc: (jcId: string) => void;
+    canEdit: boolean;
+    canDelete: boolean;
 }
 
-export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, onDeleteJc }: RouteVisualizationProps) {
+export default function RouteVisualization({ 
+  routeDetails, 
+  onJcClick, 
+  onEditJc, 
+  onDeleteJc,
+  canEdit,
+  canDelete
+}: RouteVisualizationProps) {
   const { route, jointBoxes, segments } = routeDetails;
   
-  // This is the crucial logic block
   const allPoints = [
     { 
       id: route.sn_id, 
@@ -26,7 +34,7 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       raw: {} 
     },
     ...jointBoxes.map(e => ({ 
-        id: e.node_id, // <-- Use the node_id for matching against segments
+        id: e.node_id,
         name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
         type: 'jointBox' as const, 
         position: e.attributes?.position_on_route || 0, 
@@ -41,8 +49,6 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
       raw: {} 
     }
   ].sort((a, b) => a.position - b.position);
-
-  // console.log("allPoints", allPoints);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
@@ -72,7 +78,6 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
               {allPoints.map((point, index) => {
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
                 const isFirst = index === 0;
-                // const isLast = index === allPoints.length - 1;
                 
                 return (
                   <motion.div 
@@ -121,26 +126,30 @@ export default function RouteVisualization({ routeDetails, onJcClick, onEditJc, 
                     
                     {point.type === 'jointBox' && (
                       <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditJc(point.raw as JointBox);
-                          }} 
-                          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                          title="Edit JC"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteJc((point.raw as JointBox).id!);
-                          }} 
-                          className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                          title="Delete JC"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {canEdit && (
+                            <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEditJc(point.raw as JointBox);
+                            }} 
+                            className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                            title="Edit JC"
+                            >
+                            <Edit size={14} />
+                            </button>
+                        )}
+                        {canDelete && (
+                            <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteJc((point.raw as JointBox).id!);
+                            }} 
+                            className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                            title="Delete JC"
+                            >
+                            <Trash2 size={14} />
+                            </button>
+                        )}
                       </div>
                     )}
                   </motion.div>
