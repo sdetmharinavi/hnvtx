@@ -1,7 +1,7 @@
 // components/ofc/OfcCableCard.tsx
 import React from 'react';
 import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiArrowRight, FiInfo, FiLayers } from 'react-icons/fi';
+import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiInfo, FiLayers } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 

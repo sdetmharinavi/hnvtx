@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/common/BulkActions';
@@ -14,11 +14,9 @@ import {
   Ofc_cablesRowSchema,
   V_ofc_cables_completeRowSchema,
   Lookup_typesRowSchema,
-  Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useUser } from '@/providers/UserProvider';
@@ -29,7 +27,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
 import { Row } from '@/hooks/database';
-import { FiActivity, FiGrid, FiList, FiMap, FiSearch, FiUpload } from 'react-icons/fi';
+import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
@@ -38,7 +36,7 @@ import { UserRole } from '@/types/user-roles';
 const OfcPage = () => {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSuperAdmin, role } = useUser();
 
   const {
@@ -77,11 +75,11 @@ const OfcPage = () => {
     async () => await localDb.lookup_types.where({ category: 'OFC_TYPES' }).toArray()
   );
   
-  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-    ['maintenance-areas-for-filter'],
-    async () => (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
-    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
-  );
+  // const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
+  //   ['maintenance-areas-for-filter'],
+  //   async () => (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+  //   async () => await localDb.maintenance_areas.where({ status: true }).toArray()
+  // );
 
   const { data: ofcOwnersData } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['ofc-owners-for-filter'],
@@ -90,7 +88,7 @@ const OfcPage = () => {
   );
 
   const ofcTypes = useMemo(() => (ofcTypesData || []).filter(t => t.name !== 'DEFAULT'), [ofcTypesData]);
-  const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
+  // const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
   const ofcOwners = useMemo(() => (ofcOwnersData || []).filter(o => o.name !== 'DEFAULT'), [ofcOwnersData]);
 
   // Table Config

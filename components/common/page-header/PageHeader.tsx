@@ -68,11 +68,11 @@ export function PageHeader({
               {actions.map((action, index) => {
                 // Destructure custom props to avoid passing them to Button/DOM
                 const { 
-                  hideTextOnMobile, 
-                  hideOnMobile, 
-                  priority, 
+                  // hideTextOnMobile, 
+                  // hideOnMobile, 
+                  // priority, 
                   'data-dropdown': isDropdown, 
-                  dropdownoptions, 
+                  // dropdownoptions, 
                   ...btnProps 
                 } = action;
 
@@ -108,9 +108,9 @@ export function PageHeader({
                  const { 
                   hideTextOnMobile, 
                   hideOnMobile, 
-                  priority, 
+                  // priority, 
                   'data-dropdown': isDropdown, 
-                  dropdownoptions, 
+                  // dropdownoptions, 
                   ...btnProps 
                 } = action;
 

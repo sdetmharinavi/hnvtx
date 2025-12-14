@@ -75,8 +75,8 @@ export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ filters:
       selectedTypes.length > 0 ? selectedTypes.includes(p.type_code || '') : false
     );
 
-    const totalActive = filtered.reduce((acc, curr) => acc + curr.active, 0);
-    const totalUsed = filtered.reduce((acc, curr) => acc + curr.used, 0);
+    const totalActive = filtered.reduce((acc, curr) => acc + (curr?.active || 0), 0);
+    const totalUsed = filtered.reduce((acc, curr) => acc + (curr?.used || 0), 0);
 
     return {
       count: selectedTypes.length,

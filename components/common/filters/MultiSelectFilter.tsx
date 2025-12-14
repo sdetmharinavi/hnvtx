@@ -69,6 +69,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleToggleOption = (value: string) => {

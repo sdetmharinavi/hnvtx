@@ -1,7 +1,7 @@
 // components/systems/SystemCard.tsx
 import React from 'react';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiServer, FiInfo, FiCpu, FiGrid } from 'react-icons/fi';
+import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiInfo, FiCpu, FiGrid } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { formatIP } from '@/utils/formatters';

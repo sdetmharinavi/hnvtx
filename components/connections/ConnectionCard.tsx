@@ -1,10 +1,9 @@
 // components/connections/ConnectionCard.tsx
 import React from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiCpu, FiEye, FiGlobe, FiMapPin, FiMonitor, FiServer } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
 
 interface ConnectionCardProps {

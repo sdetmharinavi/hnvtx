@@ -358,7 +358,7 @@ export default function EFilesPage() {
               {
                 key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
                 // THE FIX: Strict hiding based on canDelete boolean
-                hidden: (rec) => !canDelete,
+                hidden: !canDelete,
               },
             ]}
           />

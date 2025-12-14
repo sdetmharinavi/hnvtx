@@ -18,12 +18,14 @@
       "CUST",
       "customuppy",
       "datatable",
+      "datepicker",
       "dedup",
       "defval",
       "Dexie",
       "Didn",
       "dropdownoptions",
       "DWDM",
+      "efile",
       "efiles",
       "exceljs",
       "fkey",
@@ -69,6 +71,7 @@
       "plpgsql",
       "postgrest",
       "POTN",
+      "prefs",
       "psql",
       "Qrcode",
       "radiolink",
@@ -78,6 +81,7 @@
       "refetches",
       "refreshable",
       "regconfig",
+      "rgba",
       "roleid",
       "rolname",
       "sandboxed",
@@ -99,6 +103,7 @@
       "unpositioned",
       "unprovisioned",
       "unspliced",
+      "uppy",
       "upserted",
       "Upserting",
       "uuidv",
@@ -113,5 +118,12 @@
       "Zustand"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "javascript.preferences.importModuleSpecifier": "non-relative"
+  "javascript.preferences.importModuleSpecifier": "non-relative",
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  "files.associations": {
+    "*.css": "css"
+  },
+  
 }

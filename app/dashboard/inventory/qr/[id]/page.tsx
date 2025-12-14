@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { V_inventory_itemsRowSchema } from "@/schemas/zod-schemas";
 import { PageSpinner, ErrorDisplay } from "@/components/common/ui";
 import { QRCodeCanvas } from "qrcode.react";
-import { FiTag, FiBox, FiInfo, FiMapPin, FiCalendar, FiDollarSign, FiLayers } from "react-icons/fi";
+import { FiTag, FiBox, FiInfo, FiMapPin, FiCalendar, FiLayers } from "react-icons/fi";
 import { BiRupee } from "react-icons/bi";
 
 const DetailItem = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number | null | undefined }) => {
