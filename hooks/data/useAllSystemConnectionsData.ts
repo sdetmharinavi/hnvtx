@@ -22,7 +22,7 @@ export const useAllSystemConnectionsData = (
       const term = searchQuery.trim().replace(/'/g, "''");
       searchString = `(` +
         `service_name ILIKE '%${term}%' OR ` +
-        `system_name ILIKE '%${term}%' OR ` + // Important for global view
+        `system_name ILIKE '%${term}%' OR ` + 
         `connected_system_name ILIKE '%${term}%' OR ` +
         `bandwidth_allocated ILIKE '%${term}%' OR ` +
         `unique_id ILIKE '%${term}%' OR ` +
@@ -40,18 +40,22 @@ export const useAllSystemConnectionsData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'created_at',
-      p_order_dir: 'desc',
+      // Sort by Service Name alphabetically
+      p_order_by: 'service_name',
+      p_order_dir: 'asc',
     });
 
     if (error) throw error;
-    return (data as { data: V_system_connections_completeRowSchema[] })?.data || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.data || [];
   }, [searchQuery, filters]);
 
   // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // Fetch all for client-side filtering
-    return localDb.v_system_connections_complete.orderBy('created_at').reverse().toArray();
+    // THE FIX: Use toArray() to fetch all records.
+    // We do NOT use orderBy('service_name') here because records with null service_name
+    // would be excluded by Dexie, and we sort properly in memory later anyway.
+    return localDb.v_system_connections_complete.toArray();
   }, []);
 
   // 3. Local-First Query Execution
@@ -100,6 +104,13 @@ export const useAllSystemConnectionsData = (
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(c => c.status === statusBool);
     }
+
+    // Robust sorting by Service Name -> System Name
+    filtered.sort((a, b) => {
+      const nameA = a.service_name || a.system_name || '';
+      const nameB = b.service_name || b.system_name || '';
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+    });
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((c) => !!c.status).length;

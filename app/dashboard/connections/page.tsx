@@ -27,12 +27,15 @@ import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect
 import { ConnectionCard } from '@/components/connections/ConnectionCard';
 import { Row } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
   const router = useRouter();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [showFilters, setShowFilters] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
@@ -78,7 +81,7 @@ export default function GlobalConnectionsPage() {
   const mediaOptions = useMemo(() => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })), [mediaTypesData]);
   const linkTypeOptions = useMemo(() => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })), [linkTypesData]);
 
-  // Columns
+  // Columns: Pass true to show the System Name context
   const columns = SystemConnectionsTableColumns(connections, true);
   const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
 
@@ -113,7 +116,8 @@ export default function GlobalConnectionsPage() {
     { key: 'view-details', label: 'Full Details', icon: <FiMonitor />, onClick: handleViewDetails, variant: 'primary' },
     { key: 'view-path', label: 'View Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0) },
     { key: 'go-to-system', label: 'Go to System', icon: <FiGitBranch />, onClick: handleGoToSystem, variant: 'secondary' },
-  ], [handleGoToSystem]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [handleGoToSystem]);
 
   const headerActions = useStandardHeaderActions({
     data: connections,
@@ -138,7 +142,8 @@ export default function GlobalConnectionsPage() {
             onGoToSystem={handleGoToSystem}
         />
      );
-  }, [handleGoToSystem]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleGoToSystem]);
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
 
@@ -240,7 +245,44 @@ export default function GlobalConnectionsPage() {
                 showSizeChanger: true,
                 onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
             }}
-            customToolbar={<></>}
+            customToolbar={
+              <SearchAndFilters
+                searchTerm={search.searchQuery}
+                onSearchChange={search.setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+                activeFilterCount={Object.keys(filters.filters).length}
+                searchPlaceholder="Search service, customer..."
+              >
+                 <SelectFilter
+                    label="Media Type"
+                    filterKey="media_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={mediaOptions}
+                 />
+                 <SelectFilter
+                    label="Link Type"
+                    filterKey="connected_link_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={linkTypeOptions}
+                    placeholder="Filter by Link Type"
+                 />
+                 <SelectFilter
+                    label="Status"
+                    filterKey="status"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: 'true', label: 'Active' },
+                        { value: 'false', label: 'Inactive' }
+                    ]}
+                 />
+              </SearchAndFilters>
+            }
           />
       )}
 

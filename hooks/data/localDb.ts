@@ -122,7 +122,8 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    this.version(21).stores({
+    // Incremented version to 22 and added service_name to v_system_connections_complete
+    this.version(22).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -156,7 +157,8 @@ export class HNVTMDatabase extends Dexie {
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, created_at',
+      // THE FIX: Added service_name to index
+      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',

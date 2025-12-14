@@ -557,6 +557,53 @@ export const workflowSections: WorkflowSection[] = [
   },
 
   // ============================================================================
+  // MODULE 23: GLOBAL CONNECTIONS EXPLORER
+  // ============================================================================
+  {
+    value: "global_connections",
+    icon: "FiGitBranch",
+    title: "Global Connections",
+    subtitle: "Network-Wide Circuit View",
+    gradient: "from-indigo-600 to-violet-600",
+    iconColor: "text-indigo-500",
+    bgGlow: "bg-indigo-500/10",
+    color: "violet",
+    purpose: "To provide a searchable, unified view of every logical service connection across the entire network.",
+    workflows: [
+      {
+        title: "1. Finding Circuits",
+        userSteps: [
+          "Navigate to `/dashboard/connections`.",
+          "**Sorting:** Connections are sorted alphabetically by 'Service Name'.",
+          "**Search:** Enter a customer name, service ID, or any system name in the route to find a specific link.",
+          "**Filtering:** Use dropdowns to isolate 'MPLS' links or specific Media Types.",
+        ],
+        uiSteps: [
+          "Grid View shows cards with Start/End points and status.",
+          "Table View provides detailed columns for bandwidth and interface data.",
+        ],
+        techSteps: [
+          "**Hook:** `useAllSystemConnectionsData` fetches `v_system_connections_complete`.",
+        ],
+      },
+      {
+        title: "2. Deep Diving",
+        userSteps: [
+          "Click 'Full Details' to open the connection inspector modal.",
+          "Click 'View Path' to see the physical fiber trace.",
+          "Click 'Go to System' to jump to the parent system's management page for editing.",
+        ],
+        uiSteps: [
+          "This page is read-only by design to prevent accidental modification of complex routes without context.",
+        ],
+        techSteps: [
+          "**Navigation:** Uses Next.js router to switch contexts.",
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
   {
