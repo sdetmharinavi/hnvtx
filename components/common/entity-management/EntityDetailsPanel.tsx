@@ -7,8 +7,8 @@ import { DetailItem } from '@/components/common/entity-management/DetailItem';
 interface EntityDetailsPanelProps<T extends BaseEntity> {
   entity: T | null;
   config: EntityConfig<T>;
-  onEdit: () => void;
-  // THE FIX: Made onDelete optional
+  // THE FIX: Made onEdit optional
+  onEdit?: () => void;
   onDelete?: (entity: { id: string; name: string }) => void;
   onViewDetails?: () => void;
 }
@@ -66,14 +66,18 @@ export function EntityDetailsPanel<T extends BaseEntity>({
               <FiEye className="h-4 w-4" /> View Details
             </button>
           )}
-          <button
-            onClick={onEdit}
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <FiEdit3 className="h-4 w-4" />
-          </button>
           
-          {/* THE FIX: Conditionally render the delete button only if onDelete is provided */}
+          {/* THE FIX: Conditionally render Edit button */}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Edit"
+            >
+              <FiEdit3 className="h-4 w-4" />
+            </button>
+          )}
+          
           {onDelete && (
             <button
               onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}

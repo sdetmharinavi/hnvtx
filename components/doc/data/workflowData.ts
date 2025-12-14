@@ -164,19 +164,35 @@ export const workflowSections: WorkflowSection[] = [
         ],
       },
       {
-        title: "3. Maintenance Areas (Geo-Hierarchy)",
+        title: "4. Creating Areas",
         userSteps: [
-          "Go to `/dashboard/maintenance-areas`.",
-          "Create a 'Zone' (Top Level).",
-          "Create a 'Terminal' and assign it to the Zone (Parent).",
-          "Enter GPS coordinates for the office location.",
+          "Navigate to `/dashboard/maintenance-areas`.",
+          "Click 'Add New' (Admin/Super Admin only).",
+          "Enter 'Name', 'Code' (e.g., 'KOL-SOUTH'), and select 'Area Type' (Zone/Terminal).",
+          "Use 'Parent Area' to nest a Terminal under a Zone.",
+          "Add GPS coordinates and contact details.",
         ],
         uiSteps: [
-          "Details panel shows contact info and hierarchy ('Child of: Zone A').",
+          "Coordinates are validated as numbers.",
+          "Areas are sorted alphabetically by default.",
         ],
         techSteps: [
-          "**Table:** `maintenance_areas`.",
-          "**Usage:** These IDs are later used in `nodes` and `systems` to assign ownership.",
+          "**Table:** `maintenance_areas` with self-referencing `parent_id`.",
+          "**Permissions:** Create/Edit for Admins; Delete for Super Admin only.",
+        ],
+      },
+      {
+        title: "4.1. Hierarchy Visualization",
+        userSteps: [
+          "Use the 'Tree' view toggle to see the nested structure.",
+          "Click on an area to open the details panel.",
+          "View parent/child relationships and contact info in the details modal.",
+        ],
+        uiSteps: [
+          "The list/tree view uses the shared `EntityManagementComponent`.",
+        ],
+        techSteps: [
+          "**Hook:** `useMaintenanceAreasData` builds the tree structure in memory.",
         ],
       },
     ],

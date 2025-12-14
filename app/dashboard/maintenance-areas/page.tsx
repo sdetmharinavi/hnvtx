@@ -19,9 +19,12 @@ import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { UseQueryResult } from '@tanstack/react-query';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
+  const { isSuperAdmin, role } = useUser();
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -39,6 +42,12 @@ export default function MaintenanceAreasPage() {
     displayNameField: 'name',
     searchColumn: ['name', 'code', 'contact_person', 'email'],
   });
+
+  // --- PERMISSIONS ---
+  // Admins can Create/Edit
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  // Only Super Admin can Delete
+  const canDelete = !!isSuperAdmin;
 
   const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
   const isInitialLoad = isLoading && allAreas.length === 0;
@@ -70,7 +79,9 @@ export default function MaintenanceAreasPage() {
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: handleOpenCreateForm, isLoading: isLoading,
+    // THE FIX: Condition the "Add New" button
+    onAddNew: canEdit ? handleOpenCreateForm : undefined, 
+    isLoading: isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
   
@@ -108,9 +119,10 @@ export default function MaintenanceAreasPage() {
         entitiesQuery={areasQuery}
         isFetching={isFetching || isMutating}
         toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
-        onEdit={() => handleOpenEditForm(selectedEntity!)}
-        onDelete={deleteManager.deleteSingle}
-        onCreateNew={handleOpenCreateForm}
+        // THE FIX: Pass permissions correctly
+        onEdit={canEdit ? () => handleOpenEditForm(selectedEntity!) : undefined}
+        onDelete={canDelete ? deleteManager.deleteSingle : undefined}
+        onCreateNew={canEdit ? handleOpenCreateForm : undefined}
         selectedEntityId={selectedAreaId}
         onSelect={setSelectedAreaId}
         onViewDetails={() => setIsDetailsModalOpen(true)}

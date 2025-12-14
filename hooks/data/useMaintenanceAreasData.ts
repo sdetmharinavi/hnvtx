@@ -37,14 +37,17 @@ export const useMaintenanceAreasData = (
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
+      // THE FIX: Ensure sorting by name
       p_order_by: 'name',
+      p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_maintenance_areasRowSchema[] })?.data || [];
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_maintenance_areas.toArray();
+    // THE FIX: Ensure local sorting by name
+    return localDb.v_maintenance_areas.orderBy('name').toArray();
   }, []);
 
   const {
@@ -60,7 +63,6 @@ export const useMaintenanceAreasData = (
     dexieTable: localDb.v_maintenance_areas,
   });
 
-  // (Processing logic remains the same)
   const processedData = useMemo(() => {
     if (!allAreasFlat) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -100,6 +102,9 @@ export const useMaintenanceAreasData = (
     if (filters.area_type_id) {
       filtered = filtered.filter(area => area.area_type_id === filters.area_type_id);
     }
+
+    // THE FIX: Explicit case-insensitive sort for safety (though hook already sorts)
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
     const areasWithRelations = filtered.map(area => ({
       ...area,

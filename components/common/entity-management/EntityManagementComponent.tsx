@@ -21,10 +21,10 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
   entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
   toggleStatusMutation: { mutate: (variables: ToggleStatusVariables) => void; isPending: boolean };
-  onEdit: (entity: T) => void;
-  // THE FIX: Made onDelete optional here
+  // THE FIX: Made onEdit optional
+  onEdit?: (entity: T) => void;
   onDelete?: (entity: { id: string; name: string }) => void;
-  onCreateNew: () => void;
+  onCreateNew?: () => void; // Made optional as well for read-only access
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
   onViewDetails?: () => void;
@@ -189,13 +189,16 @@ export function EntityManagementComponent<T extends BaseEntity>({
     setShowDetailsPanel(false);
     onSelect(null);
   }, [onSelect]);
+  
   const handleItemSelect = (id: string) => {
     onSelect(id);
     setShowDetailsPanel(true);
   };
+  
   const handleOpenEditForm = useCallback(() => {
-    if (selectedEntity) onEdit(selectedEntity);
+    if (selectedEntity && onEdit) onEdit(selectedEntity);
   }, [selectedEntity, onEdit]);
+  
   const toggleExpanded = (id: string) => {
     setExpandedEntities((prev) => {
       const newSet = new Set(prev);
@@ -244,13 +247,16 @@ export function EntityManagementComponent<T extends BaseEntity>({
                 <p className="text-gray-500 dark:text-gray-400">
                   No {config.entityPluralName.toLowerCase()} found.
                 </p>
-                <button
-                  onClick={onCreateNew}
-                  className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                >
-                  <FiPlus className="h-4 w-4 mr-2" />
-                  Add First {config.entityDisplayName}
-                </button>
+                {/* THE FIX: Conditionally render Add button only if onCreateNew provided */}
+                {onCreateNew && (
+                  <button
+                    onClick={onCreateNew}
+                    className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                  >
+                    <FiPlus className="h-4 w-4 mr-2" />
+                    Add First {config.entityDisplayName}
+                  </button>
+                )}
               </div>
             </div>
           ) : config.isHierarchical && viewMode === 'tree' ? (
