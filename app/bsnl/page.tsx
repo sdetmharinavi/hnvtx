@@ -221,7 +221,7 @@ export default function ScalableFiberNetworkDashboard() {
             <div className="flex items-center">
               <Network className="h-8 w-8 text-blue-600 mr-3" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-lg lg:text-2xl font-bold text-gray-900 dark:text-white">
                   Harinavi Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
