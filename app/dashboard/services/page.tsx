@@ -43,8 +43,8 @@ export default function ServicesPage() {
   });
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.MAANADMIN || role === UserRole.CPANADMIN;
-  const canDelete = isSuperAdmin === true;
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(role as UserRole);
+  const canDelete = !!isSuperAdmin;
 
   // --- DUPLICATE DETECTION LOGIC ---
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
@@ -108,6 +108,7 @@ export default function ServicesPage() {
 
   const headerActions = useStandardHeaderActions({
       onRefresh: refetch,
+      // THE FIX: Conditionally allow adding new services
       onAddNew: canEdit ? editModal.openAdd : undefined,
       isLoading,
       data: data as Row<'v_services'>[],
@@ -226,7 +227,7 @@ export default function ServicesPage() {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="service"
         showStatusUpdate={false}
-        canDelete={() => !!canDelete}
+        canDelete={() => canDelete}
       />
 
       {/* Content */}

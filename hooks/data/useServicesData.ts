@@ -39,11 +39,14 @@ export const useServicesData = (
       p_limit: 5000, 
       p_offset: 0,
       p_filters: rpcFilters,
+      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
+      p_order_dir: 'asc'
     });
 
     if (error) throw error;
 
+    // Handle variable return types from RPC wrapper
     let resultList: V_servicesRowSchema[] = [];
     if (Array.isArray(data)) {
       if (data.length > 0 && 'data' in data[0]) {
@@ -63,7 +66,8 @@ export const useServicesData = (
 
   // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    return localDb.v_services.toArray();
+    // THE FIX: Local sort by name
+    return localDb.v_services.orderBy('name').toArray();
   }, []);
 
   // 3. Use Local First Query
@@ -111,8 +115,12 @@ export const useServicesData = (
         filtered = filtered.filter(s => s.status === statusBool);
     }
 
+    // THE FIX: Explicit client-side sort
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
     const totalCount = filtered.length;
     const activeCount = filtered.filter(s => s.status === true).length;
+    const inactiveCount = totalCount - activeCount;
 
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
@@ -122,7 +130,7 @@ export const useServicesData = (
       data: paginatedData,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount,
     };
   }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 

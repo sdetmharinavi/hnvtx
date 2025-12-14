@@ -261,6 +261,39 @@ export const workflowSections: WorkflowSection[] = [
           "**Logic:** `ClientRingMap` handles the visual rendering.",
         ],
       },
+      {
+        title: "7. Defining Services",
+        userSteps: [
+          "Navigate to `/dashboard/services`.",
+          "Click 'Add New' (Admin/System Admins only).",
+          "Enter Service Name (e.g., Customer Name + Location).",
+          "Select 'Start Location' (Node) and optional 'End Location'.",
+          "Define attributes like 'Link Type' (MPLS, ILL), 'Bandwidth', and 'VLAN'.",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "Services are sorted alphabetically by Name.",
+          "Duplicate names (Name + Link Type) are flagged with an icon.",
+        ],
+        techSteps: [
+          "**Table:** `services` stores these definitions.",
+          "**Validation:** `useDuplicateFinder` checks `name` + `link_type` combination.",
+        ],
+      },
+      {
+        title: "7.1. Linking to Connections",
+        userSteps: [
+          "Once created, a Service can be selected in the **System Connection Form**.",
+          "Go to a System -> Add Connection -> Select 'Existing Service'.",
+          "The system will pre-fill VLAN, Bandwidth, and IDs from this definition.",
+        ],
+        uiSteps: [
+          "This separates the *Logical* definition (Customer contract) from the *Physical* implementation (Port assignment).",
+        ],
+        techSteps: [
+          "**Relation:** `system_connections` table has a `service_id` FK.",
+        ],
+      },
     ],
   },
 
