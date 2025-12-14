@@ -129,4 +129,4 @@ Always mention which part of the code has been edited and why.
 Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
-Let's begin! First of all, Our first concentration will be enhancement of UI and UX.In dashboard page we are showing only utilization of cables, it will be better if we show utilization of systems also. You can also decide yourself if any more enhancement needed in this page.
+Let's begin! First of all, We will first check one by one each page for any error fix/UI-UX enchancement as well as update the doc page wise on how to use explaining each and every aspect.So lets start with diary.
