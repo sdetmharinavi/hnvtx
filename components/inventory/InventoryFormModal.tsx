@@ -36,10 +36,10 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
   const { data: locationsResult } = useTableQuery(supabase, 'v_nodes_complete', { filters: { status: true } });
   const { data: functionalLocationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
   
-  const categoryOptions = useMemo(() => categoriesResult?.data?.map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
+  const categoryOptions = useMemo(() => categoriesResult?.data?.filter(c => c.name !== 'DEFAULT').map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
   const statusOptions = useMemo(() => statusesResult?.data?.map(s => ({ value: s.id, label: s.name })) || [], [statusesResult]);
-  const locationOptions = useMemo(() => locationsResult?.data?.map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
-  const functionalLocationOptions = useMemo(() => functionalLocationsResult?.data?.map(l => ({ value: l.id, label: l.name })) || [], [functionalLocationsResult]);
+  const locationOptions = useMemo(() => locationsResult?.data?.filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
+  const functionalLocationOptions = useMemo(() => functionalLocationsResult?.data?.filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id, label: l.name })) || [], [functionalLocationsResult]);
 
   const {
     register,

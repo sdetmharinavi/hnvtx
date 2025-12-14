@@ -224,6 +224,74 @@ export const workflowSections: WorkflowSection[] = [
   },
 
   // ============================================================================
+  // MODULE 10: E-FILE TRACKING
+  // ============================================================================
+  {
+    value: "efile_tracking",
+    icon: "FileText",
+    title: "E-File Tracking",
+    subtitle: "Digital Movement Register",
+    gradient: "from-blue-600 to-indigo-700",
+    iconColor: "text-blue-500",
+    bgGlow: "bg-blue-500/10",
+    color: "blue",
+    purpose: "To digitize the physical file movement register, tracking the current location and movement history of office files.",
+    workflows: [
+      {
+        title: "1. Initiating a File",
+        userSteps: [
+          "Navigate to `/dashboard/e-files`.",
+          "Click 'Initiate File'.",
+          "Enter 'File Number', 'Subject', and select 'Category' (Admin/Tech/Other).",
+          "Select the 'Initiator' (the employee starting the file) from the dropdown.",
+          "Set Priority (Normal/Urgent/Immediate).",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "The file appears in the list with status 'Active'.",
+          "The 'Currently With' column shows the Initiator.",
+        ],
+        techSteps: [
+          "**RPC:** `initiate_e_file` creates the file record and the first movement log entry simultaneously.",
+        ],
+      },
+      {
+        title: "2. Forwarding a File",
+        userSteps: [
+          "Locate the file in the grid or list.",
+          "Click the 'Forward' button (Paper Plane icon).",
+          "Select 'Forward To' (Employee) from the dropdown.",
+          "Add 'Remarks' explaining the action.",
+          "Click 'Send'.",
+        ],
+        uiSteps: [
+          "The 'Currently With' field updates instantly.",
+          "The movement is recorded in the file's history.",
+        ],
+        techSteps: [
+          "**RPC:** `forward_e_file` updates `current_holder_employee_id` on the file and inserts a new row into `file_movements`.",
+        ],
+      },
+      {
+        title: "3. Closing/Archiving",
+        userSteps: [
+          "Open the file details view.",
+          "Click 'Close File' (Archive icon).",
+          "Confirm the action.",
+        ],
+        uiSteps: [
+          "Status changes to 'Closed'.",
+          "File moves to the 'Closed/Archived' filter view.",
+          "Further forwarding is disabled.",
+        ],
+        techSteps: [
+          "**RPC:** `close_e_file` updates status and logs the final movement.",
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
   // MODULE 2: BASE MASTER DATA (Setup)
   // ============================================================================
   {

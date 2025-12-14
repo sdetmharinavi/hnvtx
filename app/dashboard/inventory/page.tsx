@@ -67,9 +67,8 @@ export default function InventoryPage() {
      async () => (await supabase.from('v_nodes_complete').select('*').eq('status', true)).data ?? [],
      async () => await localDb.v_nodes_complete.where({ status: true }).toArray()
   );
-
-  const categoryOptions = useMemo(() => (categories || []).map(c => ({ value: c.id, label: c.name })), [categories]);
-  const locationOptions = useMemo(() => (locations || []).map(l => ({ value: l.id!, label: l.name! })), [locations]);
+  const categoryOptions = useMemo(() => (categories || []).filter(c => c.name !== 'DEFAULT').map(c => ({ value: c.id, label: c.name })), [categories]);
+  const locationOptions = useMemo(() => (locations || []).filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id!, label: l.name! })), [locations]);
 
   // Permission Logic
   const canEdit = useMemo(() => !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN, [isSuperAdmin, role]);

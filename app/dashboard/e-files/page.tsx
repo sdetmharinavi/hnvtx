@@ -29,6 +29,14 @@ import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { Input } from '@/components/common/ui/Input';
 import { EFileCard } from '@/components/efile/EFileCard';
 import { UserRole } from '@/types/user-roles';
+import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
+
+// Hardcoded categories to match the form options
+const CATEGORY_OPTIONS = [
+    { value: 'administrative', label: 'Administrative' },
+    { value: 'technical', label: 'Technical' },
+    { value: 'other', label: 'Other' }
+];
 
 export default function EFilesPage() {
   const router = useRouter();
@@ -154,6 +162,13 @@ export default function EFilesPage() {
           <span className="text-xs text-gray-500 truncate">{rec.description}</span>
         </div>
       ),
+    },
+    {
+      key: 'category',
+      title: 'Category',
+      dataIndex: 'category',
+      width: 100,
+      render: (val) => <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{val as string}</span>
     },
     {
       key: 'priority',
@@ -288,6 +303,21 @@ export default function EFilesPage() {
                     <option value="">All Files</option>
                  </select>
              </div>
+             
+             {/* Category Filter */}
+             <div className="min-w-[140px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.category || ''}
+                    onChange={(e) => setFilters(prev => ({...prev, category: e.target.value || undefined}))}
+                 >
+                    <option value="">All Categories</option>
+                    {CATEGORY_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                 </select>
+             </div>
+
              <div className="min-w-[140px]">
                  <select
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -324,9 +354,12 @@ export default function EFilesPage() {
                 />
              ))}
              {filteredFiles.length === 0 && !isLoading && (
-                 <div className="col-span-full py-16 text-center text-gray-500">
-                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No files match your search criteria.</p>
+                 <div className="col-span-full">
+                    <FancyEmptyState 
+                        title="No files found"
+                        description="Try adjusting your filters or initiate a new file."
+                        icon={FileText}
+                    />
                  </div>
              )}
           </div>
@@ -357,7 +390,7 @@ export default function EFilesPage() {
               },
               {
                 key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
-                // THE FIX: Strict hiding based on canDelete boolean
+                // Strict hiding based on canDelete boolean
                 hidden: !canDelete,
               },
             ]}
