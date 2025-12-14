@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
 
 /**
  * Implements the local-first data fetching strategy for the Nodes page.
@@ -18,18 +19,14 @@ export const useNodesData = (
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
 
-    // FIX: Removed 'maintenance_area_name' from search.
-    // This prevents generic terms like "Transmission" (containing "mission") from matching every node.
-    // We also construct the SQL string manually to allow casting numeric coords to text.
+    // Construct robust SQL search string
     let searchString: string | undefined;
 
     if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Basic sanitization
+      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
 
       searchString = `(` +
         `name ILIKE '%${term}%' OR ` +
-        // `node_type_name ILIKE '%${term}%' OR ` +
-        // maintenance_area_name ILIKE ... <-- REMOVED
         `node_type_code ILIKE '%${term}%' OR ` +
         `remark ILIKE '%${term}%' OR ` +
         `latitude::text ILIKE '%${term}%' OR ` +
@@ -44,10 +41,12 @@ export const useNodesData = (
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_nodes_complete',
-      p_limit: 5000,
+      p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
+      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
+      p_order_dir: 'asc'
     });
 
     if (error) throw error;
@@ -57,7 +56,8 @@ export const useNodesData = (
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    return localDb.v_nodes_complete.toArray();
+    // THE FIX: Sort locally by name
+    return localDb.v_nodes_complete.orderBy('name').toArray();
   }, []);
 
   // 3. Use the local-first query hook
@@ -87,11 +87,8 @@ export const useNodesData = (
 
     if (cleanSearch) {
         filtered = filtered.filter((node) => {
-            // Helper to safely check inclusion against multiple fields
             const valuesToCheck = [
                 node.name,
-                // node.node_type_name,
-                // node.maintenance_area_name, <-- REMOVED here as well
                 node.node_type_code,
                 node.remark,
                 node.latitude,
@@ -120,8 +117,8 @@ export const useNodesData = (
          filtered = filtered.filter((node) => node.status === statusBool);
     }
 
-    // Sort alphabetically by name
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // THE FIX: Explicit client-side sort to guarantee order even after filtering
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;

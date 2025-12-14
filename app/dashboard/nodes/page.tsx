@@ -65,9 +65,9 @@ const NodesPage = () => {
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  const canDelete = isSuperAdmin === true;
-  const isSelectable = canDelete; // Only Super Admin can bulk delete
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  // THE FIX: Strict delete permission
+  const canDelete = !!isSuperAdmin;
 
   // 1. Fetch Node Types
   const { data: nodeTypeOptionsData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -104,6 +104,7 @@ const NodesPage = () => {
       createStandardActions<V_nodes_completeRowSchema>({
         onEdit: canEdit ? editModal.openEdit : undefined,
         onView: viewModal.open,
+        // THE FIX: Conditionally pass delete action
         onDelete: canDelete ? crudActions.handleDelete : undefined,
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete, canEdit, canDelete]
@@ -135,7 +136,6 @@ const NodesPage = () => {
   ];
 
   const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>) => {
-      // Re-use Card component for mobile list view items to ensure consistency
       return (
          <NodeCard 
             node={record as V_nodes_completeRowSchema}
@@ -143,7 +143,7 @@ const NodesPage = () => {
             onDelete={crudActions.handleDelete}
             onView={viewModal.open}
             canEdit={canEdit}
-            canDelete={canDelete}
+            canDelete={canDelete} 
          />
       )
   }, [editModal.openEdit, crudActions.handleDelete, viewModal.open, canEdit, canDelete]);
@@ -221,7 +221,8 @@ const NodesPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="node"
         showStatusUpdate={true}
-        canDelete={() => !!canDelete}
+        // THE FIX: Pass delete capability to BulkActions
+        canDelete={() => canDelete}
       />
 
       {/* Content Area */}
@@ -253,7 +254,8 @@ const NodesPage = () => {
             columns={orderedColumns}
             loading={isLoading}
             actions={tableActions}
-            selectable={isSelectable}
+            // THE FIX: Selectable only if user can delete (or perform other bulk actions if we add them later)
+            selectable={canDelete}
             onRowSelect={(rows) => {
                 const validRows = rows.filter((row): row is V_nodes_completeRowSchema & { id: string } => row.id != null);
                 bulkActions.handleRowSelect(validRows);
