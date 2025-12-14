@@ -60,7 +60,7 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
             type="button"
             // THE FIX: Changed from fixed w-10 to variable width with min-width and padding
             className={`
-              h-9 w-auto min-w-[2.5rem] px-2 flex items-center justify-center rounded-md border 
+              h-9 w-auto min-w-10 px-2 flex items-center justify-center rounded-md border 
               text-[11px] font-bold text-white transition-all duration-200 
               hover:scale-105 hover:shadow-md focus:ring-2 focus:ring-offset-1 focus:outline-none
               ${getPortStatusColor(port)}

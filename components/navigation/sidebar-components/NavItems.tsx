@@ -34,7 +34,7 @@ function NavItems() {
         id: 'home',
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
-        href: '/',
+        href: '/dashboard',
         roles: [
           UserRole.ADMIN,
           UserRole.VIEWER,

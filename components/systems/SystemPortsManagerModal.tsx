@@ -264,8 +264,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         {services && services.length > 0 ? (
            <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
-              {services.map(svc => (
-                 <div key={svc.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
+              {services.map((svc,i) => (
+                 <div key={`${svc.id} + ${i}`} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
                     {svc.system_working_interface === portName ?
                         <Activity className="w-3.5 h-3.5 text-blue-500" /> :
                         <Shield className="w-3.5 h-3.5 text-purple-500" />

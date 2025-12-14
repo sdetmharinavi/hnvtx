@@ -502,7 +502,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             ) : (
               processedData.map((record, idx) => (
                 <Card
-                  key={record.id}
+                  key={`${record.id}-${idx}`} 
                   className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative"
                 >
                   {selectable && (

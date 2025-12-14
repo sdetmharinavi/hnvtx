@@ -97,7 +97,11 @@ export default function DashboardHeader({
             {/* Left side - Only Menu Button (no title) */}
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
+              <Link href="/">
+                <Image src="/logo.png" alt="Logo" width={60} height={60} className="ml-2"/>
+              </Link>
             </div>
+            {/* Logo */}
 
             {/* Right side - Actions and User Menu */}
             <div className="relative flex items-center space-x-2 sm:space-x-4">
