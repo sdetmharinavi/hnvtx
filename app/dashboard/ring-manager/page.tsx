@@ -1,7 +1,7 @@
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -24,15 +24,15 @@ import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
 import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
 
 import {
-  Filters,
-  PagedQueryResult,
   useTableInsert,
   useTableUpdate,
   RpcFunctionArgs,
   useRpcMutation,
   useTableQuery,
+  PagedQueryResult,
+  Filters,
 } from '@/hooks/database';
-import { DataQueryHookParams, DataQueryHookReturn, useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   RingsInsertSchema,
   Lookup_typesRowSchema,
@@ -44,8 +44,6 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { buildRpcFilters } from '@/hooks/database/utility-functions';
-import { DEFAULTS } from '@/constants/constants';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { SystemFormData } from '@/schemas/system-schemas';
@@ -54,6 +52,8 @@ import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
+import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
+import { UserRole } from '@/types/user-roles';
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -62,16 +62,6 @@ interface SystemToDisassociate {
   systemName: string;
   ringName: string;
 }
-
-interface DynamicStats {
-  total: number;
-  spec: { issued: number; pending: number };
-  ofc: { ready: number; partial: number; pending: number };
-  bts: { onAir: number; pending: number; nodesOnAir: number; configuredCount: number }; // Added nodesOnAir
-}
-
-// Extend V_ringsRowSchema to include the new column optionally
-type ExtendedRingRow = V_ringsRowSchema & { bts_node_count?: number };
 
 // --- Helper Hooks ---
 
@@ -142,10 +132,14 @@ const RingAssociatedSystemsView = ({
   ringId,
   onEdit,
   onDelete,
+  canEdit,
+  canDelete
 }: {
   ringId: string;
   onEdit: (sys: V_systems_completeRowSchema) => void;
   onDelete: (sys: V_systems_completeRowSchema) => void;
+  canEdit: boolean;
+  canDelete: boolean;
 }) => {
   const { data: systemsData, isLoading } = useRingSystems(ringId);
   const systems = systemsData?.data || [];
@@ -207,24 +201,28 @@ const RingAssociatedSystemsView = ({
               </div>
             </div>
             <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
-                onClick={() => onEdit(system)}
-                title="Edit Order / Hub Status"
-              >
-                <FiEdit className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
-                onClick={() => onDelete(system)}
-                title="Remove System from Ring"
-              >
-                <FiTrash2 className="w-4 h-4" />
-              </Button>
+              {canEdit && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                    onClick={() => onEdit(system)}
+                    title="Edit Order / Hub Status"
+                >
+                    <FiEdit className="w-4 h-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                    onClick={() => onDelete(system)}
+                    title="Remove System from Ring"
+                >
+                    <FiTrash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         );
@@ -233,132 +231,11 @@ const RingAssociatedSystemsView = ({
   );
 };
 
-// --- Custom Hook with Stats Calculation ---
-const useRingsDataWithStats = (
-  params: DataQueryHookParams, 
-  setDynamicStats: (stats: DynamicStats) => void
-): DataQueryHookReturn<V_ringsRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
-
-  const onlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchQuery
-        ? `(name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,ring_type_name.ilike.%${searchQuery}%,maintenance_area_name.ilike.%${searchQuery}%)`
-        : undefined,
-    });
-    const { data, error } = await supabase.rpc('get_paged_data', {
-      p_view_name: 'v_rings',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-    });
-    if (error) throw error;
-    return (data as { data: V_ringsRowSchema[] })?.data || [];
-  };
-
-  const offlineQueryFn = async (): Promise<V_ringsRowSchema[]> => {
-    return await localDb.v_rings.toArray();
-  };
-
-  const {
-    data: allRings = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useOfflineQuery(['rings-manager-data', searchQuery, filters], onlineQueryFn, offlineQueryFn, {
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allRings as ExtendedRingRow[];
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (ring) =>
-          ring.name?.toLowerCase().includes(lowerQuery) ||
-          ring.description?.toLowerCase().includes(lowerQuery) ||
-          ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
-          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    Object.keys(filters).forEach((key) => {
-      if (filters[key] && key !== 'or') {
-        if (key === 'status') {
-          filtered = filtered.filter((item) => String(item.status) === filters[key]);
-        } else {
-          filtered = filtered.filter(
-            (item) => item[key as keyof V_ringsRowSchema] === filters[key]
-          );
-        }
-      }
-    });
-
-    // --- CALCULATE DYNAMIC STATS (UPDATED) ---
-    const stats: DynamicStats = {
-        total: filtered.length,
-        spec: { issued: 0, pending: 0 },
-        ofc: { ready: 0, partial: 0, pending: 0 },
-        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
-    };
-
-    filtered.forEach(r => {
-        if (r.spec_status === 'Issued') stats.spec.issued++;
-        else stats.spec.pending++;
-
-        if (r.ofc_status === 'Ready') stats.ofc.ready++;
-        else if (r.ofc_status === 'Partial Ready') stats.ofc.partial++;
-        else stats.ofc.pending++;
-
-        if (r.bts_status === 'On-Air') {
-          stats.bts.onAir++;
-          stats.bts.nodesOnAir += (r.bts_node_count ?? r.total_nodes ?? 0);
-        } else if (r.bts_status === 'Configured') {
-          stats.bts.configuredCount++;
-        } else {
-          stats.bts.pending++;
-        }
-    });
-
-    // REMOVED: setTimeout(() => setDynamicStats(stats), 0);
-    // -----------------------------
-
-    filtered.sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
-    );
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((r) => r.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-
-    return {
-      data: filtered.slice(start, end),
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-      stats, // ← ADD THIS: return the stats so useEffect can access them
-    };
-  }, [allRings, searchQuery, filters, currentPage, pageLimit]);
-
-  // ADD THIS: useEffect to update the stats state
-  useEffect(() => {
-    setDynamicStats(processedData.stats);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setDynamicStats]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch: refetch as () => void };
-};
-
 export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { isSuperAdmin } = useUser();
+  const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modals State
@@ -369,18 +246,16 @@ export default function RingManagerPage() {
     null
   );
 
-  // --- STATS STATE ---
-  const [dynamicStats, setDynamicStats] = useState<DynamicStats>({
-      total: 0,
-      spec: { issued: 0, pending: 0 },
-      ofc: { ready: 0, partial: 0, pending: 0 },
-      bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
-  });
+  // --- PERMISSIONS ---
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canDelete = !!isSuperAdmin;
 
-  const useCustomDataHook = useCallback((params: DataQueryHookParams) => {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      return useRingsDataWithStats(params, setDynamicStats);
-  }, []);
+  // Use the extracted hook via CrudManager
+  const manager = useCrudManager<'rings', V_ringsRowSchema>({
+    tableName: 'rings',
+    dataQueryHook: useRingManagerData,
+    displayNameField: 'name',
+  });
 
   const {
     data: rings,
@@ -396,11 +271,21 @@ export default function RingManagerPage() {
     deleteModal,
     viewModal,
     actions: crudActions,
-  } = useCrudManager<'rings', V_ringsRowSchema>({
-    tableName: 'rings',
-    dataQueryHook: useCustomDataHook,
-    displayNameField: 'name',
-  });
+  } = manager;
+
+  // THE FIX: Safely extract 'stats' from the hook result by casting the manager object
+  // Since useCrudManager passes through the underlying hook result spread, 'stats' exists at runtime.
+  const dynamicStats = useMemo<DynamicStats>(() => {
+    const s = (manager as unknown as { stats?: DynamicStats }).stats;
+    return (
+      s || {
+        total: 0,
+        spec: { issued: 0, pending: 0 },
+        ofc: { ready: 0, partial: 0, pending: 0 },
+        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
+      }
+    );
+  }, [manager]);
 
   const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
@@ -427,7 +312,6 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
-  // ... (handleSaveSystems, handleUpdateSystemInRing, filter option fetches, handleMutationSuccess, handleSave, handleViewDetails, handleUploadClick, handleFileChange, handleExportClick - KEEP AS IS)
   const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
@@ -596,45 +480,54 @@ export default function RingManagerPage() {
   }, [exportRings]);
 
   const headerActions = useMemo(() => {
-    return [
-      {
-        label: 'Refresh',
-        onClick: () => {
-          refetch();
+    const actions: ActionButton[] = [
+        {
+          label: 'Refresh',
+          onClick: () => {
+            refetch();
+          },
+          variant: 'outline',
+          leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+          disabled: isLoading,
         },
-        variant: 'outline',
-        leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
-        disabled: isLoading,
-      },
-      {
-        label: isUploading ? 'Uploading...' : 'Upload Rings',
-        onClick: handleUploadClick,
-        variant: 'outline',
-        leftIcon: <FiUpload />,
-        disabled: isUploading || isLoading,
-      },
-      {
-        label: isExporting ? 'Exporting...' : 'Export Rings',
-        onClick: handleExportClick,
-        variant: 'outline',
-        leftIcon: <FiDownload />,
-        disabled: isExporting || isLoading,
-      },
-      {
-        label: 'Add New Ring',
-        onClick: editModal.openAdd,
-        variant: 'primary',
-        leftIcon: <GiLinkedRings />,
-        disabled: isLoading,
-      },
-      {
-        label: 'Add Systems to Ring',
-        onClick: () => setIsSystemsModalOpen(true),
-        variant: 'primary',
-        leftIcon: <FaNetworkWired />,
-        disabled: isLoading,
-      },
-    ] as ActionButton[];
+        {
+          label: isExporting ? 'Exporting...' : 'Export Rings',
+          onClick: handleExportClick,
+          variant: 'outline',
+          leftIcon: <FiDownload />,
+          disabled: isExporting || isLoading,
+          hideTextOnMobile: true
+        }
+    ];
+
+    if (canEdit) {
+        actions.splice(1, 0, {
+          label: isUploading ? 'Uploading...' : 'Upload Rings',
+          onClick: handleUploadClick,
+          variant: 'outline',
+          leftIcon: <FiUpload />,
+          disabled: isUploading || isLoading,
+          hideTextOnMobile: true
+        });
+
+        actions.push({
+          label: 'Add New Ring',
+          onClick: editModal.openAdd,
+          variant: 'primary',
+          leftIcon: <GiLinkedRings />,
+          disabled: isLoading,
+        });
+        
+        actions.push({
+          label: 'Add Systems to Ring',
+          onClick: () => setIsSystemsModalOpen(true),
+          variant: 'primary',
+          leftIcon: <FaNetworkWired />,
+          disabled: isLoading,
+        });
+    }
+
+    return actions;
   }, [
     isLoading,
     isUploading,
@@ -643,9 +536,9 @@ export default function RingManagerPage() {
     handleUploadClick,
     handleExportClick,
     editModal.openAdd,
+    canEdit
   ]);
 
-  // THE FIX: Use dynamic stats from the hook
   const headerStats = useMemo(() => {
     return [
       { value: dynamicStats.total, label: 'Total Rings' },
@@ -707,6 +600,8 @@ export default function RingManagerPage() {
                   systemName: system.system_name || 'this system',
                 })
               }
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ),
         },
@@ -749,7 +644,7 @@ export default function RingManagerPage() {
         return opt;
       }),
     }),
-    [ringTypesData, maintenanceAreasData, router]
+    [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
   );
 
   const uiFilters = useMemo<Record<string, string>>(() => {
@@ -798,18 +693,13 @@ export default function RingManagerPage() {
           config={dynamicFilterConfig}
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
           toggleStatusMutation={{ mutate: crudActions.handleToggleStatus, isPending: isMutating }}
-          onEdit={(e) => {
+          // THE FIX: Correctly pass permission checks
+          onEdit={canEdit ? (e) => {
             const orig = rings.find((r) => r.id === e.id);
             if (orig) editModal.openEdit(orig);
-          }}
-          onDelete={
-            isSuperAdmin
-              ? crudActions.handleDelete
-              : () => {
-                  console.log('Not allowed to delete');
-                }
-          }
-          onCreateNew={editModal.openAdd}
+          } : undefined}
+          onDelete={canDelete ? crudActions.handleDelete : undefined}
+          onCreateNew={canEdit ? editModal.openAdd : undefined}
           selectedEntityId={viewModal.record?.id ?? null}
           onSelect={(id) => {
             if (!id) {
@@ -829,7 +719,6 @@ export default function RingManagerPage() {
         />
       </div>
 
-      {/* Modals remain the same... */}
       <RingModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

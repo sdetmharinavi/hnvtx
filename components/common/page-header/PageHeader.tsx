@@ -66,13 +66,17 @@ export function PageHeader({
             {/* Desktop Action Buttons */}
             <div className='hidden lg:flex items-center gap-2 shrink-0 ml-4'>
               {actions.map((action, index) => {
-                // Destructure custom props to avoid passing them to Button/DOM
+                // THE FIX: Destructure these to REMOVE them from btnProps
                 const { 
-                  // hideTextOnMobile, 
-                  // hideOnMobile, 
-                  // priority, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  hideTextOnMobile, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  hideOnMobile, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  priority, 
                   'data-dropdown': isDropdown, 
-                  // dropdownoptions, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  dropdownoptions, 
                   ...btnProps 
                 } = action;
 
@@ -105,12 +109,15 @@ export function PageHeader({
             {/* Mobile/Tablet Action Buttons */}
             <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:shrink-0'>
               {actions.map((action, index) => {
+                 // THE FIX: Destructure here too
                  const { 
                   hideTextOnMobile, 
                   hideOnMobile, 
-                  // priority, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  priority, 
                   'data-dropdown': isDropdown, 
-                  // dropdownoptions, 
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  dropdownoptions, 
                   ...btnProps 
                 } = action;
 

@@ -26,11 +26,15 @@ export const DropdownButton: React.FC<ActionButton> = ({
   variant = 'outline',
   leftIcon,
   className,
-  // // Destructure these to prevent them from being passed to the DOM/Button
-  // hideOnMobile,
-  // hideTextOnMobile,
-  // priority,
-  // 'data-dropdown': dataDropdown,
+  // THE FIX: Destructure these to prevent them from being passed to the DOM/Button via ...props
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  hideOnMobile,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  hideTextOnMobile,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  priority,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  'data-dropdown': dataDropdown,
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);

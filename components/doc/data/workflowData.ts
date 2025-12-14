@@ -602,6 +602,67 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+  
+  // ============================================================================
+  // MODULE 20: ROUTE MANAGER & SPLICING
+  // ============================================================================
+  {
+    value: "route_manager",
+    icon: "FaRoute",
+    title: "Route Manager",
+    subtitle: "Advanced Topology Editing",
+    gradient: "from-amber-500 to-orange-600",
+    iconColor: "text-amber-500",
+    bgGlow: "bg-amber-500/10",
+    color: "orange",
+    purpose: "To provide a specialized workspace for defining the physical structure of a route, inserting Junction Closures (JCs), and managing complex splicing.",
+    workflows: [
+      {
+        title: "1. Route Visualization",
+        userSteps: [
+          "Select a Route from the dropdown.",
+          "The linear graph displays Start Node, End Node, and all intermediate JCs.",
+          "Click 'Add Junction Closure' to insert a new splice point at a specific KM mark.",
+        ],
+        uiSteps: [
+          "The system automatically recalculates cable segments.",
+          "Visual markers indicate existing vs. planned equipment.",
+        ],
+        techSteps: [
+          "**Trigger:** `manage_cable_segments` splits one cable into multiple segments in `cable_segments` table.",
+        ],
+      },
+      {
+        title: "2. Splice Matrix",
+        userSteps: [
+          "Click on a JC icon in the visualizer.",
+          "Switch to the 'Splice Management' tab.",
+          "**Manual:** Select an incoming fiber (Left) and an outgoing fiber (Right) to link them.",
+          "**Auto:** Use 'Auto-Splice' to connect fibers 1-to-1, 2-to-2, etc., automatically.",
+          "**Loss:** Enter splice loss (dB) for accurate power budget calculations.",
+        ],
+        uiSteps: [
+          "Connected fibers change color.",
+          "The 'Apply Path Updates' button syncs changes to the main database.",
+        ],
+        techSteps: [
+          "**RPC:** `manage_splice` creates entries in `fiber_splices`.",
+          "**Data:** `useJcSplicingDetails` fetches the complex join of segments + fibers + splices.",
+        ],
+      },
+      {
+        title: "3. Import/Export Topology",
+        userSteps: [
+          "Use 'Export Topology' to get an Excel sheet of all JCs, segments, and splices.",
+          "Modify offline.",
+          "Use 'Import Topology' to bulk update the route structure.",
+        ],
+        techSteps: [
+          "**RPC:** `upsert_route_topology_from_excel` performs a massive transactional update, handling deletions and insertions safely.",
+        ],
+      },
+    ],
+  },
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)

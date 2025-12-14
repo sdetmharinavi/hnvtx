@@ -55,6 +55,8 @@ export interface DataQueryHookReturn<V> {
   isFetching?: boolean;
   error: Error | null;
   refetch: () => void;
+  // Allow arbitrary extra properties to pass through (like 'stats')
+  [key: string]: unknown;
 }
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
@@ -120,7 +122,18 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setCurrentPage(1);
   }, [debouncedSearch, filters, setCurrentPage]);
 
-  const { data, totalCount, activeCount, inactiveCount, isLoading, isFetching, error, refetch } = dataQueryHook({
+  // THE FIX: Destructure known properties and capture the rest to pass through
+  const { 
+    data, 
+    totalCount, 
+    activeCount, 
+    inactiveCount, 
+    isLoading, 
+    isFetching, 
+    error, 
+    refetch,
+    ...restHookData // Capture extra props like 'stats'
+  } = dataQueryHook({
     currentPage,
     pageLimit,
     searchQuery: debouncedSearch,
@@ -154,7 +167,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           ? deletedIds.map(Number).filter(n => !isNaN(n)) 
           : deletedIds;
           
-        // Explicitly cast to the widened type supported by getTable
         await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
         console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
     } catch (e) {
@@ -244,14 +256,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
           const table = getTable(tableName);
-          // Handle numeric ID locally if needed
           const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
           await table.delete(idKey);
           
           await addMutationToQueue({
             tableName,
             type: 'delete',
-            payload: { ids: [idToDelete] }, // Queue always stores ID as string for consistency
+            payload: { ids: [idToDelete] },
           });
           refetch();
         } catch (err) {
@@ -286,7 +297,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     }
   }, [isOnline, tableName, toggleStatus, refetch, idType]);
 
-  // --- GENERIC HANDLE CELL EDIT ---
   const handleCellEdit = useCallback(
     async (record: V, column: Column<V>, newValue: string) => {
       if (!record.id) return;
@@ -294,12 +304,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       const id = String(record.id);
       const key = column.dataIndex;
       
-      // Simple validation to ensure we are not trying to update a computed property that doesn't exist on the base table.
-      // In a more complex system, we might need a 'editableKey' property on the Column definition if it differs from dataIndex.
-      
-      // Construct partial update object. 
-      // Casting to 'any' is necessary here because we are constructing a partial based on dynamic keys
-      // which TS cannot verify against TableUpdate<T> without more specific type constraints.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData = { [key]: newValue } as any;
 
@@ -345,7 +349,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         try {
           const table = getTable(tableName);
           const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
-          // Explicitly cast for local deletion
           await table.bulkDelete(idsKey as (string | number | [string, string])[]);
           await addMutationToQueue({
             tableName,
@@ -423,10 +426,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     queryResult,
     editModal: { isOpen: isEditModalOpen, record: editingRecord, openAdd: openAddModal, openEdit: openEditModal, close: closeModal },
     viewModal: { isOpen: isViewModalOpen, record: viewingRecord, open: openViewModal, close: closeModal },
-    // Added handleCellEdit to actions
     actions: { handleSave, handleDelete, handleToggleStatus, handleCellEdit },
     bulkActions: { selectedRowIds, selectedCount: selectedRowIds.length, handleBulkDelete, handleBulkDeleteByFilter, handleBulkUpdateStatus, handleClearSelection, handleRowSelect },
     deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, onConfirm: deleteManager.handleConfirm, onCancel: deleteManager.handleCancel, loading: deleteManager.isPending },
     utils: { getDisplayName },
+    // THE FIX: Spread remaining hook data (e.g. stats)
+    ...restHookData, 
   };
 }
