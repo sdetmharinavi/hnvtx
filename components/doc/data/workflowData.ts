@@ -39,8 +39,258 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
+    // ============================================================================
+  // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
-  // MODULE 2: BASE MASTER DATA (Setup)
+  {
+    value: 'log_book_diary',
+    icon: 'FileClock',
+    title: 'Log Book (Diary)',
+    subtitle: 'Daily Logs & Events',
+    gradient: 'from-pink-500 to-rose-600',
+    iconColor: 'text-pink-400',
+    bgGlow: 'bg-pink-500/10',
+    color: 'orange', // Reusing orange theme for similar warmth
+    purpose:
+      'To record daily maintenance activities, faults attended, and critical events in a structured timeline.',
+    workflows: [
+      {
+        title: '1. Viewing Daily Logs',
+        userSteps: [
+          'Navigate to `/dashboard/diary`.',
+          "The default view shows the **current month's calendar** on the left and selected day's entries on the right.",
+          '**Day View:** Click any date on the calendar. The list updates to show notes for *that specific day*.',
+          "**Feed View:** Click 'Month Feed' to see a scrolling list of ALL activities for the selected month.",
+          "Click 'Today' to instantly jump back to the current date.",
+        ],
+        uiSteps: [
+          'Dates with entries are highlighted on the calendar.',
+          'Search bar filters notes by content or tags across the *entire month*.',
+        ],
+        techSteps: [
+          '**Hook:** `useDiaryData` fetches a range (start of month to end of month).',
+          '**Optimization:** Data is fetched once for the month and filtered client-side for speed.',
+        ],
+      },
+      {
+        title: '2. Creating Entries',
+        userSteps: [
+          "Click 'Create Entry' (visible if you have Admin permissions).",
+          'The date defaults to the currently selected day on the calendar.',
+          "**Tags:** Enter comma-separated tags (e.g., 'fault, fiber cut, critical') for easier searching later.",
+          '**Content:** Use the Rich Text Editor to format your log (Bold, Lists, Tables, etc.).',
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          'The new note appears immediately in the list.',
+          'A toast notification confirms success.',
+        ],
+        techSteps: [
+          '**Component:** `DiaryFormModal` uses `FormRichTextEditor` based on Tiptap.',
+          '**Mutation:** `useTableInsert` sends data to `diary_notes` table.',
+        ],
+      },
+      {
+        title: '3. Bulk Import Logs',
+        userSteps: [
+          "Click 'Actions' -> 'Upload'.",
+          'Select an Excel file with columns: `note_date`, `content`, `tags`.',
+          'The system will upsert these records, matching by Date + User.',
+        ],
+        techSteps: [
+          '**Hook:** `useDiaryExcelUpload` handles parsing and batch insertion.',
+          '**Constraint:** `unique_note_per_user_per_day` ensures no duplicates for the same day/user.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 3: EMPLOYEE DIRECTORY
+  // ============================================================================
+  {
+    value: 'employee_directory',
+    icon: 'BsPeople',
+    title: 'Employee Directory',
+    subtitle: 'Staff & Contact Management',
+    gradient: 'from-blue-400 to-cyan-500',
+    iconColor: 'text-blue-500',
+    bgGlow: 'bg-blue-500/10',
+    color: 'blue',
+    purpose:
+      'To maintain a centralized registry of all staff members, their contact details, designations, and assigned maintenance areas.',
+    workflows: [
+      {
+        title: '1. Adding Employees',
+        userSteps: [
+          'Navigate to `/dashboard/employees`.',
+          "Click 'Add New' in the top right corner.",
+          "Fill in 'Employee Name', 'Designation' (from dropdown), and 'Maintenance Area'.",
+          'Optional: Add Contact Number, Email, DOB, and Address.',
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          'The list automatically sorts alphabetically by name (Ascending).',
+          'Success toast appears confirming creation.',
+        ],
+        techSteps: [
+          '**Hook:** `useEmployeesData` fetches data via RPC/Local DB and applies `localeCompare` sort.',
+          '**Table:** `employees` linked to `employee_designations` and `maintenance_areas`.',
+        ],
+      },
+      {
+        title: '2. Managing Staff Details',
+        userSteps: [
+          "**Grid View:** Click the 'Edit' button on an employee card.",
+          "**List View:** Click the 'Edit' action in the table row.",
+          "Update fields like 'Contact Number' or change 'Designation'.",
+          "Toggle 'Status' to deactivate employees who have left/transferred.",
+        ],
+        uiSteps: [
+          'Inactive employees show a red status indicator.',
+          'Filters allow viewing only Active or Inactive staff.',
+        ],
+        techSteps: [
+          '**Mutation:** `useTableUpdate` handles partial updates.',
+          '**Validation:** Zod schema ensures required fields like Name are present.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 4: INVENTORY & ASSETS
+  // ============================================================================
+  {
+    value: 'inventory_assets',
+    icon: 'Cpu',
+    title: 'Inventory Management',
+    subtitle: 'Assets, Tracking & QR Codes',
+    gradient: 'from-indigo-500 to-purple-500',
+    iconColor: 'text-indigo-400',
+    bgGlow: 'bg-indigo-500/10',
+    color: 'violet',
+    purpose: 'To track physical stock, manage asset lifecycle, and generate identification labels.',
+    workflows: [
+      {
+        title: '1. Asset Tracking',
+        userSteps: [
+          'Go to `/dashboard/inventory`.',
+          "**Sorting:** Items are sorted alphabetically by 'Item Name' by default.",
+          "Click 'Add New' (Requires Admin or Asset Admin role).",
+          "Enter 'Asset No', Name, Quantity, and Cost.",
+          "Select 'Location' (Node) and 'Functional Location' (Area).",
+          "Click 'Save'.",
+        ],
+        uiSteps: [
+          'Search bar filters by Asset No, Name, or Description.',
+          'Cards show live stock status (In Stock/Low/Out).',
+          'Total Value is calculated based on visible items.',
+        ],
+        techSteps: [
+          '**Hook:** `useInventoryData` enforces name-based sorting (ascending).',
+          '**View:** `v_inventory_items` joins location IDs to names.',
+          '**Permissions:** Edit restricted to Admin/Asset Admin; Delete restricted to Super Admin.',
+        ],
+      },
+      {
+        title: '2. Issuing Stock',
+        userSteps: [
+          "Click the 'Issue' button (Minus Icon) on an item card.",
+          "Enter Quantity, Date, 'Issued To' (Person), and Reason.",
+          "Click 'Confirm Issue'.",
+        ],
+        uiSteps: [
+          'Stock count decreases immediately.',
+          "The 'History' log is updated with the transaction details.",
+        ],
+        techSteps: [
+          '**RPC:** `issue_inventory_item` performs atomic stock deduction and transaction logging.',
+          '**Validation:** Prevents issuing more than available quantity.',
+        ],
+      },
+      {
+        title: '3. QR Code Generation',
+        userSteps: [
+          "Click the 'QR Code' icon on an item.",
+          'A dedicated page opens with a high-res QR code containing asset metadata.',
+          "Click 'Print QR Code'.",
+        ],
+        uiSteps: ['The print layout strips navigation and sidebars.'],
+        techSteps: ['**Library:** `qrcode.react`.', '**Route:** `/dashboard/inventory/qr/[id]`.'],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 5: E-FILE TRACKING
+  // ============================================================================
+  {
+    value: 'efile_tracking',
+    icon: 'FileText',
+    title: 'E-File Tracking',
+    subtitle: 'Digital Movement Register',
+    gradient: 'from-blue-600 to-indigo-700',
+    iconColor: 'text-blue-500',
+    bgGlow: 'bg-blue-500/10',
+    color: 'blue',
+    purpose:
+      'To digitize the physical file movement register, tracking the current location and movement history of office files.',
+    workflows: [
+      {
+        title: '1. Initiating a File',
+        userSteps: [
+          'Navigate to `/dashboard/e-files`.',
+          "Click 'Initiate File'.",
+          "Enter 'File Number', 'Subject', and select 'Category' (Admin/Tech/Other).",
+          "Select the 'Initiator' (the employee starting the file) from the dropdown.",
+          'Set Priority (Normal/Urgent/Immediate).',
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "The file appears in the list with status 'Active'.",
+          "The 'Currently With' column shows the Initiator.",
+        ],
+        techSteps: [
+          '**RPC:** `initiate_e_file` creates the file record and the first movement log entry simultaneously.',
+        ],
+      },
+      {
+        title: '2. Forwarding a File',
+        userSteps: [
+          'Locate the file in the grid or list.',
+          "Click the 'Forward' button (Paper Plane icon).",
+          "Select 'Forward To' (Employee) from the dropdown.",
+          "Add 'Remarks' explaining the action.",
+          "Click 'Send'.",
+        ],
+        uiSteps: [
+          "The 'Currently With' field updates instantly.",
+          "The movement is recorded in the file's history.",
+        ],
+        techSteps: [
+          '**RPC:** `forward_e_file` updates `current_holder_employee_id` on the file and inserts a new row into `file_movements`.',
+        ],
+      },
+      {
+        title: '3. Closing/Archiving',
+        userSteps: [
+          'Open the file details view.',
+          "Click 'Close File' (Archive icon).",
+          'Confirm the action.',
+        ],
+        uiSteps: [
+          "Status changes to 'Closed'.",
+          "File moves to the 'Closed/Archived' filter view.",
+          'Further forwarding is disabled.',
+        ],
+        techSteps: ['**RPC:** `close_e_file` updates status and logs the final movement.'],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 6: BASE MASTER DATA (Setup)
   // ============================================================================
   {
     value: 'base_structure',
@@ -285,7 +535,7 @@ export const workflowSections: WorkflowSection[] = [
   },
 
   // ============================================================================
-  // MODULE 18: OFC & ROUTES
+  // MODULE 7: OFC & ROUTES
   // ============================================================================
   {
     value: 'ofc_management',
@@ -376,7 +626,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
   // ============================================================================
-  // MODULE 20: ROUTE MANAGER & SPLICING
+  // MODULE 8: ROUTE MANAGER & SPLICING
   // ============================================================================
   {
     value: 'route_manager',
@@ -437,7 +687,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 // ============================================================================
-  // MODULE 21: SYSTEMS MANAGEMENT
+  // MODULE 9: SYSTEMS MANAGEMENT
   // ============================================================================
   {
     value: "systems_management",
@@ -498,7 +748,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
   // ============================================================================
-  // MODULE 22: SYSTEM CONNECTION DETAILS
+  // MODULE 10: SYSTEM CONNECTION DETAILS
   // ============================================================================
   {
     value: "system_connection_details",
@@ -557,7 +807,7 @@ export const workflowSections: WorkflowSection[] = [
   },
 
   // ============================================================================
-  // MODULE 23: GLOBAL CONNECTIONS EXPLORER
+  // MODULE 11: GLOBAL CONNECTIONS EXPLORER
   // ============================================================================
   {
     value: "global_connections",
@@ -602,455 +852,19 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-  
-  // ============================================================================
-  // MODULE 20: ROUTE MANAGER & SPLICING
-  // ============================================================================
-  {
-    value: "route_manager",
-    icon: "FaRoute",
-    title: "Route Manager",
-    subtitle: "Advanced Topology Editing",
-    gradient: "from-amber-500 to-orange-600",
-    iconColor: "text-amber-500",
-    bgGlow: "bg-amber-500/10",
-    color: "orange",
-    purpose: "To provide a specialized workspace for defining the physical structure of a route, inserting Junction Closures (JCs), and managing complex splicing.",
-    workflows: [
-      {
-        title: "1. Route Visualization",
-        userSteps: [
-          "Select a Route from the dropdown.",
-          "The linear graph displays Start Node, End Node, and all intermediate JCs.",
-          "Click 'Add Junction Closure' to insert a new splice point at a specific KM mark.",
-        ],
-        uiSteps: [
-          "The system automatically recalculates cable segments.",
-          "Visual markers indicate existing vs. planned equipment.",
-        ],
-        techSteps: [
-          "**Trigger:** `manage_cable_segments` splits one cable into multiple segments in `cable_segments` table.",
-        ],
-      },
-      {
-        title: "2. Splice Matrix",
-        userSteps: [
-          "Click on a JC icon in the visualizer.",
-          "Switch to the 'Splice Management' tab.",
-          "**Manual:** Select an incoming fiber (Left) and an outgoing fiber (Right) to link them.",
-          "**Auto:** Use 'Auto-Splice' to connect fibers 1-to-1, 2-to-2, etc., automatically.",
-          "**Loss:** Enter splice loss (dB) for accurate power budget calculations.",
-        ],
-        uiSteps: [
-          "Connected fibers change color.",
-          "The 'Apply Path Updates' button syncs changes to the main database.",
-        ],
-        techSteps: [
-          "**RPC:** `manage_splice` creates entries in `fiber_splices`.",
-          "**Data:** `useJcSplicingDetails` fetches the complex join of segments + fibers + splices.",
-        ],
-      },
-      {
-        title: "3. Import/Export Topology",
-        userSteps: [
-          "Use 'Export Topology' to get an Excel sheet of all JCs, segments, and splices.",
-          "Modify offline.",
-          "Use 'Import Topology' to bulk update the route structure.",
-        ],
-        techSteps: [
-          "**RPC:** `upsert_route_topology_from_excel` performs a massive transactional update, handling deletions and insertions safely.",
-        ],
-      },
-    ],
-  },
 
   // ============================================================================
-  // MODULE 2: LOG BOOK (DIARY)
+  // MODULE 12: RINGS MANAGEMENT
   // ============================================================================
-  {
-    value: 'log_book_diary',
-    icon: 'FileClock',
-    title: 'Log Book (Diary)',
-    subtitle: 'Daily Logs & Events',
-    gradient: 'from-pink-500 to-rose-600',
-    iconColor: 'text-pink-400',
-    bgGlow: 'bg-pink-500/10',
-    color: 'orange', // Reusing orange theme for similar warmth
-    purpose:
-      'To record daily maintenance activities, faults attended, and critical events in a structured timeline.',
-    workflows: [
-      {
-        title: '1. Viewing Daily Logs',
-        userSteps: [
-          'Navigate to `/dashboard/diary`.',
-          "The default view shows the **current month's calendar** on the left and selected day's entries on the right.",
-          '**Day View:** Click any date on the calendar. The list updates to show notes for *that specific day*.',
-          "**Feed View:** Click 'Month Feed' to see a scrolling list of ALL activities for the selected month.",
-          "Click 'Today' to instantly jump back to the current date.",
-        ],
-        uiSteps: [
-          'Dates with entries are highlighted on the calendar.',
-          'Search bar filters notes by content or tags across the *entire month*.',
-        ],
-        techSteps: [
-          '**Hook:** `useDiaryData` fetches a range (start of month to end of month).',
-          '**Optimization:** Data is fetched once for the month and filtered client-side for speed.',
-        ],
-      },
-      {
-        title: '2. Creating Entries',
-        userSteps: [
-          "Click 'Create Entry' (visible if you have Admin permissions).",
-          'The date defaults to the currently selected day on the calendar.',
-          "**Tags:** Enter comma-separated tags (e.g., 'fault, fiber cut, critical') for easier searching later.",
-          '**Content:** Use the Rich Text Editor to format your log (Bold, Lists, Tables, etc.).',
-          "Click 'Submit'.",
-        ],
-        uiSteps: [
-          'The new note appears immediately in the list.',
-          'A toast notification confirms success.',
-        ],
-        techSteps: [
-          '**Component:** `DiaryFormModal` uses `FormRichTextEditor` based on Tiptap.',
-          '**Mutation:** `useTableInsert` sends data to `diary_notes` table.',
-        ],
-      },
-      {
-        title: '3. Bulk Import Logs',
-        userSteps: [
-          "Click 'Actions' -> 'Upload'.",
-          'Select an Excel file with columns: `note_date`, `content`, `tags`.',
-          'The system will upsert these records, matching by Date + User.',
-        ],
-        techSteps: [
-          '**Hook:** `useDiaryExcelUpload` handles parsing and batch insertion.',
-          '**Constraint:** `unique_note_per_user_per_day` ensures no duplicates for the same day/user.',
-        ],
-      },
-    ],
-  },
+
 
   // ============================================================================
-  // MODULE 3: EMPLOYEE DIRECTORY
+  // MODULE 13: SERVICE PROVISIONING
   // ============================================================================
-  {
-    value: 'employee_directory',
-    icon: 'BsPeople',
-    title: 'Employee Directory',
-    subtitle: 'Staff & Contact Management',
-    gradient: 'from-blue-400 to-cyan-500',
-    iconColor: 'text-blue-500',
-    bgGlow: 'bg-blue-500/10',
-    color: 'blue',
-    purpose:
-      'To maintain a centralized registry of all staff members, their contact details, designations, and assigned maintenance areas.',
-    workflows: [
-      {
-        title: '1. Adding Employees',
-        userSteps: [
-          'Navigate to `/dashboard/employees`.',
-          "Click 'Add New' in the top right corner.",
-          "Fill in 'Employee Name', 'Designation' (from dropdown), and 'Maintenance Area'.",
-          'Optional: Add Contact Number, Email, DOB, and Address.',
-          "Click 'Submit'.",
-        ],
-        uiSteps: [
-          'The list automatically sorts alphabetically by name (Ascending).',
-          'Success toast appears confirming creation.',
-        ],
-        techSteps: [
-          '**Hook:** `useEmployeesData` fetches data via RPC/Local DB and applies `localeCompare` sort.',
-          '**Table:** `employees` linked to `employee_designations` and `maintenance_areas`.',
-        ],
-      },
-      {
-        title: '2. Managing Staff Details',
-        userSteps: [
-          "**Grid View:** Click the 'Edit' button on an employee card.",
-          "**List View:** Click the 'Edit' action in the table row.",
-          "Update fields like 'Contact Number' or change 'Designation'.",
-          "Toggle 'Status' to deactivate employees who have left/transferred.",
-        ],
-        uiSteps: [
-          'Inactive employees show a red status indicator.',
-          'Filters allow viewing only Active or Inactive staff.',
-        ],
-        techSteps: [
-          '**Mutation:** `useTableUpdate` handles partial updates.',
-          '**Validation:** Zod schema ensures required fields like Name are present.',
-        ],
-      },
-    ],
-  },
+
 
   // ============================================================================
-  // MODULE 6: INVENTORY & ASSETS
-  // ============================================================================
-  {
-    value: 'inventory_assets',
-    icon: 'Cpu',
-    title: 'Inventory Management',
-    subtitle: 'Assets, Tracking & QR Codes',
-    gradient: 'from-indigo-500 to-purple-500',
-    iconColor: 'text-indigo-400',
-    bgGlow: 'bg-indigo-500/10',
-    color: 'violet',
-    purpose: 'To track physical stock, manage asset lifecycle, and generate identification labels.',
-    workflows: [
-      {
-        title: '1. Asset Tracking',
-        userSteps: [
-          'Go to `/dashboard/inventory`.',
-          "**Sorting:** Items are sorted alphabetically by 'Item Name' by default.",
-          "Click 'Add New' (Requires Admin or Asset Admin role).",
-          "Enter 'Asset No', Name, Quantity, and Cost.",
-          "Select 'Location' (Node) and 'Functional Location' (Area).",
-          "Click 'Save'.",
-        ],
-        uiSteps: [
-          'Search bar filters by Asset No, Name, or Description.',
-          'Cards show live stock status (In Stock/Low/Out).',
-          'Total Value is calculated based on visible items.',
-        ],
-        techSteps: [
-          '**Hook:** `useInventoryData` enforces name-based sorting (ascending).',
-          '**View:** `v_inventory_items` joins location IDs to names.',
-          '**Permissions:** Edit restricted to Admin/Asset Admin; Delete restricted to Super Admin.',
-        ],
-      },
-      {
-        title: '2. Issuing Stock',
-        userSteps: [
-          "Click the 'Issue' button (Minus Icon) on an item card.",
-          "Enter Quantity, Date, 'Issued To' (Person), and Reason.",
-          "Click 'Confirm Issue'.",
-        ],
-        uiSteps: [
-          'Stock count decreases immediately.',
-          "The 'History' log is updated with the transaction details.",
-        ],
-        techSteps: [
-          '**RPC:** `issue_inventory_item` performs atomic stock deduction and transaction logging.',
-          '**Validation:** Prevents issuing more than available quantity.',
-        ],
-      },
-      {
-        title: '3. QR Code Generation',
-        userSteps: [
-          "Click the 'QR Code' icon on an item.",
-          'A dedicated page opens with a high-res QR code containing asset metadata.',
-          "Click 'Print QR Code'.",
-        ],
-        uiSteps: ['The print layout strips navigation and sidebars.'],
-        techSteps: ['**Library:** `qrcode.react`.', '**Route:** `/dashboard/inventory/qr/[id]`.'],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 10: E-FILE TRACKING
-  // ============================================================================
-  {
-    value: 'efile_tracking',
-    icon: 'FileText',
-    title: 'E-File Tracking',
-    subtitle: 'Digital Movement Register',
-    gradient: 'from-blue-600 to-indigo-700',
-    iconColor: 'text-blue-500',
-    bgGlow: 'bg-blue-500/10',
-    color: 'blue',
-    purpose:
-      'To digitize the physical file movement register, tracking the current location and movement history of office files.',
-    workflows: [
-      {
-        title: '1. Initiating a File',
-        userSteps: [
-          'Navigate to `/dashboard/e-files`.',
-          "Click 'Initiate File'.",
-          "Enter 'File Number', 'Subject', and select 'Category' (Admin/Tech/Other).",
-          "Select the 'Initiator' (the employee starting the file) from the dropdown.",
-          'Set Priority (Normal/Urgent/Immediate).',
-          "Click 'Submit'.",
-        ],
-        uiSteps: [
-          "The file appears in the list with status 'Active'.",
-          "The 'Currently With' column shows the Initiator.",
-        ],
-        techSteps: [
-          '**RPC:** `initiate_e_file` creates the file record and the first movement log entry simultaneously.',
-        ],
-      },
-      {
-        title: '2. Forwarding a File',
-        userSteps: [
-          'Locate the file in the grid or list.',
-          "Click the 'Forward' button (Paper Plane icon).",
-          "Select 'Forward To' (Employee) from the dropdown.",
-          "Add 'Remarks' explaining the action.",
-          "Click 'Send'.",
-        ],
-        uiSteps: [
-          "The 'Currently With' field updates instantly.",
-          "The movement is recorded in the file's history.",
-        ],
-        techSteps: [
-          '**RPC:** `forward_e_file` updates `current_holder_employee_id` on the file and inserts a new row into `file_movements`.',
-        ],
-      },
-      {
-        title: '3. Closing/Archiving',
-        userSteps: [
-          'Open the file details view.',
-          "Click 'Close File' (Archive icon).",
-          'Confirm the action.',
-        ],
-        uiSteps: [
-          "Status changes to 'Closed'.",
-          "File moves to the 'Closed/Archived' filter view.",
-          'Further forwarding is disabled.',
-        ],
-        techSteps: ['**RPC:** `close_e_file` updates status and logs the final movement.'],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 4: SYSTEMS & RINGS MANAGEMENT
-  // ============================================================================
-  {
-    value: 'systems_rings',
-    icon: 'Server',
-    title: 'Systems & Rings',
-    subtitle: 'Equipment, Logic & Automation',
-    gradient: 'from-blue-500 to-indigo-600',
-    iconColor: 'text-blue-400',
-    bgGlow: 'bg-blue-500/10',
-    color: 'blue',
-    purpose:
-      'To manage the physical and logical network equipment (Systems), their capacities, and their organization into Rings.',
-    workflows: [
-      {
-        title: '1. Creating Systems',
-        userSteps: [
-          "Go to `/dashboard/systems` -> 'Add New'.",
-          'Enter Name, Select Node, and IP Address.',
-          "Select 'System Type' (e.g., 'CPAN').",
-          "If Type is 'Ring-Based', select the Ring immediately in step 2.",
-        ],
-        uiSteps: ['Multi-step modal handles complex relationships.'],
-        techSteps: [
-          '**RPC:** `upsert_system_with_details` handles the transaction of creating the system and linking it to `ring_based_systems` if needed.',
-        ],
-      },
-      {
-        title: '2. Port Automation',
-        userSteps: [
-          "On a System row, click 'Manage Ports' (Server Icon).",
-          "Click 'Apply Template'.",
-          "Select a configuration (e.g., 'A1 Config - 2 Slots').",
-          "Click 'Apply'.",
-        ],
-        uiSteps: [
-          'The table populates with 20+ ports instantly.',
-          'Ports are named naturally (1.1, 1.2, etc.).',
-        ],
-        techSteps: [
-          '**Config:** `PORT_TEMPLATES` in `config/port-templates.ts`.',
-          '**Hook:** `useTableBulkOperations.bulkUpsert` sends the batch to `ports_management`.',
-        ],
-      },
-      {
-        title: '3. Ring Topology & Maps',
-        userSteps: [
-          'Go to `/dashboard/rings`. Click a Ring Name.',
-          '**Map View:** See systems plotted on a map.',
-          '**Schematic View:** Click toggle to see a logical diagram (Hubs in center).',
-          "Click 'Configure Topology' to logically break connections.",
-        ],
-        uiSteps: ['Leaflet map renders with custom icons based on equipment type.'],
-        techSteps: [
-          '**View:** `v_ring_nodes` aggregates geo-data.',
-          '**Logic:** `ClientRingMap.tsx` draws lines sequentially based on `order_in_ring`.',
-        ],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 5: SERVICE PROVISIONING
-  // ============================================================================
-  {
-    value: 'provisioning_flow',
-    icon: 'GitBranch',
-    title: 'Service Provisioning',
-    subtitle: 'End-to-End Path Allocation',
-    gradient: 'from-orange-500 to-red-500',
-    iconColor: 'text-orange-400',
-    bgGlow: 'bg-orange-500/10',
-    color: 'orange',
-    purpose: 'To create logical circuits and reserve specific fiber strands across the network.',
-    workflows: [
-      {
-        title: '1. Connection Creation',
-        userSteps: [
-          "Open a System -> Click 'New Connection'.",
-          'Select Destination System and Media Type.',
-          'Select specific Ports (Tx/Rx) on both ends.',
-          "Status defaults to 'Pending'.",
-        ],
-        uiSteps: [
-          'Dropdowns filter ports to show only those available.',
-          "UI Note: If no 'Start Node' is selected, the source system defaults as 'End A' automatically.",
-        ],
-        techSteps: ['**RPC:** `upsert_system_connection_with_details`.'],
-      },
-      {
-        title: '2. Fiber Allocation Wizard',
-        userSteps: [
-          "Click 'Allocate Fibers' on the connection.",
-          "The Modal shows 'Working Path' and optional 'Protection Path'.",
-          '**Step 1:** Select the Cable leaving Source.',
-          '**Step 2:** Select Fiber Strand.',
-          '**Step 3 (Cascade):** If the cable ends at a transit node, select the *next* cable and fiber.',
-          "Repeat until Destination is reached. Click 'Confirm'.",
-        ],
-        uiSteps: ['Dropdowns filter to show only *Available* fibers.', 'UI validates continuity.'],
-        techSteps: [
-          '**RPC:** `provision_service_path`.',
-          "**Logic:** Creates `logical_fiber_paths` and updates `ofc_connections` rows to 'occupied'.",
-        ],
-      },
-      {
-        title: '3. Fiber Tracing',
-        userSteps: [
-          "Click 'View Path' (Eye Icon) on a provisioned connection.",
-          'See a step-by-step list: System -> Cable 1 -> Splice -> Cable 2 -> System.',
-          'Shows accumulated loss (dB) and distance.',
-        ],
-        techSteps: [
-          '**RPC:** `trace_fiber_path` uses a recursive SQL query (CTE) to traverse `fiber_splices` and `cable_segments`.',
-        ],
-      },
-      {
-        title: '4. Viewing Connection Details',
-        userSteps: [
-          "In the Systems list or Connections table, click 'Full Details' (Monitor Icon).",
-          'A comprehensive modal opens showing Circuit Info, End A/B details, and mapped OFC data.',
-        ],
-        uiSteps: [
-          "The 'End A & End B Details' table dynamically displays connection points.",
-          "If End A (Start Node) is not explicitly defined in the database, the UI intelligently falls back to display the Parent System's Name and IP Address.",
-        ],
-        techSteps: [
-          '**Component:** `SystemConnectionDetailsModal`.',
-          '**Logic:** Uses `useTableRecord` to fetch the parent system and populate missing `sn_ip` or `sn_name` fields on the fly.',
-        ],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 7: UTILITIES & MAINTENANCE
+  // MODULE 14: UTILITIES & MAINTENANCE
   // ============================================================================
   {
     value: 'utilities',

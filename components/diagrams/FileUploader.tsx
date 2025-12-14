@@ -21,17 +21,23 @@ import RecentlyUploaded from "./uploader-components/RecentlyUploaded";
 import ErrorDisplay from "./uploader-components/ErrorDisplay";
 import { PageHeader } from '@/components/common/page-header'; // Import PageHeader
 import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup'; // Import Hooks
+import { useUser } from '@/providers/UserProvider';
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(false);
   
-  const [showUploadSection, setShowUploadSection] = useState(true);
+  const [showUploadSection, setShowUploadSection] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   
   const { theme } = useThemeStore();
   const uppyTheme = theme === 'system' ? 'auto' : theme;
+
+  const {isSuperAdmin, role } = useUser();
+
+  const canCreate = !!isSuperAdmin || role === 'admin';
+  const canDelete = !!isSuperAdmin;
   
   // Backup refs
   const backupInputRef = useRef<HTMLInputElement>(null);
@@ -157,6 +163,8 @@ export default function FileUploader() {
               handleCreateFolder={handleCreateFolder}
               folders={folders}
               folderId={folderId}
+              canCreate={canCreate}
+              canDelete={canDelete}
               setFolderId={setFolderId}
               onDeleteFolder={onDeleteFolderWrapper}
               isDeleting={isDeletingFolder}
@@ -215,6 +223,7 @@ export default function FileUploader() {
         folders={folders}
         onFileDelete={handleFileDeleted}
         folderId={folderId}
+        canDelete={canDelete}
         onFolderSelect={setFolderId}
         isLoading={isLoadingFolders}
       />

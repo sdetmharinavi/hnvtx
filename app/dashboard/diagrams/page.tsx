@@ -1,53 +1,19 @@
+// app/dashboard/diagrams/page.tsx
 "use client";
 
-// app/diagrams/page.tsx
-
 import dynamic from "next/dynamic";
+import { PageSpinner } from "@/components/common/ui";
 
-// Disable SSR for the StorageManager component
+// Disable SSR for the heavy Uploader component
 const FileUploader = dynamic(
   () => import("@/components/diagrams/FileUploader"),
-  { ssr: false },
+  { 
+    ssr: false,
+    loading: () => <PageSpinner text="Loading File Manager..." />
+  },
 );
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { AuthChangeEvent, AuthSession, User } from "@supabase/supabase-js";
-
-export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
-
-  useEffect(() => {
-    let listener: { unsubscribe: () => void };
-
-    async function initSupabase() {
-      const { data: { user } = {} } = await supabase.auth.getUser();
-      setUser(user ?? null);
-
-      const { data } = supabase.auth.onAuthStateChange(
-        (_event: AuthChangeEvent, session: AuthSession | null) => {
-          setUser(session?.user ?? null);
-        },
-      );
-      listener = data.subscription;
-    }
-
-    initSupabase();
-
-    return () => {
-      if (listener?.unsubscribe) {
-        listener.unsubscribe();
-      }
-    };
-  }, [supabase]);
-
-  return (
-    <div className="p-4">
-      <h1 className="mb-4 text-2xl font-bold">
-        Upload Diagrams / Specs
-      </h1>
-      {!user ? <p>Please log in to upload files.</p> : <FileUploader />}
-    </div>
-  );
+export default function DiagramsPage() {
+  // Authentication protection is handled by the DashboardLayout
+  return <FileUploader />;
 }

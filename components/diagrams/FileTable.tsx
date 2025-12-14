@@ -5,14 +5,9 @@ import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw } from "lucide-
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
 import "../../app/customuppy.css"; 
 import Image from "next/image";
-// import { createClient } from "@/utils/supabase/client";
-// import { useTableExcelDownload } from "@/hooks/database/excel-queries";
 import { toast } from "sonner";
-// import { formatDate } from "@/utils/formatters";
-// import { buildColumnConfig } from "@/constants/table-column-keys";
-// import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-// import { Row, TableOrViewName } from "@/hooks/database";
 import { Button } from "@/components/common/ui";
+import { FancyEmptyState } from "../common/ui/FancyEmptyState";
 
 interface FileType {
   id: string;
@@ -29,10 +24,10 @@ interface FileTableProps {
   folderId?: string | null;
   onFolderSelect?: (id: string | null) => void;
   isLoading?: boolean;
+  canDelete: boolean; // Permission prop
 }
 
-export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
-  // const supabase = createClient();
+export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, canDelete }: FileTableProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folderId || null);
   const [folderSearchTerm, setFolderSearchTerm] = useState<string>("");
   const [fileSearchTerm, setFileSearchTerm] = useState<string>("");
@@ -40,62 +35,29 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [deletingFile, setDeletingFile] = useState<string | null>(null);
 
+  // Sync prop change to state
   useEffect(() => {
     if (folderId !== undefined) setSelectedFolder(folderId);
   }, [folderId]);
 
+  // Sync state change back to parent
+  const handleFolderClick = (id: string) => {
+    setSelectedFolder(id);
+    if(onFolderSelect) onFolderSelect(id);
+  };
+
   const { data: files = [], isLoading, refetch } = useFiles(selectedFolder || undefined);
   const loading = isLoading;
   const { mutate: deleteFile } = useDeleteFile();
-
-  // // Configure Excel Download for Files
-  // const { mutate: exportFiles, isPending: isExportingFiles } = useTableExcelDownload(supabase, "files");
-  
-  // // ADDED: Configure Excel Download for Folders
-  // const { mutate: exportFolders, isPending: isExportingFolders } = useTableExcelDownload(supabase, "folders");
-
-  // const handleExportFiles = () => {
-  //   const selectedFolderName = folders.find(f => f.id === selectedFolder)?.name || "all_files";
-  //   const fileName = `diagrams_${selectedFolderName}_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
-  //   const columns = buildColumnConfig("files") as Column<Row<TableOrViewName>>[];
-
-  //   exportFiles({
-  //     fileName,
-  //     sheetName: "Diagrams",
-  //     columns,
-  //     filters: selectedFolder ? { folder_id: selectedFolder } : {},
-  //   });
-  // };
-
-  // // ADDED: Export Folders Handler
-  // const handleExportFolders = () => {
-  //   const fileName = `folders_structure_${formatDate(new Date().toISOString(), { format: "dd-mm-yyyy" })}.xlsx`;
-  //   const columns = buildColumnConfig("folders") as Column<Row<TableOrViewName>>[];
-    
-  //   exportFolders({
-  //     fileName,
-  //     sheetName: "Folders",
-  //     columns,
-  //   });
-  // };
 
   const filteredFolders = useMemo(() => 
     folders
       .filter(folder =>
         folder.name.toLowerCase().includes(folderSearchTerm.toLowerCase())
       )
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())),
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
     [folders, folderSearchTerm]
   );
-
-  useEffect(() => {
-    if (selectedFolder && folderSearchTerm) {
-      const isFolderVisible = filteredFolders.some(folder => folder.id === selectedFolder);
-      if (!isFolderVisible) {
-        setSelectedFolder(null);
-      }
-    }
-  }, [selectedFolder, folderSearchTerm, filteredFolders]);
 
   const handleView = (file: FileType) => {
     if (file.file_type === "application/pdf") {
@@ -190,231 +152,7 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
   };
 
   return (
-    <div className="mt-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className={`text-xl font-semibold dark:text-white text-black`}>
-          UPLOADED DIAGRAMS
-        </h2>
-        {/* ADDED: Export Folders Button */}
-        {/* <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExportFolders}
-            disabled={isExportingFolders}
-            leftIcon={<Folder className="w-4 h-4" />}
-        >
-            {isExportingFolders ? "Exporting..." : "Export Folders"}
-        </Button> */}
-      </div>
-      
-      {selectedFolder && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className={`text-lg font-medium dark:text-white text-black`}>
-              Files ({filteredAndSortedFiles.length})
-            </h3>
-            
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => refetch()} 
-                disabled={loading}
-                leftIcon={<RefreshCw className={loading ? "animate-spin" : ""} />}
-              >
-                Refresh
-              </Button>
-              
-              {/* <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExportFiles}
-                disabled={isExportingFiles || loading || filteredAndSortedFiles.length === 0}
-                leftIcon={<FileSpreadsheet />}
-              >
-                {isExportingFiles ? "Exporting..." : "Export Files"}
-              </Button> */}
-            </div>
-          </div>
-
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search files..."
-              value={fileSearchTerm}
-              onChange={(e) => setFileSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-10 py-2 rounded border text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-            {fileSearchTerm && (
-              <button
-                onClick={clearFileSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Clear search"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
-          ) : filteredAndSortedFiles.length > 0 ? (
-            viewMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredAndSortedFiles.map((file) => (
-                  <div
-                    key={file.id}
-                    className={`group relative overflow-hidden rounded-lg border p-3 transition-all hover:shadow-lg dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50`}
-                  >
-                    <div className="aspect-square mb-3 overflow-hidden rounded">
-                      {file.file_type.includes("image") ? (
-                        <Image
-                          src={file.file_url}
-                          alt={file.file_name}
-                          width={200}
-                          height={200}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className={`flex h-full w-full items-center justify-center dark:bg-gray-600 bg-gray-100`}>
-                          <div className="text-center">
-                            <div className="mb-2 text-3xl">{getFileIcon(file.file_type)}</div>
-                            <p className="text-xs text-gray-500 uppercase">
-                              {file.file_type.split("/")[1] || "FILE"}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <p
-                        className={`truncate text-sm font-medium dark:text-white text-black`}
-                        title={file.file_name}
-                      >
-                        {file.file_name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDisplayDate(file.uploaded_at)}
-                      </p>
-                    </div>
-
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        onClick={() => handleView(file)}
-                        title="View"
-                        className="bg-opacity-80 hover:bg-opacity-100 rounded bg-black p-1.5 text-white transition-all"
-                      >
-                        <Eye className="h-3 w-3" />
-                      </button>
-                      <a
-                        href={getDownloadUrl(file)}
-                        download={file.file_name}
-                        title="Download"
-                        className="bg-opacity-80 hover:bg-opacity-100 rounded bg-black p-1.5 text-white transition-all"
-                      >
-                        <Download className="h-3 w-3" />
-                      </a>
-                      <button
-                        onClick={() => handleDelete(file)}
-                        disabled={deletingFile === file.id}
-                        title="Delete"
-                        className="bg-opacity-80 hover:bg-opacity-100 rounded bg-red-600 p-1.5 text-white transition-all disabled:opacity-50"
-                      >
-                        {deletingFile === file.id ? (
-                          <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"></div>
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className={`dark:bg-gray-700 bg-gray-50 px-4 py-2 border-b border-gray-200 dark:border-gray-600`}>
-                  <div className="grid grid-cols-12 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    <div className="col-span-5">Name</div>
-                    <div className="col-span-2">Type</div>
-                    <div className="col-span-2">Date</div>
-                    <div className="col-span-3 text-right">Actions</div>
-                  </div>
-                </div>
-                <div className={`divide-y dark:divide-gray-600 divide-gray-200`}>
-                  {filteredAndSortedFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50`}
-                    >
-                      <div className="grid grid-cols-12 gap-4 items-center">
-                        <div className="col-span-5 flex items-center gap-3">
-                          <span className="text-lg">{getFileIcon(file.file_type)}</span>
-                          <span
-                            className={`truncate text-sm dark:text-white text-black font-medium`}
-                            title={file.file_name}
-                          >
-                            {file.file_name}
-                          </span>
-                        </div>
-                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400 uppercase">
-                          {file.file_type.split("/")[1] || "Unknown"}
-                        </div>
-                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">
-                          {formatDisplayDate(file.uploaded_at)}
-                        </div>
-                        <div className="col-span-3 flex gap-2 justify-end">
-                          <button
-                            onClick={() => handleView(file)}
-                            title="View"
-                            className={`p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <a
-                            href={getDownloadUrl(file)}
-                            download={file.file_name}
-                            title="Download"
-                            className={`p-1.5 text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors`}
-                          >
-                            <Download className="h-4 w-4" />
-                          </a>
-                          <button
-                            onClick={() => handleDelete(file)}
-                            disabled={deletingFile === file.id}
-                            title="Delete"
-                            className={`p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors disabled:opacity-50`}
-                          >
-                            {deletingFile === file.id ? (
-                              <div className="h-4 w-4 animate-spin rounded-full border border-gray-400 border-t-transparent"></div>
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          ) : (
-            <div className={`text-center py-12 dark:text-gray-400 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg`}>
-              <div className="text-4xl mb-4">📭</div>
-              <p className="text-lg font-medium">No files found</p>
-              <p className="text-sm">
-                {fileSearchTerm || fileTypeFilter !== "all"
-                  ? "Try adjusting your search or filter criteria."
-                  : "Upload some files to get started."}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="space-y-6">
       {/* Search Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="relative">
@@ -427,110 +165,226 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
             className={`w-full pl-10 pr-10 py-2 rounded border text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
           />
           {folderSearchTerm && (
-            <button
-              onClick={clearFolderSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              title="Clear search"
-            >
+            <button onClick={clearFolderSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
-
-        <div className="flex rounded border overflow-hidden dark:border-gray-600">
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewMode("grid"); }}
-            className={`flex-1 px-3 py-2 text-sm transition-colors ${
-              viewMode === "grid"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <Grid className="h-4 w-4 mx-auto" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setViewMode("list"); }}
-            className={`flex-1 px-3 py-2 text-sm transition-colors ${
-              viewMode === "list"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <List className="h-4 w-4 mx-auto" />
-          </button>
-        </div>
       </div>
+            {/* File List Section */}
+      {selectedFolder && (
+        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h3 className={`text-lg font-medium dark:text-white text-black flex items-center gap-2`}>
+              Files <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{filteredAndSortedFiles.length}</span>
+            </h3>
+            
+            <div className="flex items-center gap-2">
+               <div className="flex rounded border overflow-hidden dark:border-gray-600 bg-white dark:bg-gray-800">
+                    <button
+                        onClick={() => setViewMode("grid")}
+                        className={`px-3 py-1.5 text-sm transition-colors ${viewMode === "grid" ? "bg-gray-100 dark:bg-gray-700 text-blue-600" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+                        title="Grid View"
+                    >
+                        <Grid className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => setViewMode("list")}
+                        className={`px-3 py-1.5 text-sm transition-colors ${viewMode === "list" ? "bg-gray-100 dark:bg-gray-700 text-blue-600" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+                        title="List View"
+                    >
+                        <List className="h-4 w-4" />
+                    </button>
+                </div>
 
-      {files.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFileTypeFilter("all")}
-            className={`px-3 py-1 rounded text-sm transition-colors ${
-              fileTypeFilter === "all"
-                ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            All Files ({files.length})
-          </button>
-          {getFileTypeOptions().map((option) => {
-            const count = files.filter(file => file.file_type.startsWith(option.value)).length;
-            return (
-              <button
-                key={option.value}
-                onClick={() => setFileTypeFilter(option.value)}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
-                  fileTypeFilter === option.value
-                    ? "dark:bg-blue-700 dark:text-white bg-blue-600 text-white"
-                    : "dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => refetch()} 
+                disabled={loading}
+                title="Refresh Files"
               >
-                {option.label === "Application" ? "Pdf" : option.label} ({count})
-              </button>
-            );
-          })}
+                <RefreshCw className={loading ? "animate-spin" : ""} size={16} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-4 items-center">
+             <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                type="text"
+                placeholder="Search files..."
+                value={fileSearchTerm}
+                onChange={(e) => setFileSearchTerm(e.target.value)}
+                className={`w-full pl-10 pr-10 py-2 rounded border text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+                {fileSearchTerm && (
+                <button onClick={clearFileSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="h-4 w-4" />
+                </button>
+                )}
+            </div>
+            
+            {/* Filter Pills */}
+            {files.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                <button
+                    onClick={() => setFileTypeFilter("all")}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    fileTypeFilter === "all"
+                        ? "bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                    }`}
+                >
+                    All
+                </button>
+                {getFileTypeOptions().map((option) => (
+                    <button
+                    key={option.value}
+                    onClick={() => setFileTypeFilter(option.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize ${
+                        fileTypeFilter === option.value
+                        ? "bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                    }`}
+                    >
+                    {option.label}
+                    </button>
+                ))}
+                </div>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          ) : filteredAndSortedFiles.length > 0 ? (
+            viewMode === "grid" ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {filteredAndSortedFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className={`group relative overflow-hidden rounded-lg border p-3 transition-all hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 border-gray-200 bg-white hover:bg-gray-50`}
+                  >
+                    <div className="aspect-square mb-3 overflow-hidden rounded bg-gray-100 dark:bg-gray-900 flex items-center justify-center relative">
+                      {file.file_type.includes("image") ? (
+                        <Image
+                          src={file.file_url}
+                          alt={file.file_name}
+                          fill
+                          className="object-cover transition-transform group-hover:scale-105"
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                        />
+                      ) : (
+                        <span className="text-4xl">{getFileIcon(file.file_type)}</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className={`truncate text-sm font-medium dark:text-white text-black`} title={file.file_name}>
+                        {file.file_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatDisplayDate(file.uploaded_at)}
+                      </p>
+                    </div>
+
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button onClick={() => handleView(file)} title="View" className="bg-black/70 hover:bg-black rounded p-1.5 text-white backdrop-blur-sm">
+                        <Eye className="h-3 w-3" />
+                      </button>
+                      <a href={getDownloadUrl(file)} download={file.file_name} title="Download" className="bg-black/70 hover:bg-black rounded p-1.5 text-white backdrop-blur-sm">
+                        <Download className="h-3 w-3" />
+                      </a>
+                      {canDelete && (
+                        <button onClick={() => handleDelete(file)} disabled={deletingFile === file.id} title="Delete" className="bg-red-600/90 hover:bg-red-700 rounded p-1.5 text-white backdrop-blur-sm">
+                            {deletingFile === file.id ? <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"></div> : <Trash2 className="h-3 w-3" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className={`dark:bg-gray-800 bg-gray-50 px-4 py-2 border-b border-gray-200 dark:border-gray-700`}>
+                  <div className="grid grid-cols-12 gap-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <div className="col-span-5">Name</div>
+                    <div className="col-span-3">Type</div>
+                    <div className="col-span-2">Date</div>
+                    <div className="col-span-2 text-right">Actions</div>
+                  </div>
+                </div>
+                <div className={`divide-y dark:divide-gray-700 divide-gray-200 bg-white dark:bg-gray-900`}>
+                  {filteredAndSortedFiles.map((file) => (
+                    <div key={file.id} className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50`}>
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        <div className="col-span-5 flex items-center gap-3 min-w-0">
+                          <span className="text-xl">{getFileIcon(file.file_type)}</span>
+                          <span className={`truncate text-sm dark:text-white text-black font-medium`} title={file.file_name}>
+                            {file.file_name}
+                          </span>
+                        </div>
+                        <div className="col-span-3 text-xs text-gray-500 dark:text-gray-400 uppercase truncate">
+                          {file.file_type.split("/")[1] || "Unknown"}
+                        </div>
+                        <div className="col-span-2 text-xs text-gray-500 dark:text-gray-400">
+                          {formatDisplayDate(file.uploaded_at)}
+                        </div>
+                        <div className="col-span-2 flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleView(file)} title="View" className={`p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded`}>
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <a href={getDownloadUrl(file)} download={file.file_name} title="Download" className={`p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded`}>
+                            <Download className="h-4 w-4" />
+                          </a>
+                          {canDelete && (
+                            <button onClick={() => handleDelete(file)} disabled={deletingFile === file.id} title="Delete" className={`p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded`}>
+                                {deletingFile === file.id ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent"></div> : <Trash2 className="h-4 w-4" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ) : (
+             <FancyEmptyState 
+                title="No files found" 
+                description={fileSearchTerm ? "Try adjusting your search criteria" : "This folder is empty"} 
+            />
+          )}
         </div>
       )}
-
-      <div className="space-y-4">
-        <h3 className={`text-lg font-medium dark:text-white text-black`}>
-          Select Folder to View Files
-        </h3>
-        
-        {filteredFolders.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+      
+      {/* Folder Grid */}
+      {filteredFolders.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {filteredFolders.map((folder) => (
               <div key={folder.id} className="group relative">
                 <button
-                  className={`w-full p-4 rounded border text-left transition-all hover:shadow-md ${
+                  className={`w-full p-4 rounded-xl border text-left transition-all hover:shadow-md ${
                     selectedFolder === folder.id
-                      ? "dark:border-blue-500 dark:bg-blue-900 shadow-lg"
-                      : "dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 border-gray-200 bg-white hover:bg-gray-50"
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40 dark:border-blue-500/50 shadow-sm"
+                      : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                   } dark:text-white text-black`}
-                  onClick={() => setSelectedFolder(folder.id)}
+                  onClick={() => handleFolderClick(folder.id)}
                   title={folder.name}
                 >
-                  <div className="flex items-center justify-between min-w-0">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className="text-lg shrink-0">📁</span>
-                      <span className="font-medium text-sm leading-tight wrap-wrap-break-word line-clamp-2 min-w-0">
-                        {folder.name}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-2xl shrink-0">📁</span>
+                    <span className="font-medium text-sm leading-tight wrap-wrap-break-word line-clamp-2 min-w-0">
+                      {folder.name}
+                    </span>
                     {selectedFolder === folder.id && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded shrink-0 ml-2">
-                        Selected
-                      </span>
+                      <span className="ml-auto w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
                     )}
                   </div>
                 </button>
-                
-                {folder.name.length > 25 && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-black text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 max-w-xs text-center">
-                    {folder.name}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -539,7 +393,8 @@ export function FileTable({ folders, onFileDelete, folderId }: FileTableProps) {
             {folderSearchTerm ? "No folders found matching your search." : "No folders available."}
           </div>
         )}
-      </div>
+
+
     </div>
   );
 }
