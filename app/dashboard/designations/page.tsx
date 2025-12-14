@@ -1,3 +1,4 @@
+// app/dashboard/designations/page.tsx
 'use client';
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
@@ -28,9 +29,12 @@ import { UseQueryResult } from '@tanstack/react-query';
 import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { Copy } from 'lucide-react';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
+  const { isSuperAdmin, role } = useUser();
 
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -63,7 +67,12 @@ export default function DesignationManagerPage() {
     'Designations'
   );
 
-  // const selectedEntity = useMemo(() => allDesignations.find(d => d.id === selectedDesignationId) || null, [allDesignations, selectedDesignationId]);
+  // --- PERMISSIONS ---
+  // Admins can Create/Edit
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  // Only Super Admin can Delete
+  const canDelete = !!isSuperAdmin;
+
   const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const onMutationSuccess = () => {
@@ -128,7 +137,8 @@ export default function DesignationManagerPage() {
       await refetch();
       toast.success('Refreshed successfully!');
     },
-    onAddNew: handleOpenCreateForm,
+    // Only allow adding new items if user has edit permission
+    onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'employee_designations' },
   });
@@ -138,6 +148,7 @@ export default function DesignationManagerPage() {
     onClick: toggleDuplicates,
     variant: showDuplicates ? 'secondary' : 'outline',
     leftIcon: <Copy className="w-4 h-4" />,
+    hideTextOnMobile: true
   });
 
   const headerStats = [
@@ -181,9 +192,10 @@ export default function DesignationManagerPage() {
         entitiesQuery={designationsQuery}
         isFetching={isFetching || isMutating}
         toggleStatusMutation={toggleStatusMutation}
-        onEdit={handleOpenEditForm}
-        onDelete={deleteManager.deleteSingle}
-        onCreateNew={handleOpenCreateForm}
+        onEdit={canEdit ? handleOpenEditForm : () => {}}
+        // THE FIX: Pass delete handler only if user can delete
+        onDelete={canDelete ? deleteManager.deleteSingle : undefined}
+        onCreateNew={canEdit ? handleOpenCreateForm : () => {}}
         selectedEntityId={selectedDesignationId}
         onSelect={setSelectedDesignationId}
         searchTerm={search.searchQuery}

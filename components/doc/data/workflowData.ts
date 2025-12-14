@@ -37,6 +37,193 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+
+  // ============================================================================
+  // MODULE 2: BASE MASTER DATA (Setup)
+  // ============================================================================
+  {
+    value: "base_structure",
+    icon: "Database",
+    title: "Base Master Data",
+    subtitle: "Lookups, Areas & Designations",
+    gradient: "from-cyan-500 to-blue-600",
+    iconColor: "text-cyan-400",
+    bgGlow: "bg-cyan-500/10",
+    color: "cyan",
+    purpose: "To configure the foundational hierarchies and data dictionaries required before any network assets can be created.",
+    workflows: [
+      {
+        title: "1. Creating Designations",
+        userSteps: [
+          "Navigate to `/dashboard/designations`.",
+          "Click 'Add New' (Admin or Super Admin only).",
+          "Enter 'Name' (e.g., 'Senior Engineer').",
+          "Select 'Parent Designation' (e.g., 'Chief Engineer') to build the hierarchy.",
+          "Click 'Submit'.",
+        ],
+        uiSteps: [
+          "The list updates immediately.",
+          "Duplicates are flagged if a name already exists.",
+        ],
+        techSteps: [
+          "**Table:** `employee_designations` uses a self-referencing `parent_id` foreign key.",
+        ],
+      },
+      {
+        title: "1.1. Designations Visualization Modes",
+        userSteps: [
+          "**List View:** Standard table showing all designations flatly.",
+          "**Tree View:** Click the 'Tree' toggle to see the nested hierarchy.",
+          "Expand/Collapse nodes using the chevron icons.",
+        ],
+        uiSteps: [
+          "The `EntityManagementComponent` recursively renders `EntityTreeItem` components based on the `children` array.",
+        ],
+        techSteps: [
+          "**Hook:** `useDesignationsData` reconstructs the flat database rows into a nested object structure in memory.",
+          "**Permissions:** Deletion is strictly limited to **Super Admin**.",
+        ],
+      },
+      {
+        title: "2. Managing Categories",
+        userSteps: [
+          "Navigate to `/dashboard/categories`.",
+          "**Sorting:** Categories are listed alphabetically.",
+          "**Permissions:** Create/Edit is restricted to Admin+. Delete is Super Admin only.",
+          "Click 'Add New' to define a new classification group (e.g., 'CABLE_MANUFACTURERS').",
+          "Click the Edit icon to rename a category globally.",
+        ],
+        uiSteps: [
+          "Input names are auto-converted to `UPPER_SNAKE_CASE`.",
+          "The list shows how many lookup options exist within each category.",
+        ],
+        techSteps: [
+          "**Logic:** Categories are derived from the `lookup_types` table using `useDeduplicated`.",
+          "**Renaming:** Uses a batch SQL update to change the `category` string for all matching rows.",
+        ],
+      },
+      {
+        title: "2.2 Managing Options (Lookups)",
+        userSteps: [
+          "Click the number in the 'Lookup Types Count' column to jump to the details view.",
+          "Alternatively, go to `/dashboard/lookup` and select a category.",
+          "Add specific options (e.g., 'Sterlite', 'Finolex') under the selected category.",
+        ],
+        uiSteps: [
+          "System Default options (marked 'Yes') cannot be deleted to ensure data integrity.",
+        ],
+        techSteps: [
+          "**Table:** `lookup_types` stores all options.",
+          "**Validation:** Prevent deletion if `is_system_default` is true.",
+        ],
+      },
+      {
+        title: "3. Maintenance Areas (Geo-Hierarchy)",
+        userSteps: [
+          "Go to `/dashboard/maintenance-areas`.",
+          "Create a 'Zone' (Top Level).",
+          "Create a 'Terminal' and assign it to the Zone (Parent).",
+          "Enter GPS coordinates for the office location.",
+        ],
+        uiSteps: [
+          "Details panel shows contact info and hierarchy ('Child of: Zone A').",
+        ],
+        techSteps: [
+          "**Table:** `maintenance_areas`.",
+          "**Usage:** These IDs are later used in `nodes` and `systems` to assign ownership.",
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // MODULE 3: CORE INFRASTRUCTURE (Physical Layer)
+  // ============================================================================
+  {
+    value: "core_infrastructure",
+    icon: "MapPin",
+    title: "Physical Infrastructure",
+    subtitle: "Nodes, OFC Routes & Topology",
+    gradient: "from-teal-500 to-emerald-600",
+    iconColor: "text-teal-400",
+    bgGlow: "bg-teal-500/10",
+    color: "teal",
+    purpose: "To map the physical reality of the network: Where nodes are located and how physical cables connect them.",
+    workflows: [
+      {
+        title: "1. Creating Network Nodes",
+        userSteps: [
+          "Go to `/dashboard/nodes`.",
+          "Click 'Add New'.",
+          "Enter Node Name (e.g., 'Harinavi Exch'), Select Type (e.g., 'Exchange') and Maintenance Area.",
+          "Enter Latitude/Longitude (Required for maps).",
+          "Click 'Create Node'.",
+        ],
+        uiSteps: [
+          "Validates coordinates are numbers.",
+          "Success toast appears.",
+        ],
+        techSteps: [
+          "**Hook:** `useNodesData` (Offline-first).",
+          "**Table:** `nodes`.",
+          "**View:** `v_nodes_complete` is refreshed.",
+        ],
+      },
+      {
+        title: "2. OFC Route Creation",
+        userSteps: [
+          "Go to `/dashboard/ofc` -> 'Add New'.",
+          "Select 'Start Node' and 'End Node'.",
+          "Select 'OFC Type' (e.g., 24F). Capacity is auto-locked.",
+          "Click 'Create'.",
+        ],
+        uiSteps: [
+          "The system auto-generates a route name: `StartNode⇔EndNode_1`.",
+          "Shows a warning if a route already exists between these nodes.",
+        ],
+        techSteps: [
+          "**Trigger:** `create_initial_connections_for_cable` fires on insert.",
+          "**Automation:** It automatically generates `N` rows in `ofc_connections` (where N=Capacity).",
+        ],
+      },
+      {
+        title: "3. Route Topology (JCs)",
+        userSteps: [
+          "In OFC List, click 'View Details' -> 'Route Visualization' tab.",
+          "Click 'Add Junction Closure'.",
+          "Select a 'Joint' node from the dropdown and enter 'Position (KM)'.",
+          "Click 'Save'.",
+        ],
+        uiSteps: [
+          "The linear graph redraws. The cable line is split visually by the new JC icon.",
+          "Segment list below updates: 'Segment 1' and 'Segment 2'.",
+        ],
+        techSteps: [
+          "**RPC:** `add_junction_closure`.",
+          "**Trigger:** `manage_cable_segments` fires. It calls `recalculate_segments_for_cable` which splits the cable into `cable_segments` based on JC positions.",
+        ],
+      },
+      {
+        title: "4. Fiber Splicing",
+        userSteps: [
+          "In Route Visualization, click a JC icon.",
+          "Switch tab to 'Splice Management'.",
+          "**Manual:** Click Fiber 1 on Left (Incoming) -> Click Fiber 1 on Right (Outgoing) -> 'Confirm'.",
+          "**Auto:** Click 'Auto-Splice' between two segments -> 'Confirm'.",
+          "**Important:** After this, go to `/dashboard/ofc/id` open ***Trace Fiber Path*** and click ***Sync Path to DB***.",
+        ],
+        uiSteps: [
+          "Visual lines connect the fiber indicators.",
+          "Colors change to indicate 'Occupied'.",
+        ],
+        techSteps: [
+          "**RPC:** `manage_splice` (for single) or `auto_splice_straight_segments` (for bulk).",
+          "**Table:** `fiber_splices`. Tracks which segment-fiber connects to which segment-fiber.",
+        ],
+      },
+    ],
+  },
+
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
@@ -291,162 +478,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
-  // ============================================================================
-  // MODULE 2: BASE MASTER DATA (Setup)
-  // ============================================================================
-  {
-    value: "base_structure",
-    icon: "Database",
-    title: "Base Master Data",
-    subtitle: "Lookups, Areas & Designations",
-    gradient: "from-cyan-500 to-blue-600",
-    iconColor: "text-cyan-400",
-    bgGlow: "bg-cyan-500/10",
-    color: "cyan",
-    purpose: "To configure the foundational hierarchies and data dictionaries required before any network assets can be created.",
-    workflows: [
-      {
-        title: "1. Managing Categories & Lookups",
-        userSteps: [
-          "Go to `/dashboard/categories`.",
-          "Click 'Add New Category' (e.g., 'SYSTEM_CAPACITY').",
-          "Navigate to `/dashboard/lookup`.",
-          "Select the new Category from the dropdown.",
-          "Click 'Add New' to add options (e.g., '10G', 'STM-16').",
-        ],
-        uiSteps: [
-          "The Category page auto-formats input to `UPPER_SNAKE_CASE`.",
-          "The Lookups table allows sorting by 'Sort Order' to control dropdown lists elsewhere in the app.",
-        ],
-        techSteps: [
-          "**Table:** `lookup_types`. The `category` column acts as the grouper.",
-          "**Validation:** Checks for `is_system_default` flag to prevent deletion of critical system types.",
-        ],
-      },
-      {
-        title: "2. Designation Hierarchy (Tree)",
-        userSteps: [
-          "Go to `/dashboard/designations`.",
-          "Click 'Add New' to create a root role (e.g., 'General Manager').",
-          "Click 'Add New' again, create 'DGM', and select 'General Manager' as Parent.",
-          "Toggle 'Tree View' to visualize the organizational chart.",
-        ],
-        uiSteps: [
-          "The `EntityManagementComponent` renders a recursive tree structure.",
-          "Expand/Collapse buttons show/hide child designations.",
-        ],
-        techSteps: [
-          "**Hook:** `useDesignationsData` constructs the tree client-side from a flat list.",
-          "**Table:** `employee_designations` using a self-referencing `parent_id`.",
-        ],
-      },
-      {
-        title: "3. Maintenance Areas (Geo-Hierarchy)",
-        userSteps: [
-          "Go to `/dashboard/maintenance-areas`.",
-          "Create a 'Zone' (Top Level).",
-          "Create a 'Terminal' and assign it to the Zone (Parent).",
-          "Enter GPS coordinates for the office location.",
-        ],
-        uiSteps: [
-          "Details panel shows contact info and hierarchy ('Child of: Zone A').",
-        ],
-        techSteps: [
-          "**Table:** `maintenance_areas`.",
-          "**Usage:** These IDs are later used in `nodes` and `systems` to assign ownership.",
-        ],
-      },
-    ],
-  },
-
-  // ============================================================================
-  // MODULE 3: CORE INFRASTRUCTURE (Physical Layer)
-  // ============================================================================
-  {
-    value: "core_infrastructure",
-    icon: "MapPin",
-    title: "Physical Infrastructure",
-    subtitle: "Nodes, OFC Routes & Topology",
-    gradient: "from-teal-500 to-emerald-600",
-    iconColor: "text-teal-400",
-    bgGlow: "bg-teal-500/10",
-    color: "teal",
-    purpose: "To map the physical reality of the network: Where nodes are located and how physical cables connect them.",
-    workflows: [
-      {
-        title: "1. Creating Network Nodes",
-        userSteps: [
-          "Go to `/dashboard/nodes`.",
-          "Click 'Add New'.",
-          "Enter Node Name (e.g., 'Harinavi Exch'), Select Type (e.g., 'Exchange') and Maintenance Area.",
-          "Enter Latitude/Longitude (Required for maps).",
-          "Click 'Create Node'.",
-        ],
-        uiSteps: [
-          "Validates coordinates are numbers.",
-          "Success toast appears.",
-        ],
-        techSteps: [
-          "**Hook:** `useNodesData` (Offline-first).",
-          "**Table:** `nodes`.",
-          "**View:** `v_nodes_complete` is refreshed.",
-        ],
-      },
-      {
-        title: "2. OFC Route Creation",
-        userSteps: [
-          "Go to `/dashboard/ofc` -> 'Add New'.",
-          "Select 'Start Node' and 'End Node'.",
-          "Select 'OFC Type' (e.g., 24F). Capacity is auto-locked.",
-          "Click 'Create'.",
-        ],
-        uiSteps: [
-          "The system auto-generates a route name: `StartNode⇔EndNode_1`.",
-          "Shows a warning if a route already exists between these nodes.",
-        ],
-        techSteps: [
-          "**Trigger:** `create_initial_connections_for_cable` fires on insert.",
-          "**Automation:** It automatically generates `N` rows in `ofc_connections` (where N=Capacity).",
-        ],
-      },
-      {
-        title: "3. Route Topology (JCs)",
-        userSteps: [
-          "In OFC List, click 'View Details' -> 'Route Visualization' tab.",
-          "Click 'Add Junction Closure'.",
-          "Select a 'Joint' node from the dropdown and enter 'Position (KM)'.",
-          "Click 'Save'.",
-        ],
-        uiSteps: [
-          "The linear graph redraws. The cable line is split visually by the new JC icon.",
-          "Segment list below updates: 'Segment 1' and 'Segment 2'.",
-        ],
-        techSteps: [
-          "**RPC:** `add_junction_closure`.",
-          "**Trigger:** `manage_cable_segments` fires. It calls `recalculate_segments_for_cable` which splits the cable into `cable_segments` based on JC positions.",
-        ],
-      },
-      {
-        title: "4. Fiber Splicing",
-        userSteps: [
-          "In Route Visualization, click a JC icon.",
-          "Switch tab to 'Splice Management'.",
-          "**Manual:** Click Fiber 1 on Left (Incoming) -> Click Fiber 1 on Right (Outgoing) -> 'Confirm'.",
-          "**Auto:** Click 'Auto-Splice' between two segments -> 'Confirm'.",
-          "**Important:** After this, go to `/dashboard/ofc/id` open ***Trace Fiber Path*** and click ***Sync Path to DB***.",
-        ],
-        uiSteps: [
-          "Visual lines connect the fiber indicators.",
-          "Colors change to indicate 'Occupied'.",
-        ],
-        techSteps: [
-          "**RPC:** `manage_splice` (for single) or `auto_splice_straight_segments` (for bulk).",
-          "**Table:** `fiber_splices`. Tracks which segment-fiber connects to which segment-fiber.",
-        ],
-      },
-    ],
-  },
-
+  
   // ============================================================================
   // MODULE 4: SYSTEMS & RINGS MANAGEMENT
   // ============================================================================

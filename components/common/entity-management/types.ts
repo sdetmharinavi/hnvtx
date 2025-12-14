@@ -3,8 +3,6 @@ import { UseQueryResult } from '@tanstack/react-query';
 import { PagedQueryResult } from '@/hooks/database';
 
 export interface BaseEntity {
-  // THE FIX: The `id` property is now correctly typed as potentially being null,
-  // which aligns with the schemas generated from database views (e.g., v_employee_designations).
   id: string | null;
   name: string;
   status: boolean | null;
@@ -52,7 +50,8 @@ export interface EntityConfig<T extends BaseEntity> {
 export interface UseEntityManagementProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
   config: EntityConfig<T>;
-  onDelete: (entity: { id: string; name: string }) => void;
+  // THE FIX: Made onDelete optional here
+  onDelete?: (entity: { id: string; name: string }) => void;
   onEdit: (entity: T) => void;
   onToggleStatus: (e: React.MouseEvent, entity: T) => void;
   onCreateNew: () => void;

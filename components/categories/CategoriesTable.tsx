@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { FiEdit2, FiInfo } from "react-icons/fi";
+import { FiEdit2, FiInfo, FiTrash2 } from "react-icons/fi";
 import { Button } from "@/components/common/ui/Button";
 import { Card } from "@/components/common/ui/card";
 import { formatCategoryName } from "@/components/categories/utils";
 import { Categories, CategoryInfo } from "./categories-types";
-import { useUser } from "@/providers/UserProvider";
 
 interface CategoriesTableProps {
   categories: Categories[];
@@ -14,6 +13,8 @@ interface CategoriesTableProps {
   onDelete: (categoryName: string) => void;
   isDeleting: boolean;
   searchTerm?: string;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 export function CategoriesTable({
@@ -24,9 +25,10 @@ export function CategoriesTable({
   onDelete,
   isDeleting,
   searchTerm,
+  canEdit,
+  canDelete,
 }: CategoriesTableProps) {
 
-  const { isSuperAdmin } = useUser();
   return (
     <Card className="overflow-hidden dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">
@@ -60,6 +62,8 @@ export function CategoriesTable({
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
               {categories.map((category) => {
                 const categoryInfo = categoryLookupCounts[category.category];
+                const hasDefaults = categoryInfo?.hasSystemDefaults;
+                
                 return (
                   <tr
                     key={category.id}
@@ -89,40 +93,43 @@ export function CategoriesTable({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                          categoryInfo?.hasSystemDefaults
+                          hasDefaults
                             ? "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
                             : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
                         }`}
                       >
-                        {categoryInfo?.hasSystemDefaults ? "Yes" : "No"}
+                        {hasDefaults ? "Yes" : "No"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onEdit(category.category)}
-                          className="dark:border-gray-600 dark:hover:bg-gray-700"
-                        >
-                          <FiEdit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onDelete(category.category)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 dark:border-gray-600 dark:hover:bg-gray-700"
-                          disabled={!isSuperAdmin && (isDeleting || categoryInfo?.hasSystemDefaults)}
-                          title={
-                            isDeleting
-                              ? "Deleting..."
-                              : `Delete All "${category.category}" Categories`
-                          }
-                        >
-                          {isDeleting
-                            ? "Deleting..."
-                            : `Delete All "${category.category}" Categories`}
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onEdit(category.category)}
+                            className="dark:border-gray-600 dark:hover:bg-gray-700"
+                            title="Edit Category Name"
+                          >
+                            <FiEdit2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onDelete(category.category)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 dark:border-gray-600 dark:hover:bg-gray-700"
+                            disabled={isDeleting || hasDefaults}
+                            title={
+                              hasDefaults 
+                                ? "Cannot delete category with system defaults" 
+                                : `Delete "${category.category}"`
+                            }
+                          >
+                            <FiTrash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -38,7 +38,8 @@ export const useDesignationsData = (
   }, [searchQuery, filters]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.v_employee_designations.toArray();
+    // Local sort by name
+    return localDb.v_employee_designations.orderBy('name').toArray();
   }, []);
 
   const {
@@ -67,6 +68,7 @@ export const useDesignationsData = (
 
       const initialFilter = filtered.filter(d => d.name?.toLowerCase().includes(lowerQuery));
 
+      // Recursive function to keep parents if child matches search
       const addParents = (designation: V_employee_designationsRowSchema) => {
         if (designation.id && !searchFilteredIds.has(designation.id)) {
           searchFilteredIds.add(designation.id);
@@ -84,6 +86,10 @@ export const useDesignationsData = (
       filtered = filtered.filter(d => String(d.status) === filters.status);
     }
 
+    // THE FIX: Explicit case-insensitive sort
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+    // Reconstruct Hierarchy
     const designationsWithRelations = filtered.map(d => ({
       ...d,
       id: d.id!,
@@ -106,12 +112,13 @@ export const useDesignationsData = (
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((d) => d.status === true).length;
+    const inactiveCount = totalCount - activeCount;
 
     return {
       data: designationsWithRelations,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount,
     };
   }, [allDesignationsFlat, searchQuery, filters]);
 

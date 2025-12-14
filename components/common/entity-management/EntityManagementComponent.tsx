@@ -11,7 +11,7 @@ import {
 } from '@/components/common/entity-management/types';
 import { ViewModeToggle } from '@/components/common/entity-management/ViewModeToggle';
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { FiInfo, FiPlus, FiMoreVertical } from 'react-icons/fi'; // Added FiMoreVertical for grip handle
+import { FiInfo, FiPlus, FiMoreVertical } from 'react-icons/fi';
 import { useDebounce } from 'use-debounce';
 import { PageSpinner } from '@/components/common/ui';
 
@@ -22,7 +22,8 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
   entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
   toggleStatusMutation: { mutate: (variables: ToggleStatusVariables) => void; isPending: boolean };
   onEdit: (entity: T) => void;
-  onDelete: (entity: { id: string; name: string }) => void;
+  // THE FIX: Made onDelete optional here
+  onDelete?: (entity: { id: string; name: string }) => void;
   onCreateNew: () => void;
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
@@ -62,7 +63,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
   // --- RESIZING LOGIC START ---
-  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000); // Default width
+  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000); 
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -77,9 +78,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const resize = useCallback(
     (mouseEvent: MouseEvent) => {
       if (isResizing) {
-        // Calculate new width based on window width minus mouse position (since panel is on right)
         const newWidth = window.innerWidth - mouseEvent.clientX;
-        // Set constraints (min 300px, max 1200px)
         if (newWidth > 300 && newWidth < 1200) {
           setDetailsPanelWidth(newWidth);
         }
@@ -92,8 +91,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
     if (isResizing) {
       window.addEventListener('mousemove', resize);
       window.addEventListener('mouseup', stopResizing);
-      document.body.style.cursor = 'col-resize'; // Force cursor during drag
-      document.body.style.userSelect = 'none'; // Prevent text selection
+      document.body.style.cursor = 'col-resize'; 
+      document.body.style.userSelect = 'none'; 
     } else {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
@@ -213,7 +212,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
   return (
     <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative overflow-hidden">
       {/* LEFT PANEL: LIST/TREE */}
-      {/* Added min-w-0 to prevent flex child overflow issues */}
       <div
         className={`flex-1 flex flex-col min-w-1/3 ${showDetailsPanel ? 'hidden lg:flex' : 'flex'}`}
       >
@@ -302,7 +300,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
         `}
         onMouseDown={startResizing}
       >
-        {/* Visual Grip Handle */}
         <div className="absolute pointer-events-none text-gray-400 dark:text-gray-500">
           <FiMoreVertical size={12} />
         </div>
@@ -314,7 +311,6 @@ export function EntityManagementComponent<T extends BaseEntity>({
         className={`${
           showDetailsPanel ? 'flex' : 'hidden lg:flex'
         } flex-col bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700`}
-        // Use inline style for width on desktop, utilize full width logic via flex on mobile
         style={{
           width:
             typeof window !== 'undefined' && window.innerWidth >= 1024 ? detailsPanelWidth : '100%',

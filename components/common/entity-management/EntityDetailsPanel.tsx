@@ -8,8 +8,8 @@ interface EntityDetailsPanelProps<T extends BaseEntity> {
   entity: T | null;
   config: EntityConfig<T>;
   onEdit: () => void;
-  onDelete: (entity: { id: string; name: string }) => void;
-  // THE FIX: Add a new prop to handle opening the full details modal.
+  // THE FIX: Made onDelete optional
+  onDelete?: (entity: { id: string; name: string }) => void;
   onViewDetails?: () => void;
 }
 
@@ -18,7 +18,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
   config,
   onEdit,
   onDelete,
-  onViewDetails, // THE FIX: Destructure the new prop.
+  onViewDetails,
 }: EntityDetailsPanelProps<T>) {
   if (!entity) {
     const IconComponent = config.icon;
@@ -58,7 +58,6 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         <div className="flex gap-2">
-          {/* THE FIX: Add the new "View Details" button, making it the primary action. */}
           {onViewDetails && (
             <button
               onClick={onViewDetails}
@@ -73,12 +72,17 @@ export function EntityDetailsPanel<T extends BaseEntity>({
           >
             <FiEdit3 className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}
-            className="flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-          >
-            <FiTrash2 className="h-4 w-4" />
-          </button>
+          
+          {/* THE FIX: Conditionally render the delete button only if onDelete is provided */}
+          {onDelete && (
+            <button
+              onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}
+              className="flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+              title="Delete"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

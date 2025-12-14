@@ -19,6 +19,8 @@ import { FiLayers } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { GroupedLookupsByCategory, CategoryInfo } from '@/components/categories/categories-types';
 import { useMutation } from '@tanstack/react-query';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,11 +29,26 @@ export default function CategoriesPage() {
   const [categoryLookupCounts, setCategoryLookupCounts] = useState<Record<string, CategoryInfo>>({});
 
   const supabase = createClient();
+  const { isSuperAdmin, role } = useUser();
 
-  const { data: categoriesResult, isLoading: dedupLoading, error: dedupError, refetch: refetchCategories } = useDeduplicated(supabase, 'lookup_types', {
-    columns: ['category'],
-    orderBy: [{ column: 'created_at', ascending: true }],
-  });
+  // --- PERMISSIONS ---
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canDelete = !!isSuperAdmin;
+
+  // Fetch unique categories
+  // We pass the 4th argument (options) to sort the result set by category name
+  const { data: categoriesResult, isLoading: dedupLoading, error: dedupError, refetch: refetchCategories } = useDeduplicated(
+    supabase, 
+    'lookup_types', 
+    {
+      columns: ['category'],
+      orderBy: [{ column: 'created_at', ascending: true }], // Determins which row is picked per category
+    },
+    {
+      orderBy: [{ column: 'category', ascending: true }] // Determines the order of the final list
+    }
+  );
+  
   const categoriesDeduplicated = useMemo(() => categoriesResult?.data || [], [categoriesResult]);
 
   const { data: groupedLookupsByCategory, isLoading: groupedLookupsByCategoryLoading, error: groupedLookupsByCategoryError, refetch: refetchGroupedLookupsByCategory } = useTableQuery(supabase, 'lookup_types', {
@@ -50,13 +67,13 @@ export default function CategoriesPage() {
     tableName: 'lookup_types',
     onSuccess: () => {
       refetchCategories();
+      refetchGroupedLookupsByCategory();
       toast.success('Category and all associated lookups deleted.');
     },
   });
 
   const { mutate: createCategory, isPending: isCreating } = useTableInsert(supabase, 'lookup_types');
 
-  // THE FIX: Create a dedicated mutation for the bulk rename operation.
   const { mutate: renameCategory, isPending: isRenaming } = useMutation({
     mutationFn: async ({ oldCategory, newCategory }: { oldCategory: string; newCategory: string }) => {
       const { error } = await supabase
@@ -125,7 +142,6 @@ export default function CategoriesPage() {
     setEditingCategory(null);
   }, []);
 
-  // THE FIX: This handler now uses the correct mutation for each case (create vs. edit/rename).
   const handleSaveCategory = useCallback((data: Lookup_typesInsertSchema, isEditing: boolean) => {
     const formattedCategory = data.category.trim().toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
 
@@ -163,8 +179,11 @@ export default function CategoriesPage() {
 
   const serverFilters = useMemo((): Filters => ({ name: { operator: 'eq', value: 'DEFAULT' } }), []);
   const headerActions = useStandardHeaderActions({
-    data: categoriesDeduplicated, onRefresh: handleRefresh, onAddNew: openCreateModal,
-    isLoading: isLoading, exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
+    data: categoriesDeduplicated, 
+    onRefresh: handleRefresh, 
+    onAddNew: canEdit ? openCreateModal : undefined,
+    isLoading: isLoading, 
+    exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
   });
 
   const headerStats = useMemo(() => {
@@ -187,15 +206,57 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
-      <PageHeader title="Categories" description="Manage categories and their related information." icon={<FiLayers />} stats={headerStats} actions={headerActions} isLoading={isLoading} />
+      <PageHeader 
+        title="Categories" 
+        description="Manage system-wide categories and lookup types." 
+        icon={<FiLayers />} 
+        stats={headerStats} 
+        actions={headerActions} 
+        isLoading={isLoading} 
+      />
+      
       <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+      
       {isLoading && <LoadingState />}
+      
       {!isLoading && !error && (
-        <CategoriesTable categories={filteredCategories} categoryLookupCounts={categoryLookupCounts} totalCategories={categoriesDeduplicated.length} onEdit={handleEdit} onDelete={handleDeleteCategory} isDeleting={bulkDeleteManager.isPending} searchTerm={searchTerm} />
+        <CategoriesTable 
+          categories={filteredCategories} 
+          categoryLookupCounts={categoryLookupCounts} 
+          totalCategories={categoriesDeduplicated.length} 
+          onEdit={handleEdit} 
+          onDelete={handleDeleteCategory} 
+          isDeleting={bulkDeleteManager.isPending} 
+          searchTerm={searchTerm}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
       )}
+      
       {categoriesDeduplicated.length === 0 && !isLoading && !error && <EmptyState onCreate={openCreateModal} />}
-      <ConfirmModal isOpen={bulkDeleteManager.isConfirmModalOpen} onConfirm={bulkDeleteManager.handleConfirm} onCancel={bulkDeleteManager.handleCancel} title="Confirm Deletion" message={bulkDeleteManager.confirmationMessage} confirmText="Delete" cancelText="Cancel" type="danger" showIcon loading={bulkDeleteManager.isPending} />
-      <CategoryModal isOpen={isModalOpen} onClose={handleModalClose} onSubmit={handleSaveCategory} isLoading={isLoading} editingCategory={editingCategory} categories={categoriesDeduplicated} lookupsByCategory={groupedLookupsByCategory} />
+      
+      <ConfirmModal 
+        isOpen={bulkDeleteManager.isConfirmModalOpen} 
+        onConfirm={bulkDeleteManager.handleConfirm} 
+        onCancel={bulkDeleteManager.handleCancel} 
+        title="Confirm Deletion" 
+        message={bulkDeleteManager.confirmationMessage} 
+        confirmText="Delete" 
+        cancelText="Cancel" 
+        type="danger" 
+        showIcon 
+        loading={bulkDeleteManager.isPending} 
+      />
+      
+      <CategoryModal 
+        isOpen={isModalOpen} 
+        onClose={handleModalClose} 
+        onSubmit={handleSaveCategory} 
+        isLoading={isLoading} 
+        editingCategory={editingCategory} 
+        categories={categoriesDeduplicated} 
+        lookupsByCategory={groupedLookupsByCategory} 
+      />
     </div>
   );
 }
