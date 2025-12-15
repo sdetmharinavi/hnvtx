@@ -1,11 +1,11 @@
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
-import { FaNetworkWired, FaRoute } from 'react-icons/fa';
+import { FaRoute } from 'react-icons/fa';
 import {
   FiUpload,
   FiEdit,
@@ -14,6 +14,7 @@ import {
   FiTrash2,
   FiArrowRightCircle,
   FiGitMerge,
+  FiPlus,
 } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
@@ -46,7 +47,6 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
-import { SystemFormData } from '@/schemas/system-schemas';
 import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
@@ -76,16 +76,8 @@ const useRingSystems = (ringId: string | null) => {
         system_name, 
         is_hub, 
         status, 
-        system_type_id, 
-        node_id, 
-        ip_address, 
-        s_no, 
-        make, 
-        remark, 
-        commissioned_on, 
-        maintenance_terminal_id, 
-        maan_node_id, 
-        system_capacity_id
+        ip_address,
+        system_type:lookup_types!systems_system_type_id_fkey (name)
       )
     `,
     filters: { ring_id: ringId || '' },
@@ -105,17 +97,9 @@ const useRingSystems = (ringId: string | null) => {
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
             status: sys.status,
-            system_type_id: sys.system_type_id,
-            node_id: sys.node_id,
-            ip_address:
-              typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
-            s_no: sys.s_no,
-            make: sys.make,
-            remark: sys.remark,
-            commissioned_on: sys.commissioned_on,
-            maintenance_terminal_id: sys.maintenance_terminal_id,
-            maan_node_id: sys.maan_node_id,
-            system_capacity_id: sys.system_capacity_id,
+            // Extract nested type name
+            system_type_name: sys.system_type?.name || 'Unknown Type',
+            ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
           };
         })
         .filter((item): item is V_systems_completeRowSchema => item !== null);
@@ -174,14 +158,20 @@ const RingAssociatedSystemsView = ({
         return (
           <div
             key={system.id}
-            className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
+            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
           >
             <div>
-              <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                {system.system_name}
-              </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1 rounded">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                    {system.system_name}
+                </span>
+                <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800">
+                    {system.system_type_name}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
                   #{system.order_in_ring ?? '?'}
                 </span>
                 {system.is_hub ? (
@@ -247,7 +237,7 @@ export default function RingManagerPage() {
   );
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN);
   const canDelete = !!isSuperAdmin;
 
   // Use the extracted hook via CrudManager
@@ -273,13 +263,14 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = manager;
 
-  // THE FIX: Safely extract 'stats' from the hook result by casting the manager object
-  // Since useCrudManager passes through the underlying hook result spread, 'stats' exists at runtime.
+  // THE FIX: Safely extract 'stats' from the hook result
   const dynamicStats = useMemo<DynamicStats>(() => {
-    const s = (manager as unknown as { stats?: DynamicStats }).stats;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = (manager as any).stats;
     return (
       s || {
         total: 0,
+        totalNodes: 0,
         spec: { issued: 0, pending: 0 },
         ofc: { ready: 0, partial: 0, pending: 0 },
         bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
@@ -312,7 +303,8 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
-  const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSaveSystems = async (systemsData: any[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
       const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
@@ -404,6 +396,7 @@ export default function RingManagerPage() {
       (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'RING_TYPES' }).toArray()
   );
+  
   const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
     ['maintenance-areas-for-modal'],
     async () =>
@@ -522,7 +515,7 @@ export default function RingManagerPage() {
           label: 'Add Systems to Ring',
           onClick: () => setIsSystemsModalOpen(true),
           variant: 'primary',
-          leftIcon: <FaNetworkWired />,
+          leftIcon: <FiPlus />, // Changed to Plus icon for better semantics
           disabled: isLoading,
         });
     }
@@ -541,7 +534,7 @@ export default function RingManagerPage() {
 
   const headerStats = useMemo(() => {
     return [
-      { value: dynamicStats.total, label: 'Total Rings' },
+      { value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`, label: 'Total Rings / Nodes' },
       { value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
       {
         value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
@@ -605,7 +598,7 @@ export default function RingManagerPage() {
             />
           ),
         },
-      ],
+      ] as EntityConfig<RingEntity>['detailFields'],
       filterOptions: [
         ...ringConfig.filterOptions,
         {
@@ -613,6 +606,7 @@ export default function RingManagerPage() {
           label: 'OFC Status',
           type: 'select' as const,
           options: [
+            {value: '', label: 'All'},
             { value: 'Ready', label: 'Ready' },
             { value: 'Pending', label: 'Pending' },
             { value: 'Partial Ready', label: 'Partial Ready' },
@@ -623,6 +617,7 @@ export default function RingManagerPage() {
           label: 'BTS Status',
           type: 'select' as const,
           options: [
+            { value: '', label: 'All' },
             { value: 'On-Air', label: 'On-Air' },
             { value: 'Pending', label: 'Pending' },
             { value: 'Configured', label: 'Configured' },
@@ -632,7 +627,20 @@ export default function RingManagerPage() {
         if (opt.key === 'ring_type_id') {
           return {
             ...opt,
-            options: (ringTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+            // 1. Map "DEFAULT" to empty string (which clears the filter)
+            options: (ringTypesData || [])
+              .map((t) => {
+                if (t.name === 'DEFAULT') {
+                  return { value: '', label: 'All' };
+                }
+                return { value: t.id, label: t.name };
+              })
+              // 2. Sort to ensure "All Ring Types" is always at the top
+              .sort((a, b) => {
+                if (a.value === '') return -1;
+                if (b.value === '') return 1;
+                return a.label.localeCompare(b.label);
+              }),
           };
         }
         if (opt.key === 'maintenance_terminal_id') {
@@ -646,6 +654,21 @@ export default function RingManagerPage() {
     }),
     [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
   );
+
+    useEffect(() => {
+    // Only set if data is loaded and no filter is currently set
+    if (ringTypesData && !filters.filters.ring_type_id) {
+      const defaultType = ringTypesData.find(t => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS');
+      
+      if (defaultType) {
+        // Set the filter
+        filters.setFilters(prev => ({
+          ...prev,
+          ring_type_id: defaultType.id
+        }));
+      }
+    }
+  }, [ringTypesData]); 
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
@@ -723,7 +746,7 @@ export default function RingManagerPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
-        editingRing={editModal.record as RingsRowSchema | null}
+        editingRing={editModal.record}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}
         isLoading={isMutating}

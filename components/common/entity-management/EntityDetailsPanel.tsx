@@ -32,30 +32,6 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
   return (
     <div className="p-4 space-y-4">
-      <div className="mb-2 flex items-start justify-between">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{entity.name}</h3>
-        <span
-          className={`rounded-full px-2 py-1 text-xs ${
-            entity.status
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-          }`}
-        >
-          {entity.status ? 'Active' : 'Inactive'}
-        </span>
-      </div>
-
-      {config.detailFields.map((field, index) => (
-        <DetailItem
-          key={`${String(field.key)}-${index}`}
-          label={field.label}
-          value={entity[field.key]}
-          type={field.type}
-          entity={entity}
-          render={field.render}
-        />
-      ))}
-
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         <div className="flex gap-2">
           {onViewDetails && (
@@ -63,7 +39,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
               onClick={onViewDetails}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
             >
-              <FiEye className="h-4 w-4" /> View Details
+              <FiEye className="h-4 w-4" /> Open Ring
             </button>
           )}
           
@@ -89,6 +65,30 @@ export function EntityDetailsPanel<T extends BaseEntity>({
           )}
         </div>
       </div>
+      <div className="mb-2 flex items-start justify-between">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{entity.name}</h3>
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${
+            entity.status
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+          }`}
+        >
+          {entity.status ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+
+      {config.detailFields.map((field, index) => (
+        <DetailItem
+          key={`${String(field.key)}-${index}`}
+          label={field.label}
+          value={entity[field.key]}
+          type={field.type}
+          entity={entity}
+          render={field.render}
+        />
+      ))}
+
     </div>
   );
 }

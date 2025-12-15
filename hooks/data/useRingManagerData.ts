@@ -9,13 +9,12 @@ import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 export interface DynamicStats {
   total: number;
+  totalNodes: number; // Added: Total nodes across all filtered rings
   spec: { issued: number; pending: number };
   ofc: { ready: number; partial: number; pending: number };
   bts: { onAir: number; pending: number; nodesOnAir: number; configuredCount: number };
 }
 
-// Extend V_ringsRowSchema to include the calculated stats in the return type if needed, 
-// but for the hook we return them separately.
 interface RingManagerDataReturn extends DataQueryHookReturn<V_ringsRowSchema> {
   stats: DynamicStats;
 }
@@ -28,7 +27,6 @@ export const useRingManagerData = (
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
     
-    // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
       const term = searchQuery.trim().replace(/'/g, "''");
@@ -80,6 +78,7 @@ export const useRingManagerData = (
   const processedData = useMemo(() => {
     const emptyStats: DynamicStats = {
         total: 0,
+        totalNodes: 0,
         spec: { issued: 0, pending: 0 },
         ofc: { ready: 0, partial: 0, pending: 0 },
         bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
@@ -117,6 +116,9 @@ export const useRingManagerData = (
     stats.total = filtered.length;
 
     filtered.forEach(r => {
+        // Accumulate total nodes for all visible rings
+        stats.totalNodes += (r.total_nodes ?? 0);
+
         if (r.spec_status === 'Issued') stats.spec.issued++;
         else stats.spec.pending++;
 
