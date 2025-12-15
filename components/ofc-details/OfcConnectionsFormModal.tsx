@@ -9,15 +9,16 @@ import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormTextarea, FormSwitch } from "@/components/common/form/FormControls";
-import { ofc_connectionsInsertSchema,  Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
+import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
 import { toast } from "sonner";
 import { z } from "zod";
 
-// THE FIX: Define a form-specific schema that OMITS system-generated fields.
-// This prevents "Invalid ISO datetime" errors from fields the user cannot see or edit.
+// THE FIX: Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
 const connectionFormSchema = ofc_connectionsInsertSchema.omit({
     created_at: true,
     updated_at: true,
+    sn_dom: true,
+    en_dom: true
     // We omit IDs if we handle them via mutation params, 
     // but usually, we keep ofc_id and id for references.
 });
@@ -54,7 +55,6 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
   const { mutate: insertOfcConnections, isPending: creating } = useTableInsert(supabase, "ofc_connections");
   const { mutate: updateOfcConnections, isPending: updating } = useTableUpdate(supabase, "ofc_connections");
 
-  // THE FIX: Surgically reset the form with ONLY editable/necessary fields
   useEffect(() => {
     if (isOpen) {
       if (editingOfcConnections) {
@@ -91,6 +91,7 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
           onSuccess: (data) => {
             onUpdated?.(Array.isArray(data) ? data[0] : data);
             onClose();
+            toast.success("Connection updated successfully");
           },
           onError: (err) => toast.error(`Update failed: ${err.message}`)
         }
@@ -100,6 +101,7 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
         onSuccess: (data) => {
           onCreated?.(Array.isArray(data) ? data[0] : data);
           onClose();
+          toast.success("Connection created successfully");
         },
         onError: (err) => toast.error(`Creation failed: ${err.message}`)
       });
@@ -108,7 +110,6 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
 
   const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
     console.error("Form Validation Errors:", errors);
-    // Identify which field is failing
     const errorFields = Object.keys(errors).join(", ");
     toast.error(`Validation error in: ${errorFields}`);
   };
