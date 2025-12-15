@@ -308,7 +308,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
     return filteredServices.map((s) => ({
       value: s.id!,
-      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}`,
+      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})(${s.node_name ? s.node_name : ''})(${s.vlan ? s.vlan : ''})(${s.unique_id ? s.unique_id : ''})` : ''}`,
     }));
   }, [servicesData, watchLinkTypeId]);
 
