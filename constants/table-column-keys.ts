@@ -1018,6 +1018,7 @@ const TABLE_COLUMN_OBJECTS = {
     order_in_ring: "order_in_ring",
     remark: "remark",
     ring_id: "ring_id",
+    node_id: "node_id",
     system_type: "system_type",
     ring_name: "ring_name",
     ring_status: "ring_status",

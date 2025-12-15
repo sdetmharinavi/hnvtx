@@ -44,6 +44,7 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   return {
     id: node.id,
     ring_id: node.ring_id,
+    node_id: node.node_id,
     name: node.name,
     lat: node.lat,
     long: node.long,
