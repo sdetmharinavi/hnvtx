@@ -39,7 +39,6 @@ import {
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
-  RingsRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -714,7 +713,7 @@ export default function RingManagerPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
-        editingRing={editModal.record as RingsRowSchema | null}
+        editingRing={editModal.record}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}
         isLoading={isMutating}
