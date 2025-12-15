@@ -13,7 +13,7 @@ import {
   Junction_closuresRowSchema as Junction_closuresRow,
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
-  User_profilesRowSchema as BaseUserProfilesRow,
+  // User_profilesRowSchema as BaseUserProfilesRow,
   Inventory_itemsRowSchema,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
@@ -25,7 +25,7 @@ import {
   V_ring_nodesRowSchema,
 
   V_employee_designationsRowSchema,
-  V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
+  // V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
   Ring_based_systemsRowSchema,
   V_ofc_connections_completeRowSchema,
@@ -38,18 +38,53 @@ import {
   V_end_to_end_pathsRowSchema,
   V_audit_logsRowSchema,
   V_inventory_transactions_extendedRowSchema,
+  Diary_notesRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
-import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 
-export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
+
+export type StoredUserProfiles = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email?: string | null;
+  status?: string | null;
+  avatar_url?: string | null;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
-export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences' | 'raw_app_meta_data' | 'raw_user_meta_data'> & {
+export type StoredVUserProfilesExtended = {
+  id: string | null;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
+  status: string | null;
+  is_super_admin: boolean | null;
+  last_sign_in_at: string | null;
+  is_email_verified: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  account_age_days: number | null;
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  auth_updated_at: string | null;
+  avatar_url: string | null;
+  computed_status: string | null;
+  date_of_birth: string | null;
+  designation: string | null;
+  email_confirmed_at: string | null;
+  first_name: string | null;
+  is_phone_verified: boolean | null;
+  last_activity_period: string | null;
+  last_name: string | null;
+  phone_confirmed_at: string | null;
+  phone_number: string | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
   raw_app_meta_data: Json | null;
   raw_user_meta_data: Json | null;
@@ -122,8 +157,8 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // Incremented version to 22 and added service_name to v_system_connections_complete
-    this.version(22).stores({
+    // VERSION 24: Fix v_ring_nodes composite key
+    this.version(24).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -152,12 +187,14 @@ export class HNVTMDatabase extends Dexie {
       v_employees: '&id, employee_name',
       v_maintenance_areas: '&id, name',
       v_cable_utilization: 'cable_id',
-      v_ring_nodes: '&id, ring_id',
+      
+      // THE CRITICAL FIX: Composite key [id+ring_id] allows a system (id) to exist in multiple rings (ring_id)
+      v_ring_nodes: '&[id+ring_id], ring_id', 
+      
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      // THE FIX: Added service_name to index
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',

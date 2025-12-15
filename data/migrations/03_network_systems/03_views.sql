@@ -275,7 +275,8 @@ FROM public.ofc_connections oc
 -- View for Ring Map Node Data
 CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
 SELECT
-    n.id,
+    s.id as id,          -- SYSTEM ID (Unique entity in the ring)
+    n.id as node_id,     -- Physical Location ID
     r.id as ring_id,
     r.name as ring_name,
     n.name,
@@ -283,8 +284,8 @@ SELECT
     n.longitude as long,
     s.is_hub,
     rbs.order_in_ring as order_in_ring,
-    lt_node.name as type, -- This is the physical node type
-    lt_system.name as system_type, -- This is the logical system type for the icon
+    lt_node.name as type, 
+    lt_system.name as system_type, 
     lt_system.code AS system_type_code,
     r.status AS ring_status,
     s.status AS system_status,
@@ -301,7 +302,7 @@ JOIN
     public.nodes n ON s.node_id = n.id
 LEFT JOIN
     public.lookup_types lt_node ON n.node_type_id = lt_node.id
-LEFT JOIN -- Added this join
+LEFT JOIN 
     public.lookup_types lt_system ON s.system_type_id = lt_system.id;
 
 -- View for rings with joined data

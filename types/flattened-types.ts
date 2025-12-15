@@ -2355,6 +2355,7 @@ export type V_ring_nodesRow = {
     lat: number | null;
     long: number | null;
     name: string | null;
+    node_id: string | null;
     order_in_ring: number | null;
     remark: string | null;
     ring_id: string | null;

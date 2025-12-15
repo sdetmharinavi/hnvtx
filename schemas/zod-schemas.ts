@@ -2375,6 +2375,7 @@ export const v_ring_nodesRowSchema = z.object({
   lat: z.number().nullable(),
   long: z.number().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_id: z.uuid().nullable(),
   order_in_ring: z.number().nullable(),
   remark: z.string().nullable(),
   ring_id: z.uuid().nullable(),

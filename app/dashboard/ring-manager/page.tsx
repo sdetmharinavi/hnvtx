@@ -40,7 +40,6 @@ import {
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
-  RingsRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
@@ -668,6 +667,7 @@ export default function RingManagerPage() {
         }));
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ringTypesData]); 
 
   const uiFilters = useMemo<Record<string, string>>(() => {

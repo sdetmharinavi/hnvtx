@@ -98,7 +98,7 @@ export default function DashboardHeader({
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
               <Link href="/">
-                <Image src="/logo.png" alt="Logo" width={60} height={60} className="ml-2"/>
+                <Image src="/logo.png" alt="Logo" width={60} height={60} className="ml-2" style={{"height":"auto"}}/>
               </Link>
             </div>
             {/* Logo */}

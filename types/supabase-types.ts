@@ -1602,7 +1602,7 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "inventory_items_location_id_fkey"
@@ -1743,7 +1743,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -1861,6 +1861,13 @@ export type Database = {
             foreignKeyName: "fk_lfp_destination_system"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -1869,6 +1876,13 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -2054,6 +2068,13 @@ export type Database = {
             foreignKeyName: "logical_paths_destination_system_id_fkey"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -2076,7 +2097,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "logical_paths_end_node_id_fkey"
@@ -2124,6 +2145,13 @@ export type Database = {
             foreignKeyName: "logical_paths_source_system_id_fkey"
             columns: ["source_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -2146,7 +2174,7 @@ export type Database = {
             columns: ["start_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "logical_paths_start_node_id_fkey"
@@ -2432,7 +2460,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -2509,7 +2537,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -2679,6 +2707,13 @@ export type Database = {
             foreignKeyName: "fk_ofc_connections_system"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ofc_connections_system"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -2722,7 +2757,7 @@ export type Database = {
             columns: ["updated_en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_en_id_fkey"
@@ -2757,7 +2792,7 @@ export type Database = {
             columns: ["updated_sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_sn_id_fkey"
@@ -2841,6 +2876,13 @@ export type Database = {
             foreignKeyName: "ports_management_system_id_fkey"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -2906,6 +2948,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -3108,7 +3157,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_end_node_id_fkey"
@@ -3157,7 +3206,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -3269,6 +3318,13 @@ export type Database = {
             foreignKeyName: "system_connections_en_id_fkey"
             columns: ["en_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -3318,6 +3374,13 @@ export type Database = {
             foreignKeyName: "system_connections_sn_id_fkey"
             columns: ["sn_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -3326,6 +3389,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -3426,7 +3496,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "systems_node_id_fkey"
@@ -3654,7 +3724,7 @@ export type Database = {
             columns: ["jc_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -3858,6 +3928,13 @@ export type Database = {
             foreignKeyName: "fk_lfp_destination_system"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -3866,6 +3943,13 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -4018,7 +4102,7 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "inventory_items_location_id_fkey"
@@ -4122,7 +4206,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -4350,7 +4434,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -4427,7 +4511,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -4547,6 +4631,13 @@ export type Database = {
             foreignKeyName: "fk_ofc_connections_system"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ofc_connections_system"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -4569,7 +4660,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -4604,7 +4695,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -4660,7 +4751,7 @@ export type Database = {
             columns: ["updated_en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_en_id_fkey"
@@ -4695,7 +4786,7 @@ export type Database = {
             columns: ["updated_sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_sn_id_fkey"
@@ -4756,6 +4847,13 @@ export type Database = {
             foreignKeyName: "ports_management_system_id_fkey"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -4769,6 +4867,7 @@ export type Database = {
           lat: number | null
           long: number | null
           name: string | null
+          node_id: string | null
           order_in_ring: number | null
           remark: string | null
           ring_id: string | null
@@ -4873,7 +4972,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_end_node_id_fkey"
@@ -4922,7 +5021,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -5030,7 +5129,7 @@ export type Database = {
             columns: ["service_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -5051,6 +5150,13 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -5085,6 +5191,13 @@ export type Database = {
             foreignKeyName: "system_connections_sn_id_fkey"
             columns: ["sn_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -5093,6 +5206,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -5171,7 +5291,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "systems_node_id_fkey"

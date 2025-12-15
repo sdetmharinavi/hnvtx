@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { MapContainer, Marker, Popup, Polyline, useMap, Tooltip } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap, Tooltip, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { RingMapNode } from './types/node';
@@ -34,7 +34,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const { theme } = useThemeStore();
 
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#0f172a' : '#f8fafc'; // Slighly lighter bg for light mode
+  const bgColor = isDark ? '#0f172a' : '#f8fafc';
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
   const spurLineColor = isDark ? '#b4083f' : '#ff0066';
 
@@ -94,8 +94,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         // Find parent position
         const parentNode = backboneNodes.find(n => Math.round(n.order_in_ring || 0) === parentOrder);
         if (!parentNode) {
-            // Orphaned spur? Just place it somewhere or treat as backbone
-            // For now, ignore or place at 0,0
             return;
         }
 
@@ -204,10 +202,13 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
-        zoomControl={false}
-        className="dark:bg-blue-950! shadow-lg" // Darker blue background for schematics
+        zoomControl={false} // We add it manually below
+        className="dark:bg-blue-950! shadow-lg"
       >
         <MeshController bounds={bounds} />
+        
+        {/* ADDED: Standard Zoom Controls in top-left */}
+        <ZoomControl position="bottomright" />
 
         {/* Render Connections */}
         {connections.map(([nodeA, nodeB], index) => {
@@ -215,11 +216,8 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
           const posB = nodePositions.get(nodeB.id!);
           if (!posA || !posB) return null;
 
-          // Determine connection type based on order logic
           const orderA = nodeA.order_in_ring || 0;
           const orderB = nodeB.order_in_ring || 0;
-          
-          // It's a spur if either node is a decimal (e.g. 3.1)
           const isSpur = (orderA % 1 !== 0) || (orderB % 1 !== 0);
 
           return (
@@ -228,8 +226,8 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               positions={[posA, posB]}
               pathOptions={{
                 color: isSpur ? spurLineColor : hubLineColor,
-                weight: isSpur ? 2 : 4, // Backbone thicker
-                dashArray: isSpur ? '5, 5' : undefined, // Spurs dashed
+                weight: isSpur ? 2 : 4,
+                dashArray: isSpur ? '5, 5' : undefined,
                 opacity: 0.8,
                 lineCap: 'round',
                 lineJoin: 'round',
@@ -249,7 +247,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               position={pos}
               icon={getNodeIcon(node.system_type, node.type, false)}
             >
-              {/* Permanent Label Tooltip */}
               <Tooltip
                 direction="bottom"
                 offset={[0, 10]}
@@ -261,16 +258,9 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                     <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
                     {node.name}
                     </div>
-                    {/* Show Order in Ring */}
-                    {/* {node.order_in_ring !== null && (
-                        <div className="mt-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px] font-mono rounded-full">
-                            #{node.order_in_ring}
-                        </div>
-                    )} */}
                 </div>
               </Tooltip>
 
-              {/* Popup Details */}
               <Popup className="custom-popup">
                 <div className="text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
                   <div className="bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
