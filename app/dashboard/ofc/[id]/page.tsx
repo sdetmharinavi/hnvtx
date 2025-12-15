@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ConfirmModal, StatusBadge } from '@/components/common/ui';
+import { PageSpinner, ConfirmModal, Input } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -14,7 +14,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit, GitBranch } from 'lucide-react';
+import { GitCommit, GitBranch, Search, Grid, List, Trash2, Edit2 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -29,8 +29,11 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
-import { FiActivity, FiArrowRight } from 'react-icons/fi';
 import { UserRole } from '@/types/user-roles';
+import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCard';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { Button } from '@/components/common/ui/Button';
+import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
@@ -38,11 +41,18 @@ export default function OfcCableDetailsPage() {
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
 
+  // 1. Initialize with a safe default (e.g., 'table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  // 2. Track if we've already set the smart default
+  const [hasInitializedView, setHasInitializedView] = useState(false);
+
   const {
     data: cableConnectionsData,
     isLoading,
     refetch,
     pagination,
+    search, // Destructure search control
+    filters, // Destructure filter control
     editModal,
     deleteModal,
     actions: crudActions,
@@ -54,9 +64,7 @@ export default function OfcCableDetailsPage() {
 
   // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  // Strictly Super Admin for deletion of fibers (should come from capacity)
   const canDelete = !!isSuperAdmin;
-  // Adding new fibers manually is also restricted
   const canAdd = !!isSuperAdmin;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(
@@ -94,6 +102,74 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, routeDetails, ensureConnectionsExist]);
 
+  const handleTraceClick = useCallback(
+    (record: V_ofc_connections_completeRowSchema) => {
+      const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
+      if (firstSegment && record.fiber_no_sn) {
+        setTracingFiber({
+          startSegmentId: firstSegment.id,
+          fiberNo: record.fiber_no_sn,
+          record,
+        });
+      } else {
+        toast.error(
+          'Cannot trace fiber: No cable segments found for this route or fiber number is missing.'
+        );
+      }
+    },
+    [cableSegments]
+  );
+
+  // Generate Actions for Cards (Grid View)
+  const getCardActions = useCallback(
+    (record: V_ofc_connections_completeRowSchema) => {
+      return (
+        <>
+          {canEdit && (
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => editModal.openEdit(record)}
+              title="Edit Fiber"
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              size="xs"
+              variant="ghost"
+              className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => crudActions.handleDelete(record)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+          <div className="flex-1"></div>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => handleTraceClick(record)}
+            title="Trace Path"
+          >
+            <GitCommit className="w-4 h-4 mr-1" /> Trace
+          </Button>
+        </>
+      );
+    },
+    [canEdit, canDelete, editModal, crudActions, handleTraceClick]
+  );
+
+  // 3. Effect to set mode once data loads
+  useEffect(() => {
+    // Only run if data is loaded, we have records, and we haven't set it yet
+    if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
+      const smartMode = cableConnectionsData.length > 48 ? 'table' : 'grid';
+      setViewMode(smartMode);
+      setHasInitializedView(true); // Lock it so manual toggles aren't overridden
+    }
+  }, [isLoading, cableConnectionsData.length, hasInitializedView]);
+
   const columns = OfcDetailsTableColumns(cableConnectionsData);
   const orderedColumns = useOrderedColumns(columns, [
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
@@ -103,28 +179,13 @@ export default function OfcCableDetailsPage() {
     () => [
       {
         key: 'trace',
-        label: 'Trace Fiber Path',
+        label: 'Trace Path',
         icon: <GitCommit className="h-4 w-4" />,
-        onClick: (record: V_ofc_connections_completeRowSchema) => {
-          const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
-          if (firstSegment && record.fiber_no_sn) {
-            setTracingFiber({
-              startSegmentId: firstSegment.id,
-              fiberNo: record.fiber_no_sn,
-              record,
-            });
-          } else {
-            toast.error(
-              'Cannot trace fiber: No cable segments found for this route or fiber number is missing.'
-            );
-          }
-        },
+        onClick: handleTraceClick,
         variant: 'secondary' as const,
       },
       ...createStandardActions({
-        // Conditionally allow editing
         onEdit: canEdit ? editModal.openEdit : undefined,
-        // Conditionally allow deletion
         onDelete: canDelete ? crudActions.handleDelete : undefined,
         onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
       }),
@@ -135,7 +196,7 @@ export default function OfcCableDetailsPage() {
       crudActions.handleToggleStatus,
       canEdit,
       canDelete,
-      cableSegments,
+      handleTraceClick,
     ]
   );
 
@@ -145,7 +206,6 @@ export default function OfcCableDetailsPage() {
       await refetch();
       toast.success('Connections refreshed!');
     },
-    // Conditionally allow adding new fibers
     onAddNew: canAdd ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: {
@@ -161,77 +221,21 @@ export default function OfcCableDetailsPage() {
       { value: utilization?.capacity ?? 0, label: 'Total Capacity', color: 'default' },
       { value: utilization?.used_fibers ?? 0, label: 'Utilized', color: 'primary' },
       { value: utilization?.available_fibers ?? 0, label: 'Available', color: 'success' },
-      { value: `${utilPercent}%`, label: 'Utilization', color: utilPercent > 80 ? 'warning' : 'default' },
+      {
+        value: `${utilPercent}%`,
+        label: 'Utilization',
+        color: utilPercent > 80 ? 'warning' : 'default',
+      },
     ];
   }, [utilization]);
 
   const renderMobileItem = useCallback(
     (record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
       return (
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                F{record.fiber_no_sn}
-              </span>
-              {record.fiber_no_sn !== record.fiber_no_en && (
-                <>
-                  <FiArrowRight className="w-3 h-3 text-gray-400" />
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                    F{record.fiber_no_en}
-                  </span>
-                </>
-              )}
-            </div>
-            {actions}
-          </div>
-
-          <div className="min-w-0 mt-1">
-            {record.system_name ? (
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
-                  {record.system_name}
-                </h4>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
-                  <span className="uppercase font-bold tracking-wider">
-                    {record.connection_type || 'Connection'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
-            <div>
-              <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
-              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                {record.updated_sn_name || 'N/A'}
-              </div>
-              <div className="text-gray-500 mt-0.5">
-                {record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}
-              </div>
-            </div>
-            <div>
-              <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
-              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                {record.updated_en_name || 'N/A'}
-              </div>
-              <div className="text-gray-500 mt-0.5">
-                {record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <FiActivity className="w-3.5 h-3.5" />
-              <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
-            </div>
-            <StatusBadge status={record.status ?? false} />
-          </div>
-        </div>
+        <FiberConnectionCard
+          fiber={record as V_ofc_connections_completeRowSchema}
+          actions={actions}
+        />
       );
     },
     []
@@ -262,30 +266,102 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <DataTable<'v_ofc_connections_complete'>
-          autoHideEmptyColumns={true}
-          tableName="v_ofc_connections_complete"
-          data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
-          columns={orderedColumns}
-          loading={isLoading}
-          actions={tableActions}
-          // THE FIX: Restrict bulk selection
-          selectable={canDelete}
-          searchable={true}
-          renderMobileItem={renderMobileItem}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: utilization?.capacity ?? 0,
-            showSizeChanger: true,
-            onChange: (page, limit) => {
-              pagination.setCurrentPage(page);
-              pagination.setPageLimit(limit);
-            },
-          }}
-        />
+      {/* Sticky Toolbar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
+        <div className="w-full lg:w-96 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search fibers, systems..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            className="pl-10"
+            fullWidth
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[150px]">
+            <SelectFilter
+              label=""
+              filterKey="status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+              placeholder="All Status"
+            />
+          </div>
+          {/* View Toggle */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {cableConnectionsData.map((fiber) => (
+              <FiberConnectionCard key={fiber.id} fiber={fiber} actions={getCardActions(fiber)} />
+            ))}
+            {cableConnectionsData.length === 0 && (
+              <div className="col-span-full">
+                <FancyEmptyState
+                  title="No fibers found"
+                  description="Adjust filters to see results"
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <DataTable<'v_ofc_connections_complete'>
+            autoHideEmptyColumns={true}
+            tableName="v_ofc_connections_complete"
+            data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
+            columns={orderedColumns}
+            loading={isLoading}
+            actions={tableActions}
+            selectable={canDelete}
+            searchable={false} // Custom search bar used
+            customToolbar={<></>}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+              current: pagination.currentPage,
+              pageSize: pagination.pageLimit,
+              total: utilization?.capacity ?? 0,
+              showSizeChanger: true,
+              onChange: (page, limit) => {
+                pagination.setCurrentPage(page);
+                pagination.setPageLimit(limit);
+              },
+            }}
+          />
+        )}
+      </div>
+
       <OfcConnectionsFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

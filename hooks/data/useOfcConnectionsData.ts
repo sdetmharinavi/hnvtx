@@ -16,15 +16,17 @@ export const useOfcConnectionsData = (
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
 
-      // FIX: Use standard SQL syntax
       let searchString: string | undefined;
       if (searchQuery && searchQuery.trim() !== '') {
           const term = searchQuery.trim().replace(/'/g, "''");
+          // THE FIX: Added fiber_no_sn and fiber_no_en casting to text for numeric search
           searchString = `(` +
             `system_name ILIKE '%${term}%' OR ` +
             `connection_type ILIKE '%${term}%' OR ` +
             `updated_sn_name ILIKE '%${term}%' OR ` +
-            `updated_en_name ILIKE '%${term}%'` +
+            `updated_en_name ILIKE '%${term}%' OR ` +
+            `fiber_no_sn::text ILIKE '%${term}%' OR ` + 
+            `fiber_no_en::text ILIKE '%${term}%'` +
           `)`;
       }
 
@@ -39,7 +41,6 @@ export const useOfcConnectionsData = (
         p_limit: 5000,
         p_offset: 0,
         p_filters: rpcFilters,
-        // THE FIX: Sort by Fiber Number (Start Node)
         p_order_by: 'fiber_no_sn',
         p_order_dir: 'asc',
       });
@@ -53,7 +54,6 @@ export const useOfcConnectionsData = (
       if (!cableId) {
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
-      // Sort locally by fiber number
       return localDb.v_ofc_connections_complete
         .where('ofc_id').equals(cableId)
         .sortBy('fiber_no_sn');
@@ -81,14 +81,24 @@ export const useOfcConnectionsData = (
 
       let filtered = allConnections;
 
+      // 1. Search Filtering
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
           conn.system_name?.toLowerCase().includes(lowerQuery) ||
           conn.connection_type?.toLowerCase().includes(lowerQuery) ||
           conn.updated_sn_name?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_en_name?.toLowerCase().includes(lowerQuery)
+          conn.updated_en_name?.toLowerCase().includes(lowerQuery) ||
+          // THE FIX: Added numeric checks for client-side filtering
+          String(conn.fiber_no_sn).includes(lowerQuery) ||
+          String(conn.fiber_no_en).includes(lowerQuery)
         );
+      }
+
+      // 2. Status Filtering
+      if (filters.status) {
+         const statusBool = filters.status === 'true';
+         filtered = filtered.filter(c => c.status === statusBool);
       }
 
       // Explicit Sort (Safety fallback)
@@ -109,7 +119,7 @@ export const useOfcConnectionsData = (
         inactiveCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allConnections, searchQuery, currentPage, pageLimit, cableId]);
+    }, [allConnections, searchQuery, filters, currentPage, pageLimit, cableId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };
