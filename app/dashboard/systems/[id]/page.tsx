@@ -5,7 +5,7 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner, StatusBadge } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Input, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
@@ -29,14 +29,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+// import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiAnchor, FiArrowRight, FiDatabase, FiGitBranch, FiMapPin, FiPieChart, FiUpload } from 'react-icons/fi';
+import {  FiDatabase, FiGitBranch, FiPieChart, FiUpload, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { ConnectionCard } from '@/components/connections/ConnectionCard'; // Updated Import
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -47,13 +48,16 @@ export default function SystemConnectionsPage() {
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
+  // THE FIX: Set default view mode to 'grid'
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters, setShowFilters] = useState(false);
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -108,6 +112,7 @@ export default function SystemConnectionsPage() {
 
   const useData = useSystemConnectionsData(systemId);
 
+  // THE FIX: The sorting logic is now handled largely by the hook, but we can refine it here
   const {
     data: connections,
     totalCount: totalConnections,
@@ -119,6 +124,25 @@ export default function SystemConnectionsPage() {
     searchQuery,
     filters
   });
+
+  // Client-side Sort Enhancement: Prioritize Port sorting
+  const sortedConnections = useMemo(() => {
+    // If user is searching, stick to the hook's relevancy sort.
+    // If browsing, sort by Local Working Interface to mimic physical rack layout.
+    if (!searchQuery && connections.length > 0) {
+       const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+       return [...connections].sort((a, b) => {
+          const portA = a.system_working_interface || '';
+          const portB = b.system_working_interface || '';
+          // Fallback to service name if ports are identical (unlikely for active links)
+          if (portA === portB) {
+              return (a.service_name || '').localeCompare(b.service_name || '');
+          }
+          return collator.compare(portA, portB);
+       });
+    }
+    return connections;
+  }, [connections, searchQuery]);
 
   const { data: uniqueValues } = useOfflineQuery(
       ['connection-filter-options', systemId],
@@ -135,6 +159,7 @@ export default function SystemConnectionsPage() {
       }
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const capacityOptions = useMemo(() => {
     const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
     return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
@@ -143,7 +168,6 @@ export default function SystemConnectionsPage() {
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];
 
-  // Fetch ports for stats
   const { data: ports = [] } = usePortsData(systemId)({
       currentPage: 1,
       pageLimit: 5000,
@@ -347,63 +371,24 @@ export default function SystemConnectionsPage() {
   }
 
   const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
+    // Reusing the ConnectionCard for mobile view to ensure consistency
+    // Mobile view implies actions are rendered externally, so we wrap card + actions
     return (
-      <div className="flex flex-col gap-3">
-        {/* Header: Service Name & Actions */}
-        <div className="flex justify-between items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight wrap-break-words">
-              {record.service_name || record.connected_system_name || 'Unnamed Connection'}
-            </h3>
-            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
-               {record.connected_link_type_name || 'Link'}
-               {record.bandwidth_allocated && <span className="text-gray-400 mx-1">•</span>}
-               {record.bandwidth_allocated}
-            </div>
-          </div>
-          <div className="shrink-0">{actions}</div>
-        </div>
-
-        {/* Port Mapping Card */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700 p-2.5">
-            <div className="flex items-center justify-between text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                <span>Local</span>
-                <span>Remote</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 text-sm">
-                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
-                    {record.system_working_interface || '?'}
-                </div>
-                <FiArrowRight className="text-gray-400 w-4 h-4" />
-                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
-                    {record.en_interface || '?'}
-                </div>
-            </div>
-        </div>
-
-        {/* Remote System Details */}
-        <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-             <div className="flex items-center gap-2">
-                 <FiAnchor className="w-3.5 h-3.5 text-purple-500" />
-                 <span className="truncate font-medium">{record.en_name || 'Unknown Remote System'}</span>
-             </div>
-             <div className="flex items-center gap-2">
-                 <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
-                 <span className="truncate">{record.en_node_name || 'Unknown Location'}</span>
+        <div className="flex flex-col gap-3">
+             <ConnectionCard 
+                connection={record as V_system_connections_completeRowSchema}
+                onViewDetails={handleViewDetails}
+                onViewPath={handleTracePath}
+                // No GoTo needed here as we are already on the system page
+                onGoToSystem={() => {}} 
+                isSystemContext={true}
+             />
+             <div className="flex justify-end gap-2 px-2">
+                 {actions}
              </div>
         </div>
-
-        {/* Footer: ID & Status */}
-        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 uppercase">Circuit ID</span>
-                <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{record.unique_id || '-'}</span>
-             </div>
-             <StatusBadge status={record.status ?? false} />
-        </div>
-      </div>
     );
-  }, []);
+  }, [handleViewDetails, handleTracePath]);
 
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
@@ -438,68 +423,112 @@ export default function SystemConnectionsPage() {
         filters={statsFilters}
         onApply={setStatsFilters}
       />
+      
+      {/* Sticky Filter Bar - Moved Outside DataTable for better layout control in Grid View */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search service, customer..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[160px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="media_type_id"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={mediaOptions}
+                    placeholder="All Media Types"
+                 />
+             </div>
+             <div className="min-w-[160px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="connected_link_type_id"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={linkTypeOptions}
+                    placeholder="All Link Types"
+                 />
+             </div>
+             <div className="min-w-[120px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="status"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={[
+                        { value: 'true', label: 'Active' },
+                        { value: 'false', label: 'Inactive' }
+                    ]}
+                    placeholder="All Status"
+                 />
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+                <button 
+                   onClick={() => setViewMode('grid')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Grid View"
+                >
+                    <FiGrid size={16} />
+                </button>
+                <button 
+                   onClick={() => setViewMode('table')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Table View"
+                >
+                    <FiList size={16} />
+                </button>
+             </div>
+          </div>
+      </div>
 
+      {/* Conditional Rendering: Grid vs Table */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {sortedConnections.map(conn => (
+                <div key={conn.id} className="h-full">
+                    <ConnectionCard 
+                        connection={conn}
+                        onViewDetails={handleViewDetails}
+                        onViewPath={handleTracePath}
+                        onGoToSystem={() => {}} // No-op in this view
+                        isSystemContext={true}
+                    />
+                </div>
+             ))}
+             {sortedConnections.length === 0 && !isLoadingConnections && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No connections found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
            <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_system_connections_complete"
-        data={connections}
-        columns={orderedColumns}
-        loading={isLoadingConnections}
-        isFetching={isLoadingConnections}
-        actions={tableActions}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-          current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
-          onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
-        }}
-        searchable={false}
-        customToolbar={
-          <SearchAndFilters
-            searchTerm={searchQuery}
-            onSearchChange={setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            onClearFilters={() => { setSearchQuery(''); setFilters({}); }}
-            hasActiveFilters={Object.keys(filters).length > 0 || !!searchQuery}
-            activeFilterCount={Object.keys(filters).length}
-            searchPlaceholder="Search service, customer..."
-          >
-             <SelectFilter
-                label="Media Type"
-                filterKey="media_type_id"
-                filters={filters}
-                setFilters={setFilters}
-                options={mediaOptions}
-             />
-             <SelectFilter
-                label="Link Type"
-                filterKey="connected_link_type_id"
-                filters={filters}
-                setFilters={setFilters}
-                options={linkTypeOptions}
-                placeholder="Filter by Link Type"
-             />
-             <SelectFilter
-                label="Capacity / Bandwidth"
-                filterKey="bandwidth"
-                filters={filters}
-                setFilters={setFilters}
-                options={capacityOptions}
-                placeholder="Filter by Capacity"
-             />
-             <SelectFilter
-                label="Status"
-                filterKey="status"
-                filters={filters}
-                setFilters={setFilters}
-                options={[
-                    { value: 'true', label: 'Active' },
-                    { value: 'false', label: 'Inactive' }
-                ]}
-             />
-          </SearchAndFilters>
-        }
-      />
+            autoHideEmptyColumns={true}
+            tableName="v_system_connections_complete"
+            data={sortedConnections} // Use sorted data
+            columns={orderedColumns}
+            loading={isLoadingConnections}
+            isFetching={isLoadingConnections}
+            actions={tableActions}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+              current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
+              onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
+            }}
+            searchable={false} // Custom toolbar used
+            customToolbar={<></>} // Custom toolbar rendered above
+          />
+      )}
 
       {isEditModalOpen && (
         <SystemConnectionFormModal
