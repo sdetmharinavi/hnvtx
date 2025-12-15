@@ -9,9 +9,20 @@ import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormTextarea, FormSwitch } from "@/components/common/form/FormControls";
-import { ofc_connectionsInsertSchema, Ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
+import { ofc_connectionsInsertSchema,  Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
 import { toast } from "sonner";
+import { z } from "zod";
 
+// THE FIX: Define a form-specific schema that OMITS system-generated fields.
+// This prevents "Invalid ISO datetime" errors from fields the user cannot see or edit.
+const connectionFormSchema = ofc_connectionsInsertSchema.omit({
+    created_at: true,
+    updated_at: true,
+    // We omit IDs if we handle them via mutation params, 
+    // but usually, we keep ofc_id and id for references.
+});
+
+type FormValues = z.infer<typeof connectionFormSchema>;
 
 interface OfcConnectionsFormModalProps {
   isOpen: boolean;
@@ -22,127 +33,115 @@ interface OfcConnectionsFormModalProps {
 }
 
 export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections, onCreated, onUpdated }: OfcConnectionsFormModalProps) {
+  const supabase = createClient();
+  const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
     control,
-  } = useForm<Ofc_connectionsInsertSchema>({
-    resolver: zodResolver(ofc_connectionsInsertSchema),
+  } = useForm<FormValues>({
+    resolver: zodResolver(connectionFormSchema),
     defaultValues: {
-      connection_category: "SPLICE_TYPES", // Default to a valid category if possible
-      connection_type: "straight", // Default
-      destination_port: null,
-      en_dom: null,
-      en_power_dbm: null,
-      fiber_no_en: 1,
-      fiber_no_sn: 1,
-      fiber_role: null,
-      logical_path_id: null,
-      ofc_id: "",
-      otdr_distance_en_km: null,
-      otdr_distance_sn_km: null,
-      path_segment_order: null,
-      remark: null,
-      route_loss_db: null,
-      sn_dom: null,
-      sn_power_dbm: null,
-      source_port: null,
       status: true,
-      system_id: null,
+      fiber_no_sn: 1,
+      fiber_no_en: 1,
     },
   });
 
-  const supabase = createClient();
   const { mutate: insertOfcConnections, isPending: creating } = useTableInsert(supabase, "ofc_connections");
   const { mutate: updateOfcConnections, isPending: updating } = useTableUpdate(supabase, "ofc_connections");
 
-  const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
-
+  // THE FIX: Surgically reset the form with ONLY editable/necessary fields
   useEffect(() => {
-    if (!isOpen) return;
-    if (editingOfcConnections) {
-      reset({
-        ...editingOfcConnections,
-        sn_dom: editingOfcConnections.sn_dom,
-        en_dom: editingOfcConnections.en_dom,
-        en_power_dbm: editingOfcConnections.en_power_dbm ?? null,
-        sn_power_dbm: editingOfcConnections.sn_power_dbm ?? null,
-        otdr_distance_sn_km: editingOfcConnections.otdr_distance_sn_km ?? null,
-        otdr_distance_en_km: editingOfcConnections.otdr_distance_en_km ?? null,
-        route_loss_db: editingOfcConnections.route_loss_db ?? null,
-      });
+    if (isOpen) {
+      if (editingOfcConnections) {
+        reset({
+          id: editingOfcConnections.id,
+          ofc_id: editingOfcConnections.ofc_id,
+          fiber_no_sn: editingOfcConnections.fiber_no_sn,
+          fiber_no_en: editingOfcConnections.fiber_no_en,
+          otdr_distance_sn_km: editingOfcConnections.otdr_distance_sn_km,
+          otdr_distance_en_km: editingOfcConnections.otdr_distance_en_km,
+          sn_power_dbm: editingOfcConnections.sn_power_dbm,
+          en_power_dbm: editingOfcConnections.en_power_dbm,
+          route_loss_db: editingOfcConnections.route_loss_db,
+          status: editingOfcConnections.status ?? true,
+          remark: editingOfcConnections.remark,
+          connection_category: editingOfcConnections.connection_category || 'SPLICE_TYPES',
+          connection_type: editingOfcConnections.connection_type || 'straight',
+        });
+      } else {
+        reset({
+            status: true,
+            connection_category: 'SPLICE_TYPES',
+            connection_type: 'straight'
+        });
+      }
     }
   }, [isOpen, editingOfcConnections, reset]);
+
+  const onValidSubmit = (formData: FormValues) => {
+    if (isEdit && editingOfcConnections?.id) {
+      updateOfcConnections(
+        { id: editingOfcConnections.id, data: formData },
+        {
+          onSuccess: (data) => {
+            onUpdated?.(Array.isArray(data) ? data[0] : data);
+            onClose();
+          },
+          onError: (err) => toast.error(`Update failed: ${err.message}`)
+        }
+      );
+    } else {
+      insertOfcConnections(formData, {
+        onSuccess: (data) => {
+          onCreated?.(Array.isArray(data) ? data[0] : data);
+          onClose();
+        },
+        onError: (err) => toast.error(`Creation failed: ${err.message}`)
+      });
+    }
+  };
+
+  const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
+    console.error("Form Validation Errors:", errors);
+    // Identify which field is failing
+    const errorFields = Object.keys(errors).join(", ");
+    toast.error(`Validation error in: ${errorFields}`);
+  };
 
   const handleClose = useCallback(() => {
     if (creating || updating) return;
     onClose();
   }, [creating, updating, onClose]);
 
-  const onValidSubmit = useCallback(
-    (formData: Ofc_connectionsInsertSchema) => {
-      // Ensure required ID fields are present
-      if(!formData.ofc_id && editingOfcConnections?.ofc_id) {
-          formData.ofc_id = editingOfcConnections.ofc_id;
-      }
-
-      if (isEdit && editingOfcConnections) {
-        updateOfcConnections(
-          { id: editingOfcConnections.id, data: formData as Partial<Ofc_connectionsInsertSchema> },
-          {
-            onSuccess: (data: unknown) => {
-              onUpdated?.(Array.isArray(data) ? data[0] : data);
-              onClose();
-            },
-            onError: (err) => toast.error(`Update failed: ${err.message}`)
-          }
-        );
-      } else {
-        insertOfcConnections(formData as Ofc_connectionsInsertSchema, {
-          onSuccess: (data: unknown) => {
-            onCreated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-          },
-          onError: (err) => toast.error(`Creation failed: ${err.message}`)
-        });
-      }
-    },
-    [isEdit, editingOfcConnections, updateOfcConnections, insertOfcConnections, onUpdated, onCreated, onClose]
-  );
-
-  // THE FIX: Add invalid handler to show why it failed
-  const onInvalidSubmit: SubmitErrorHandler<Ofc_connectionsInsertSchema> = (errors) => {
-    console.error("Form Validation Errors:", errors);
-    const errorMessages = Object.entries(errors)
-        .map(([key, err]) => `${key}: ${err?.message}`)
-        .join('\n');
-    toast.error("Please fix the following errors:", { description: errorMessages });
-  };
-
-  const submitting = creating || updating || isSubmitting;
-
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} size='full' visible={false} className='h-screen w-screen transparent bg-gray-700 rounded-2xl'>
-      {/* THE FIX: Pass onInvalidSubmit to handleSubmit */}
-      <FormCard title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={handleClose} standalone>
+      <FormCard 
+        title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} 
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} 
+        onCancel={handleClose} 
+        isLoading={creating || updating || isSubmitting}
+        standalone
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Note: disabled inputs are still registered by RHF if initialized with defaultValues/reset */}
-            <FormInput name='fiber_no_sn' label='Start Node Fiber No. *' register={register} error={errors.fiber_no_sn} disabled={true} />
-            <FormInput name='fiber_no_en' label='End Node Fiber No.' register={register} error={errors.fiber_no_en} disabled={true} />
+            <FormInput name='fiber_no_sn' label='Start Node Fiber No. *' register={register} error={errors.fiber_no_sn} disabled />
+            <FormInput name='fiber_no_en' label='End Node Fiber No.' register={register} error={errors.fiber_no_en} disabled />
             
-            <FormInput name='otdr_distance_sn_km' label='OTDR Distance SN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_sn_km} disabled={submitting} />
-            <FormInput name='sn_power_dbm' label='SN Power (dBm)' register={register} type="number" step='0.01' error={errors.sn_power_dbm} disabled={submitting} />
-            <FormInput name='otdr_distance_en_km' label='OTDR Distance EN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_en_km} disabled={submitting} />
-            <FormInput name='en_power_dbm' label='EN Power (dBm)' register={register} type="number" step='0.01' error={errors.en_power_dbm} disabled={submitting} />
-            <FormInput name='route_loss_db' label='Route Loss (dB)' register={register} type="number" step='0.01' error={errors.route_loss_db} disabled={submitting} />
+            <FormInput name='otdr_distance_sn_km' label='OTDR Distance SN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_sn_km} />
+            <FormInput name='sn_power_dbm' label='SN Power (dBm)' register={register} type="number" step='0.01' error={errors.sn_power_dbm} />
+            <FormInput name='otdr_distance_en_km' label='OTDR Distance EN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_en_km} />
+            <FormInput name='en_power_dbm' label='EN Power (dBm)' register={register} type="number" step='0.01' error={errors.en_power_dbm} />
+            <FormInput name='route_loss_db' label='Route Loss (dB)' register={register} type="number" step='0.01' error={errors.route_loss_db} />
         </div>
-        <div className='flex items-center mt-4'>
-          <FormSwitch name='status' label='Active' control={control} error={errors.status} className='my-2' />
+        <div className='mt-4'>
+          <FormSwitch name='status' label='Active' control={control} error={errors.status} />
         </div>
         <div className="mt-4">
-            <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} disabled={submitting} />
+            <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} rows={4} />
         </div>
       </FormCard>
     </Modal>
