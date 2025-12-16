@@ -6,6 +6,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useOfcConnectionsData = (
   cableId: string | null
@@ -13,23 +18,25 @@ export const useOfcConnectionsData = (
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
+    // Search Config
+    const searchFields = [
+      'system_name', 'connection_type', 'updated_sn_name', 'updated_en_name'
+    ] as (keyof V_ofc_connections_completeRowSchema)[];
+    
+    // Server search needs specific casts for numbers
+    const serverSearchFields = [
+      'system_name', 
+      'connection_type', 
+      'updated_sn_name', 
+      'updated_en_name',
+      'fiber_no_sn::text',
+      'fiber_no_en::text'
+    ];
+
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
 
-      let searchString: string | undefined;
-      if (searchQuery && searchQuery.trim() !== '') {
-          const term = searchQuery.trim().replace(/'/g, "''");
-          // THE FIX: Added fiber_no_sn and fiber_no_en casting to text for numeric search
-          searchString = `(` +
-            `system_name ILIKE '%${term}%' OR ` +
-            `connection_type ILIKE '%${term}%' OR ` +
-            `updated_sn_name ILIKE '%${term}%' OR ` +
-            `updated_en_name ILIKE '%${term}%' OR ` +
-            `fiber_no_sn::text ILIKE '%${term}%' OR ` + 
-            `fiber_no_en::text ILIKE '%${term}%'` +
-          `)`;
-      }
-
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
       const rpcFilters = buildRpcFilters({
         ...filters,
         ofc_id: cableId,
@@ -48,7 +55,7 @@ export const useOfcConnectionsData = (
       if (error) throw error;
       return (data as { data: V_ofc_connections_completeRowSchema[] })?.data || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, cableId]);
+    }, [searchQuery, filters, cableId, serverSearchFields]);
 
     const localQueryFn = useCallback(() => {
       if (!cableId) {
@@ -81,36 +88,39 @@ export const useOfcConnectionsData = (
 
       let filtered = allConnections;
 
-      // 1. Search Filtering
+      // 1. Search
       if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((conn) =>
-          conn.system_name?.toLowerCase().includes(lowerQuery) ||
-          conn.connection_type?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_sn_name?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_en_name?.toLowerCase().includes(lowerQuery) ||
-          // THE FIX: Added numeric checks for client-side filtering
-          String(conn.fiber_no_sn).includes(lowerQuery) ||
-          String(conn.fiber_no_en).includes(lowerQuery)
-        );
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
+        
+        // Manual Numeric Filtering addition
+        const lowerQ = searchQuery.toLowerCase();
+        if (searchQuery && !isNaN(Number(searchQuery))) {
+            const numericMatches = allConnections.filter(c => 
+                String(c.fiber_no_sn).includes(lowerQ) || String(c.fiber_no_en).includes(lowerQ)
+            );
+            // Union of results
+            const ids = new Set(filtered.map(f => f.id));
+            numericMatches.forEach(m => {
+                if(!ids.has(m.id)) filtered.push(m);
+            });
+        }
       }
 
-      // 2. Status Filtering
+      // 2. Filters
       if (filters.status) {
          const statusBool = filters.status === 'true';
          filtered = filtered.filter(c => c.status === statusBool);
       }
 
-      // Explicit Sort (Safety fallback)
+      // 3. Sort (Manual numeric sort for fibers)
       filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
       const totalCount = filtered.length;
       const activeCount = filtered.filter((c) => !!c.status).length;
       const inactiveCount = totalCount - activeCount;
 
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
+      // 4. Paginate
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,

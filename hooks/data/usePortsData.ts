@@ -6,6 +6,12 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const usePortsData = (
   systemId: string | null
@@ -13,20 +19,17 @@ export const usePortsData = (
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
+    // Search Config
+    const searchFields = useMemo(
+      () => ['port', 'port_type_name', 'port_type_code', 'sfp_serial_no'] as (keyof V_ports_management_completeRowSchema)[],
+      []
+    );
+    const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
     const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
       if (!systemId) return [];
 
-      let searchString: string | undefined;
-      if (searchQuery && searchQuery.trim() !== '') {
-          const term = searchQuery.trim().replace(/'/g, "''");
-          searchString = `(` +
-            `port ILIKE '%${term}%' OR ` +
-            `port_type_name ILIKE '%${term}%' OR ` +
-            `port_type_code ILIKE '%${term}%' OR ` +
-            `sfp_serial_no ILIKE '%${term}%'` +
-          `)`;
-      }
-
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
       const rpcFilters = buildRpcFilters({
         ...filters,
         system_id: systemId,
@@ -45,7 +48,7 @@ export const usePortsData = (
       if (error) throw error;
       return (data as { data: V_ports_management_completeRowSchema[] })?.data || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, systemId]);
+    }, [searchQuery, filters, systemId, serverSearchFields]);
 
     const localQueryFn = useCallback(() => {
       if (!systemId) {
@@ -76,30 +79,19 @@ export const usePortsData = (
 
       let filtered = allPorts;
 
-      // 1. Search Filtering
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((p) =>
-          p.port?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_code?.toLowerCase().includes(lowerQuery) ||
-          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
-        );
-      }
+      // 1. Search
+      filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-      // 2. Explicit Field Filtering
-      
-      // NEW: Handle Multi-Select for Port Type Code
+      // 2. Filters
       if (filters.port_type_code) {
-          const codes = Array.isArray(filters.port_type_code) 
+          const codes = Array.isArray(filters.port_type_code)
               ? (filters.port_type_code as string[])
               : [filters.port_type_code as string];
-              
+
           if (codes.length > 0) {
               filtered = filtered.filter(p => p.port_type_code && codes.includes(p.port_type_code));
           }
       }
-
       if (filters.port_utilization) {
           const utilBool = filters.port_utilization === 'true';
           filtered = filtered.filter(p => p.port_utilization === utilBool);
@@ -109,22 +101,21 @@ export const usePortsData = (
           filtered = filtered.filter(p => p.port_admin_status === adminBool);
       }
 
-      // 3. Natural Sort
-      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-      filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
+      // 3. Sort
+      filtered = performClientSort(filtered, 'port');
 
       const totalCount = filtered.length;
-      const activeCount = filtered.filter(p => p.port_admin_status).length; 
+      const activeCount = filtered.filter(p => p.port_admin_status).length;
+      const inactiveCount = totalCount - activeCount;
 
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
+      // 4. Paginate
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: totalCount - activeCount,
+        inactiveCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId]);

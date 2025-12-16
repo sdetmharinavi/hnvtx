@@ -7,44 +7,42 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useInventoryData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `description ILIKE '%${term}%' OR ` +
-        `asset_no ILIKE '%${term}%'` +
-      `)`;
-    }
+  // Search Config
+  const searchFields = useMemo(
+    () => ['name', 'description', 'asset_no'] as (keyof V_inventory_itemsRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
 
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
-    
+  const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_inventory_items',
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'name', // Changed from created_at to name
-      p_order_dir: 'asc', // Changed from desc to asc
+      p_order_by: 'name',
+      p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
-    // Sort by name locally as well
     return localDb.v_inventory_items.orderBy('name').toArray();
   }, []);
 
@@ -62,45 +60,34 @@ export const useInventoryData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allItems) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allItems || [];
 
-    let filtered = allItems;
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.name?.toLowerCase().includes(lowerQuery) ||
-        item.description?.toLowerCase().includes(lowerQuery) ||
-        item.asset_no?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // Apply Filters
+    // 2. Filters
     if (filters.category_id) {
         filtered = filtered.filter(item => item.category_id === filters.category_id);
     }
     if (filters.location_id) {
         filtered = filtered.filter(item => item.location_id === filters.location_id);
     }
-    
-    // Explicit Client-Side Sort to ensure consistency
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
-    const activeCount = totalCount; // Inventory items don't have a standard boolean status field in this view context
-
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
-      activeCount,
+      activeCount: totalCount,
       inactiveCount: 0,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allItems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };

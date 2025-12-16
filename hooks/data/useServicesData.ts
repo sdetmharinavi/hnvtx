@@ -6,6 +6,12 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useServicesData = (
   params: DataQueryHookParams
@@ -13,64 +19,37 @@ export const useServicesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  // 1. Online Fetcher (RPC)
-  const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax for the OR clause
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `node_name ILIKE '%${term}%' OR ` +
-        `end_node_name ILIKE '%${term}%' OR ` +
-        `description ILIKE '%${term}%' OR ` +
-        `link_type_name ILIKE '%${term}%'` +
-      `)`;
-    }
+  // Search Config
+  const searchFields = useMemo(
+    () => ['name', 'node_name', 'end_node_name', 'description', 'link_type_name'] as (keyof V_servicesRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
 
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+  const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
       p_order_dir: 'asc'
     });
 
     if (error) throw error;
-
-    // Handle variable return types from RPC wrapper
-    let resultList: V_servicesRowSchema[] = [];
-    if (Array.isArray(data)) {
-      if (data.length > 0 && 'data' in data[0]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resultList = (data[0] as any).data as V_servicesRowSchema[];
-      } else {
-            resultList = data as V_servicesRowSchema[];
-      }
-    } else if (data && typeof data === 'object' && 'data' in data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resultList = (data as any).data as V_servicesRowSchema[];
-    }
-
-    return resultList || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultList = (data as any)?.data || [];
+    return resultList as V_servicesRowSchema[];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
-  // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // THE FIX: Local sort by name
     return localDb.v_services.orderBy('name').toArray();
   }, []);
 
-  // 3. Use Local First Query
   const {
     data: allServices = [],
     isLoading,
@@ -84,47 +63,30 @@ export const useServicesData = (
     dexieTable: localDb.v_services,
   });
 
-  // 4. Client-side Processing
   const processedData = useMemo(() => {
-    if (!allServices) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allServices || [];
 
-    let filtered = allServices;
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Search Filter
-    if (searchQuery) {
-        const lower = searchQuery.toLowerCase();
-        filtered = filtered.filter(s =>
-            s.name?.toLowerCase().includes(lower) ||
-            s.node_name?.toLowerCase().includes(lower) ||
-            s.end_node_name?.toLowerCase().includes(lower) ||
-            s.description?.toLowerCase().includes(lower) ||
-            s.link_type_name?.toLowerCase().includes(lower)
-        );
-    }
-
-    // Link Type Filter
+    // 2. Filters
     if (filters.link_type_id) {
         filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
     }
-
-    // Status Filter
     if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(s => s.status === statusBool);
     }
 
-    // THE FIX: Explicit client-side sort
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter(s => s.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -132,6 +94,7 @@ export const useServicesData = (
       activeCount,
       inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 
   return {

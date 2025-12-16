@@ -7,25 +7,23 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DesignationWithRelations } from '@/config/designations';
+import { 
+  buildServerSearchString,
+  performClientSort,
+} from '@/hooks/database/search-utils';
 
 export const useDesignationsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<DesignationWithRelations> => {
   const { filters, searchQuery } = params;
 
-  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-        const term = searchQuery.trim().replace(/'/g, "''");
-        searchString = `(name ILIKE '%${term}%')`;
-    }
+  // Search Config
+  const serverSearchFields = useMemo(() => ['name'], []);
 
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
-    
+  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employee_designations',
       p_limit: 5000,
@@ -35,10 +33,9 @@ export const useDesignationsData = (
     });
     if (error) throw error;
     return (data as { data: V_employee_designationsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
-    // Local sort by name
     return localDb.v_employee_designations.orderBy('name').toArray();
   }, []);
 
@@ -56,12 +53,10 @@ export const useDesignationsData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allDesignationsFlat) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = (allDesignationsFlat || []).filter(d => d.id != null);
 
-    let filtered = allDesignationsFlat.filter(d => d.id != null);
-
+    // 1. Search
+    // We use custom logic here because of the recursive parent/child filtering requirement specific to designations
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
@@ -82,14 +77,15 @@ export const useDesignationsData = (
       filtered = allDesignationsFlat.filter(d => d.id && searchFilteredIds.has(d.id));
     }
 
+    // 2. Filters
     if (filters.status) {
       filtered = filtered.filter(d => String(d.status) === filters.status);
     }
 
-    // THE FIX: Explicit case-insensitive sort
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
-    // Reconstruct Hierarchy
+    // 4. Reconstruct Hierarchy (Specific logic for this hook)
     const designationsWithRelations = filtered.map(d => ({
       ...d,
       id: d.id!,
@@ -114,8 +110,13 @@ export const useDesignationsData = (
     const activeCount = filtered.filter((d) => d.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
+    // Note: Designations page handles pagination internally in the Tree View, 
+    // but if we use List view, we might need pagination.
+    // For consistency with other hooks, we return all data if it's hierarchical or paginated if list.
+    // The current UI component expects full list for tree building.
+    
     return {
-      data: designationsWithRelations,
+      data: designationsWithRelations, // Return full list for tree construction
       totalCount,
       activeCount,
       inactiveCount,
