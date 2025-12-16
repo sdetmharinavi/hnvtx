@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+	<name>Mission Exchange to
+Narendrapur BTS-I.kml</name>
+	<StyleMap id="m_ylw-pushpin">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl0</styleUrl>
+		</Pair>
+	</StyleMap>
+	<StyleMap id="m_ylw-pushpin0">
+		<Pair>
+			<key>normal</key>
+			<styleUrl>#s_ylw-pushpin0</styleUrl>
+		</Pair>
+		<Pair>
+			<key>highlight</key>
+			<styleUrl>#s_ylw-pushpin_hl</styleUrl>
+		</Pair>
+	</StyleMap>
+	<Style id="s_ylw-pushpin">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin0">
+		<IconStyle>
+			<scale>1.1</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Style id="s_ylw-pushpin_hl0">
+		<IconStyle>
+			<scale>1.3</scale>
+			<Icon>
+				<href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
+			</Icon>
+			<hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
+		</IconStyle>
+	</Style>
+	<Folder>
+		<name>Mission Exchange to
+Narendrapur BTS-I</name>
+		<open>1</open>
+		<Placemark>
+			<name>Mission Telephone Exchange</name>
+			<LookAt>
+				<longitude>88.40136290301754</longitude>
+				<latitude>22.43385538810213</latitude>
+				<altitude>0</altitude>
+				<heading>-1.197219423579807e-10</heading>
+				<tilt>0</tilt>
+				<range>1000.000031032594</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.40136290301756,22.43385538810214,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>JC Krishna Apartment</name>
+			<LookAt>
+				<longitude>88.3952445131124</longitude>
+				<latitude>22.4421654510556</latitude>
+				<altitude>0</altitude>
+				<heading>-5.073859369471712e-11</heading>
+				<tilt>0</tilt>
+				<range>1000.000019047086</range>
+				<gx:altitudeMode>relativeToSeaFloor</gx:altitudeMode>
+			</LookAt>
+			<styleUrl>#m_ylw-pushpin</styleUrl>
+			<Point>
+				<gx:drawOrder>1</gx:drawOrder>
+				<coordinates>88.39524451311239,22.4421654510556,0</coordinates>
+			</Point>
+		</Placemark>
+		<Placemark>
+			<name>Mission to Krishna</name>
+			<styleUrl>#m_ylw-pushpin0</styleUrl>
+			<LineString>
+				<tessellate>1</tessellate>
+				<coordinates>
+					88.40135877165386,22.43386029543662,0 88.4015056825921,22.43382775870464,0 88.40132502136751,22.43399367941057,0 88.40125397070247,22.43420219937547,0 88.40104558394341,22.43429661220037,0 88.40097564623055,22.43456777471821,0 88.40077965252534,22.4347267692363,0 88.40066124591364,22.43505262962947,0 88.40039901168332,22.43529068770362,0 88.40031430960038,22.43561504961702,0 88.4000633014432,22.43587167793441,0 88.39996145716042,22.43613294794429,0 88.39970284532797,22.43635495983347,0 88.39960923935641,22.43665052489494,0 88.39941845448342,22.43684322531285,0 88.3992790149516,22.43715800751798,0 88.39905321402379,22.43738553296004,0 88.39893391572431,22.43770933563479,0 88.39876574644821,22.43782553805291,0 88.39865627229253,22.43805815438627,0 88.39839366882572,22.4382097051319,0 88.39829823798001,22.4384750101639,0 88.39801830420387,22.43867893994499,0 88.39797784387272,22.43890331904338,0 88.39770850025982,22.43910583684884,0 88.39762960082209,22.43939183549351,0 88.39741955475002,22.43962301130322,0 88.39728668708962,22.44001992052365,0 88.39698373592013,22.44028398965909,0 88.39697768359189,22.4405040102896,0 88.39676256624713,22.44064030293938,0 88.39667121191599,22.44083030569846,0 88.39645562650399,22.44095219005133,0 88.39635540790941,22.44111354366118,0 88.39614495570508,22.44121015732119,0 88.39599370398369,22.44133525997655,0 88.39582917658171,22.44160518449891,0 88.39560942931207,22.44172751547494,0 88.39553912236413,22.44188352664227,0 88.3953917348414,22.44194282283483,0 88.39530747886357,22.44222001974349,0 88.39526671106985,22.44218804362333,0 
+				</coordinates>
+			</LineString>
+		</Placemark>
+		<atom:link rel="app" href="https://www.google.com/earth/about/versions/#earth-pro" title="Google Earth Pro 7.3.6.10441"></atom:link>
+	</Folder>
+</Document>
+</kml>
