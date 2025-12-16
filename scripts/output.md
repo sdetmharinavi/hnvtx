@@ -255,639 +255,6 @@ import { JsonSchema } from "@/types/custom";
 
 // ============= TABLE SCHEMAS =============
 
-export const authAudit_log_entriesRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  instance_id: z.uuid().nullable(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500),
-  payload: JsonSchema.nullable(),
-});
-
-export const authAudit_log_entriesInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid(),
-  instance_id: z.uuid().nullable().optional(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
-  payload: JsonSchema.nullable().optional(),
-});
-
-export const authAudit_log_entriesUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  instance_id: z.uuid().nullable().optional(),
-  ip_address: z.string().min(5, "Address must be at least 5 characters").max(500).optional(),
-  payload: JsonSchema.nullable().optional(),
-});
-
-export const authFlow_stateRowSchema = z.object({
-  auth_code: z.string(),
-  auth_code_issued_at: z.iso.datetime().nullable(),
-  authentication_method: z.string(),
-  code_challenge: z.string(),
-  code_challenge_method: z.string(),
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  provider_access_token: z.jwt().nullable(),
-  provider_refresh_token: z.jwt().nullable(),
-  provider_type: z.string(),
-  updated_at: z.iso.datetime().nullable(),
-  user_id: z.uuid().nullable(),
-});
-
-export const authFlow_stateInsertSchema = z.object({
-  auth_code: z.string(),
-  auth_code_issued_at: z.iso.datetime().nullable().optional(),
-  authentication_method: z.string(),
-  code_challenge: z.string(),
-  code_challenge_method: z.string(),
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid(),
-  provider_access_token: z.jwt().nullable().optional(),
-  provider_refresh_token: z.jwt().nullable().optional(),
-  provider_type: z.string(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authFlow_stateUpdateSchema = z.object({
-  auth_code: z.string().optional(),
-  auth_code_issued_at: z.iso.datetime().nullable().optional(),
-  authentication_method: z.string().optional(),
-  code_challenge: z.string().optional(),
-  code_challenge_method: z.string().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  provider_access_token: z.jwt().nullable().optional(),
-  provider_refresh_token: z.jwt().nullable().optional(),
-  provider_type: z.string().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authIdentitiesRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  email: z.email().nullable(),
-  id: z.uuid(),
-  identity_data: JsonSchema,
-  last_sign_in_at: z.iso.datetime().nullable(),
-  provider: z.string(),
-  provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable(),
-  user_id: z.uuid(),
-});
-
-export const authIdentitiesInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  email: z.email().nullable().optional(),
-  id: z.uuid().optional(),
-  identity_data: JsonSchema,
-  last_sign_in_at: z.iso.datetime().nullable().optional(),
-  provider: z.string(),
-  provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid(),
-});
-
-export const authIdentitiesUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  email: z.email().nullable().optional(),
-  id: z.uuid().optional(),
-  identity_data: JsonSchema.optional(),
-  last_sign_in_at: z.iso.datetime().nullable().optional(),
-  provider: z.string().optional(),
-  provider_id: z.uuid().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid().optional(),
-});
-
-export const authInstancesRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  id: z.uuid(),
-  raw_base_config: z.string().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  uuid: z.uuid().nullable(),
-});
-
-export const authInstancesInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid(),
-  raw_base_config: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  uuid: z.uuid().nullable().optional(),
-});
-
-export const authInstancesUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.uuid().optional(),
-  raw_base_config: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  uuid: z.uuid().nullable().optional(),
-});
-
-export const authMfa_amr_claimsRowSchema = z.object({
-  authentication_method: z.string(),
-  created_at: z.iso.datetime(),
-  id: z.uuid(),
-  session_id: z.uuid(),
-  updated_at: z.iso.datetime(),
-});
-
-export const authMfa_amr_claimsInsertSchema = z.object({
-  authentication_method: z.string(),
-  created_at: z.iso.datetime(),
-  id: z.uuid(),
-  session_id: z.uuid(),
-  updated_at: z.iso.datetime(),
-});
-
-export const authMfa_amr_claimsUpdateSchema = z.object({
-  authentication_method: z.string().optional(),
-  created_at: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  session_id: z.uuid().optional(),
-  updated_at: z.iso.datetime().optional(),
-});
-
-export const authMfa_challengesRowSchema = z.object({
-  created_at: z.iso.datetime(),
-  factor_id: z.uuid(),
-  id: z.uuid(),
-  ip_address: z.any(),
-  otp_code: z.string().nullable(),
-  verified_at: z.iso.datetime().nullable(),
-  web_authn_session_data: JsonSchema.nullable(),
-});
-
-export const authMfa_challengesInsertSchema = z.object({
-  created_at: z.iso.datetime(),
-  factor_id: z.uuid(),
-  id: z.uuid(),
-  ip_address: z.any(),
-  otp_code: z.string().nullable().optional(),
-  verified_at: z.iso.datetime().nullable().optional(),
-  web_authn_session_data: JsonSchema.nullable().optional(),
-});
-
-export const authMfa_challengesUpdateSchema = z.object({
-  created_at: z.iso.datetime().optional(),
-  factor_id: z.uuid().optional(),
-  id: z.uuid().optional(),
-  ip_address: z.any().optional(),
-  otp_code: z.string().nullable().optional(),
-  verified_at: z.iso.datetime().nullable().optional(),
-  web_authn_session_data: JsonSchema.nullable().optional(),
-});
-
-export const authMfa_factorsRowSchema = z.object({
-  created_at: z.iso.datetime(),
-  factor_type: z.string(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  id: z.uuid(),
-  last_challenged_at: z.iso.datetime().nullable(),
-  last_webauthn_challenge_data: JsonSchema.nullable(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable(),
-  secret: z.string().nullable(),
-  status: z.string(),
-  updated_at: z.iso.datetime(),
-  user_id: z.uuid(),
-  web_authn_aaguid: z.string().nullable(),
-  web_authn_credential: JsonSchema.nullable(),
-});
-
-export const authMfa_factorsInsertSchema = z.object({
-  created_at: z.iso.datetime(),
-  factor_type: z.string(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  id: z.uuid(),
-  last_challenged_at: z.iso.datetime().nullable().optional(),
-  last_webauthn_challenge_data: JsonSchema.nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  secret: z.string().nullable().optional(),
-  status: z.string(),
-  updated_at: z.iso.datetime(),
-  user_id: z.uuid(),
-  web_authn_aaguid: z.string().nullable().optional(),
-  web_authn_credential: JsonSchema.nullable().optional(),
-});
-
-export const authMfa_factorsUpdateSchema = z.object({
-  created_at: z.iso.datetime().optional(),
-  factor_type: z.string().optional(),
-  friendly_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  id: z.uuid().optional(),
-  last_challenged_at: z.iso.datetime().nullable().optional(),
-  last_webauthn_challenge_data: JsonSchema.nullable().optional(),
-  phone: z.string().regex(/^[+]?[1-9]?[0-9]{7,15}$/, "Invalid phone number").nullable().optional(),
-  secret: z.string().nullable().optional(),
-  status: z.string().optional(),
-  updated_at: z.iso.datetime().optional(),
-  user_id: z.uuid().optional(),
-  web_authn_aaguid: z.string().nullable().optional(),
-  web_authn_credential: JsonSchema.nullable().optional(),
-});
-
-export const authOauth_authorizationsRowSchema = z.object({
-  approved_at: z.iso.datetime().nullable(),
-  authorization_code: z.string().nullable(),
-  authorization_id: z.uuid(),
-  client_id: z.uuid(),
-  code_challenge: z.string().nullable(),
-  code_challenge_method: z.string().nullable(),
-  created_at: z.iso.datetime(),
-  expires_at: z.iso.datetime(),
-  id: z.uuid(),
-  nonce: z.string().nullable(),
-  redirect_uri: z.string(),
-  resource: z.string().nullable(),
-  response_type: z.string(),
-  scope: z.string(),
-  state: z.string().nullable(),
-  status: z.string(),
-  user_id: z.uuid().nullable(),
-});
-
-export const authOauth_authorizationsInsertSchema = z.object({
-  approved_at: z.iso.datetime().nullable().optional(),
-  authorization_code: z.string().nullable().optional(),
-  authorization_id: z.uuid(),
-  client_id: z.uuid(),
-  code_challenge: z.string().nullable().optional(),
-  code_challenge_method: z.string().nullable().optional(),
-  created_at: z.iso.datetime().optional(),
-  expires_at: z.iso.datetime().optional(),
-  id: z.uuid(),
-  nonce: z.string().nullable().optional(),
-  redirect_uri: z.string(),
-  resource: z.string().nullable().optional(),
-  response_type: z.string().optional(),
-  scope: z.string(),
-  state: z.string().nullable().optional(),
-  status: z.string().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authOauth_authorizationsUpdateSchema = z.object({
-  approved_at: z.iso.datetime().nullable().optional(),
-  authorization_code: z.string().nullable().optional(),
-  authorization_id: z.uuid().optional(),
-  client_id: z.uuid().optional(),
-  code_challenge: z.string().nullable().optional(),
-  code_challenge_method: z.string().nullable().optional(),
-  created_at: z.iso.datetime().optional(),
-  expires_at: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  nonce: z.string().nullable().optional(),
-  redirect_uri: z.string().optional(),
-  resource: z.string().nullable().optional(),
-  response_type: z.string().optional(),
-  scope: z.string().optional(),
-  state: z.string().nullable().optional(),
-  status: z.string().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authOauth_client_statesRowSchema = z.object({
-  code_verifier: z.string().nullable(),
-  created_at: z.iso.datetime(),
-  id: z.uuid(),
-  provider_type: z.string(),
-});
-
-export const authOauth_client_statesInsertSchema = z.object({
-  code_verifier: z.string().nullable().optional(),
-  created_at: z.iso.datetime(),
-  id: z.uuid(),
-  provider_type: z.string(),
-});
-
-export const authOauth_client_statesUpdateSchema = z.object({
-  code_verifier: z.string().nullable().optional(),
-  created_at: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  provider_type: z.string().optional(),
-});
-
-export const authOauth_clientsRowSchema = z.object({
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  client_secret_hash: z.string().nullable(),
-  client_type: z.string(),
-  client_uri: z.string().nullable(),
-  created_at: z.iso.datetime(),
-  deleted_at: z.iso.datetime().nullable(),
-  grant_types: z.string(),
-  id: z.uuid(),
-  logo_uri: z.string().nullable(),
-  redirect_uris: z.string(),
-  registration_type: z.string(),
-  updated_at: z.iso.datetime(),
-});
-
-export const authOauth_clientsInsertSchema = z.object({
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  client_secret_hash: z.string().nullable().optional(),
-  client_type: z.string().optional(),
-  client_uri: z.string().nullable().optional(),
-  created_at: z.iso.datetime().optional(),
-  deleted_at: z.iso.datetime().nullable().optional(),
-  grant_types: z.string(),
-  id: z.uuid(),
-  logo_uri: z.string().nullable().optional(),
-  redirect_uris: z.string(),
-  registration_type: z.string(),
-  updated_at: z.iso.datetime().optional(),
-});
-
-export const authOauth_clientsUpdateSchema = z.object({
-  client_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  client_secret_hash: z.string().nullable().optional(),
-  client_type: z.string().optional(),
-  client_uri: z.string().nullable().optional(),
-  created_at: z.iso.datetime().optional(),
-  deleted_at: z.iso.datetime().nullable().optional(),
-  grant_types: z.string().optional(),
-  id: z.uuid().optional(),
-  logo_uri: z.string().nullable().optional(),
-  redirect_uris: z.string().optional(),
-  registration_type: z.string().optional(),
-  updated_at: z.iso.datetime().optional(),
-});
-
-export const authOauth_consentsRowSchema = z.object({
-  client_id: z.uuid(),
-  granted_at: z.iso.datetime(),
-  id: z.uuid(),
-  revoked_at: z.iso.datetime().nullable(),
-  scopes: z.string(),
-  user_id: z.uuid(),
-});
-
-export const authOauth_consentsInsertSchema = z.object({
-  client_id: z.uuid(),
-  granted_at: z.iso.datetime().optional(),
-  id: z.uuid(),
-  revoked_at: z.iso.datetime().nullable().optional(),
-  scopes: z.string(),
-  user_id: z.uuid(),
-});
-
-export const authOauth_consentsUpdateSchema = z.object({
-  client_id: z.uuid().optional(),
-  granted_at: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  revoked_at: z.iso.datetime().nullable().optional(),
-  scopes: z.string().optional(),
-  user_id: z.uuid().optional(),
-});
-
-export const authOne_time_tokensRowSchema = z.object({
-  created_at: z.iso.datetime(),
-  id: z.uuid(),
-  relates_to: z.string(),
-  token_hash: z.jwt(),
-  token_type: z.string(),
-  updated_at: z.iso.datetime(),
-  user_id: z.uuid(),
-});
-
-export const authOne_time_tokensInsertSchema = z.object({
-  created_at: z.iso.datetime().optional(),
-  id: z.uuid(),
-  relates_to: z.string(),
-  token_hash: z.jwt(),
-  token_type: z.string(),
-  updated_at: z.iso.datetime().optional(),
-  user_id: z.uuid(),
-});
-
-export const authOne_time_tokensUpdateSchema = z.object({
-  created_at: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  relates_to: z.string().optional(),
-  token_hash: z.jwt().optional(),
-  token_type: z.string().optional(),
-  updated_at: z.iso.datetime().optional(),
-  user_id: z.uuid().optional(),
-});
-
-export const authRefresh_tokensRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  id: z.number().int().positive(),
-  instance_id: z.uuid().nullable(),
-  parent: z.string().nullable(),
-  revoked: z.boolean().nullable(),
-  session_id: z.uuid().nullable(),
-  token: z.jwt().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  user_id: z.uuid().nullable(),
-});
-
-export const authRefresh_tokensInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.number().int().positive().optional(),
-  instance_id: z.uuid().nullable().optional(),
-  parent: z.string().nullable().optional(),
-  revoked: z.boolean().nullable().optional(),
-  session_id: z.uuid().nullable().optional(),
-  token: z.jwt().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authRefresh_tokensUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  id: z.number().int().positive().optional(),
-  instance_id: z.uuid().nullable().optional(),
-  parent: z.string().nullable().optional(),
-  revoked: z.boolean().nullable().optional(),
-  session_id: z.uuid().nullable().optional(),
-  token: z.jwt().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_id: z.uuid().nullable().optional(),
-});
-
-export const authSaml_providersRowSchema = z.object({
-  attribute_mapping: JsonSchema.nullable(),
-  created_at: z.iso.datetime().nullable(),
-  entity_id: z.uuid(),
-  id: z.uuid(),
-  metadata_url: z.url().nullable(),
-  metadata_xml: z.string(),
-  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const authSaml_providersInsertSchema = z.object({
-  attribute_mapping: JsonSchema.nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  entity_id: z.uuid(),
-  id: z.uuid(),
-  metadata_url: z.url().nullable().optional(),
-  metadata_xml: z.string(),
-  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSaml_providersUpdateSchema = z.object({
-  attribute_mapping: JsonSchema.nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  entity_id: z.uuid().optional(),
-  id: z.uuid().optional(),
-  metadata_url: z.url().nullable().optional(),
-  metadata_xml: z.string().optional(),
-  name_id_format: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
-  sso_provider_id: z.uuid().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSaml_relay_statesRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  flow_state_id: z.uuid().nullable(),
-  for_email: z.email().nullable(),
-  id: z.uuid(),
-  redirect_to: z.string().nullable(),
-  request_id: z.uuid(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const authSaml_relay_statesInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  flow_state_id: z.uuid().nullable().optional(),
-  for_email: z.email().nullable().optional(),
-  id: z.uuid(),
-  redirect_to: z.string().nullable().optional(),
-  request_id: z.uuid(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSaml_relay_statesUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  flow_state_id: z.uuid().nullable().optional(),
-  for_email: z.email().nullable().optional(),
-  id: z.uuid().optional(),
-  redirect_to: z.string().nullable().optional(),
-  request_id: z.uuid().optional(),
-  sso_provider_id: z.uuid().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSchema_migrationsRowSchema = z.object({
-  version: z.string(),
-});
-
-export const authSchema_migrationsInsertSchema = z.object({
-  version: z.string(),
-});
-
-export const authSchema_migrationsUpdateSchema = z.object({
-  version: z.string().optional(),
-});
-
-export const authSessionsRowSchema = z.object({
-  aal: z.string().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  factor_id: z.uuid().nullable(),
-  id: z.uuid(),
-  ip: z.any(),
-  not_after: z.string().nullable(),
-  oauth_client_id: z.uuid().nullable(),
-  refresh_token_counter: z.number().int().min(0).nullable(),
-  refresh_token_hmac_key: z.jwt().nullable(),
-  refreshed_at: z.iso.datetime().nullable(),
-  scopes: z.string().nullable(),
-  tag: z.string().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  user_agent: z.string().nullable(),
-  user_id: z.uuid(),
-});
-
-export const authSessionsInsertSchema = z.object({
-  aal: z.string().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  factor_id: z.uuid().nullable().optional(),
-  id: z.uuid(),
-  ip: z.any().optional(),
-  not_after: z.string().nullable().optional(),
-  oauth_client_id: z.uuid().nullable().optional(),
-  refresh_token_counter: z.number().int().min(0).nullable().optional(),
-  refresh_token_hmac_key: z.jwt().nullable().optional(),
-  refreshed_at: z.iso.datetime().nullable().optional(),
-  scopes: z.string().nullable().optional(),
-  tag: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_agent: z.string().nullable().optional(),
-  user_id: z.uuid(),
-});
-
-export const authSessionsUpdateSchema = z.object({
-  aal: z.string().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  factor_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  ip: z.any().optional(),
-  not_after: z.string().nullable().optional(),
-  oauth_client_id: z.uuid().nullable().optional(),
-  refresh_token_counter: z.number().int().min(0).nullable().optional(),
-  refresh_token_hmac_key: z.jwt().nullable().optional(),
-  refreshed_at: z.iso.datetime().nullable().optional(),
-  scopes: z.string().nullable().optional(),
-  tag: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  user_agent: z.string().nullable().optional(),
-  user_id: z.uuid().optional(),
-});
-
-export const authSso_domainsRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  domain: z.string(),
-  id: z.uuid(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const authSso_domainsInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  domain: z.string(),
-  id: z.uuid(),
-  sso_provider_id: z.uuid(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSso_domainsUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  domain: z.string().optional(),
-  id: z.uuid().optional(),
-  sso_provider_id: z.uuid().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSso_providersRowSchema = z.object({
-  created_at: z.iso.datetime().nullable(),
-  disabled: z.boolean().nullable(),
-  id: z.uuid(),
-  resource_id: z.uuid().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const authSso_providersInsertSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  disabled: z.boolean().nullable().optional(),
-  id: z.uuid(),
-  resource_id: z.uuid().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const authSso_providersUpdateSchema = z.object({
-  created_at: z.iso.datetime().nullable().optional(),
-  disabled: z.boolean().nullable().optional(),
-  id: z.uuid().optional(),
-  resource_id: z.uuid().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
 export const authUsersRowSchema = z.object({
   aud: z.string().min(1).nullable(),
   banned_until: z.string().nullable(),
@@ -2796,63 +2163,6 @@ export const v_user_profiles_extendedRowSchema = z.object({
 
 // ============= TYPE EXPORTS =============
 
-export type AuthAudit_log_entriesRowSchema = z.infer<typeof authAudit_log_entriesRowSchema>;
-export type AuthAudit_log_entriesInsertSchema = z.infer<typeof authAudit_log_entriesInsertSchema>;
-export type AuthAudit_log_entriesUpdateSchema = z.infer<typeof authAudit_log_entriesUpdateSchema>;
-export type AuthFlow_stateRowSchema = z.infer<typeof authFlow_stateRowSchema>;
-export type AuthFlow_stateInsertSchema = z.infer<typeof authFlow_stateInsertSchema>;
-export type AuthFlow_stateUpdateSchema = z.infer<typeof authFlow_stateUpdateSchema>;
-export type AuthIdentitiesRowSchema = z.infer<typeof authIdentitiesRowSchema>;
-export type AuthIdentitiesInsertSchema = z.infer<typeof authIdentitiesInsertSchema>;
-export type AuthIdentitiesUpdateSchema = z.infer<typeof authIdentitiesUpdateSchema>;
-export type AuthInstancesRowSchema = z.infer<typeof authInstancesRowSchema>;
-export type AuthInstancesInsertSchema = z.infer<typeof authInstancesInsertSchema>;
-export type AuthInstancesUpdateSchema = z.infer<typeof authInstancesUpdateSchema>;
-export type AuthMfa_amr_claimsRowSchema = z.infer<typeof authMfa_amr_claimsRowSchema>;
-export type AuthMfa_amr_claimsInsertSchema = z.infer<typeof authMfa_amr_claimsInsertSchema>;
-export type AuthMfa_amr_claimsUpdateSchema = z.infer<typeof authMfa_amr_claimsUpdateSchema>;
-export type AuthMfa_challengesRowSchema = z.infer<typeof authMfa_challengesRowSchema>;
-export type AuthMfa_challengesInsertSchema = z.infer<typeof authMfa_challengesInsertSchema>;
-export type AuthMfa_challengesUpdateSchema = z.infer<typeof authMfa_challengesUpdateSchema>;
-export type AuthMfa_factorsRowSchema = z.infer<typeof authMfa_factorsRowSchema>;
-export type AuthMfa_factorsInsertSchema = z.infer<typeof authMfa_factorsInsertSchema>;
-export type AuthMfa_factorsUpdateSchema = z.infer<typeof authMfa_factorsUpdateSchema>;
-export type AuthOauth_authorizationsRowSchema = z.infer<typeof authOauth_authorizationsRowSchema>;
-export type AuthOauth_authorizationsInsertSchema = z.infer<typeof authOauth_authorizationsInsertSchema>;
-export type AuthOauth_authorizationsUpdateSchema = z.infer<typeof authOauth_authorizationsUpdateSchema>;
-export type AuthOauth_client_statesRowSchema = z.infer<typeof authOauth_client_statesRowSchema>;
-export type AuthOauth_client_statesInsertSchema = z.infer<typeof authOauth_client_statesInsertSchema>;
-export type AuthOauth_client_statesUpdateSchema = z.infer<typeof authOauth_client_statesUpdateSchema>;
-export type AuthOauth_clientsRowSchema = z.infer<typeof authOauth_clientsRowSchema>;
-export type AuthOauth_clientsInsertSchema = z.infer<typeof authOauth_clientsInsertSchema>;
-export type AuthOauth_clientsUpdateSchema = z.infer<typeof authOauth_clientsUpdateSchema>;
-export type AuthOauth_consentsRowSchema = z.infer<typeof authOauth_consentsRowSchema>;
-export type AuthOauth_consentsInsertSchema = z.infer<typeof authOauth_consentsInsertSchema>;
-export type AuthOauth_consentsUpdateSchema = z.infer<typeof authOauth_consentsUpdateSchema>;
-export type AuthOne_time_tokensRowSchema = z.infer<typeof authOne_time_tokensRowSchema>;
-export type AuthOne_time_tokensInsertSchema = z.infer<typeof authOne_time_tokensInsertSchema>;
-export type AuthOne_time_tokensUpdateSchema = z.infer<typeof authOne_time_tokensUpdateSchema>;
-export type AuthRefresh_tokensRowSchema = z.infer<typeof authRefresh_tokensRowSchema>;
-export type AuthRefresh_tokensInsertSchema = z.infer<typeof authRefresh_tokensInsertSchema>;
-export type AuthRefresh_tokensUpdateSchema = z.infer<typeof authRefresh_tokensUpdateSchema>;
-export type AuthSaml_providersRowSchema = z.infer<typeof authSaml_providersRowSchema>;
-export type AuthSaml_providersInsertSchema = z.infer<typeof authSaml_providersInsertSchema>;
-export type AuthSaml_providersUpdateSchema = z.infer<typeof authSaml_providersUpdateSchema>;
-export type AuthSaml_relay_statesRowSchema = z.infer<typeof authSaml_relay_statesRowSchema>;
-export type AuthSaml_relay_statesInsertSchema = z.infer<typeof authSaml_relay_statesInsertSchema>;
-export type AuthSaml_relay_statesUpdateSchema = z.infer<typeof authSaml_relay_statesUpdateSchema>;
-export type AuthSchema_migrationsRowSchema = z.infer<typeof authSchema_migrationsRowSchema>;
-export type AuthSchema_migrationsInsertSchema = z.infer<typeof authSchema_migrationsInsertSchema>;
-export type AuthSchema_migrationsUpdateSchema = z.infer<typeof authSchema_migrationsUpdateSchema>;
-export type AuthSessionsRowSchema = z.infer<typeof authSessionsRowSchema>;
-export type AuthSessionsInsertSchema = z.infer<typeof authSessionsInsertSchema>;
-export type AuthSessionsUpdateSchema = z.infer<typeof authSessionsUpdateSchema>;
-export type AuthSso_domainsRowSchema = z.infer<typeof authSso_domainsRowSchema>;
-export type AuthSso_domainsInsertSchema = z.infer<typeof authSso_domainsInsertSchema>;
-export type AuthSso_domainsUpdateSchema = z.infer<typeof authSso_domainsUpdateSchema>;
-export type AuthSso_providersRowSchema = z.infer<typeof authSso_providersRowSchema>;
-export type AuthSso_providersInsertSchema = z.infer<typeof authSso_providersInsertSchema>;
-export type AuthSso_providersUpdateSchema = z.infer<typeof authSso_providersUpdateSchema>;
 export type AuthUsersRowSchema = z.infer<typeof authUsersRowSchema>;
 export type AuthUsersInsertSchema = z.infer<typeof authUsersInsertSchema>;
 export type AuthUsersUpdateSchema = z.infer<typeof authUsersUpdateSchema>;
@@ -5492,7 +4802,7 @@ import { useEffect, useState } from "react";
 import AnimatedBackground from "@/components/home/AnimatedBackground";
 import HeroContent from "@/components/home/HeroContent";
 import ParticlesOverlay from "@/components/home/ParticlesOverlay";
-import ScrollIndicator from "@/components/home/ScrollIndicator";
+// import ScrollIndicator from "@/components/home/ScrollIndicator";
 import StatsHighlights from "@/components/home/StatsHighlights";
 import { containerVariants, ctaVariants, floatingAnimation, highlightVariants, subtitleVariants, titleVariants } from "@/components/home/variants";
 import OutdatedBrowserModal from "@/components/outdated/OutdatedBrowserModal";
@@ -5547,7 +4857,7 @@ export default function Home() {
           <StatsHighlights />
         </div>
 
-        <ScrollIndicator />
+        {/* <ScrollIndicator /> */}
       </div>
       <PWAInstallPrompt />
       <OfflineStatus />
@@ -7396,6 +6706,7 @@ export default function InventoryPage() {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -7714,6 +7025,7 @@ export default function GlobalConnectionsPage() {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -8564,6 +7876,7 @@ export default function ServicesPage() {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -9370,6 +8683,7 @@ const NodesPage = () => {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -9682,6 +8996,7 @@ export default function EmployeesPage() {
             onChange={(e) => search.setSearchQuery(e.target.value)}
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
+            clearable
           />
         </div>
 
@@ -10742,6 +10057,7 @@ export default function SystemsPage() {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -12045,6 +11361,7 @@ export default function DiaryPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         leftIcon={<FiSearch className="text-gray-400" />}
+                        clearable
                         fullWidth
                     />
                 </div>
@@ -13326,6 +12643,7 @@ export default function OfcCableDetailsPage() {
             onChange={(e) => search.setSearchQuery(e.target.value)}
             className="pl-10"
             fullWidth
+            clearable
           />
         </div>
 
@@ -13599,6 +12917,7 @@ const OfcPage = () => {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
 
@@ -14731,6 +14050,7 @@ import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { CommandMenu } from "@/components/common/CommandMenu";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary"; // IMPORTED
 
 export default function DashboardLayout({
   children,
@@ -14766,19 +14086,17 @@ export default function DashboardLayout({
                 marginLeft: `${marginValue}px`,
               }}
             >
-              {/*
-                OPTION 1: Remove title from header completely
-                Let each page control its own title
-              */}
               <div className="no-print">
                 <DashboardHeader
                   onMenuClick={() => setIsCollapsed(!isCollapsed)}
                 />
               </div>
 
-              {/* Main Content */}
+              {/* Main Content WRAPPED in ErrorBoundary */}
               <main className="flex-1">
-                {children}
+                <ErrorBoundary>
+                    {children}
+                </ErrorBoundary>
               </main>
             </div>
           </ViewSettingsProvider>
@@ -18125,6 +17443,89 @@ export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
     },
   ],
 };
+```
+
+<!-- path: config/permissions.ts -->
+```typescript
+// config/permissions.ts
+import { UserRole } from "@/types/user-roles";
+
+// A virtual role identifier for Super Admin only logic.
+// No user has this role in the DB; it triggers the bypass check in UserProvider.
+export const SUPER_ADMIN_LOCK = "__SUPER_ADMIN_ONLY__";
+
+// Role Groups Definitions
+export const ROLES = {
+  // STRICTLY Super Admin (is_super_admin = true)
+  SUPER_ADMIN: [SUPER_ADMIN_LOCK],
+
+  // High Level Admins (Super Admin + Regular Admin)
+  ADMINS: [
+    UserRole.ADMIN,
+    UserRole.CPANADMIN,
+    UserRole.MAANADMIN,
+    UserRole.SDHADMIN,
+    UserRole.ASSETADMIN,
+    UserRole.MNGADMIN
+  ],
+
+  // System Specific Admins
+  SYSTEM_ADMINS: [
+    UserRole.CPANADMIN,
+    UserRole.MAANADMIN,
+    UserRole.SDHADMIN
+  ],
+
+  // Read Access (Everyone logged in)
+  VIEWERS: [
+    UserRole.ADMIN,
+    UserRole.VIEWER,
+    UserRole.AUTHENTICATED,
+    UserRole.CPANADMIN,
+    UserRole.MAANADMIN,
+    UserRole.SDHADMIN,
+    UserRole.ASSETADMIN,
+    UserRole.MNGADMIN
+  ],
+
+  // Specific Functional Groups
+  INVENTORY_MANAGERS: [
+    UserRole.ADMIN,
+    UserRole.ASSETADMIN
+  ],
+
+  EMPLOYEE_MANAGERS: [
+    UserRole.ADMIN
+  ],
+
+  ROUTE_MANAGERS: [
+      UserRole.ADMIN,
+      UserRole.ASSETADMIN
+  ]
+} as const;
+
+// Feature-based Permissions Mapping
+export const PERMISSIONS = {
+  // User Management
+  canManageUsers: ROLES.SUPER_ADMIN,
+  canViewAuditLogs: ROLES.SUPER_ADMIN,
+
+  // Entity Management
+  canManageEmployees: ROLES.EMPLOYEE_MANAGERS,
+  canManageInventory: ROLES.INVENTORY_MANAGERS,
+
+  // Network Management
+  canManageSystems: ROLES.ADMINS,
+  canManageRoutes: ROLES.ROUTE_MANAGERS,
+
+  // General
+  canViewDashboard: ROLES.VIEWERS,
+  canViewDocs: ROLES.VIEWERS,
+  canExportData: ROLES.ADMINS,
+
+  // Dangerous Actions
+  canDeleteCritical: ROLES.SUPER_ADMIN,
+} as const;
 ```
 
 <!-- path: config/designations.ts -->
@@ -24522,642 +23923,9 @@ export enum UserRole {
 ```typescript
 // Auto-generated from types/supabase-types.ts
 
-import type { Json, Database } from "@/types/supabase-types";
+import type { Json } from "@/types/supabase-types";
 
 // ============= TABLES =============
-
-export type AuthAudit_log_entriesRow = {
-    created_at: string | null;
-    id: string;
-    instance_id: string | null;
-    ip_address: string;
-    payload: Json | null;
-};
-
-export type AuthAudit_log_entriesInsert = {
-    created_at?: string | null;
-    id: string;
-    instance_id?: string | null;
-    ip_address?: string;
-    payload?: Json | null;
-};
-
-export type AuthAudit_log_entriesUpdate = {
-    created_at?: string | null;
-    id?: string;
-    instance_id?: string | null;
-    ip_address?: string;
-    payload?: Json | null;
-};
-
-export type AuthFlow_stateRow = {
-    auth_code: string;
-    auth_code_issued_at: string | null;
-    authentication_method: string;
-    code_challenge: string;
-    code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"];
-    created_at: string | null;
-    id: string;
-    provider_access_token: string | null;
-    provider_refresh_token: string | null;
-    provider_type: string;
-    updated_at: string | null;
-    user_id: string | null;
-};
-
-export type AuthFlow_stateInsert = {
-    auth_code: string;
-    auth_code_issued_at?: string | null;
-    authentication_method: string;
-    code_challenge: string;
-    code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"];
-    created_at?: string | null;
-    id: string;
-    provider_access_token?: string | null;
-    provider_refresh_token?: string | null;
-    provider_type: string;
-    updated_at?: string | null;
-    user_id?: string | null;
-};
-
-export type AuthFlow_stateUpdate = {
-    auth_code?: string;
-    auth_code_issued_at?: string | null;
-    authentication_method?: string;
-    code_challenge?: string;
-    code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"];
-    created_at?: string | null;
-    id?: string;
-    provider_access_token?: string | null;
-    provider_refresh_token?: string | null;
-    provider_type?: string;
-    updated_at?: string | null;
-    user_id?: string | null;
-};
-
-export type AuthIdentitiesRow = {
-    created_at: string | null;
-    email: string | null;
-    id: string;
-    identity_data: Json;
-    last_sign_in_at: string | null;
-    provider: string;
-    provider_id: string;
-    updated_at: string | null;
-    user_id: string;
-};
-
-export type AuthIdentitiesInsert = {
-    created_at?: string | null;
-    email?: string | null;
-    id?: string;
-    identity_data: Json;
-    last_sign_in_at?: string | null;
-    provider: string;
-    provider_id: string;
-    updated_at?: string | null;
-    user_id: string;
-};
-
-export type AuthIdentitiesUpdate = {
-    created_at?: string | null;
-    email?: string | null;
-    id?: string;
-    identity_data?: Json;
-    last_sign_in_at?: string | null;
-    provider?: string;
-    provider_id?: string;
-    updated_at?: string | null;
-    user_id?: string;
-};
-
-export type AuthInstancesRow = {
-    created_at: string | null;
-    id: string;
-    raw_base_config: string | null;
-    updated_at: string | null;
-    uuid: string | null;
-};
-
-export type AuthInstancesInsert = {
-    created_at?: string | null;
-    id: string;
-    raw_base_config?: string | null;
-    updated_at?: string | null;
-    uuid?: string | null;
-};
-
-export type AuthInstancesUpdate = {
-    created_at?: string | null;
-    id?: string;
-    raw_base_config?: string | null;
-    updated_at?: string | null;
-    uuid?: string | null;
-};
-
-export type AuthMfa_amr_claimsRow = {
-    authentication_method: string;
-    created_at: string;
-    id: string;
-    session_id: string;
-    updated_at: string;
-};
-
-export type AuthMfa_amr_claimsInsert = {
-    authentication_method: string;
-    created_at: string;
-    id: string;
-    session_id: string;
-    updated_at: string;
-};
-
-export type AuthMfa_amr_claimsUpdate = {
-    authentication_method?: string;
-    created_at?: string;
-    id?: string;
-    session_id?: string;
-    updated_at?: string;
-};
-
-export type AuthMfa_challengesRow = {
-    created_at: string;
-    factor_id: string;
-    id: string;
-    ip_address: unknown;
-    otp_code: string | null;
-    verified_at: string | null;
-    web_authn_session_data: Json | null;
-};
-
-export type AuthMfa_challengesInsert = {
-    created_at: string;
-    factor_id: string;
-    id: string;
-    ip_address: unknown;
-    otp_code?: string | null;
-    verified_at?: string | null;
-    web_authn_session_data?: Json | null;
-};
-
-export type AuthMfa_challengesUpdate = {
-    created_at?: string;
-    factor_id?: string;
-    id?: string;
-    ip_address?: unknown;
-    otp_code?: string | null;
-    verified_at?: string | null;
-    web_authn_session_data?: Json | null;
-};
-
-export type AuthMfa_factorsRow = {
-    created_at: string;
-    factor_type: Database["auth"]["Enums"]["factor_type"];
-    friendly_name: string | null;
-    id: string;
-    last_challenged_at: string | null;
-    last_webauthn_challenge_data: Json | null;
-    phone: string | null;
-    secret: string | null;
-    status: Database["auth"]["Enums"]["factor_status"];
-    updated_at: string;
-    user_id: string;
-    web_authn_aaguid: string | null;
-    web_authn_credential: Json | null;
-};
-
-export type AuthMfa_factorsInsert = {
-    created_at: string;
-    factor_type: Database["auth"]["Enums"]["factor_type"];
-    friendly_name?: string | null;
-    id: string;
-    last_challenged_at?: string | null;
-    last_webauthn_challenge_data?: Json | null;
-    phone?: string | null;
-    secret?: string | null;
-    status: Database["auth"]["Enums"]["factor_status"];
-    updated_at: string;
-    user_id: string;
-    web_authn_aaguid?: string | null;
-    web_authn_credential?: Json | null;
-};
-
-export type AuthMfa_factorsUpdate = {
-    created_at?: string;
-    factor_type?: Database["auth"]["Enums"]["factor_type"];
-    friendly_name?: string | null;
-    id?: string;
-    last_challenged_at?: string | null;
-    last_webauthn_challenge_data?: Json | null;
-    phone?: string | null;
-    secret?: string | null;
-    status?: Database["auth"]["Enums"]["factor_status"];
-    updated_at?: string;
-    user_id?: string;
-    web_authn_aaguid?: string | null;
-    web_authn_credential?: Json | null;
-};
-
-export type AuthOauth_authorizationsRow = {
-    approved_at: string | null;
-    authorization_code: string | null;
-    authorization_id: string;
-    client_id: string;
-    code_challenge: string | null;
-    code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"] | null;
-    created_at: string;
-    expires_at: string;
-    id: string;
-    nonce: string | null;
-    redirect_uri: string;
-    resource: string | null;
-    response_type: Database["auth"]["Enums"]["oauth_response_type"];
-    scope: string;
-    state: string | null;
-    status: Database["auth"]["Enums"]["oauth_authorization_status"];
-    user_id: string | null;
-};
-
-export type AuthOauth_authorizationsInsert = {
-    approved_at?: string | null;
-    authorization_code?: string | null;
-    authorization_id: string;
-    client_id: string;
-    code_challenge?: string | null;
-    code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"] | null;
-    created_at?: string;
-    expires_at?: string;
-    id: string;
-    nonce?: string | null;
-    redirect_uri: string;
-    resource?: string | null;
-    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
-    scope: string;
-    state?: string | null;
-    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
-    user_id?: string | null;
-};
-
-export type AuthOauth_authorizationsUpdate = {
-    approved_at?: string | null;
-    authorization_code?: string | null;
-    authorization_id?: string;
-    client_id?: string;
-    code_challenge?: string | null;
-    code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"] | null;
-    created_at?: string;
-    expires_at?: string;
-    id?: string;
-    nonce?: string | null;
-    redirect_uri?: string;
-    resource?: string | null;
-    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
-    scope?: string;
-    state?: string | null;
-    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
-    user_id?: string | null;
-};
-
-export type AuthOauth_client_statesRow = {
-    code_verifier: string | null;
-    created_at: string;
-    id: string;
-    provider_type: string;
-};
-
-export type AuthOauth_client_statesInsert = {
-    code_verifier?: string | null;
-    created_at: string;
-    id: string;
-    provider_type: string;
-};
-
-export type AuthOauth_client_statesUpdate = {
-    code_verifier?: string | null;
-    created_at?: string;
-    id?: string;
-    provider_type?: string;
-};
-
-export type AuthOauth_clientsRow = {
-    client_name: string | null;
-    client_secret_hash: string | null;
-    client_type: Database["auth"]["Enums"]["oauth_client_type"];
-    client_uri: string | null;
-    created_at: string;
-    deleted_at: string | null;
-    grant_types: string;
-    id: string;
-    logo_uri: string | null;
-    redirect_uris: string;
-    registration_type: Database["auth"]["Enums"]["oauth_registration_type"];
-    updated_at: string;
-};
-
-export type AuthOauth_clientsInsert = {
-    client_name?: string | null;
-    client_secret_hash?: string | null;
-    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
-    client_uri?: string | null;
-    created_at?: string;
-    deleted_at?: string | null;
-    grant_types: string;
-    id: string;
-    logo_uri?: string | null;
-    redirect_uris: string;
-    registration_type: Database["auth"]["Enums"]["oauth_registration_type"];
-    updated_at?: string;
-};
-
-export type AuthOauth_clientsUpdate = {
-    client_name?: string | null;
-    client_secret_hash?: string | null;
-    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
-    client_uri?: string | null;
-    created_at?: string;
-    deleted_at?: string | null;
-    grant_types?: string;
-    id?: string;
-    logo_uri?: string | null;
-    redirect_uris?: string;
-    registration_type?: Database["auth"]["Enums"]["oauth_registration_type"];
-    updated_at?: string;
-};
-
-export type AuthOauth_consentsRow = {
-    client_id: string;
-    granted_at: string;
-    id: string;
-    revoked_at: string | null;
-    scopes: string;
-    user_id: string;
-};
-
-export type AuthOauth_consentsInsert = {
-    client_id: string;
-    granted_at?: string;
-    id: string;
-    revoked_at?: string | null;
-    scopes: string;
-    user_id: string;
-};
-
-export type AuthOauth_consentsUpdate = {
-    client_id?: string;
-    granted_at?: string;
-    id?: string;
-    revoked_at?: string | null;
-    scopes?: string;
-    user_id?: string;
-};
-
-export type AuthOne_time_tokensRow = {
-    created_at: string;
-    id: string;
-    relates_to: string;
-    token_hash: string;
-    token_type: Database["auth"]["Enums"]["one_time_token_type"];
-    updated_at: string;
-    user_id: string;
-};
-
-export type AuthOne_time_tokensInsert = {
-    created_at?: string;
-    id: string;
-    relates_to: string;
-    token_hash: string;
-    token_type: Database["auth"]["Enums"]["one_time_token_type"];
-    updated_at?: string;
-    user_id: string;
-};
-
-export type AuthOne_time_tokensUpdate = {
-    created_at?: string;
-    id?: string;
-    relates_to?: string;
-    token_hash?: string;
-    token_type?: Database["auth"]["Enums"]["one_time_token_type"];
-    updated_at?: string;
-    user_id?: string;
-};
-
-export type AuthRefresh_tokensRow = {
-    created_at: string | null;
-    id: number;
-    instance_id: string | null;
-    parent: string | null;
-    revoked: boolean | null;
-    session_id: string | null;
-    token: string | null;
-    updated_at: string | null;
-    user_id: string | null;
-};
-
-export type AuthRefresh_tokensInsert = {
-    created_at?: string | null;
-    id?: number;
-    instance_id?: string | null;
-    parent?: string | null;
-    revoked?: boolean | null;
-    session_id?: string | null;
-    token?: string | null;
-    updated_at?: string | null;
-    user_id?: string | null;
-};
-
-export type AuthRefresh_tokensUpdate = {
-    created_at?: string | null;
-    id?: number;
-    instance_id?: string | null;
-    parent?: string | null;
-    revoked?: boolean | null;
-    session_id?: string | null;
-    token?: string | null;
-    updated_at?: string | null;
-    user_id?: string | null;
-};
-
-export type AuthSaml_providersRow = {
-    attribute_mapping: Json | null;
-    created_at: string | null;
-    entity_id: string;
-    id: string;
-    metadata_url: string | null;
-    metadata_xml: string;
-    name_id_format: string | null;
-    sso_provider_id: string;
-    updated_at: string | null;
-};
-
-export type AuthSaml_providersInsert = {
-    attribute_mapping?: Json | null;
-    created_at?: string | null;
-    entity_id: string;
-    id: string;
-    metadata_url?: string | null;
-    metadata_xml: string;
-    name_id_format?: string | null;
-    sso_provider_id: string;
-    updated_at?: string | null;
-};
-
-export type AuthSaml_providersUpdate = {
-    attribute_mapping?: Json | null;
-    created_at?: string | null;
-    entity_id?: string;
-    id?: string;
-    metadata_url?: string | null;
-    metadata_xml?: string;
-    name_id_format?: string | null;
-    sso_provider_id?: string;
-    updated_at?: string | null;
-};
-
-export type AuthSaml_relay_statesRow = {
-    created_at: string | null;
-    flow_state_id: string | null;
-    for_email: string | null;
-    id: string;
-    redirect_to: string | null;
-    request_id: string;
-    sso_provider_id: string;
-    updated_at: string | null;
-};
-
-export type AuthSaml_relay_statesInsert = {
-    created_at?: string | null;
-    flow_state_id?: string | null;
-    for_email?: string | null;
-    id: string;
-    redirect_to?: string | null;
-    request_id: string;
-    sso_provider_id: string;
-    updated_at?: string | null;
-};
-
-export type AuthSaml_relay_statesUpdate = {
-    created_at?: string | null;
-    flow_state_id?: string | null;
-    for_email?: string | null;
-    id?: string;
-    redirect_to?: string | null;
-    request_id?: string;
-    sso_provider_id?: string;
-    updated_at?: string | null;
-};
-
-export type AuthSchema_migrationsRow = {
-    version: string;
-};
-
-export type AuthSchema_migrationsInsert = {
-    version: string;
-};
-
-export type AuthSchema_migrationsUpdate = {
-    version?: string;
-};
-
-export type AuthSessionsRow = {
-    aal: Database["auth"]["Enums"]["aal_level"] | null;
-    created_at: string | null;
-    factor_id: string | null;
-    id: string;
-    ip: unknown;
-    not_after: string | null;
-    oauth_client_id: string | null;
-    refresh_token_counter: number | null;
-    refresh_token_hmac_key: string | null;
-    refreshed_at: string | null;
-    scopes: string | null;
-    tag: string | null;
-    updated_at: string | null;
-    user_agent: string | null;
-    user_id: string;
-};
-
-export type AuthSessionsInsert = {
-    aal?: Database["auth"]["Enums"]["aal_level"] | null;
-    created_at?: string | null;
-    factor_id?: string | null;
-    id: string;
-    ip?: unknown;
-    not_after?: string | null;
-    oauth_client_id?: string | null;
-    refresh_token_counter?: number | null;
-    refresh_token_hmac_key?: string | null;
-    refreshed_at?: string | null;
-    scopes?: string | null;
-    tag?: string | null;
-    updated_at?: string | null;
-    user_agent?: string | null;
-    user_id: string;
-};
-
-export type AuthSessionsUpdate = {
-    aal?: Database["auth"]["Enums"]["aal_level"] | null;
-    created_at?: string | null;
-    factor_id?: string | null;
-    id?: string;
-    ip?: unknown;
-    not_after?: string | null;
-    oauth_client_id?: string | null;
-    refresh_token_counter?: number | null;
-    refresh_token_hmac_key?: string | null;
-    refreshed_at?: string | null;
-    scopes?: string | null;
-    tag?: string | null;
-    updated_at?: string | null;
-    user_agent?: string | null;
-    user_id?: string;
-};
-
-export type AuthSso_domainsRow = {
-    created_at: string | null;
-    domain: string;
-    id: string;
-    sso_provider_id: string;
-    updated_at: string | null;
-};
-
-export type AuthSso_domainsInsert = {
-    created_at?: string | null;
-    domain: string;
-    id: string;
-    sso_provider_id: string;
-    updated_at?: string | null;
-};
-
-export type AuthSso_domainsUpdate = {
-    created_at?: string | null;
-    domain?: string;
-    id?: string;
-    sso_provider_id?: string;
-    updated_at?: string | null;
-};
-
-export type AuthSso_providersRow = {
-    created_at: string | null;
-    disabled: boolean | null;
-    id: string;
-    resource_id: string | null;
-    updated_at: string | null;
-};
-
-export type AuthSso_providersInsert = {
-    created_at?: string | null;
-    disabled?: boolean | null;
-    id: string;
-    resource_id?: string | null;
-    updated_at?: string | null;
-};
-
-export type AuthSso_providersUpdate = {
-    created_at?: string | null;
-    disabled?: boolean | null;
-    id?: string;
-    resource_id?: string | null;
-    updated_at?: string | null;
-};
 
 export type AuthUsersRow = {
     aud: string | null;
@@ -27072,26 +25840,6 @@ export type AuthOne_time_token_type = "confirmation_token" | "reauthentication_t
 // ============= HELPERS =============
 
 export const tableNames = [
-  "audit_log_entries",
-  "flow_state",
-  "identities",
-  "instances",
-  "mfa_amr_claims",
-  "mfa_challenges",
-  "mfa_factors",
-  "oauth_authorizations",
-  "oauth_client_states",
-  "oauth_clients",
-  "oauth_consents",
-  "one_time_tokens",
-  "refresh_tokens",
-  "saml_providers",
-  "saml_relay_states",
-  "schema_migrations",
-  "sessions",
-  "sso_domains",
-  "sso_providers",
-  "users",
   "cable_segments",
   "diary_notes",
   "e_files",
@@ -35337,7 +34085,7 @@ export interface AllocationSaveData {
 
 <!-- path: components/bsnl/OptimizedNetworkMap.tsx -->
 ```typescript
-// path: components/bsnl/OptimizedNetworkMap.tsx
+// components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
@@ -35345,16 +34093,10 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProp
 import { LatLngBounds } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
-
-// Interface for nodes with display coordinates (potentially offset)
-interface DisplayNode extends BsnlNode {
-  displayLat: number;
-  displayLng: number;
-}
+import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils'; // IMPORT FROM UTILS
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -35415,49 +34157,8 @@ const MapContent = ({
   setZoom: (zoom: number) => void;
 }) => {
 
-  // --- JITTER LOGIC: Spread out overlapping nodes ---
-  const displayNodes = useMemo(() => {
-    const groupedNodes = new Map<string, BsnlNode[]>();
-
-    // 1. Group nodes by exact coordinate
-    visibleNodes.forEach(node => {
-      if(node.latitude && node.longitude) {
-        // Create a key based on coordinates (rounded slightly to catch very close nodes)
-        const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
-        if (!groupedNodes.has(key)) groupedNodes.set(key, []);
-        groupedNodes.get(key)!.push(node);
-      }
-    });
-
-    const results: DisplayNode[] = [];
-    // 2. Apply offset
-    groupedNodes.forEach((nodesAtLoc) => {
-      if (nodesAtLoc.length === 1) {
-        // No overlap, keep original position
-        results.push({
-          ...nodesAtLoc[0],
-          displayLat: nodesAtLoc[0].latitude!,
-          displayLng: nodesAtLoc[0].longitude!
-        });
-      } else {
-        // Overlap detected: Spiral them out
-        // 0.00015 degrees is roughly 15-20 meters
-        const radius = 0.00015;
-        const angleStep = (2 * Math.PI) / nodesAtLoc.length;
-
-        nodesAtLoc.forEach((node, i) => {
-          const angle = i * angleStep;
-          results.push({
-            ...node,
-            displayLat: node.latitude! + (radius * Math.sin(angle)),
-            displayLng: node.longitude! + (radius * Math.cos(angle))
-          });
-        });
-      }
-    });
-    return results;
-  }, [visibleNodes]);
-
+  // USE UTILITY FUNCTION FOR JITTER
+  const displayNodes = useMemo(() => applyJitterToNodes(visibleNodes), [visibleNodes]);
 
   return (
     <>
@@ -35472,7 +34173,7 @@ const MapContent = ({
               return (
                   <Polyline
                       key={cable.id}
-                      // Use original coordinates for lines so the geometry stays true
+                      // Use original coordinates for lines
                       positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
                       pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
                   >
@@ -35498,12 +34199,9 @@ const MapContent = ({
           return (
             <Marker
               key={node.id}
-              // Use calculated display coordinates (spread out)
-              position={[node.displayLat, node.displayLng]}
+              position={[node.displayLat, node.displayLng]} // Use jittered coords
               icon={icon}
-              // THE FIX: riseOnHover allows accessing partially overlapped markers
               riseOnHover={true}
-              // Ensure overlapping markers have stacking context logic if needed
               zIndexOffset={10}
             >
                 <Popup>
@@ -35550,12 +34248,8 @@ export function OptimizedNetworkMap({
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
   useEffect(() => {
-    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    });
+    // USE CENTRALIZED LEAFLET FIX
+    fixLeafletIcons();
   }, []);
 
   useEffect(() => {
@@ -39635,6 +38329,7 @@ export const MobileSidebar = ({
 
 <!-- path: components/navigation/sidebar-components/sidebar-types.ts -->
 ```typescript
+// components/navigation/sidebar-components/sidebar-types.ts
 import { Database } from "@/types/supabase-types";
 import { UserRole } from "@/types/user-roles";
 import { ReactNode } from "react";
@@ -39653,7 +38348,8 @@ export interface NavItem {
   icon: ReactNode;
   href?: string;
   children?: NavItem[];
-  roles: UserRole[];
+  // UPDATED: Use 'readonly' to accept constant arrays and string union for lock
+  roles: readonly (UserRole | string)[];
   external?: boolean;
   preferNative?: boolean;
 }
@@ -39688,7 +38384,7 @@ export const submenuVariants = {
 
 <!-- path: components/navigation/sidebar-components/NavItems.tsx -->
 ```typescript
-import { UserRole } from '@/types/user-roles';
+// components/navigation/sidebar-components/NavItems.tsx
 import { NavItem as NavItemType } from '@/components/navigation/sidebar-components/sidebar-types';
 import { useMemo } from 'react';
 import {
@@ -39716,6 +38412,7 @@ import { AiFillMerge } from 'react-icons/ai';
 import { FaRoute } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
 import { FileText, GitBranch } from 'lucide-react';
+import { PERMISSIONS, ROLES } from '@/config/permissions';
 
 function NavItems() {
   const items: NavItemType[] = useMemo(
@@ -39725,138 +38422,104 @@ function NavItems() {
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
         href: '/dashboard',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.VIEWERS,
       },
       {
         id: 'diary',
         label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-          UserRole.MNGADMIN,
-        ],
+        roles: ROLES.VIEWERS,
       },
       {
         id: 'user-management',
         label: 'User Management',
         icon: <FiUsers className="h-5 w-5" />,
         href: '/dashboard/users',
-        roles: [],
+        roles: PERMISSIONS.canManageUsers,
       },
       {
         id: 'audit-logs',
         label: 'Audit Logs',
         icon: <FiShield className="h-5 w-5" />,
         href: '/dashboard/audit-logs',
-        roles: [],
+        roles: PERMISSIONS.canViewAuditLogs,
       },
       {
         id: 'employees',
         label: 'Employees',
         icon: <BsPeople className="h-5 w-5" />,
         href: '/dashboard/employees',
-        roles: [UserRole.ADMIN],
+        roles: PERMISSIONS.canManageEmployees,
       },
       {
         id: 'inventory',
         label: 'Inventory',
         icon: <FiArchive className="h-5 w-5" />,
         href: '/dashboard/inventory',
-        roles: [UserRole.ADMIN, UserRole.ASSETADMIN],
+        roles: PERMISSIONS.canManageInventory,
       },
       {
         id: 'efiles',
         label: 'E-File Tracking',
         icon: <FileText className="h-5 w-5" />,
         href: '/dashboard/e-files',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED, // Available to all authenticated users
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-          UserRole.MNGADMIN,
-        ],
+        roles: ROLES.VIEWERS,
       },
       {
         id: 'base-menu',
         label: 'Base Structure',
         icon: <BiSitemap className="h-5 w-5" />,
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.VIEWERS,
         children: [
           {
             id: 'designations',
             label: 'Designations',
             icon: <ImUserTie className="h-5 w-5" />,
             href: '/dashboard/designations',
-            roles: [UserRole.ADMIN],
+            roles: ROLES.SUPER_ADMIN,
           },
           {
             id: 'categories',
             label: 'Categories',
             icon: <FiLayers className="h-5 w-5" />,
             href: '/dashboard/categories',
-            roles: [UserRole.ADMIN],
+            roles: ROLES.SUPER_ADMIN,
           },
           {
             id: 'lookups',
             label: 'Lookups',
             icon: <FiList className="h-5 w-5" />,
             href: '/dashboard/lookup',
-            roles: [UserRole.ADMIN],
+            roles: ROLES.SUPER_ADMIN,
           },
           {
             id: 'maintenance-areas',
             label: 'Maintenance Areas',
             icon: <FiMapPin className="h-5 w-5" />,
             href: '/dashboard/maintenance-areas',
-            roles: [UserRole.ADMIN],
+            roles: ROLES.SUPER_ADMIN,
           },
           {
             id: 'nodes',
             label: 'Nodes',
             icon: <FiCpu className="h-5 w-5" />,
             href: '/dashboard/nodes',
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
           {
             id: 'rings',
             label: 'Rings',
             icon: <GiLinkedRings className="h-5 w-5" />,
             href: '/dashboard/rings',
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
           {
             id: 'services',
             label: 'Services & Customers',
             href: '/dashboard/services',
             icon: <FiDatabase className="h-5 w-5" />,
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
         ],
       },
@@ -39864,66 +38527,50 @@ function NavItems() {
         id: 'ofc-menu',
         label: 'Ofc & Routes',
         icon: <GiElectric className="h-5 w-5" />,
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.VIEWERS,
         children: [
           {
-            id: 'ofc-menu',
+            id: 'ofc-menu-list',
             label: 'Optical Fiber Cable',
             href: '/dashboard/ofc',
             icon: <AiFillMerge className="h-5 w-5" />,
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageRoutes,
           },
           {
             id: 'route-manager',
             label: 'RouteManager',
             icon: <FaRoute className="h-5 w-5" />,
             href: '/dashboard/route-manager',
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageRoutes,
           },
         ],
       },
       {
-        id: 'systems',
+        id: 'systems-menu',
         label: 'Systems & Rings Manager',
         icon: <GoServer className="h-5 w-5" />,
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.VIEWERS,
         children: [
           {
             id: 'systems',
             label: 'Systems',
             href: '/dashboard/systems',
             icon: <GoServer className="h-5 w-5" />,
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
           {
             id: 'global-connections',
             label: 'Global Connections',
             href: '/dashboard/connections',
             icon: <GitBranch className="h-5 w-5" />,
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
           {
             id: 'ring-manager',
             label: 'Rings Manager',
             icon: <GoServer className="h-5 w-5" />,
             href: '/dashboard/ring-manager',
-            roles: [UserRole.ADMIN],
+            roles: PERMISSIONS.canManageSystems,
           },
         ],
       },
@@ -39932,50 +38579,30 @@ function NavItems() {
         label: 'Diagrams',
         icon: <TfiLayoutMediaOverlayAlt className="h-5 w-5" />,
         href: '/dashboard/diagrams',
-        roles: [UserRole.ADMIN],
+        roles: ROLES.ADMINS,
       },
       {
         id: 'kml-manager',
         label: 'KML Manager',
         icon: <FiGlobe className="h-5 w-5" />,
         href: '/dashboard/kml-manager',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.VIEWERS,
       },
       {
         id: 'survey-app',
         label: 'Route Survey',
         icon: <FiAirplay className="h-5 w-5" />,
         href: 'https://route-survey.vercel.app/',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.SYSTEM_ADMINS,
         external: true,
-        preferNative: true, // Added flag to signal preference for opening installed PWA
+        preferNative: true,
       },
       {
         id: 'map',
         label: 'BTS Map',
         icon: <FiMap className="h-5 w-5" />,
         href: 'https://www.google.com/maps/d/u/0/embed?mid=1dpO2c3Qt2EmLFxovZ14rcqkjrN6uqlvP&ehbc=2E312F&ll=22.485295672038035%2C88.3701163022461&z=14',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-        ],
+        roles: ROLES.SYSTEM_ADMINS,
         external: true,
       },
       {
@@ -39983,16 +38610,7 @@ function NavItems() {
         label: 'Help & Documentation',
         icon: <FiHelpCircle className="h-5 w-5" />,
         href: '/doc',
-        roles: [
-          UserRole.ADMIN,
-          UserRole.VIEWER,
-          UserRole.AUTHENTICATED,
-          UserRole.CPANADMIN,
-          UserRole.MAANADMIN,
-          UserRole.SDHADMIN,
-          UserRole.ASSETADMIN,
-          UserRole.MNGADMIN,
-        ],
+        roles: ROLES.VIEWERS,
       },
     ],
     []
@@ -40001,7 +38619,6 @@ function NavItems() {
 }
 
 export default NavItems;
-
 ```
 
 <!-- path: components/navigation/sidebar-components/NavItem.tsx -->
@@ -40041,7 +38658,8 @@ export const NavItem = ({
   const [isLoading, setIsLoading] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
-  const hasPermission = (roles: UserRole[]) => {
+  // UPDATED: Accept readonly array of strings or UserRoles
+  const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
     return roles.includes(role as UserRole);
@@ -40269,7 +38887,8 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
   const router = useRouter();
   const { isSuperAdmin, role } = useUser();
 
-  const hasPermission = (roles: UserRole[]) => {
+  // UPDATED: Accept readonly array and strings
+  const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
     return roles.includes(role as UserRole);
@@ -44987,7 +43606,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
           </p>
            {employee.employee_pers_no && (
              <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-               ID: {employee.employee_pers_no}
+               PERS_NO: {employee.employee_pers_no}
              </span>
            )}
         </div>
@@ -45008,7 +43627,12 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
             </div>
           )}
           <div className="flex items-center justify-center gap-2 text-xs pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
-             <FiMapPin className="w-3 h-3" /> {employee.maintenance_area_name || 'Unassigned'}
+             {employee.maintenance_area_name ? (
+               <>
+                 <FiMapPin className="w-3 h-3" />
+                 {employee.maintenance_area_name}
+               </>
+             ) : null}
           </div>
         </div>
 
@@ -45058,8 +43682,8 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
       </div>
 
       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 px-1">
-         <FiMapPin className="w-3 h-3" />
-         <span className="truncate">{employee.maintenance_area_name}</span>
+         {employee.maintenance_area_name ? <FiMapPin className="w-3 h-3" /> : null}
+         {employee.maintenance_area_name ? <span className="truncate">{employee.maintenance_area_name}</span> : null}
       </div>
 
       {canEdit && (
@@ -46592,7 +45216,7 @@ export function MapLegend() {
 
 <!-- path: components/map/ClientRingMap.tsx -->
 ```typescript
-// path: components/map/ClientRingMap.tsx
+// components/map/ClientRingMap.tsx
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip, LayersControl } from 'react-leaflet';
@@ -46606,8 +45230,7 @@ import { MapLegend } from './MapLegend';
 import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
-
-// --- Interfaces ---
+import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils'; // USE CENTRALIZED UTILS
 
 interface PathConfig {
   source?: string;
@@ -46616,31 +45239,6 @@ interface PathConfig {
   destPort?: string;
 }
 
-// --- Rate Limiter for ORS API ---
-let fetchChain: Promise<void> = Promise.resolve();
-const requestDelay = 1600;
-
-const rateLimitedFetchDistance = async (start: MapNode, end: MapNode) => {
-  const makeRequest = async () => {
-    const response = await fetch('/api/ors-distance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ a: start, b: end }),
-    });
-    if (!response.ok) throw new Error('Failed to fetch distance');
-    return response.json();
-  };
-
-  const resultPromise = fetchChain.then(makeRequest);
-
-  fetchChain = resultPromise
-    .then(() => new Promise<void>((res) => setTimeout(res, requestDelay)))
-    .catch(() => new Promise<void>((res) => setTimeout(res, requestDelay)));
-
-  return resultPromise;
-};
-
-// --- Sub-component for Lines ---
 interface ConnectionLineProps {
   start: MapNode;
   end: MapNode;
@@ -46648,7 +45246,7 @@ interface ConnectionLineProps {
   theme: string;
   showPopup: boolean;
   setPolylineRef: (key: string, el: L.Polyline | null) => void;
-  config?: PathConfig; // Added config prop
+  config?: PathConfig;
 }
 
 const ConnectionLine = ({
@@ -46663,9 +45261,10 @@ const ConnectionLine = ({
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
 
+  // Use the optimized fetcher
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
-    queryFn: () => rateLimitedFetchDistance(start, end),
+    queryFn: () => fetchOrsDistance(start, end),
     enabled: shouldFetch,
     staleTime: Infinity,
   });
@@ -46717,7 +45316,6 @@ const ConnectionLine = ({
             {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
           </div>
 
-          {/* Provisioned Info Block */}
           {config && (config.source || config.dest) ? (
             <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-300 uppercase mb-1 tracking-wider">
@@ -46778,10 +45376,9 @@ interface ClientRingMapProps {
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
-  segmentConfigs?: Record<string, PathConfig>; // Added prop
+  segmentConfigs?: Record<string, PathConfig>;
 }
 
-// ... MapController, FullscreenControl, MapFlyToController remain identical ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -46918,15 +45515,8 @@ export default function ClientRingMap({
   }, [nodes]);
 
   useEffect(() => {
-    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
-      _getIconUrl?: () => string;
-    };
-    delete iconPrototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    });
+    // USE CENTRALIZED LEAFLET FIX
+    fixLeafletIcons();
   }, []);
 
   useEffect(() => {
@@ -47004,7 +45594,6 @@ export default function ClientRingMap({
         <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
         <MapFlyToController coords={flyToCoordinates} />
 
-        {/* THE FIX: Use LayersControl to toggle between Street and Satellite views */}
         <LayersControl position="bottomright">
           <LayersControl.BaseLayer checked name="Street View">
             <TileLayer
@@ -47026,7 +45615,6 @@ export default function ClientRingMap({
               start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
           )
           .map(([start, end], i) => {
-            // Match key by sorting IDs so A-B matches B-A
             const key1 = `${start.id}-${end.id}`;
             const key2 = `${end.id}-${start.id}`;
             const config = segmentConfigs[key1] || segmentConfigs[key2];
@@ -55108,14 +53696,17 @@ export function BulkActions({
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { FiSearch, FiServer, FiMapPin, FiActivity, FiFileText } from "react-icons/fi";
+import { FiSearch, FiServer, FiMapPin, FiActivity, FiFileText, FiWifiOff, FiLoader } from "react-icons/fi";
 import { createClient } from "@/utils/supabase/client";
 import { useDebounce } from "use-debounce";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { localDb } from "@/hooks/data/localDb";
 
 // Basic types for search results
 type SearchResult = {
   id: string;
   title: string;
+  subtitle?: string;
   type: 'system' | 'node' | 'cable' | 'page';
   url: string;
 };
@@ -55128,22 +53719,18 @@ export function CommandMenu() {
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [loading, setLoading] = React.useState(false);
   const supabase = createClient();
+  const isOnline = useOnlineStatus();
 
   // Toggle with Cmd+K OR "/"
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
       }
-
-      // "/" key (Global Search)
-      // Check if not typing in an input/textarea
       if (e.key === "/") {
         const target = e.target as HTMLElement;
         const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-
         if (!isInput) {
           e.preventDefault();
           setOpen((open) => !open);
@@ -55157,40 +53744,107 @@ export function CommandMenu() {
   // Search Logic
   React.useEffect(() => {
     async function search() {
-      if (!debouncedQuery) {
+      if (!debouncedQuery.trim()) {
         setResults([]);
         return;
       }
       setLoading(true);
 
-      const searchTerm = `%${debouncedQuery}%`;
-
-      // Parallel queries for speed
-      const [systems, nodes, cables] = await Promise.all([
-        supabase.from('systems').select('id, system_name').ilike('system_name', searchTerm).limit(3),
-        supabase.from('nodes').select('id, name').ilike('name', searchTerm).limit(3),
-        supabase.from('ofc_cables').select('id, route_name').ilike('route_name', searchTerm).limit(3)
-      ]);
-
+      const searchTerm = debouncedQuery.toLowerCase();
       const newResults: SearchResult[] = [];
 
-      // Static Pages matches
-      if ("dashboard".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
-      if ("inventory".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'inv', title: 'Inventory', type: 'page', url: '/dashboard/inventory' });
-      if ("systems".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'sys', title: 'Systems Manager', type: 'page', url: '/dashboard/systems' });
-      if ("rings".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'rng', title: 'Ring Manager', type: 'page', url: '/dashboard/rings' });
+      // 1. Static Pages matches (Always available)
+      if ("dashboard".includes(searchTerm)) newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
+      if ("inventory".includes(searchTerm)) newResults.push({ id: 'inv', title: 'Inventory', type: 'page', url: '/dashboard/inventory' });
+      if ("systems".includes(searchTerm)) newResults.push({ id: 'sys', title: 'Systems Manager', type: 'page', url: '/dashboard/systems' });
+      if ("rings".includes(searchTerm)) newResults.push({ id: 'rng', title: 'Ring Manager', type: 'page', url: '/dashboard/rings' });
+      if ("connections".includes(searchTerm)) newResults.push({ id: 'conn', title: 'Global Connections', type: 'page', url: '/dashboard/connections' });
+      if ("logs".includes(searchTerm) || "diary".includes(searchTerm)) newResults.push({ id: 'log', title: 'Log Book', type: 'page', url: '/dashboard/diary' });
 
-      // DB Results
-      systems.data?.forEach(s => newResults.push({ id: s.id, title: s.system_name || 'System', type: 'system', url: `/dashboard/systems/${s.id}` }));
-      nodes.data?.forEach(n => newResults.push({ id: n.id, title: n.name, type: 'node', url: `/dashboard/nodes?search=${n.name}` }));
-      cables.data?.forEach(c => newResults.push({ id: c.id, title: c.route_name, type: 'cable', url: `/dashboard/ofc/${c.id}` }));
+      try {
+        if (isOnline) {
+          // --- ONLINE SEARCH (RPC / Supabase) ---
+          const rpcTerm = `%${searchTerm}%`;
+
+          const [systems, nodes, cables] = await Promise.all([
+            supabase.from('systems').select('id, system_name, ip_address').ilike('system_name', rpcTerm).limit(5),
+            supabase.from('nodes').select('id, name, maintenance_terminal_id').ilike('name', rpcTerm).limit(5),
+            supabase.from('ofc_cables').select('id, route_name').ilike('route_name', rpcTerm).limit(5)
+          ]);
+
+          systems.data?.forEach(s => newResults.push({
+            id: s.id,
+            title: s.system_name || 'System',
+            subtitle: s.ip_address ? String(s.ip_address).split('/')[0] : undefined,
+            type: 'system',
+            url: `/dashboard/systems/${s.id}`
+          }));
+
+          nodes.data?.forEach(n => newResults.push({
+            id: n.id,
+            title: n.name,
+            type: 'node',
+            url: `/dashboard/nodes?search=${encodeURIComponent(n.name)}` // Navigate to list view with filter
+          }));
+
+          cables.data?.forEach(c => newResults.push({
+            id: c.id,
+            title: c.route_name,
+            type: 'cable',
+            url: `/dashboard/ofc/${c.id}`
+          }));
+
+        } else {
+          // --- OFFLINE SEARCH (Dexie / LocalDb) ---
+          // Using Dexie's Collection.filter for case-insensitive partial match
+
+          const [localSystems, localNodes, localCables] = await Promise.all([
+            localDb.v_systems_complete
+              .filter(s => (s.system_name || '').toLowerCase().includes(searchTerm))
+              .limit(5)
+              .toArray(),
+            localDb.v_nodes_complete
+              .filter(n => (n.name || '').toLowerCase().includes(searchTerm))
+              .limit(5)
+              .toArray(),
+            localDb.v_ofc_cables_complete
+              .filter(c => (c.route_name || '').toLowerCase().includes(searchTerm))
+              .limit(5)
+              .toArray()
+          ]);
+
+          localSystems.forEach(s => newResults.push({
+             id: s.id!,
+             title: s.system_name!,
+             subtitle: s.ip_address ? String(s.ip_address).split('/')[0] : 'Offline Result',
+             type: 'system',
+             url: `/dashboard/systems/${s.id}`
+          }));
+
+          localNodes.forEach(n => newResults.push({
+             id: n.id!,
+             title: n.name!,
+             type: 'node',
+             url: `/dashboard/nodes?search=${encodeURIComponent(n.name!)}`
+          }));
+
+          localCables.forEach(c => newResults.push({
+             id: c.id!,
+             title: c.route_name!,
+             type: 'cable',
+             url: `/dashboard/ofc/${c.id}`
+          }));
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      }
 
       setResults(newResults);
       setLoading(false);
     }
 
     search();
-  }, [debouncedQuery, supabase]);
+  }, [debouncedQuery, supabase, isOnline]);
 
   const handleSelect = (url: string) => {
     router.push(url);
@@ -55201,8 +53855,11 @@ export function CommandMenu() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4">
-      <div className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4 animate-in fade-in duration-200">
+      <div
+        className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all"
+        onClick={(e) => e.stopPropagation()}
+      >
         <Command label="Global Search" shouldFilter={false} className="w-full">
 
           {/* Search Input */}
@@ -55211,18 +53868,23 @@ export function CommandMenu() {
             <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder="Search for systems, routes, or pages..."
+              placeholder={isOnline ? "Search systems, routes, or pages..." : "Searching offline database..."}
               className="w-full py-4 text-lg bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
               autoFocus
             />
-            {loading && <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>}
+            <div className="flex items-center gap-2">
+              {loading && <FiLoader className="w-4 h-4 animate-spin text-blue-500" />}
+              {!isOnline && <FiWifiOff className="w-4 h-4 text-orange-500" title="Offline Mode" />}
+            </div>
           </div>
 
           {/* Results List */}
           <Command.List className="max-h-[60vh] overflow-y-auto p-2 scroll-py-2 custom-scrollbar">
 
             {query && results.length === 0 && !loading && (
-              <div className="py-10 text-center text-sm text-gray-500">No results found.</div>
+              <div className="py-10 text-center text-sm text-gray-500">
+                No results found {isOnline ? "" : "in local cache"}.
+              </div>
             )}
 
             {!query && (
@@ -55245,15 +53907,27 @@ export function CommandMenu() {
                     onSelect={() => handleSelect(item.url)}
                     className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
                   >
-                    <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded text-gray-500 ${
+                        item.type === 'page' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
+                        'bg-gray-100 dark:bg-gray-800'
+                    }`}>
                         {item.type === 'system' && <FiServer size={16} />}
                         {item.type === 'node' && <FiMapPin size={16} />}
                         {item.type === 'cable' && <FiActivity size={16} />}
                         {item.type === 'page' && <FiFileText size={16} />}
                     </div>
-                    <div className="flex flex-col">
-                        <span className="font-medium">{item.title}</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{item.type}</span>
+                    <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{item.title}</span>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1 rounded">
+                             {item.type}
+                           </span>
+                           {item.subtitle && (
+                             <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                               {item.subtitle}
+                             </span>
+                           )}
+                        </div>
                     </div>
                   </Command.Item>
                 ))}
@@ -55263,7 +53937,7 @@ export function CommandMenu() {
           </Command.List>
 
           <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center text-xs text-gray-400">
-            <span>Use <strong>↑↓</strong> to navigate</span>
+            <span className="hidden sm:inline">Use <strong>↑↓</strong> to navigate</span>
             <span><strong>Enter</strong> to select</span>
             <span><strong>Esc</strong> to close</span>
           </div>
@@ -59590,6 +58264,8 @@ interface SearchableSelectProps {
   isLoading?: boolean;
 }
 
+const RENDER_LIMIT = 100; // Performance: Only render top 100 matches
+
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
   value = null,
@@ -59599,7 +58275,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   className = "",
   disabled = false,
   clearable = true,
-  maxHeight = 200,
+  maxHeight = 250,
   noOptionsMessage = "No options found",
   error = false,
   sortOptions = true,
@@ -59622,14 +58298,26 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const filteredOptions = useMemo(() => {
     if (serverSide) return options;
     const processedOptions = [...options];
+
+    // Sort logic
     if (sortOptions) {
       processedOptions.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
     }
+
+    // Filter logic
     if (!searchTerm.trim()) return processedOptions;
+
     return processedOptions.filter(option =>
       option.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [options, searchTerm, sortOptions, serverSide]);
+
+  // Performance: Slice the options for rendering
+  const visibleOptions = useMemo(() => {
+    return filteredOptions.slice(0, RENDER_LIMIT);
+  }, [filteredOptions]);
+
+  const hasMoreOptions = filteredOptions.length > RENDER_LIMIT;
 
   const selectedOption = useMemo(() => options.find(option => option.value === value), [options, value]);
   const selectedLabel = selectedOption?.label || "";
@@ -59647,14 +58335,22 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+
+      // Determine if we should flip upwards
+      const shouldFlip = spaceBelow < maxHeight && rect.top > maxHeight;
+
       setDropdownStyle({
         position: 'fixed',
-        top: `${rect.bottom + 4}px`,
+        top: shouldFlip ? 'auto' : `${rect.bottom + 4}px`,
+        bottom: shouldFlip ? `${viewportHeight - rect.top + 4}px` : 'auto',
         left: `${rect.left}px`,
         width: `${rect.width}px`,
+        zIndex: 99999, // Ensure it sits on top of modals
       });
     }
-  }, [isOpen]);
+  }, [isOpen, maxHeight]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59672,8 +58368,12 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 0);
+    } else {
+        // Reset search when closed, unless it's server side (might want to keep state)
+        if(!serverSide) setSearchTerm("");
+        setFocusedIndex(-1);
     }
-  }, [isOpen]);
+  }, [isOpen, serverSide]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
@@ -59681,21 +58381,22 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       case "Enter":
         e.preventDefault();
         if (!isOpen) setIsOpen(true);
-        else if (focusedIndex >= 0 && filteredOptions[focusedIndex]) {
-          handleOptionSelect(filteredOptions[focusedIndex].value);
+        else if (focusedIndex >= 0 && visibleOptions[focusedIndex]) {
+          handleOptionSelect(visibleOptions[focusedIndex].value);
         }
         break;
       case "Escape":
         setIsOpen(false);
+        triggerRef.current?.focus();
         break;
       case "ArrowDown":
         e.preventDefault();
         if (!isOpen) setIsOpen(true);
-        else setFocusedIndex(prev => prev < filteredOptions.length - 1 ? prev + 1 : 0);
+        else setFocusedIndex(prev => prev < visibleOptions.length - 1 ? prev + 1 : 0);
         break;
       case "ArrowUp":
         e.preventDefault();
-        if (isOpen) setFocusedIndex(prev => prev > 0 ? prev - 1 : filteredOptions.length - 1);
+        if (isOpen) setFocusedIndex(prev => prev > 0 ? prev - 1 : visibleOptions.length - 1);
         break;
       case "Tab":
         setIsOpen(false);
@@ -59712,6 +58413,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const handleOptionSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
+    triggerRef.current?.focus();
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -59723,53 +58425,105 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!disabled) setIsOpen(!isOpen);
   };
 
-  const baseClasses = `relative w-full rounded-md border px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:outline-none transition-colors cursor-pointer ${error ? "border-red-300 dark:border-red-600" : "border-gray-300 dark:border-gray-600"} ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-600" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500`} dark:text-white dark:focus-within:ring-blue-600`;
+  const baseClasses = `relative w-full rounded-md border px-3 py-2 transition-all duration-200 cursor-pointer
+    ${error ? "border-red-300 dark:border-red-600 focus-within:ring-red-500" : "border-gray-300 dark:border-gray-600 focus-within:ring-blue-500"}
+    ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-700 text-gray-500" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500 text-gray-900 dark:text-white`}
+    focus-within:ring-2 focus-within:outline-none`;
 
   const DropdownContent = (
-    <div ref={dropdownRef} style={dropdownStyle} className="z-999 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
-      <div className="p-2 border-b border-gray-200 dark:border-gray-600">
+    <div
+        ref={dropdownRef}
+        style={dropdownStyle}
+        className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+    >
+      <div className="p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
-            ref={searchInputRef} type="text" placeholder={searchPlaceholder}
-            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            ref={searchInputRef}
+            type="text"
+            placeholder={searchPlaceholder}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400"
+            autoComplete="off"
           />
           {isLoading && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><ButtonSpinner size="sm" /></div>}
         </div>
       </div>
-      <div className="overflow-y-auto" style={{ maxHeight: `${maxHeight}px` }} role="listbox" id={listboxId}>
-        {filteredOptions.length === 0 && !isLoading ? (
-          <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">{noOptionsMessage}</div>
+
+      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: `${maxHeight}px` }} role="listbox" id={listboxId}>
+        {visibleOptions.length === 0 && !isLoading ? (
+          <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center italic">{noOptionsMessage}</div>
         ) : (
-          filteredOptions.map((option, index) => (
-            <div
-              key={option.value} ref={(el) => { optionRefs.current[index] = el; }}
-              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"} ${index === focusedIndex ? "bg-blue-100 dark:bg-blue-900/50" : ""} ${option.value === value ? "bg-blue-50 dark:bg-blue-900/30 font-medium" : ""}`}
-              onClick={() => !option.disabled && handleOptionSelect(option.value)}
-              role="option" aria-selected={option.value === value}
-            >
-              {option.label}
-            </div>
-          ))
+          <>
+            {visibleOptions.map((option, index) => (
+                <div
+                key={option.value}
+                ref={(el) => { optionRefs.current[index] = el; }}
+                className={`
+                    px-3 py-2 text-sm cursor-pointer transition-colors border-b border-transparent
+                    ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white"}
+                    ${index === focusedIndex ? "bg-blue-50 dark:bg-blue-900/40" : "hover:bg-gray-100 dark:hover:bg-gray-700"}
+                    ${option.value === value ? "bg-blue-100 dark:bg-blue-900/60 font-semibold text-blue-700 dark:text-blue-300" : ""}
+                `}
+                onClick={() => !option.disabled && handleOptionSelect(option.value)}
+                role="option"
+                aria-selected={option.value === value}
+                >
+                {option.label}
+                </div>
+            ))}
+
+            {/* Performance Indicator */}
+            {hasMoreOptions && (
+                <div className="px-3 py-2 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 italic">
+                    Showing first {RENDER_LIMIT} options. Type to refine...
+                </div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 
   return (
-    <div ref={triggerRef} className={`relative ${className}`}>
-      {label && <Label>{label}</Label>}
-      <div className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600" : ""}`} onClick={toggleDropdown} onKeyDown={handleKeyDown} tabIndex={disabled ? -1 : 0} role="combobox" aria-expanded={isOpen} aria-haspopup="listbox" aria-controls={listboxId}>
+    <div className={className}>
+      {label && <Label className="mb-1.5 block">{label}</Label>}
+
+      <div
+        ref={triggerRef}
+        className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600 border-blue-500" : ""}`}
+        onClick={toggleDropdown}
+        onKeyDown={handleKeyDown}
+        tabIndex={disabled ? -1 : 0}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+      >
         <div className="flex items-center justify-between">
-          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>{selectedLabel || placeholder}</span>
-          <div className="flex items-center gap-1">
-            {clearable && value && !disabled && (<button type="button" onClick={handleClear} className="flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" tabIndex={-1}><FiX className="w-3 h-3" /></button>)}
-            <FiChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          <span className={`block truncate ${!selectedLabel ? "text-gray-500 dark:text-gray-400" : ""}`}>
+            {selectedLabel || placeholder}
+          </span>
+          <div className="flex items-center gap-1.5 text-gray-400">
+            {clearable && value && !disabled && (
+                <button
+                    type="button"
+                    onClick={handleClear}
+                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                    tabIndex={-1}
+                    aria-label="Clear selection"
+                >
+                    <FiX className="w-3.5 h-3.5" />
+                </button>
+            )}
+            <FiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
           </div>
         </div>
       </div>
+
       {isOpen && typeof document !== 'undefined' && createPortal(DropdownContent, document.body)}
     </div>
   );
@@ -60692,6 +59446,93 @@ export const StatCard: React.FC<StatProps> = ({
     </div>
   );
 };
+```
+
+<!-- path: components/common/ErrorBoundary.tsx -->
+```typescript
+// components/common/ErrorBoundary.tsx
+"use client";
+
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { Button } from "./ui/Button";
+
+interface Props {
+  children?: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
+
+  public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    // Here you could send error logs to Supabase via RPC if needed
+    // logErrorToService(error, errorInfo);
+  }
+
+  private handleReload = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  private handleGoHome = () => {
+    window.location.href = '/dashboard';
+  };
+
+  public render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div className="flex min-h-[400px] w-full flex-col items-center justify-center p-6 text-center bg-white dark:bg-gray-900 rounded-lg">
+          <div className="mb-4 rounded-full bg-red-50 p-4 dark:bg-red-900/20">
+            <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
+            Something went wrong
+          </h2>
+          <p className="mb-6 max-w-md text-sm text-gray-500 dark:text-gray-400">
+            {this.state.error?.message || "An unexpected error occurred while rendering this component."}
+          </p>
+          <div className="flex gap-3">
+            <Button
+                variant="secondary"
+                onClick={this.handleGoHome}
+                leftIcon={<Home size={16} />}
+            >
+                Dashboard
+            </Button>
+            <Button
+                variant="primary"
+                onClick={this.handleReload}
+                leftIcon={<RefreshCw size={16} />}
+            >
+              Reload Page
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 ```
 
 <!-- path: components/common/form/index.ts -->
@@ -69475,6 +68316,7 @@ export const useUser = (): UserContextType => {
 
 <!-- path: scripts/generate-zod-schemas.ts -->
 ```typescript
+// scripts/generate-zod-schemas.ts
 import * as ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
@@ -69494,7 +68336,7 @@ interface TypeInfo {
 
 class TypeScriptToZodConverter {
   private sourceFile: ts.SourceFile;
-  private checker: ts.TypeChecker;
+  private checker: ts.TypeChecker; // @typescript-eslint/no-unused-vars
   private config: ValidationConfig;
 
   constructor(filePath: string) {
@@ -69514,9 +68356,8 @@ class TypeScriptToZodConverter {
       if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name)) {
         const typeName = node.name.text;
 
-        // Skip the Json type import
-        if (typeName === "Json") {
-          ts.forEachChild(node, visit);
+        // Skip Json and Database helper types
+        if (typeName === "Json" || typeName === "Database") {
           return;
         }
 
@@ -69570,7 +68411,6 @@ class TypeScriptToZodConverter {
           isNullable: hasNull || nonNullTypes[0].isNullable,
         };
       } else {
-        // Multiple non-null types - create union
         const unionTypes = nonNullTypes.map((t) => t.type).join(" | ");
         return {
           type: unionTypes,
@@ -69581,16 +68421,11 @@ class TypeScriptToZodConverter {
 
     if (ts.isToken(typeNode) && typeNode.kind >= ts.SyntaxKind.FirstKeyword && typeNode.kind <= ts.SyntaxKind.LastKeyword) {
       switch (typeNode.kind) {
-        case ts.SyntaxKind.StringKeyword:
-          return { type: "string", isNullable: false };
-        case ts.SyntaxKind.NumberKeyword:
-          return { type: "number", isNullable: false };
-        case ts.SyntaxKind.BooleanKeyword:
-          return { type: "boolean", isNullable: false };
-        case ts.SyntaxKind.NullKeyword:
-          return { type: "null", isNullable: false };
-        case ts.SyntaxKind.UndefinedKeyword:
-          return { type: "undefined", isNullable: false };
+        case ts.SyntaxKind.StringKeyword: return { type: "string", isNullable: false };
+        case ts.SyntaxKind.NumberKeyword: return { type: "number", isNullable: false };
+        case ts.SyntaxKind.BooleanKeyword: return { type: "boolean", isNullable: false };
+        case ts.SyntaxKind.NullKeyword: return { type: "null", isNullable: false };
+        case ts.SyntaxKind.UndefinedKeyword: return { type: "undefined", isNullable: false };
       }
     }
 
@@ -69611,82 +68446,61 @@ class TypeScriptToZodConverter {
       }
     }
 
-    // Fallback - get the text representation
     const printer = ts.createPrinter();
     const typeText = printer.printNode(ts.EmitHint.Unspecified, typeNode, this.sourceFile);
     return { type: typeText, isNullable: false };
   }
 
   private typeToZodSchema(type: string, isNullable: boolean, fieldName?: string, tableName?: string): string {
-    // ✅ CHECK CUSTOM RULES FIRST - before any type handling
-  const customRule = this.config.customRules.find(
-    (rule) => rule.fieldName === fieldName && this.matchesTableName(rule.tableName, tableName)
-  );
-  if (customRule) {
-    return isNullable ? `${customRule.validation}.nullable()` : customRule.validation;
-  }
-    // Handle literal types (enums)
+    const customRule = this.config.customRules.find(
+      (rule) => rule.fieldName === fieldName && this.matchesTableName(rule.tableName, tableName)
+    );
+    if (customRule) {
+      return isNullable ? `${customRule.validation}.nullable()` : customRule.validation;
+    }
+
     if (type.includes('"') && type.includes("|")) {
       const literalValues = type.split(" | ").map((v) => v.trim());
       const zodEnum = `z.enum([${literalValues.join(", ")}])`;
       return isNullable ? `${zodEnum}.nullable()` : zodEnum;
     }
 
-    // Add specific handling for array types before the switch statement.
     if (type.endsWith('[]')) {
-      const baseType = type.slice(0, -2); // e.g., "string[]" becomes "string"
-      // Recursively get the schema for the base type. Nullability is handled at the end.
+      const baseType = type.slice(0, -2);
       const baseSchema = this.typeToZodSchema(baseType, false, fieldName, tableName);
       const arraySchema = `z.array(${baseSchema})`;
       return isNullable ? `${arraySchema}.nullable()` : arraySchema;
     }
 
-    // Handle single literal types
     if (type.startsWith('"') && type.endsWith('"')) {
       const literal = `z.literal(${type})`;
       return isNullable ? `${literal}.nullable()` : literal;
     }
 
-    // Handle basic types with smart validation based on field names
     let zodType: string;
     switch (type) {
-      case 'Json':
-        zodType = 'JsonSchema';
-        break;
-      case "string":
-        zodType = this.getSmartStringValidation(fieldName || "", tableName);
-        break;
-      case "number":
-        zodType = this.getSmartNumberValidation(fieldName || "", tableName);
-        break;
-      case "boolean":
-        zodType = "z.boolean()";
-        break;
-      case "null":
-        zodType = "z.null()";
-        break;
-      case "undefined":
-        zodType = "z.undefined()";
-        break;
-        default:
-          // Handle literal unions (enums)
-          if (type.includes('"') && type.includes('|')) {
-            const literalValues = type.split(' | ').map((v) => v.trim());
-            zodType = `z.enum([${literalValues.join(', ')}])`;
-          } else if (type.trim() === 'unknown' || type.trim() === '') {
-            // Add a safe fallback for unknown or empty types
-            zodType = 'z.any()';
-          } else {
-            zodType = 'z.string()'; // Fallback for complex/unknown types
-          }
-      }
+      case 'Json': zodType = 'JsonSchema'; break;
+      case "string": zodType = this.getSmartStringValidation(fieldName || "", tableName); break;
+      case "number": zodType = this.getSmartNumberValidation(fieldName || "", tableName); break;
+      case "boolean": zodType = "z.boolean()"; break;
+      case "null": zodType = "z.null()"; break;
+      case "undefined": zodType = "z.undefined()"; break;
+      default:
+        if (type.includes('"') && type.includes('|')) {
+          const literalValues = type.split(' | ').map((v) => v.trim());
+          zodType = `z.enum([${literalValues.join(', ')}])`;
+        } else if (type.trim() === 'unknown' || type.trim() === '') {
+          zodType = 'z.any()';
+        } else {
+          zodType = 'z.string()';
+        }
+    }
 
-      return isNullable ? `${zodType}.nullable()` : zodType;
+    return isNullable ? `${zodType}.nullable()` : zodType;
   }
 
   private getSmartStringValidation(fieldName: string, tableName?: string): string {
-
-    // Generic pattern matching.
+    void tableName; // reserved for future use
     const lowerName = fieldName.toLowerCase();
     for (const rule of this.config.stringRules) {
       for (const pattern of rule.fieldPatterns) {
@@ -69699,7 +68513,7 @@ class TypeScriptToZodConverter {
   }
 
   private getSmartNumberValidation(fieldName: string, tableName?: string): string {
-    // Check number rules
+    void tableName;
     const lowerName = fieldName.toLowerCase();
     for (const rule of this.config.numberRules) {
       for (const pattern of rule.fieldPatterns) {
@@ -69708,35 +68522,22 @@ class TypeScriptToZodConverter {
         }
       }
     }
-
-    // Default number validation
     return "z.number()";
   }
 
   private matchesTableName(ruleTableName?: string, actualTableName?: string): boolean {
-    if (!ruleTableName) {
-      return true; // Global rule
-    }
-    if (!actualTableName) {
-      return false; // Cannot match a specific rule if table name is unknown
-    }
-
-    // ** Use includes() for partial matching**
+    if (!ruleTableName) return true;
+    if (!actualTableName) return false;
     return actualTableName.toLowerCase().includes(ruleTableName.toLowerCase());
   }
 
   private matchesPattern(fieldName: string, pattern: string): boolean {
-    // If pattern starts and ends with ^$, treat as regex
     if (pattern.startsWith("^") && pattern.endsWith("$")) {
       return new RegExp(pattern).test(fieldName);
     }
-
-    // If pattern contains regex chars, treat as regex
     if (pattern.includes("*") || pattern.includes(".") || pattern.includes("^") || pattern.includes("$") || pattern.includes("[") || pattern.includes("]")) {
       return new RegExp(pattern).test(fieldName);
     }
-
-    // Otherwise, simple includes check
     return fieldName.includes(pattern);
   }
 
@@ -69746,66 +68547,36 @@ class TypeScriptToZodConverter {
     output += 'import { UserRole } from "@/types/user-roles";\n\n';
     output += 'import { JsonSchema } from "@/types/custom";\n\n';
 
-    // Group types by category
     const tableTypes = types.filter((t) => t.name.endsWith("Row") || t.name.endsWith("Insert") || t.name.endsWith("Update"));
-    const viewTypes = types.filter(
-      (t) => t.name.includes("v_") // or whatever your view naming convention is
-    );
-    const enumTypes = types.filter((t) => !t.name.endsWith("Row") && !t.name.endsWith("Insert") && !t.name.endsWith("Update"));
+    const viewTypes = types.filter((t) => t.name.includes("v_"));
+    const enumTypes = types.filter((t) => !t.name.endsWith("Row") && !t.name.endsWith("Insert") && !t.name.endsWith("Update") && !t.name.startsWith("Auth")); // Exclude AuthEnums
 
-    // Generate table schemas
     if (tableTypes.length > 0) {
       output += "// ============= TABLE SCHEMAS =============\n\n";
-
-      for (const type of tableTypes) {
-        output += this.generateTypeSchema(type);
-      }
+      for (const type of tableTypes) output += this.generateTypeSchema(type);
     }
 
-    // Generate view schemas
     if (viewTypes.length > 0) {
       output += "// ============= VIEW SCHEMAS =============\n\n";
-
-      for (const type of viewTypes) {
-        output += this.generateTypeSchema(type);
-      }
+      for (const type of viewTypes) output += this.generateTypeSchema(type);
     }
 
-    // Generate enum schemas
     if (enumTypes.length > 0) {
       output += "// ============= ENUM SCHEMAS =============\n\n";
-
       for (const type of enumTypes) {
-        // For enums, we need to handle them differently since they're usually union types
-        if (type.properties.length === 0) {
-          // This is likely a direct enum type, skip for now
-          continue;
-        }
+        if (type.properties.length === 0) continue;
         output += this.generateTypeSchema(type);
       }
     }
 
-    // // Generate a convenience export object
-    // output += '// ============= CONVENIENCE EXPORTS =============\n\n';
-    // output += 'export const schemas = {\n';
-
-    // for (const type of types) {
-    //   if (type.properties.length > 0) {
-    //     const schemaName = `${type.name
-    //       .charAt(0)
-    //       .toLowerCase()}${type.name.slice(1)}Schema`;
-    //     output += `  ${schemaName},\n`;
-    //   }
-    // }
-
-    // output += '} as const;\n\n';
-
-    // Generate type exports
     output += "// ============= TYPE EXPORTS =============\n\n";
     for (const type of types) {
-      if (type.properties.length > 0) {
-        const schemaName = `${type.name.charAt(0).toLowerCase()}${type.name.slice(1)}Schema`;
-        output += `export type ${type.name}Schema = z.infer<typeof ${schemaName}>;\n`;
+      // Exclude internal Auth types from exports if they slipped through
+      if (!type.name.startsWith("Auth") || type.name.startsWith("AuthUsers")) {
+          if (type.properties.length > 0) {
+            const schemaName = `${type.name.charAt(0).toLowerCase()}${type.name.slice(1)}Schema`;
+            output += `export type ${type.name}Schema = z.infer<typeof ${schemaName}>;\n`;
+          }
       }
     }
 
@@ -69817,15 +68588,12 @@ class TypeScriptToZodConverter {
   }
 
   private generateTypeSchema(type: TypeInfo): string {
-    if (type.properties.length === 0) {
-      return "";
-    }
+    if (type.properties.length === 0) return "";
 
-    // ✅ derive real table name from the type alias
-    const baseTableName = type.name.replace(/(Row|Insert|Update)$/, ""); // strip suffixes like "Row"
+    const baseTableName = type.name.replace(/(Row|Insert|Update)$/, "");
     const snakeCaseTableName = this.toSnakeCase(baseTableName);
-
     const schemaName = `${type.name.charAt(0).toLowerCase()}${type.name.slice(1)}Schema`;
+
     let output = `export const ${schemaName} = z.object({\n`;
 
     for (const prop of type.properties) {
@@ -69833,7 +68601,7 @@ class TypeScriptToZodConverter {
         prop.type,
         prop.isNullable,
         prop.name,
-        snakeCaseTableName // pass table name
+        snakeCaseTableName
       );
       const finalType = prop.isOptional ? `${zodType}.optional()` : zodType;
       output += `  ${prop.name}: ${finalType},\n`;
@@ -69847,37 +68615,20 @@ class TypeScriptToZodConverter {
 async function main() {
   try {
     const flattenedTypesPath = path.join(process.cwd(), "types/flattened-types.ts");
-
     if (!fs.existsSync(flattenedTypesPath)) {
       console.error("❌ flattened-types.ts not found. Run gen:flattened first.");
       process.exit(1);
     }
 
     console.log("🔍 Converting TypeScript types to Zod schemas...");
-
     const converter = new TypeScriptToZodConverter(flattenedTypesPath);
     const types = converter.extractTypes();
-
     console.log(`✅ Found ${types.length} types to convert`);
 
     const zodSchemas = converter.generateZodSchemas(types);
     const outputPath = path.join(process.cwd(), "schemas/zod-schemas.ts");
-    const outputDir = path.dirname(outputPath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
     fs.writeFileSync(outputPath, zodSchemas, "utf-8");
-
     console.log(`🎉 Generated Zod schemas: ${outputPath}`);
-
-    // Log summary
-    console.log("\n📊 Summary:");
-    for (const type of types) {
-      if (type.properties.length > 0) {
-        console.log(`  🔧 ${type.name}: ${type.properties.length} properties`);
-      }
-    }
   } catch (error) {
     console.error("❌ Error generating Zod schemas:", error);
     process.exit(1);
@@ -69885,7 +68636,6 @@ async function main() {
 }
 
 main();
-
 ```
 
 <!-- path: scripts/push-sql.js -->
@@ -70119,9 +68869,15 @@ export default runPushSql;
 
 <!-- path: scripts/generate-flattened-types.ts -->
 ```typescript
+// scripts/generate-flattened-types.ts
 import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// --- CONFIGURATION ---
+const ALLOWED_AUTH_TABLES = new Set(['users']); // Only generate types for auth.users
+const ALLOWED_SCHEMAS = new Set(['public', 'auth']);
+// ---------------------
 
 interface TableInfo {
   name: string;
@@ -70180,6 +68936,10 @@ class SupabaseTypeExtractor {
     for (const member of node.type.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const schemaName = member.name.text;
+
+        // Filter Schemas
+        if (!ALLOWED_SCHEMAS.has(schemaName)) continue;
+
         if (member.type && ts.isTypeLiteralNode(member.type)) {
           this.extractFromSchema(member.type, schemaName, tables, views, enums);
         }
@@ -70229,6 +68989,12 @@ class SupabaseTypeExtractor {
     for (const member of tablesNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const tableName = member.name.text;
+
+        // FILTER: For Auth schema, only allow specific tables
+        if (schemaName === 'auth' && !ALLOWED_AUTH_TABLES.has(tableName)) {
+          continue;
+        }
+
         const tableInfo: TableInfo = { name: tableName, schema: schemaName };
 
         if (member.type && ts.isTypeLiteralNode(member.type)) {
@@ -70293,7 +69059,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-   private extractEnums(
+  private extractEnums(
     enumsNode: ts.TypeLiteralNode,
     schemaName: string,
     enums: EnumInfo[]
@@ -70307,7 +69073,6 @@ class SupabaseTypeExtractor {
           values: [],
         };
 
-        // THE FIX: Handle both single literal types and union types for enums.
         if (member.type) {
           if (ts.isUnionTypeNode(member.type)) {
             enumInfo.values = this.extractUnionValues(member.type);
@@ -70348,10 +69113,8 @@ function generateFlattenedTypes(
 ): string {
   let output = '// Auto-generated from types/supabase-types.ts\n\n';
 
-  // Import the Json type
-  output += 'import type { Json, Database } from "@/types/supabase-types";\n\n';
+  output += 'import type { Json } from "@/types/supabase-types";\n\n';
 
-  // Generate table types
   output += '// ============= TABLES =============\n\n';
 
   for (const table of tables) {
@@ -70373,7 +69136,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate view types
   if (views.length > 0) {
     output += '// ============= VIEWS =============\n\n';
 
@@ -70389,7 +69151,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate enum types
   if (enums.length > 0) {
     output += '// ============= ENUMS =============\n\n';
 
@@ -70406,13 +69167,19 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate lists of table and view names for runtime checks
   output += '// ============= HELPERS =============\n\n';
 
-  const tableNamesArray = tables.map(t => `"${t.name}"`).join(',\n  ');
+  // Only export public tables as list for generic helpers, skipping auth tables for the helper array
+  const tableNamesArray = tables
+    .filter(t => t.schema === 'public')
+    .map(t => `"${t.name}"`)
+    .join(',\n  ');
   output += `export const tableNames = [\n  ${tableNamesArray}\n] as const;\n\n`;
 
-  const viewNamesArray = views.map(v => `"${v.name}"`).join(',\n  ');
+  const viewNamesArray = views
+    .filter(v => v.schema === 'public')
+    .map(v => `"${v.name}"`)
+    .join(',\n  ');
   output += `export const viewNames = [\n  ${viewNamesArray}\n] as const;\n\n`;
 
   return output;
@@ -70422,7 +69189,6 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Main execution
 async function main() {
   try {
     const supabaseTypesPath = path.join(
@@ -70453,32 +69219,10 @@ async function main() {
 
     console.log(`🎉 Generated flattened types: ${outputPath}`);
 
-    // Log summary
     console.log('\n📊 Summary:');
     tables.forEach((table) => {
-      const types = [
-        table.row && 'Row',
-        table.insert && 'Insert',
-        table.update && 'Update',
-      ]
-        .filter(Boolean)
-        .join(', ');
-      console.log(`  📋 ${table.schema}.${table.name}: ${types}`);
+      console.log(`  📋 ${table.schema}.${table.name}`);
     });
-
-    if (views.length > 0) {
-      views.forEach((view) => {
-        console.log(`  👁️  ${view.schema}.${view.name}: Row`);
-      });
-    }
-
-    if (enums.length > 0) {
-      enums.forEach((enumInfo) => {
-        console.log(
-          `  🔤 ${enumInfo.schema}.${enumInfo.name}: ${enumInfo.values.length} values`
-        );
-      });
-    }
   } catch (error) {
     console.error('❌ Error generating flattened types:', error);
     process.exit(1);
@@ -70486,7 +69230,6 @@ async function main() {
 }
 
 main();
-
 ```
 
 <!-- path: hooks/useKmlManager.ts -->
@@ -71421,6 +70164,104 @@ export function createPagedRpcHook<
 }
 ```
 
+<!-- path: hooks/database/search-utils.ts -->
+```typescript
+// hooks/database/search-utils.ts
+
+/**
+ * Constructs a SQL-compatible OR search string for Supabase RPCs.
+ * Used for server-side filtering.
+ *
+ * @param query The search term entered by the user.
+ * @param fields The list of database column names to search against.
+ * @returns A string formatted for the `or` filter (e.g., "(name.ilike.%term%,code.ilike.%term%)") or undefined.
+ */
+export function buildServerSearchString(query: string | undefined, fields: string[]): string | undefined {
+  if (!query || query.trim() === '') return undefined;
+
+  const term = query.trim().replace(/'/g, "''"); // Escape single quotes for SQL
+  const conditions = fields.map(field => {
+    // Handle casting for non-text fields if hinted (e.g., "ip_address::text")
+    // The field name passed in should already include the cast if needed
+    return `${field} ILIKE '%${term}%'`;
+  });
+
+  return `(${conditions.join(' OR ')})`;
+}
+
+/**
+ * Performs client-side filtering on an array of data.
+ * Used for local/offline search responsiveness.
+ *
+ * @param data The array of records to filter.
+ * @param query The search term.
+ * @param fields The keys of the record object to check.
+ * @returns The filtered array.
+ */
+export function performClientSearch<T>(data: T[], query: string | undefined, fields: (keyof T)[]): T[] {
+  if (!data || data.length === 0) return [];
+  if (!query || query.trim() === '') return data;
+
+  const lowerQuery = query.toLowerCase().trim();
+
+  return data.filter(item => {
+    return fields.some(field => {
+      const value = item[field];
+      if (value === null || value === undefined) return false;
+      return String(value).toLowerCase().includes(lowerQuery);
+    });
+  });
+}
+
+/**
+ * Performs consistent client-side sorting.
+ *
+ * @param data The array of records to sort.
+ * @param sortField The field to sort by.
+ * @param direction 'asc' or 'desc'.
+ * @returns The sorted array.
+ */
+export function performClientSort<T>(data: T[], sortField: keyof T, direction: 'asc' | 'desc' = 'asc'): T[] {
+  if (!data) return [];
+
+  const sorted = [...data].sort((a, b) => {
+    const valA = a[sortField];
+    const valB = b[sortField];
+
+    // Handle nulls: nulls always go last in this implementation
+    if (valA === valB) return 0;
+    if (valA === null || valA === undefined) return 1;
+    if (valB === null || valB === undefined) return -1;
+
+    // String comparison using locale
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return valA.localeCompare(valB, undefined, { sensitivity: 'base', numeric: true });
+    }
+
+    // Number/Boolean comparison
+    if (valA < valB) return -1;
+    if (valA > valB) return 1;
+    return 0;
+  });
+
+  return direction === 'asc' ? sorted : sorted.reverse();
+}
+
+/**
+ * Performs client-side pagination.
+ *
+ * @param data The filtered and sorted data array.
+ * @param currentPage The current page number (1-based).
+ * @param pageSize The number of items per page.
+ * @returns The slice of data for the current page.
+ */
+export function performClientPagination<T>(data: T[], currentPage: number, pageSize: number): T[] {
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  return data.slice(start, end);
+}
+```
+
 <!-- path: hooks/database/bulk-queries.ts -->
 ```typescript
 // hooks/database/bulk-queries.ts
@@ -72146,7 +70987,6 @@ export * from "./useRingExcelUpload";
 <!-- path: hooks/database/excel-queries/useRingExcelUpload.ts -->
 ```typescript
 // hooks/database/excel-queries/useRingExcelUpload.ts
-import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -72154,31 +70994,11 @@ import { Database, Json } from '@/types/supabase-types';
 import { RingsInsertSchema } from '@/schemas/zod-schemas';
 import { toPgBoolean } from '@/config/helper-functions';
 import { EnhancedUploadResult, ValidationError } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 interface RingUploadOptions {
   file: File;
 }
-
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 type Association = {
   system?: string;
@@ -72206,7 +71026,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       ] = await Promise.all([
         supabase.from('lookup_types').select('id, name').eq('category', 'RING_TYPES'),
         supabase.from('maintenance_areas').select('id, name'),
-        supabase.from('v_systems_complete').select('id, system_name, node_name'), // THE FIX: Fetch from view with node names
+        supabase.from('v_systems_complete').select('id, system_name, node_name'),
       ]);
 
       if (ringTypesError) throw new Error(`Failed to fetch ring types: ${ringTypesError.message}`);
@@ -72215,12 +71035,12 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       const ringTypeMap = new Map(ringTypes.map(item => [item.name.toLowerCase().trim(), item.id]));
       const maintenanceAreaMap = new Map(maintenanceAreas.map(item => [item.name.toLowerCase().trim(), item.id]));
-
-      // THE FIX: Create two maps for flexible system lookup
       const systemNameMap = new Map(systems.map(item => [item.system_name?.toLowerCase().trim(), item.id]));
       const nodeNameMap = new Map(systems.map(item => [item.node_name?.toLowerCase().trim(), item.id]));
 
       toast.info('Reading and parsing Excel file...');
+
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -72269,7 +71089,6 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                 associatedSystemsJson = JSON.parse(associatedSystemsRaw);
                 if (!Array.isArray(associatedSystemsJson)) throw new Error("JSON is not an array.");
 
-                // Validate each system in the JSON array
                 for (const sys of associatedSystemsJson) {
                     const sysName = (sys.system)?.toLowerCase().trim();
                     if (!sysName || (!systemNameMap.has(sysName) && !nodeNameMap.has(sysName))) {
@@ -72277,8 +71096,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                     }
                 }
             } catch (e) {
-              console.log(e);
-
+                console.error(e);
                 rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
             }
         }
@@ -72346,9 +71164,6 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
     onSuccess: (result) => {
       if (result.successCount > 0) {
         toast.success(`Successfully processed ${result.successCount} of ${result.totalRows} ring records.`);
-      }
-      if (result.errorCount > 0) {
-        toast.warning(`${result.errorCount} records had errors.`);
       }
       queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
       queryClient.invalidateQueries({ queryKey: ['systems-data'] });
@@ -72533,6 +71348,7 @@ import {
   validateValue,
   ValidationError,
 } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX: Use centralized parser
 
 export interface SystemUploadOptions {
   file: File;
@@ -72540,32 +71356,6 @@ export interface SystemUploadOptions {
 }
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
-
-// CHANGED: Dynamic import wrapper
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // DYNAMIC IMPORT HERE
-  const XLSX = await import('xlsx');
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetName];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useSystemExcelUpload(
   supabase: SupabaseClient<Database>,
@@ -72591,7 +71381,8 @@ export function useSystemExcelUpload(
       };
 
       toast.info('Reading and parsing Excel file...');
-      // CHANGED: Await the async parse function
+
+      // THE FIX: Use the off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -72676,7 +71467,7 @@ export function useSystemExcelUpload(
           try {
             ringAssociationsJson = JSON.parse(processedData.ring_associations);
           } catch (e) {
-            console.log(e);
+             console.error(e);
             const jsonError = {
               rowIndex: i,
               column: 'ring_associations',
@@ -72690,17 +71481,6 @@ export function useSystemExcelUpload(
               data: originalData,
               error: 'Invalid JSON in ring_associations.',
             });
-            processingLogs.push(
-              logRowProcessing(
-                i,
-                excelRowNumber,
-                originalData,
-                processedData,
-                [jsonError],
-                true,
-                'JSON parsing failed.'
-              )
-            );
             continue;
           }
         }
@@ -72745,17 +71525,6 @@ export function useSystemExcelUpload(
             data: originalData,
             error: validationError.error,
           });
-          processingLogs.push(
-            logRowProcessing(
-              i,
-              excelRowNumber,
-              originalData,
-              processedData,
-              [validationError],
-              true,
-              'Missing required IDs.'
-            )
-          );
           continue;
         }
 
@@ -72769,7 +71538,7 @@ export function useSystemExcelUpload(
       if (recordsToProcess.length === 0) {
         if (allValidationErrors.length > 0) {
           toast.error(
-            `${allValidationErrors.length} rows had validation errors. See console for details.`
+            `${allValidationErrors.length} rows had validation errors. See console.`
           );
           console.error('System Upload Validation Errors:', allValidationErrors);
         } else {
@@ -72800,9 +71569,8 @@ export function useSystemExcelUpload(
       if (showToasts) {
         if (uploadResult.errorCount > 0) {
           toast.warning(
-            `${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed. Check console for details.`
+            `${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed.`
           );
-          console.error('System Upload Errors:', uploadResult.errors);
         } else {
           toast.success(
             `Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} systems.`
@@ -72836,29 +71604,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { EnhancedUploadResult, ProcessingLog, ValidationError } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 interface InventoryUploadOptions {
   file: File;
 }
-
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  const XLSX = await import('xlsx');
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const buffer = event.target?.result;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: '' });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useInventoryExcelUpload() {
   const supabase = createClient();
@@ -72874,6 +71624,8 @@ export function useInventoryExcelUpload() {
       };
 
       toast.info('Parsing Excel file...');
+
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (jsonData.length < 2) {
@@ -72886,7 +71638,6 @@ export function useInventoryExcelUpload() {
 
       // Enhanced Column Mapping
       const columnMap: Record<string, string> = {
-          // Item Details
           'asset no': 'asset_no',
           'asset number': 'asset_no',
           'name': 'name',
@@ -72897,24 +71648,20 @@ export function useInventoryExcelUpload() {
           'location': 'location',
           'store location': 'location',
           'functional location': 'functional_location',
-
-          // Transaction Details
           'quantity': 'quantity',
           'qty': 'quantity',
           'vendor': 'vendor',
           'cost': 'cost',
           'unit cost': 'cost',
           'purchase date': 'purchase_date',
-
-          // NEW: Action Columns
           'action': 'transaction_type',
-          'transaction type': 'transaction_type', // ADD, ISSUE, SET
+          'transaction type': 'transaction_type',
           'type': 'transaction_type',
-          'issued to': 'issued_to', // For ISSUE
+          'issued to': 'issued_to',
           'party': 'issued_to',
-          'reason': 'issue_reason', // For ISSUE/RESTOCK
+          'reason': 'issue_reason',
           'remarks': 'issue_reason',
-          'transaction date': 'transaction_date' // Override date
+          'transaction date': 'transaction_date'
       };
 
       const validPayloads = [];
@@ -72927,13 +71674,11 @@ export function useInventoryExcelUpload() {
 
           headers.forEach((header, idx) => {
               if(row[idx]) isEmpty = false;
-              // Clean header
               const cleanHeader = header.replace(/\(read only history\)/g, '').trim();
               const key = columnMap[cleanHeader] || columnMap[header];
 
               if (key) {
                   let val = row[idx];
-                  // Date formatting
                   if ((key === 'purchase_date' || key === 'transaction_date') && val instanceof Date) {
                       val = val.toISOString().split('T')[0];
                   }
@@ -72946,11 +71691,9 @@ export function useInventoryExcelUpload() {
               continue;
           }
 
-          // --- VALIDATION LOGIC ---
           const rowErrors: ValidationError[] = [];
           if (!rowData.name) rowErrors.push({ rowIndex: i, column: 'name', value: '', error: 'Item Name is required' });
 
-          // Action Validation
           const action = (rowData.transaction_type || 'ADD').toUpperCase();
           if (action === 'ISSUE') {
               if (!rowData.issued_to) rowErrors.push({ rowIndex: i, column: 'issued_to', value: '', error: 'Issued To is required for ISSUE action' });
@@ -72961,7 +71704,6 @@ export function useInventoryExcelUpload() {
               uploadResult.errorCount++;
               uploadResult.errors.push({ rowIndex: i + 2, data: rowData, error: rowErrors.map(e => e.error).join(', ') });
           } else {
-              // Normalize payload
               validPayloads.push({
                   ...rowData,
                   transaction_type: action
@@ -72974,7 +71716,6 @@ export function useInventoryExcelUpload() {
       if (validPayloads.length > 0) {
           toast.info(`Processing ${validPayloads.length} inventory actions...`);
 
-          // Call the SMART RPC
           const { data: result, error } = await supabase.rpc('bulk_import_inventory_smart', {
               p_items: validPayloads
           });
@@ -73003,7 +71744,6 @@ export function useInventoryExcelUpload() {
       return uploadResult;
     },
     onSuccess: () => {
-        // Invalidate both inventory list and history logs
         queryClient.invalidateQueries({ queryKey: ['inventory_items-data'] });
         queryClient.invalidateQueries({ queryKey: ['v_inventory_items'] });
         queryClient.invalidateQueries({ queryKey: ['inventory-history'] });
@@ -74088,49 +72828,7 @@ import {
   ValidationError,
 } from "@/hooks/database/excel-queries/excel-helpers";
 import { toast } from "sonner";
-
-//================================================================================
-// UPLOAD FUNCTIONS
-//================================================================================
-
-/**
- * Reads a File object and returns its contents as a 2D array using xlsx.
- */
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  const XLSX = await import("xlsx");
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = (event: ProgressEvent<FileReader>) => {
-      try {
-        if (!event.target?.result) {
-          throw new Error("File reading failed.");
-        }
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: "array" });
-        const worksheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetName];
-        if (!worksheet) {
-          throw new Error("No worksheet found in the file.");
-        }
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
-          header: 1,
-          defval: "",
-        });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    reader.onerror = (error) => {
-      reject(new Error(`FileReader error: ${error.type}`));
-    };
-
-    reader.readAsArrayBuffer(file);
-  });
-};
+import { parseExcelFile } from "@/utils/excel-parser"; // THE FIX
 
 //================================================================================
 // MAIN ENHANCED UPLOAD HOOK
@@ -74157,6 +72855,7 @@ export function useExcelUpload<T extends PublicTableName>(
 
       toast.info("Reading and parsing Excel file...");
 
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -74227,11 +72926,6 @@ export function useExcelUpload<T extends PublicTableName>(
         return supabase.from(tableName).upsert(rows as any, { onConflict });
       };
 
-      const upsertOne = async (row: TableInsert<T>, onConflict: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return supabase.from(tableName).upsert(row as any, { onConflict });
-      };
-
       for (let i = 0; i < filteredRows.length; i++) {
         const { row, idx } = filteredRows[i];
         const excelRowNumber = idx + 2;
@@ -74276,7 +72970,6 @@ export function useExcelUpload<T extends PublicTableName>(
           let rawValue = colIndex !== undefined ? row[colIndex] : undefined;
 
           try {
-            // Clean up potentially empty/undefined IDs or Parent IDs
             if (
               (mapping.dbKey === "id" ||
                 mapping.dbKey.endsWith("_id") ||
@@ -74286,7 +72979,6 @@ export function useExcelUpload<T extends PublicTableName>(
               rawValue = null;
             }
 
-            // Normalize IP Address fields
             {
               const key = String(mapping.dbKey || "").toLowerCase();
               const isIPField =
@@ -74297,8 +72989,6 @@ export function useExcelUpload<T extends PublicTableName>(
               }
             }
 
-            // ** THE FIX: Force ID generation if the field is 'id' and value is empty/missing **
-            // This ensures we never send { id: null } to Supabase for upserts/inserts.
             if (mapping.dbKey === "id" && rowHasContent) {
               if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") {
                 rawValue = generateUUID();
@@ -74310,11 +73000,7 @@ export function useExcelUpload<T extends PublicTableName>(
               try {
                 finalValue = mapping.transform(rawValue);
               } catch (transformError) {
-                const errorMsg =
-                  transformError instanceof Error
-                    ? transformError.message
-                    : "Transform function failed";
-
+                const errorMsg = transformError instanceof Error ? transformError.message : "Transform failed";
                 const validationError: ValidationError = {
                   rowIndex: i,
                   column: mapping.dbKey,
@@ -74352,11 +73038,7 @@ export function useExcelUpload<T extends PublicTableName>(
 
             logColumnTransformation(i, mapping.dbKey, rawValue, assignValue);
           } catch (columnError) {
-            const errorMsg =
-              columnError instanceof Error
-                ? columnError.message
-                : "Unknown column processing error";
-
+            const errorMsg = columnError instanceof Error ? columnError.message : "Unknown column error";
             const validationError: ValidationError = {
               rowIndex: i,
               column: mapping.dbKey,
@@ -74368,7 +73050,6 @@ export function useExcelUpload<T extends PublicTableName>(
           }
         }
 
-        // Merge static data (like user_id)
         if (staticData) {
           Object.assign(processedData, staticData);
         }
@@ -74404,12 +73085,8 @@ export function useExcelUpload<T extends PublicTableName>(
         processingLogs.push(log);
       }
 
-      // ... (Rest of the batching logic stays exactly the same) ...
       if (uploadType === "upsert" && conflictColumn) {
-        const conflictCols = String(conflictColumn)
-          .split(",")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
+        const conflictCols = String(conflictColumn).split(",").map((s) => s.trim()).filter((s) => s.length > 0);
 
         if (conflictCols.length > 0) {
           const seen = new Set<string>();
@@ -74417,32 +73094,23 @@ export function useExcelUpload<T extends PublicTableName>(
 
           for (const rec of recordsToProcess) {
             const values = conflictCols.map((c) => (rec as Record<string, unknown>)[c]);
-            const allPresent = values.every(
-              (v) => v !== undefined && v !== null && !(typeof v === "string" && v === "")
-            );
+            const allPresent = values.every((v) => v !== undefined && v !== null && !(typeof v === "string" && v === ""));
 
             if (!allPresent) {
-              if (!conflictCols.includes("id")) {
-                delete (rec as Record<string, unknown>).id;
-              }
+              if (!conflictCols.includes("id")) delete (rec as Record<string, unknown>).id;
               deduped.push(rec);
               continue;
             }
 
-            const normalized = values.map((v) =>
-              typeof v === "string" ? v.trim().toLowerCase() : v
-            );
+            const normalized = values.map((v) => typeof v === "string" ? v.trim().toLowerCase() : v);
             const key = JSON.stringify(normalized);
 
             if (!seen.has(key)) {
               seen.add(key);
-              if (!conflictCols.includes("id")) {
-                delete (rec as Record<string, unknown>).id;
-              }
+              if (!conflictCols.includes("id")) delete (rec as Record<string, unknown>).id;
               deduped.push(rec);
             }
           }
-
           recordsToProcess = deduped;
         }
       }
@@ -74470,19 +73138,11 @@ export function useExcelUpload<T extends PublicTableName>(
           const { error } = await query;
 
           if (error) {
-            // Enhanced error logging
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const errorDetails: any = { rawError: error };
-            if (error.code === "23503") {
-              console.error("FK Violation:", error);
-            }
-
             uploadResult.errorCount += batch.length;
             uploadResult.errors.push({
               rowIndex: i,
               data: batch,
               error: error.message,
-              ...(Object.keys(errorDetails).length > 0 ? { details: errorDetails } : {}),
             });
 
             if (showToasts) {
@@ -74492,10 +73152,7 @@ export function useExcelUpload<T extends PublicTableName>(
             uploadResult.successCount += batch.length;
           }
         } catch (unexpectedError) {
-          const errorMsg =
-            unexpectedError instanceof Error
-              ? unexpectedError.message
-              : "Unexpected error during batch operation";
+          const errorMsg = unexpectedError instanceof Error ? unexpectedError.message : "Unexpected error";
           uploadResult.errorCount += batch.length;
           uploadResult.errors.push({
             rowIndex: i,
@@ -74506,17 +73163,9 @@ export function useExcelUpload<T extends PublicTableName>(
       }
 
       if (uploadResult.errorCount > 0) {
-        if (showToasts) {
-          toast.warning(
-            `${uploadResult.successCount} rows uploaded successfully, but ${uploadResult.errorCount} failed. Check console for details.`
-          );
-        }
+        if (showToasts) toast.warning(`${uploadResult.successCount} saved, ${uploadResult.errorCount} failed.`);
       } else {
-        if (showToasts) {
-          toast.success(
-            `Successfully uploaded ${uploadResult.successCount} of ${uploadResult.totalRows} records.`
-          );
-        }
+        if (showToasts) toast.success(`Successfully uploaded ${uploadResult.successCount} records.`);
 
         try {
           await queryClient.invalidateQueries({
@@ -74525,33 +73174,13 @@ export function useExcelUpload<T extends PublicTableName>(
               if (!Array.isArray(key)) return false;
               return key.some((seg) => {
                 if (seg === tableName) return true;
-                if (
-                  typeof seg === "string" &&
-                  seg.toLowerCase().includes(String(tableName).toLowerCase())
-                )
-                  return true;
+                if (typeof seg === "string" && seg.toLowerCase().includes(String(tableName).toLowerCase())) return true;
                 return false;
               });
             },
-          });
-          await queryClient.refetchQueries({
-            predicate: (q) => {
-              const key = q.queryKey as unknown[];
-              if (!Array.isArray(key)) return false;
-              return key.some((seg) => {
-                if (seg === tableName) return true;
-                if (
-                  typeof seg === "string" &&
-                  seg.toLowerCase().includes(String(tableName).toLowerCase())
-                )
-                  return true;
-                return false;
-              });
-            },
-            type: "active",
           });
         } catch (err) {
-          console.log(err);
+           console.log(err);
         }
       }
 
@@ -74560,13 +73189,11 @@ export function useExcelUpload<T extends PublicTableName>(
     ...mutationOptions,
   });
 }
-
 ```
 
 <!-- path: hooks/database/excel-queries/usePortsExcelUpload.ts -->
 ```typescript
-// path: hooks/database/excel-queries/usePortsExcelUpload.ts
-import * as XLSX from 'xlsx';
+// hooks/database/excel-queries/usePortsExcelUpload.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -74574,6 +73201,7 @@ import { Database } from '@/types/supabase-types';
 import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
 import { EnhancedUploadResult, generateUUID, validateValue, ValidationError } from './excel-helpers';
 import { Ports_managementInsertSchema } from '@/schemas/zod-schemas';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 export interface PortsUploadOptions {
   file: File;
@@ -74581,7 +73209,6 @@ export interface PortsUploadOptions {
   systemId: string;
 }
 
-// Helper to parse numeric fields safely
 const parseNumber = (val: unknown): number => {
   if (typeof val === 'number') return val;
   if (typeof val === 'string' && val.trim() !== '') {
@@ -74589,27 +73216,6 @@ const parseNumber = (val: unknown): number => {
     return isNaN(num) ? 0 : num;
   }
   return 0;
-};
-
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
 };
 
 export function usePortsExcelUpload(
@@ -74629,6 +73235,8 @@ export function usePortsExcelUpload(
       };
 
       toast.info('Reading and parsing Excel file...');
+
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (jsonData.length < 2) {
@@ -74643,14 +73251,12 @@ export function usePortsExcelUpload(
       });
 
       const dataRows = jsonData.slice(1);
-      // Use any here temporarily until Zod schema is regenerated
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const recordsToUpsert: any[] = [];
       const allValidationErrors: ValidationError[] = [];
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
-        // const excelRowNumber = i + 2;
         const originalData: Record<string, unknown> = {};
         excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
 
@@ -74683,17 +73289,13 @@ export function usePortsExcelUpload(
             continue;
         }
 
-        // --- CONSTRUCT RECORD WITH NEW FIELDS ---
         const recordToUpsert = {
-          // If the ID from the Excel sheet is valid, use it. Otherwise, generate a new one.
           id: (processedData.id && typeof processedData.id === 'string' && processedData.id.trim() !== '') ? processedData.id : generateUUID(),
           system_id: systemId,
           port: processedData.port as string | null,
           port_type_id: processedData.port_type_id as string | null,
           port_capacity: processedData.port_capacity as string | null,
           sfp_serial_no: processedData.sfp_serial_no as string | null,
-          // Map new fields. Note: toPgBoolean is handled by mapping.transform if config is correct,
-          // but we ensure defaults here.
           port_utilization: processedData.port_utilization !== undefined ? Boolean(processedData.port_utilization) : false,
           port_admin_status: processedData.port_admin_status !== undefined ? Boolean(processedData.port_admin_status) : false,
           services_count: parseNumber(processedData.services_count),
@@ -74737,7 +73339,6 @@ export function usePortsExcelUpload(
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
     },
     onError: (error, variables) => {
-      // The error is already toasted inside the mutationFn for more specific messages
       mutationOptions.onError?.(error, { ...variables, uploadType: 'upsert' });
     }
   });
@@ -74751,29 +73352,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { EnhancedUploadResult, logRowProcessing, ProcessingLog, ValidationError } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 interface EFileUploadOptions {
   file: File;
 }
-
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  const XLSX = await import('xlsx');
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const buffer = event.target?.result;
-        const workbook = XLSX.read(buffer, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: '' });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useEFilesExcelUpload() {
   const supabase = createClient();
@@ -74789,6 +73372,7 @@ export function useEFilesExcelUpload() {
       };
 
       toast.info('Parsing Excel file...');
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (jsonData.length < 2) {
@@ -74799,29 +73383,24 @@ export function useEFilesExcelUpload() {
       const headers = (jsonData[0] as string[]).map(h => String(h).trim().toLowerCase());
       const dataRows = jsonData.slice(1);
 
-      // Update Column Mapping to detect Current Holder
       const columnMap: Record<string, string> = {
           'file number': 'file_number',
           'file no': 'file_number',
           'file no.': 'file_number',
           'subject': 'subject',
           'description': 'description',
-          'subject / description': 'subject', // Handle combined column header from exports
+          'subject / description': 'subject',
           'category': 'category',
           'priority': 'priority',
           'remarks': 'remarks',
-
-          // Initiator mappings
           'initiator': 'initiator_name',
           'initiator name': 'initiator_name',
           'started by': 'initiator_name',
-
-          // Current Holder mappings
           'current holder': 'current_holder_name',
           'currently with': 'current_holder_name',
           'holder': 'current_holder_name',
           'current location': 'current_holder_name',
-          'current holder name': 'current_holder_name' // Added specific match for auto-generated title
+          'current holder name': 'current_holder_name'
       };
 
       const validPayloads = [];
@@ -74846,11 +73425,10 @@ export function useEFilesExcelUpload() {
               continue;
           }
 
-          // Validation
           if (!rowData.file_number) rowErrors.push({ rowIndex: i, column: 'file_number', value: '', error: 'Required' });
           if (!rowData.subject) rowErrors.push({ rowIndex: i, column: 'subject', value: '', error: 'Required' });
           if (!rowData.category) rowErrors.push({ rowIndex: i, column: 'category', value: '', error: 'Required' });
-          if (!rowData.initiator_name) rowErrors.push({ rowIndex: i, column: 'initiator_name', value: '', error: 'Required (Must match an Employee Name)' });
+          if (!rowData.initiator_name) rowErrors.push({ rowIndex: i, column: 'initiator_name', value: '', error: 'Required' });
 
           if (rowErrors.length > 0) {
               allValidationErrors.push(...rowErrors);
@@ -74887,7 +73465,7 @@ export function useEFilesExcelUpload() {
       }
 
       if (uploadResult.errorCount > 0) {
-          toast.warning(`${uploadResult.successCount} uploaded, ${uploadResult.errorCount} failed. Check for missing Employees.`);
+          toast.warning(`${uploadResult.successCount} uploaded, ${uploadResult.errorCount} failed.`);
       } else {
           toast.success(`Successfully uploaded ${uploadResult.successCount} files.`);
       }
@@ -77827,32 +76405,31 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
-/**
- * Implements the local-first data fetching strategy for the Nodes page.
- */
 export const useNodesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Search Config
+  const searchFields = ['name', 'node_type_code', 'remark'] as (keyof V_nodes_completeRowSchema)[];
+  const serverSearchFields = useMemo(() => [
+    'name',
+    'node_type_code',
+    'remark',
+    'latitude::text',
+    'longitude::text'
+  ], []);
+
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
-
-    // Construct robust SQL search string
-    let searchString: string | undefined;
-
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
-
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `node_type_code ILIKE '%${term}%' OR ` +
-        `remark ILIKE '%${term}%' OR ` +
-        `latitude::text ILIKE '%${term}%' OR ` +
-        `longitude::text ILIKE '%${term}%'` +
-      `)`;
-    }
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
 
     const rpcFilters = buildRpcFilters({
       ...filters,
@@ -77864,23 +76441,20 @@ export const useNodesData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
       p_order_dir: 'asc'
     });
 
     if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  }, [searchQuery, filters]);
+    return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters, serverSearchFields]);
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    // THE FIX: Sort locally by name
     return localDb.v_nodes_complete.orderBy('name').toArray();
   }, []);
 
-  // 3. Use the local-first query hook
+  // 3. Query
   const {
     data: allNodes = [],
     isLoading,
@@ -77894,60 +76468,33 @@ export const useNodesData = (
     dexieTable: localDb.v_nodes_complete,
   });
 
-  // 4. Client-side processing (The Source of Truth for the UI)
+  // 4. Processing
   const processedData = useMemo(() => {
-    if (!allNodes) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allNodes || [];
 
-    let filtered = allNodes;
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Robust Client-Side Filtering
-    const cleanSearch = (searchQuery || '').trim().toLowerCase();
-
-    if (cleanSearch) {
-        filtered = filtered.filter((node) => {
-            const valuesToCheck = [
-                node.name,
-                node.node_type_code,
-                node.remark,
-                node.latitude,
-                node.longitude
-            ];
-
-            return valuesToCheck.some(val =>
-                val !== null &&
-                val !== undefined &&
-                String(val).toLowerCase().includes(cleanSearch)
-            );
-        });
-    }
-
-    // Apply Dropdown Filters
+    // Filters
     if (filters.node_type_id) {
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
-
     if (filters.maintenance_terminal_id) {
         filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
-
     if (filters.status) {
-         const statusBool = filters.status === 'true';
-         filtered = filtered.filter((node) => node.status === statusBool);
+         filtered = filtered.filter((node) => String(node.status) === filters.status);
     }
 
-    // THE FIX: Explicit client-side sort to guarantee order even after filtering
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    // Pagination Logic
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
         data: paginatedData,
@@ -77955,6 +76502,7 @@ export const useNodesData = (
         activeCount,
         inactiveCount
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -78029,29 +76577,33 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher (RPC)
+  // Search Config
+  const searchFields = useMemo(
+    () => [
+      'route_name',
+      'asset_no',
+      'transnet_id',
+      'sn_name',
+      'en_name',
+      'ofc_owner_name',
+    ] as (keyof V_ofc_cables_completeRowSchema)[],
+    []
+  );
+
   const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `route_name ILIKE '%${term}%' OR ` +
-        `asset_no ILIKE '%${term}%' OR ` +
-        `transnet_id ILIKE '%${term}%' OR ` +
-        `sn_name ILIKE '%${term}%' OR ` +
-        `en_name ILIKE '%${term}%' OR ` +
-        `ofc_owner_name ILIKE '%${term}%'` +
-      `)`;
-    }
-
+    const searchString = buildServerSearchString(searchQuery, searchFields);
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
@@ -78059,24 +76611,20 @@ export const useOfcData = (
 
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_ofc_cables_complete",
-      p_limit: 5000, // Fetch large batch for client-side fluidity
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by route_name ascending
       p_order_by: "route_name",
       p_order_dir: "asc",
     });
     if (error) throw error;
     return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, searchFields]);
 
-  // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // Sort locally by route_name
     return localDb.v_ofc_cables_complete.orderBy('route_name').toArray();
   }, []);
 
-  // 3. Local First Query Hook
   const {
     data: allCables = [],
     isLoading,
@@ -78090,50 +76638,31 @@ export const useOfcData = (
     dexieTable: localDb.v_ofc_cables_complete,
   });
 
-  // 4. Client-Side Processing
   const processedData = useMemo(() => {
-    if (!allCables) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
-    let filtered = allCables;
+    let filtered = allCables || [];
 
-    // Search Filter
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (cable) =>
-          cable.route_name?.toLowerCase().includes(lowerQuery) ||
-          cable.asset_no?.toLowerCase().includes(lowerQuery) ||
-          cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
-          cable.sn_name?.toLowerCase().includes(lowerQuery) ||
-          cable.en_name?.toLowerCase().includes(lowerQuery) ||
-          cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Dropdown Filters
+    // Filters
     if (filters.ofc_type_id)
       filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
-    if (filters.status) filtered = filtered.filter((c) => c.status === (filters.status === "true"));
+    if (filters.status)
+      filtered = filtered.filter((c) => String(c.status) === filters.status);
     if (filters.ofc_owner_id)
       filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
     if (filters.maintenance_terminal_id)
-      filtered = filtered.filter(
-        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
-      );
+      filtered = filtered.filter((c) => c.maintenance_terminal_id === filters.maintenance_terminal_id);
 
-    // THE FIX: Explicit client-side sort to ensure order persists after filtering
-    filtered.sort((a, b) =>
-      (a.route_name || '').localeCompare(b.route_name || '', undefined, { sensitivity: 'base' })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'route_name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((c) => c.status === true).length;
-    const inactiveCount = totalCount - activeCount; // Calculate inactive
+    const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -78141,6 +76670,7 @@ export const useOfcData = (
       activeCount,
       inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCables, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -78157,30 +76687,28 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useAuditLogsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_audit_logsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Search Config
+  const searchFields = useMemo(
+    () => ['action_type', 'table_name', 'performed_by_name', 'performed_by_email'] as (keyof V_audit_logsRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
   const onlineQueryFn = useCallback(async (): Promise<V_audit_logsRowSchema[]> => {
-
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `action_type ILIKE '%${term}%' OR ` +
-        `table_name ILIKE '%${term}%' OR ` +
-        `performed_by_name ILIKE '%${term}%' OR ` +
-        `performed_by_email ILIKE '%${term}%'` +
-      `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_audit_logs',
@@ -78192,7 +76720,7 @@ export const useAuditLogsData = (
     });
     if (error) throw error;
     return (data as { data: V_audit_logsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
     return localDb.v_audit_logs.orderBy('created_at').reverse().toArray();
@@ -78212,19 +76740,12 @@ export const useAuditLogsData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allLogs) return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    let filtered = allLogs || [];
 
-    let filtered = allLogs;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter((log) =>
-        log.action_type?.toLowerCase().includes(lowerQuery) ||
-        log.table_name?.toLowerCase().includes(lowerQuery) ||
-        log.performed_by_name?.toLowerCase().includes(lowerQuery) ||
-        log.performed_by_email?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
+    // Filters
     if (filters.table_name) {
       filtered = filtered.filter((log) => log.table_name === filters.table_name);
     }
@@ -78232,17 +76753,21 @@ export const useAuditLogsData = (
       filtered = filtered.filter((log) => log.action_type === filters.action_type);
     }
 
+    // Sort (Desc for logs)
+    filtered = performClientSort(filtered, 'created_at', 'desc');
+
     const totalCount = filtered.length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
-      activeCount: 0, // Not applicable
+      activeCount: 0,
       inactiveCount: 0,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allLogs, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -78393,30 +76918,40 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Configuration for Search
+  const searchFields = [
+    'system_name',
+    'system_type_name',
+    'node_name',
+    'make',
+    's_no'
+  ] as (keyof V_systems_completeRowSchema)[];
+
+  // For server-side, we need to handle specific casts manually or pass strings
+  const serverSearchFields = useMemo(() => [
+    'system_name',
+    'system_type_name',
+    'node_name',
+    'ip_address::text', // Special cast for INET
+    'make',
+    's_no'
+  ], []);
+
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
-
-    // FIX: Construct proper SQL string for search
-    let searchString: string | undefined;
-
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-
-      searchString = `(` +
-        `system_name ILIKE '%${term}%' OR ` +
-        `system_type_name ILIKE '%${term}%' OR ` +
-        `node_name ILIKE '%${term}%' OR ` +
-        `ip_address::text ILIKE '%${term}%' OR ` + // Cast INET to text
-        `make ILIKE '%${term}%' OR ` +
-        `s_no ILIKE '%${term}%'` +
-      `)`;
-    }
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
 
     const rpcFilters = buildRpcFilters({
       ...filters,
@@ -78428,20 +76963,19 @@ export const useSystemsData = (
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicit ascending sort
       p_order_by: 'system_name',
       p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
     return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
-  // 3. Use the local-first query hook
+  // 3. Local-First Query
   const {
     data: allSystems = [],
     isLoading,
@@ -78455,62 +76989,54 @@ export const useSystemsData = (
     dexieTable: localDb.v_systems_complete,
   });
 
-  // 4. Client-side processing
+  // 4. Client-side Processing (Unified Logic)
   const processedData = useMemo(() => {
-    if (!allSystems) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    let filtered = allSystems || [];
+
+    // Search
+    // Special handling for IP Address which isn't a simple string match on the object sometimes
+    if (searchQuery) {
+        // First standard search
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+        // Additional manual check for IP address formatting if needed
+        const lowerQ = searchQuery.toLowerCase();
+        // Re-filter to include IP matches if standard search missed them (though performClientSearch handles basic string props)
+        // This ensures complex IP string logic matches server behavior
+        if (!filtered.length && lowerQ.includes('.')) {
+             filtered = (allSystems || []).filter(s => String(s.ip_address).includes(lowerQ));
+        }
     }
 
-    let filtered = allSystems;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (system) =>
-          system.system_name?.toLowerCase().includes(lowerQuery) ||
-          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-          system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery) ||
-          system.make?.toLowerCase().includes(lowerQuery) ||
-          system.s_no?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Explicit Filters
     if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system) =>
-          system.system_type_name === filters.system_type_name
-      );
+      filtered = filtered.filter(s => s.system_type_name === filters.system_type_name);
     }
     if (filters.system_capacity_name) {
-      filtered = filtered.filter(
-        (system) =>
-          system.system_capacity_name === filters.system_capacity_name
-      );
+      filtered = filtered.filter(s => s.system_capacity_name === filters.system_capacity_name);
     }
     if (filters.status) {
-      filtered = filtered.filter(
-        (system) => system.status === (filters.status === "true")
-      );
+      filtered = filtered.filter(s => String(s.status) === filters.status);
     }
 
-    filtered.sort((a, b) =>
-      (a.system_name || '').localeCompare(b.system_name || '', undefined, {
-        numeric: true,
-        sensitivity: 'base'
-      })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'system_name');
 
+    // Stats
     const totalCount = filtered.length;
     const activeCount = filtered.filter((s) => s.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    const inactiveCount = totalCount - activeCount;
+
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -79060,40 +77586,39 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useAllSystemConnectionsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_system_connections_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher using Generic Pagination RPC
+  // Search Config
+  const searchFields =useMemo(
+    () => [
+    'service_name',
+    'system_name',
+    'connected_system_name',
+    'bandwidth_allocated',
+    'unique_id',
+    'lc_id'
+  ] as (keyof V_system_connections_completeRowSchema)[],
+  []);
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
   const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
-
-    // Construct robust search string for SQL OR condition
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `service_name ILIKE '%${term}%' OR ` +
-        `system_name ILIKE '%${term}%' OR ` +
-        `connected_system_name ILIKE '%${term}%' OR ` +
-        `bandwidth_allocated ILIKE '%${term}%' OR ` +
-        `unique_id ILIKE '%${term}%' OR ` +
-        `lc_id ILIKE '%${term}%'` +
-      `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_system_connections_complete',
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      // Sort by Service Name alphabetically
       p_order_by: 'service_name',
       p_order_dir: 'asc',
     });
@@ -79101,17 +77626,12 @@ export const useAllSystemConnectionsData = (
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any)?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
-  // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // THE FIX: Use toArray() to fetch all records.
-    // We do NOT use orderBy('service_name') here because records with null service_name
-    // would be excluded by Dexie, and we sort properly in memory later anyway.
     return localDb.v_system_connections_complete.toArray();
   }, []);
 
-  // 3. Local-First Query Execution
   const {
     data: allConnections = [],
     isLoading,
@@ -79125,28 +77645,13 @@ export const useAllSystemConnectionsData = (
     dexieTable: localDb.v_system_connections_complete,
   });
 
-  // 4. Client-Side Processing (Filtering, Sorting, Pagination)
   const processedData = useMemo(() => {
-    if (!allConnections) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allConnections || [];
 
-    let filtered = allConnections;
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Search Logic
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter((conn) =>
-        conn.service_name?.toLowerCase().includes(lowerQuery) ||
-        conn.system_name?.toLowerCase().includes(lowerQuery) ||
-        conn.connected_system_name?.toLowerCase().includes(lowerQuery) ||
-        conn.bandwidth_allocated?.toLowerCase().includes(lowerQuery) ||
-        conn.unique_id?.toLowerCase().includes(lowerQuery) ||
-        conn.lc_id?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // Filter Logic
+    // 2. Filters
     if (filters.media_type_id) {
         filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
     }
@@ -79158,7 +77663,7 @@ export const useAllSystemConnectionsData = (
         filtered = filtered.filter(c => c.status === statusBool);
     }
 
-    // Robust sorting by Service Name -> System Name
+    // 3. Sort (Custom Logic kept here as it uses multiple fields)
     filtered.sort((a, b) => {
       const nameA = a.service_name || a.system_name || '';
       const nameB = b.service_name || b.system_name || '';
@@ -79169,9 +77674,8 @@ export const useAllSystemConnectionsData = (
     const activeCount = filtered.filter((c) => !!c.status).length;
     const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -79179,6 +77683,7 @@ export const useAllSystemConnectionsData = (
       activeCount,
       inactiveCount
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConnections, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -79196,24 +77701,22 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DesignationWithRelations } from '@/config/designations';
+import {
+  buildServerSearchString,
+  performClientSort,
+} from '@/hooks/database/search-utils';
 
 export const useDesignationsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<DesignationWithRelations> => {
   const { filters, searchQuery } = params;
 
-  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-        const term = searchQuery.trim().replace(/'/g, "''");
-        searchString = `(name ILIKE '%${term}%')`;
-    }
+  // Search Config
+  const serverSearchFields = useMemo(() => ['name'], []);
 
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employee_designations',
@@ -79224,10 +77727,9 @@ export const useDesignationsData = (
     });
     if (error) throw error;
     return (data as { data: V_employee_designationsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
-    // Local sort by name
     return localDb.v_employee_designations.orderBy('name').toArray();
   }, []);
 
@@ -79245,12 +77747,10 @@ export const useDesignationsData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allDesignationsFlat) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = (allDesignationsFlat || []).filter(d => d.id != null);
 
-    let filtered = allDesignationsFlat.filter(d => d.id != null);
-
+    // 1. Search
+    // We use custom logic here because of the recursive parent/child filtering requirement specific to designations
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
@@ -79271,14 +77771,15 @@ export const useDesignationsData = (
       filtered = allDesignationsFlat.filter(d => d.id && searchFilteredIds.has(d.id));
     }
 
+    // 2. Filters
     if (filters.status) {
       filtered = filtered.filter(d => String(d.status) === filters.status);
     }
 
-    // THE FIX: Explicit case-insensitive sort
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
-    // Reconstruct Hierarchy
+    // 4. Reconstruct Hierarchy (Specific logic for this hook)
     const designationsWithRelations = filtered.map(d => ({
       ...d,
       id: d.id!,
@@ -79303,8 +77804,13 @@ export const useDesignationsData = (
     const activeCount = filtered.filter((d) => d.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
+    // Note: Designations page handles pagination internally in the Tree View,
+    // but if we use List view, we might need pagination.
+    // For consistency with other hooks, we return all data if it's hierarchical or paginated if list.
+    // The current UI component expects full list for tree building.
+
     return {
-      data: designationsWithRelations,
+      data: designationsWithRelations, // Return full list for tree construction
       totalCount,
       activeCount,
       inactiveCount,
@@ -79326,44 +77832,42 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useInventoryData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_inventory_itemsRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Search Config
+  const searchFields = useMemo(
+    () => ['name', 'description', 'asset_no'] as (keyof V_inventory_itemsRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
   const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
-
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `description ILIKE '%${term}%' OR ` +
-        `asset_no ILIKE '%${term}%'` +
-      `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_inventory_items',
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'name', // Changed from created_at to name
-      p_order_dir: 'asc', // Changed from desc to asc
+      p_order_by: 'name',
+      p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: V_inventory_itemsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
-    // Sort by name locally as well
     return localDb.v_inventory_items.orderBy('name').toArray();
   }, []);
 
@@ -79381,22 +77885,12 @@ export const useInventoryData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allItems) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allItems || [];
 
-    let filtered = allItems;
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.name?.toLowerCase().includes(lowerQuery) ||
-        item.description?.toLowerCase().includes(lowerQuery) ||
-        item.asset_no?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // Apply Filters
+    // 2. Filters
     if (filters.category_id) {
         filtered = filtered.filter(item => item.category_id === filters.category_id);
     }
@@ -79404,22 +77898,21 @@ export const useInventoryData = (
         filtered = filtered.filter(item => item.location_id === filters.location_id);
     }
 
-    // Explicit Client-Side Sort to ensure consistency
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
-    const activeCount = totalCount; // Inventory items don't have a standard boolean status field in this view context
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
-      activeCount,
+      activeCount: totalCount,
       inactiveCount: 0,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allItems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -79436,6 +77929,12 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useServicesData = (
   params: DataQueryHookParams
@@ -79443,64 +77942,37 @@ export const useServicesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
   const supabase = createClient();
 
-  // 1. Online Fetcher (RPC)
+  // Search Config
+  const searchFields = useMemo(
+    () => ['name', 'node_name', 'end_node_name', 'description', 'link_type_name'] as (keyof V_servicesRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-
-    // FIX: Use standard SQL syntax for the OR clause
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `node_name ILIKE '%${term}%' OR ` +
-        `end_node_name ILIKE '%${term}%' OR ` +
-        `description ILIKE '%${term}%' OR ` +
-        `link_type_name ILIKE '%${term}%'` +
-      `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
       p_order_dir: 'asc'
     });
 
     if (error) throw error;
-
-    // Handle variable return types from RPC wrapper
-    let resultList: V_servicesRowSchema[] = [];
-    if (Array.isArray(data)) {
-      if (data.length > 0 && 'data' in data[0]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resultList = (data[0] as any).data as V_servicesRowSchema[];
-      } else {
-            resultList = data as V_servicesRowSchema[];
-      }
-    } else if (data && typeof data === 'object' && 'data' in data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resultList = (data as any).data as V_servicesRowSchema[];
-    }
-
-    return resultList || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resultList = (data as any)?.data || [];
+    return resultList as V_servicesRowSchema[];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
-  // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // THE FIX: Local sort by name
     return localDb.v_services.orderBy('name').toArray();
   }, []);
 
-  // 3. Use Local First Query
   const {
     data: allServices = [],
     isLoading,
@@ -79514,47 +77986,30 @@ export const useServicesData = (
     dexieTable: localDb.v_services,
   });
 
-  // 4. Client-side Processing
   const processedData = useMemo(() => {
-    if (!allServices) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allServices || [];
 
-    let filtered = allServices;
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Search Filter
-    if (searchQuery) {
-        const lower = searchQuery.toLowerCase();
-        filtered = filtered.filter(s =>
-            s.name?.toLowerCase().includes(lower) ||
-            s.node_name?.toLowerCase().includes(lower) ||
-            s.end_node_name?.toLowerCase().includes(lower) ||
-            s.description?.toLowerCase().includes(lower) ||
-            s.link_type_name?.toLowerCase().includes(lower)
-        );
-    }
-
-    // Link Type Filter
+    // 2. Filters
     if (filters.link_type_id) {
         filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
     }
-
-    // Status Filter
     if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter(s => s.status === statusBool);
     }
 
-    // THE FIX: Explicit client-side sort
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // 3. Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter(s => s.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -79562,6 +78017,7 @@ export const useServicesData = (
       activeCount,
       inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 
   return {
@@ -79585,9 +78041,10 @@ import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-const BATCH_SIZE = 2500; // Fetch in chunks to prevent timeouts
+const BATCH_SIZE = 2500;
 
-const entitiesToSync: PublicTableOrViewName[] = [
+// List of tables that should be synced completely (Full Sync)
+const ENTITIES_FULL_SYNC: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
   'user_profiles',
@@ -79617,64 +78074,167 @@ const entitiesToSync: PublicTableOrViewName[] = [
   'v_services',
 ];
 
+// List of tables that should be synced incrementally (Append Only)
+const ENTITIES_INCREMENTAL_SYNC: PublicTableOrViewName[] = [
+  'v_audit_logs',
+  'v_inventory_transactions_extended'
+];
+
+/**
+ * Performs a safe, atomic Full Sync of an entity.
+ */
+async function performFullSync(
+  supabase: SupabaseClient,
+  db: HNVTMDatabase,
+  entityName: PublicTableOrViewName
+) {
+  const table = getTable(entityName);
+  let offset = 0;
+  let hasMore = true;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allFetchedData: any[] = [];
+
+  while (hasMore) {
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+      p_view_name: entityName,
+      p_limit: BATCH_SIZE,
+      p_offset: offset,
+      p_filters: {},
+    });
+
+    if (rpcError) throw rpcError;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const responseData = (rpcResponse as { data: any[] })?.data || [];
+    const validData = responseData.filter(item => item.id != null);
+
+    if (validData.length > 0) {
+      allFetchedData.push(...validData);
+    }
+
+    if (responseData.length < BATCH_SIZE) {
+      hasMore = false;
+    } else {
+      offset += BATCH_SIZE;
+    }
+  }
+
+  await db.transaction('rw', table, async () => {
+    await table.clear();
+    if (allFetchedData.length > 0) {
+      await table.bulkPut(allFetchedData);
+    }
+  });
+
+  return allFetchedData.length;
+}
+
+/**
+ * Performs an Incremental Sync for append-only data.
+ */
+async function performIncrementalSync(
+  supabase: SupabaseClient,
+  db: HNVTMDatabase,
+  entityName: PublicTableOrViewName
+) {
+  const table = getTable(entityName);
+
+  // 1. Find the latest timestamp locally
+  const latestRecord = await table.orderBy('created_at').last();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let lastCreatedAt: string | null = (latestRecord as any)?.created_at || null;
+
+  let offset = 0;
+  let hasMore = true;
+  let totalSynced = 0;
+
+  while (hasMore) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filters: any = {};
+    if (lastCreatedAt) {
+      // THE FIX: Use '>' instead of 'gt' for SQL syntax compatibility in build_where_clause.
+      // Also, we try to ensure the string format is comparable if possible, but usually ISO is safe enough
+      // if the DB cast::text output is consistent.
+      // Note: 'get_paged_data' calls 'build_where_clause' which injects this operator directly.
+      filters['created_at'] = { operator: '>', value: lastCreatedAt };
+    }
+
+    const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+      p_view_name: entityName,
+      p_limit: BATCH_SIZE,
+      p_offset: offset,
+      p_filters: filters,
+      p_order_by: 'created_at',
+      p_order_dir: 'asc' // Oldest to newest
+    });
+
+    if (rpcError) throw rpcError;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const responseData = (rpcResponse as { data: any[] })?.data || [];
+    const validData = responseData.filter(item => item.id != null);
+
+    if (validData.length > 0) {
+      // Use put to upsert to avoid key collision errors if overlap occurs
+      await table.bulkPut(validData);
+      totalSynced += validData.length;
+
+      const lastItem = validData[validData.length - 1];
+      if (lastItem.created_at) {
+        lastCreatedAt = lastItem.created_at;
+      }
+    }
+
+    if (responseData.length < BATCH_SIZE) {
+      hasMore = false;
+    } else {
+      offset += BATCH_SIZE;
+    }
+  }
+
+  return totalSynced;
+}
+
 export async function syncEntity(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
   entityName: PublicTableOrViewName
 ) {
   try {
+    // Only log if not pending to avoid spam
+    // console.log(`[Sync] Starting sync for ${entityName}...`);
     await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
-    const table = getTable(entityName);
-    let offset = 0;
-    let hasMore = true;
+    let count = 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allFetchedData: any[] = [];
-
-    while (hasMore) {
-        const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
-            p_view_name: entityName,
-            p_limit: BATCH_SIZE,
-            p_offset: offset,
-            p_filters: {},
-        });
-
-        if (rpcError) throw rpcError;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const responseData = (rpcResponse as { data: any[] })?.data || [];
-        const validData = responseData.filter(item => item.id != null);
-
-        if (validData.length > 0) {
-            allFetchedData.push(...validData);
-        }
-
-        if (responseData.length < BATCH_SIZE) {
-            hasMore = false;
-        } else {
-            offset += BATCH_SIZE;
-        }
+    if (ENTITIES_INCREMENTAL_SYNC.includes(entityName)) {
+      count = await performIncrementalSync(supabase, db, entityName);
+    } else {
+      count = await performFullSync(supabase, db, entityName);
     }
 
-    await db.transaction('rw', table, async () => {
-        await table.clear();
-        if (allFetchedData.length > 0) {
-            await table.bulkPut(allFetchedData);
-        }
+    await db.sync_status.put({
+      tableName: entityName,
+      status: 'success',
+      lastSynced: new Date().toISOString(),
+      count
     });
-
-    await db.sync_status.put({ tableName: entityName, status: 'success', lastSynced: new Date().toISOString() });
 
   } catch (err) {
     const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
+    // Log error to console but do not break the app flow
     console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage);
+
     await db.sync_status.put({
       tableName: entityName,
       status: 'error',
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
+
+    // Throw to let the main loop know, but the loop catches it
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -79689,8 +78249,10 @@ export function useDataSync() {
     queryFn: async () => {
       try {
         const failures: string[] = [];
+        const allEntities = [...ENTITIES_FULL_SYNC, ...ENTITIES_INCREMENTAL_SYNC];
 
-        for (const entity of entitiesToSync) {
+        // Process sequentially
+        for (const entity of allEntities) {
           try {
               await syncEntity(supabase, localDb, entity);
           } catch (e) {
@@ -79698,24 +78260,27 @@ export function useDataSync() {
           }
         }
 
-        if (failures.length > 0) {
-          throw new Error(`Failed entities: ${failures.join(', ')}`);
-        }
-
         if (typeof window !== 'undefined') {
           localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
+        }
+
+        if (failures.length === 0) {
+          toast.success('Local data is up to date.');
+        } else {
+           toast.warning(`Sync completed with errors: ${failures.length} tables failed.`);
         }
 
         await queryClient.invalidateQueries({
           predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
 
-        toast.success('Local data is up to date.');
+        if (failures.length > 0) {
+            // Log full details to console but don't crash the query
+            console.error("Sync Failures:", failures);
+        }
 
         return { lastSynced: new Date().toISOString() };
       } catch (err) {
-        const message = (err as Error).message;
-        toast.error(`Data sync failed: ${message}`);
         throw err;
       }
     },
@@ -79730,7 +78295,7 @@ export function useDataSync() {
   return {
     isSyncing: isLoading || isFetching,
     syncError: error,
-    syncStatus,
+    syncStatus, // Return the live query result for UI usage
     sync: refetch
   };
 }
@@ -79746,26 +78311,27 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Search Config
+  const searchFields = useMemo(
+    () => ['employee_name', 'employee_pers_no', 'employee_email', 'employee_contact', 'employee_designation_name'] as (keyof V_employeesRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
   const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
-
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `employee_name ILIKE '%${term}%' OR ` +
-        `employee_pers_no ILIKE '%${term}%' OR ` +
-        `employee_email ILIKE '%${term}%' OR ` +
-        `employee_contact ILIKE '%${term}%'` +
-      `)`;
-    }
-
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
@@ -79776,12 +78342,12 @@ export const useEmployeesData = (
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'employee_name', // Ensure DB sort matches client sort intent
+      p_order_by: 'employee_name',
       p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_employeesRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
     return localDb.v_employees.orderBy('employee_name').toArray();
@@ -79801,22 +78367,12 @@ export const useEmployeesData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allEmployees) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allEmployees || [];
 
-    let filtered = allEmployees;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (emp) =>
-          emp.employee_name?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_email?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+    // Filters
     if (filters.employee_designation_id) {
       filtered = filtered.filter((emp) => emp.employee_designation_id === filters.employee_designation_id);
     }
@@ -79824,22 +78380,18 @@ export const useEmployeesData = (
       filtered = filtered.filter((emp) => emp.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
     if (filters.status) {
-      const statusBool = filters.status === 'true';
-      filtered = filtered.filter((emp) => emp.status === statusBool);
+      filtered = filtered.filter((emp) => String(emp.status) === filters.status);
     }
 
-    // THE FIX: Explicit ascending sort by employee_name
-    filtered.sort((a, b) =>
-        (a.employee_name || '').localeCompare(b.employee_name || '', undefined, { sensitivity: 'base' })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'employee_name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
-    const inactiveCount = totalCount - activeCount; // Calculate inactive count
+    const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -79847,6 +78399,7 @@ export const useEmployeesData = (
       activeCount,
       inactiveCount: inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
@@ -80238,6 +78791,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const useOfcConnectionsData = (
   cableId: string | null
@@ -80245,23 +78803,25 @@ export const useOfcConnectionsData = (
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
+    // Search Config
+    const searchFields = [
+      'system_name', 'connection_type', 'updated_sn_name', 'updated_en_name'
+    ] as (keyof V_ofc_connections_completeRowSchema)[];
+
+    // Server search needs specific casts for numbers
+    const serverSearchFields = [
+      'system_name',
+      'connection_type',
+      'updated_sn_name',
+      'updated_en_name',
+      'fiber_no_sn::text',
+      'fiber_no_en::text'
+    ];
+
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
 
-      let searchString: string | undefined;
-      if (searchQuery && searchQuery.trim() !== '') {
-          const term = searchQuery.trim().replace(/'/g, "''");
-          // THE FIX: Added fiber_no_sn and fiber_no_en casting to text for numeric search
-          searchString = `(` +
-            `system_name ILIKE '%${term}%' OR ` +
-            `connection_type ILIKE '%${term}%' OR ` +
-            `updated_sn_name ILIKE '%${term}%' OR ` +
-            `updated_en_name ILIKE '%${term}%' OR ` +
-            `fiber_no_sn::text ILIKE '%${term}%' OR ` +
-            `fiber_no_en::text ILIKE '%${term}%'` +
-          `)`;
-      }
-
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
       const rpcFilters = buildRpcFilters({
         ...filters,
         ofc_id: cableId,
@@ -80280,7 +78840,7 @@ export const useOfcConnectionsData = (
       if (error) throw error;
       return (data as { data: V_ofc_connections_completeRowSchema[] })?.data || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, cableId]);
+    }, [searchQuery, filters, cableId, serverSearchFields]);
 
     const localQueryFn = useCallback(() => {
       if (!cableId) {
@@ -80313,36 +78873,39 @@ export const useOfcConnectionsData = (
 
       let filtered = allConnections;
 
-      // 1. Search Filtering
+      // 1. Search
       if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((conn) =>
-          conn.system_name?.toLowerCase().includes(lowerQuery) ||
-          conn.connection_type?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_sn_name?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_en_name?.toLowerCase().includes(lowerQuery) ||
-          // THE FIX: Added numeric checks for client-side filtering
-          String(conn.fiber_no_sn).includes(lowerQuery) ||
-          String(conn.fiber_no_en).includes(lowerQuery)
-        );
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+        // Manual Numeric Filtering addition
+        const lowerQ = searchQuery.toLowerCase();
+        if (searchQuery && !isNaN(Number(searchQuery))) {
+            const numericMatches = allConnections.filter(c =>
+                String(c.fiber_no_sn).includes(lowerQ) || String(c.fiber_no_en).includes(lowerQ)
+            );
+            // Union of results
+            const ids = new Set(filtered.map(f => f.id));
+            numericMatches.forEach(m => {
+                if(!ids.has(m.id)) filtered.push(m);
+            });
+        }
       }
 
-      // 2. Status Filtering
+      // 2. Filters
       if (filters.status) {
          const statusBool = filters.status === 'true';
          filtered = filtered.filter(c => c.status === statusBool);
       }
 
-      // Explicit Sort (Safety fallback)
+      // 3. Sort (Manual numeric sort for fibers)
       filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
       const totalCount = filtered.length;
       const activeCount = filtered.filter((c) => !!c.status).length;
       const inactiveCount = totalCount - activeCount;
 
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
+      // 4. Paginate
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,
@@ -80375,7 +78938,6 @@ import {
   Junction_closuresRowSchema as Junction_closuresRow,
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
-  // User_profilesRowSchema as BaseUserProfilesRow,
   Inventory_itemsRowSchema,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
@@ -80385,9 +78947,7 @@ import {
   V_maintenance_areasRowSchema,
   V_cable_utilizationRowSchema,
   V_ring_nodesRowSchema,
-
   V_employee_designationsRowSchema,
-  // V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
   Ring_based_systemsRowSchema,
   V_ofc_connections_completeRowSchema,
@@ -80404,7 +78964,6 @@ import {
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
-
 
 export type StoredUserProfiles = {
   id: string;
@@ -80457,6 +79016,7 @@ export interface SyncStatus {
   lastSynced: string | null;
   status: 'pending' | 'syncing' | 'success' | 'error';
   error?: string;
+  count?: number;
 }
 
 export interface MutationTask {
@@ -80470,6 +79030,14 @@ export interface MutationTask {
   attempts: number;
   lastAttempt?: string;
   error?: string;
+}
+
+// NEW: Persistent Cache for Route Distances
+export interface RouteDistanceCache {
+  id: string; // "lat1,lng1-lat2,lng2"
+  distance_km: number;
+  source: string;
+  timestamp: number;
 }
 
 export class HNVTMDatabase extends Dexie {
@@ -80516,11 +79084,14 @@ export class HNVTMDatabase extends Dexie {
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
 
+  // NEW TABLE
+  route_distances!: Table<RouteDistanceCache, string>;
+
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 24: Fix v_ring_nodes composite key
-    this.version(24).stores({
+    // VERSION 26: Added route_distances for ORS cache
+    this.version(26).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -80540,7 +79111,7 @@ export class HNVTMDatabase extends Dexie {
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
       logical_fiber_paths: '&id, path_name, system_connection_id',
-      inventory_transactions: '&id, inventory_item_id',
+      inventory_transactions: '&id, inventory_item_id, created_at',
 
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
@@ -80549,10 +79120,7 @@ export class HNVTMDatabase extends Dexie {
       v_employees: '&id, employee_name',
       v_maintenance_areas: '&id, name',
       v_cable_utilization: 'cable_id',
-
-      // THE CRITICAL FIX: Composite key [id+ring_id] allows a system (id) to exist in multiple rings (ring_id)
       v_ring_nodes: '&[id+ring_id], ring_id',
-
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
@@ -80566,6 +79134,9 @@ export class HNVTMDatabase extends Dexie {
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
+
+      // Cache Table
+      route_distances: 'id, timestamp'
     });
   }
 }
@@ -81018,6 +79589,12 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
 export const usePortsData = (
   systemId: string | null
@@ -81025,20 +79602,17 @@ export const usePortsData = (
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ports_management_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
+    // Search Config
+    const searchFields = useMemo(
+      () => ['port', 'port_type_name', 'port_type_code', 'sfp_serial_no'] as (keyof V_ports_management_completeRowSchema)[],
+      []
+    );
+    const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
     const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
       if (!systemId) return [];
 
-      let searchString: string | undefined;
-      if (searchQuery && searchQuery.trim() !== '') {
-          const term = searchQuery.trim().replace(/'/g, "''");
-          searchString = `(` +
-            `port ILIKE '%${term}%' OR ` +
-            `port_type_name ILIKE '%${term}%' OR ` +
-            `port_type_code ILIKE '%${term}%' OR ` +
-            `sfp_serial_no ILIKE '%${term}%'` +
-          `)`;
-      }
-
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
       const rpcFilters = buildRpcFilters({
         ...filters,
         system_id: systemId,
@@ -81057,7 +79631,7 @@ export const usePortsData = (
       if (error) throw error;
       return (data as { data: V_ports_management_completeRowSchema[] })?.data || [];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, systemId]);
+    }, [searchQuery, filters, systemId, serverSearchFields]);
 
     const localQueryFn = useCallback(() => {
       if (!systemId) {
@@ -81088,20 +79662,10 @@ export const usePortsData = (
 
       let filtered = allPorts;
 
-      // 1. Search Filtering
-      if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((p) =>
-          p.port?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_name?.toLowerCase().includes(lowerQuery) ||
-          p.port_type_code?.toLowerCase().includes(lowerQuery) ||
-          p.sfp_serial_no?.toLowerCase().includes(lowerQuery)
-        );
-      }
+      // 1. Search
+      filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-      // 2. Explicit Field Filtering
-
-      // NEW: Handle Multi-Select for Port Type Code
+      // 2. Filters
       if (filters.port_type_code) {
           const codes = Array.isArray(filters.port_type_code)
               ? (filters.port_type_code as string[])
@@ -81111,7 +79675,6 @@ export const usePortsData = (
               filtered = filtered.filter(p => p.port_type_code && codes.includes(p.port_type_code));
           }
       }
-
       if (filters.port_utilization) {
           const utilBool = filters.port_utilization === 'true';
           filtered = filtered.filter(p => p.port_utilization === utilBool);
@@ -81121,22 +79684,21 @@ export const usePortsData = (
           filtered = filtered.filter(p => p.port_admin_status === adminBool);
       }
 
-      // 3. Natural Sort
-      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-      filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
+      // 3. Sort
+      filtered = performClientSort(filtered, 'port');
 
       const totalCount = filtered.length;
       const activeCount = filtered.filter(p => p.port_admin_status).length;
+      const inactiveCount = totalCount - activeCount;
 
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
+      // 4. Paginate
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: totalCount - activeCount,
+        inactiveCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId]);
@@ -83155,6 +81717,168 @@ export { createClient as createBrowserClient } from './supabase/client';
 
 ```
 
+<!-- path: utils/mapUtils.ts -->
+```typescript
+// utils/mapUtils.ts
+import { BsnlNode } from '@/components/bsnl/types';
+import { MapNode } from '@/components/map/types/node';
+import L from 'leaflet';
+import { localDb } from '@/hooks/data/localDb';
+
+// --- 1. JITTER LOGIC (Map Display) ---
+
+export interface DisplayNode extends BsnlNode {
+  displayLat: number;
+  displayLng: number;
+}
+
+/**
+ * Applies a spiral jitter to nodes that share the exact same coordinates.
+ * This prevents markers from overlapping perfectly, ensuring all are clickable.
+ *
+ * @param nodes List of nodes to process
+ * @returns Nodes with modified displayLat/displayLng
+ */
+export const applyJitterToNodes = (nodes: BsnlNode[]): DisplayNode[] => {
+  const groupedNodes = new Map<string, BsnlNode[]>();
+
+  // Group nodes by exact coordinate
+  nodes.forEach(node => {
+    if (node.latitude && node.longitude) {
+      // Create a key based on coordinates (rounded slightly to catch very close nodes)
+      const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
+      if (!groupedNodes.has(key)) groupedNodes.set(key, []);
+      groupedNodes.get(key)!.push(node);
+    }
+  });
+
+  const results: DisplayNode[] = [];
+
+  groupedNodes.forEach((nodesAtLoc) => {
+    if (nodesAtLoc.length === 1) {
+      // No overlap, keep original position
+      results.push({
+        ...nodesAtLoc[0],
+        displayLat: nodesAtLoc[0].latitude!,
+        displayLng: nodesAtLoc[0].longitude!
+      });
+    } else {
+      // Overlap detected: Spiral them out
+      // 0.00015 degrees is roughly 15-20 meters
+      const radius = 0.00015;
+      const angleStep = (2 * Math.PI) / nodesAtLoc.length;
+
+      nodesAtLoc.forEach((node, i) => {
+        const angle = i * angleStep;
+        results.push({
+          ...node,
+          displayLat: node.latitude! + (radius * Math.sin(angle)),
+          displayLng: node.longitude! + (radius * Math.cos(angle))
+        });
+      });
+    }
+  });
+
+  return results;
+};
+
+
+// --- 2. ORS RATE LIMITER WITH PERSISTENT CACHE ---
+
+// Singleton promise chain to enforce sequential execution across the entire app
+let orsFetchChain: Promise<void> = Promise.resolve();
+const ORS_REQUEST_DELAY = 1600; // 1.6s delay
+
+// Generate a stable key for two coordinates regardless of direction
+const getDistanceKey = (start: MapNode, end: MapNode) => {
+  const lat1 = start.lat!.toFixed(6);
+  const lng1 = start.long!.toFixed(6);
+  const lat2 = end.lat!.toFixed(6);
+  const lng2 = end.long!.toFixed(6);
+
+  // Sort pairs so A->B and B->A use the same cache key
+  const p1 = `${lat1},${lng1}`;
+  const p2 = `${lat2},${lng2}`;
+  return p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
+};
+
+/**
+ * Fetches driving distance from OpenRouteService.
+ *
+ * OPTIMIZATIONS:
+ * 1. Checks IndexedDB (localDb) first.
+ * 2. If cached, returns immediately (no network, no delay).
+ * 3. If missing, queues request in singleton chain (1.6s delay).
+ * 4. Saves result to IndexedDB for future use.
+ */
+export const fetchOrsDistance = async (start: MapNode, end: MapNode): Promise<{ distance_km: number; source: string }> => {
+  const cacheKey = getDistanceKey(start, end);
+
+  // 1. Check Local Cache (Async)
+  try {
+    const cached = await localDb.route_distances.get(cacheKey);
+    // Valid for 30 days
+    if (cached && (Date.now() - cached.timestamp < 1000 * 60 * 60 * 24 * 30)) {
+       return { distance_km: cached.distance_km, source: 'cache' };
+    }
+  } catch (e) {
+    console.warn("Failed to read route cache", e);
+  }
+
+  // 2. Define Network Request
+  const makeRequest = async () => {
+    const response = await fetch('/api/ors-distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ a: start, b: end }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`ORS API failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // 3. Save to Cache (Fire and forget)
+    if (data.distance_km) {
+        localDb.route_distances.put({
+            id: cacheKey,
+            distance_km: parseFloat(data.distance_km),
+            source: data.source || 'api',
+            timestamp: Date.now()
+        }).catch(err => console.error("Failed to cache route distance", err));
+    }
+
+    return data;
+  };
+
+  // 4. Chain the request
+  const resultPromise = orsFetchChain.then(makeRequest);
+
+  // 5. Update the chain to include the delay
+  orsFetchChain = resultPromise
+    .then(() => new Promise<void>(res => setTimeout(res, ORS_REQUEST_DELAY)))
+    .catch(() => new Promise<void>(res => setTimeout(res, ORS_REQUEST_DELAY)));
+
+  return resultPromise;
+};
+
+// --- 3. LEAFLET HELPERS ---
+
+export const fixLeafletIcons = () => {
+  if (typeof window === 'undefined') return;
+
+  // @ts-expect-error - Accessing internal Leaflet prototype
+  delete L.Icon.Default.prototype._getIconUrl;
+
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  });
+};
+```
+
 <!-- path: utils/classNames.tsx -->
 ```typescript
 import clsx from 'clsx';
@@ -83492,6 +82216,93 @@ export const getNodeIcon = (
 
   // Fallback
   return DefaultIcon;
+};
+```
+
+<!-- path: utils/excel-parser.ts -->
+```typescript
+// utils/excel-parser.ts
+"use client";
+
+// Inline Worker Code to avoid Next.js/Webpack worker-loader complexity
+const workerCode = `
+self.onmessage = async (e) => {
+  const { fileData, type } = e.data;
+
+  try {
+    // Import XLSX from CDN for the worker context
+    // This avoids bundling heavy xlsx library in the main bundle if not needed immediately
+    importScripts('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js');
+
+    const workbook = self.XLSX.read(fileData, { type: 'array', cellDates: true });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    // Parse to JSON (Header: 1 means array of arrays)
+    const jsonData = self.XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: null,
+      blankrows: false
+    });
+
+    self.postMessage({ success: true, data: jsonData });
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
+};
+`;
+
+/**
+ * Parses an Excel or CSV file using a Web Worker to prevent UI freezing.
+ * Returns a Promise that resolves to a 2D array of values.
+ */
+export const parseExcelFile = async (file: File): Promise<unknown[][]> => {
+  // Fallback for server-side rendering
+  if (typeof window === 'undefined') return [];
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const fileData = e.target?.result;
+
+        // Create worker from blob
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl);
+
+        worker.onmessage = (event) => {
+          const { success, data, error } = event.data;
+
+          // Cleanup
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
+
+          if (success) {
+            resolve(data);
+          } else {
+            reject(new Error(error || 'Worker failed to parse Excel file'));
+          }
+        };
+
+        worker.onerror = (err) => {
+          worker.terminate();
+          URL.revokeObjectURL(workerUrl);
+          reject(new Error('Excel Worker Error: ' + err.message));
+        };
+
+        // Start processing
+        worker.postMessage({ fileData });
+
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
 };
 ```
 
@@ -84542,12 +83353,61 @@ import Uppy from "@uppy/core";
 import ImageEditor from "@uppy/image-editor";
 import { useRef, useEffect } from "react";
 
-// Types for better type safety
-interface CompressionOptions {
-  maxWidth?: number;
-  maxHeight?: number;
-  quality?: number;
-}
+// --- WORKER IMPLEMENTATION (INLINED) ---
+// Defined as a string to avoid complex Webpack/Next.js worker loader configurations.
+// Uses OffscreenCanvas for high-performance, non-blocking image processing.
+const workerCode = `
+self.onmessage = async (e) => {
+  const { file, options } = e.data;
+  const { maxWidth = 1920, maxHeight = 1080, quality = 0.8 } = options;
+
+  try {
+    // 1. Create bitmap from file (highly optimized browser API)
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+
+    // 2. Calculate aspect-ratio safe scaling
+    if (width > maxWidth || height > maxHeight) {
+      const aspectRatio = width / height;
+      if (width > height) {
+        width = Math.min(width, maxWidth);
+        height = width / aspectRatio;
+      } else {
+        height = Math.min(height, maxHeight);
+        width = height * aspectRatio;
+      }
+    }
+
+    // 3. Draw to OffscreenCanvas
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) throw new Error('Could not get OffscreenCanvas context');
+
+    // High quality smoothing
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    // 4. Compress and convert to Blob
+    const blob = await canvas.convertToBlob({
+      type: file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+      quality: quality
+    });
+
+    // 5. Send result back
+    self.postMessage({ success: true, blob });
+
+    // Cleanup memory
+    bitmap.close();
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
+};
+`;
+
+// --- MAIN THREAD UTILITIES ---
 
 interface OptimizedUppyOptions {
   folderId: string | null;
@@ -84555,7 +83415,6 @@ interface OptimizedUppyOptions {
   maxNumberOfFiles?: number;
 }
 
-// 1. Improved ImageEditor configuration with better compression
 export const enhancedImageEditorConfig = {
   quality: 0.85,
   cropperOptions: {
@@ -84581,92 +83440,84 @@ export const enhancedImageEditorConfig = {
   },
 };
 
-// 2. Enhanced image compression utility function
-export const compressImage = (
-  file: File,
-  options: CompressionOptions = {},
-): Promise<File> => {
-  const { maxWidth = 1920, maxHeight = 1080, quality = 0.8 } = options;
+/**
+ * Utility to determine optimal compression settings based on file size.
+ */
+export const getOptimalImageSettings = (file: File) => {
+  const sizeInMB = file.size / (1024 * 1024);
+
+  // Aggressive compression for very large files
+  if (sizeInMB > 10) return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
+  // Moderate compression for medium files
+  if (sizeInMB > 5) return { quality: 0.7, maxWidth: 1800, maxHeight: 1350 };
+  // Light compression for typical photos
+  return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
+};
+
+/**
+ * Compresses an image using a Web Worker to prevent UI blocking.
+ * Falls back to original file if Workers/OffscreenCanvas are not supported.
+ */
+export const smartCompress = async (file: File): Promise<File> => {
+  // Skip non-images or if Worker API is unavailable
+  if (!file.type.startsWith("image/") || typeof Worker === 'undefined') {
+    return file;
+  }
 
   return new Promise((resolve) => {
-    // Check if it's actually an image
-    if (!file.type.startsWith("image/")) {
-      resolve(file);
-      return;
-    }
+    try {
+      // Create worker from inline blob
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(blob);
+      const worker = new Worker(workerUrl);
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+      const options = getOptimalImageSettings(file);
 
-    if (!ctx) {
-      console.warn("Could not get canvas context");
-      resolve(file);
-      return;
-    }
+      // Handle worker response
+      worker.onmessage = (e) => {
+        const { success, blob, error } = e.data;
 
-    const img = new Image();
+        if (success && blob) {
+          // Log compression stats for debugging
+          const reduction = ((file.size - blob.size) / file.size * 100).toFixed(1);
+          console.debug(`[SmartCompress] ${file.name}: -${reduction}% (${(blob.size/1024/1024).toFixed(2)}MB)`);
 
-    img.onload = () => {
-      try {
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
-
-        if (width > maxWidth || height > maxHeight) {
-          const aspectRatio = width / height;
-
-          if (width > height) {
-            width = Math.min(width, maxWidth);
-            height = width / aspectRatio;
-          } else {
-            height = Math.min(height, maxHeight);
-            width = height * aspectRatio;
-          }
+          const optimizedFile = new File([blob], file.name, {
+            type: file.type,
+            lastModified: Date.now()
+          });
+          resolve(optimizedFile);
+        } else {
+          console.warn("[SmartCompress] Worker failed, using original:", error);
+          resolve(file);
         }
 
-        canvas.width = width;
-        canvas.height = height;
+        // Cleanup
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+      };
 
-        // Clear canvas and draw image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              try {
-                const compressedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-                resolve(compressedFile);
-              } catch (error) {
-                console.warn("Error creating compressed file:", error);
-                resolve(file);
-              }
-            } else {
-              console.warn("Canvas toBlob produced empty result");
-              resolve(file);
-            }
-          },
-          file.type,
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error compressing image:", error);
+      // Handle worker startup errors
+      worker.onerror = (err) => {
+        console.error("[SmartCompress] Worker error:", err);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
         resolve(file);
-      }
-    };
+      };
 
-    img.onerror = () => {
-      console.warn("Error loading image for compression");
+      // Start the job
+      worker.postMessage({ file, options });
+
+    } catch (e) {
+      console.error("[SmartCompress] Setup failed:", e);
       resolve(file);
-    };
-
-    img.src = URL.createObjectURL(file);
+    }
   });
 };
 
-// 3. Enhanced Uppy configuration with compression
+/**
+ * Creates an Uppy instance configured with restrictions and image editing.
+ */
 export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   const {
     folderId,
@@ -84696,28 +83547,18 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
       folderId: folderId,
     },
     onBeforeFileAdded: (currentFile, files) => {
-      // Additional validation
-      if (currentFile.size === 0) {
-        uppy.log(`Skipping file ${currentFile.name} - file is empty`);
-        return false;
-      }
+      if (currentFile.size === 0) return false;
 
-      // Check for duplicate files
       const existingFile = Object.values(files).find(
         (file) =>
           file.name === currentFile.name && file.size === currentFile.size,
       );
 
-      if (existingFile) {
-        uppy.log(`Skipping file ${currentFile.name} - duplicate file`);
-        return false;
-      }
-
+      if (existingFile) return false;
       return true;
     },
   });
 
-  // Add ImageEditor plugin with error handling
   try {
     uppy.use(ImageEditor, enhancedImageEditorConfig);
   } catch (error) {
@@ -84727,20 +83568,22 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   return uppy;
 };
 
-// 4. WebP conversion utility (for modern browsers)
+/**
+ * Converts images to WebP format if supported by the browser (Main Thread).
+ * This is a secondary optimization step.
+ */
 export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
   return new Promise((resolve) => {
+    // Skip if not image or already WebP
     if (!file.type.startsWith("image/") || file.type === "image/webp") {
       resolve(file);
       return;
     }
 
-    // Check if browser supports WebP
+    // Feature detection
     const canvas = document.createElement("canvas");
-    const testBlob = canvas.toDataURL("image/webp");
-
-    if (!testBlob.startsWith("data:image/webp")) {
-      resolve(file);
+    if (!canvas.toDataURL("image/webp").startsWith("data:image/webp")) {
+      resolve(file); // Browser doesn't support WebP export
       return;
     }
 
@@ -84751,7 +83594,6 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
     }
 
     const img = new Image();
-
     img.onload = () => {
       try {
         canvas.width = img.width;
@@ -84764,13 +83606,11 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
               const webpFile = new File(
                 [blob],
                 file.name.replace(/\.[^/.]+$/, ".webp"),
-                {
-                  type: "image/webp",
-                  lastModified: Date.now(),
-                },
+                { type: "image/webp", lastModified: Date.now() },
               );
               resolve(webpFile);
             } else {
+              // If WebP is larger (rare but possible), keep original
               resolve(file);
             }
           },
@@ -84778,7 +83618,7 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
           quality,
         );
       } catch (error) {
-        console.warn("Error converting to WebP:", error);
+        console.warn("WebP conversion failed:", error);
         resolve(file);
       }
     };
@@ -84788,151 +83628,18 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
   });
 };
 
-// 5. Progressive JPEG utility
+/**
+ * Placeholder for Progressive JPEG creation.
+ * Real progressive encoding requires heavy WASM libraries (mozjpeg).
+ * For now, we return the file as-is to avoid client-side bloat.
+ */
 export const createProgressiveJPEG = (file: File): Promise<File> => {
-  return new Promise((resolve) => {
-    if (file.type !== "image/jpeg") {
-      resolve(file);
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      resolve(file);
-      return;
-    }
-
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              const progressiveFile = new File([blob], file.name, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              });
-              resolve(progressiveFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/jpeg",
-          0.85,
-        );
-      } catch (error) {
-        console.warn("Error creating progressive JPEG:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
+  return Promise.resolve(file);
 };
 
-// 6. FIXED Smart compression based on image content
-export const smartCompress = async (file: File): Promise<File> => {
-  if (!file.type.startsWith("image/")) {
-    return file;
-  }
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      console.warn("Could not get canvas context for smart compression");
-      resolve(file);
-      return;
-    }
-
-    img.onload = () => {
-      try {
-        // Get optimal settings based on file size
-        const { quality, maxWidth, maxHeight } = getOptimalImageSettings(file);
-
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
-
-        if (width > maxWidth || height > maxHeight) {
-          const aspectRatio = width / height;
-
-          if (width > height) {
-            width = Math.min(width, maxWidth);
-            height = width / aspectRatio;
-          } else {
-            height = Math.min(height, maxHeight);
-            width = height * aspectRatio;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Clear canvas and draw image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              try {
-                const optimizedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-
-                console.log(`Smart compression result: ${file.name}`, {
-                  original: (file.size / 1024 / 1024).toFixed(2) + "MB",
-                  compressed:
-                    (optimizedFile.size / 1024 / 1024).toFixed(2) + "MB",
-                  reduction:
-                    (
-                      ((file.size - optimizedFile.size) / file.size) *
-                      100
-                    ).toFixed(1) + "%",
-                });
-
-                resolve(optimizedFile);
-              } catch (error) {
-                console.warn("Error creating optimized file:", error);
-                resolve(file);
-              }
-            } else {
-              console.warn(
-                "Smart compression produced empty result, using original file",
-              );
-              resolve(file);
-            }
-          },
-          file.type,
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error in smart compression:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = (error) => {
-      console.warn("Error loading image for smart compression:", error);
-      resolve(file);
-    };
-
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-// 7. Custom hook for optimized file uploader
+/**
+ * React Hook to manage the Uppy instance lifecycle with optimization pipeline.
+ */
 export const useOptimizedFileUploader = (
   folderId: string | null,
 ): Uppy<{ folderId: string | null }, Record<string, never>> | null => {
@@ -84942,104 +83649,45 @@ export const useOptimizedFileUploader = (
   > | null>(null);
 
   useEffect(() => {
-    // Clean up previous instance
+    // Cleanup previous instance
     if (uppyRef.current) {
       uppyRef.current.destroy();
     }
 
     const uppy = createOptimizedUppy({ folderId });
 
-    // Add comprehensive image optimization preprocessor
+    // Inject Optimization Pipeline
     uppy.addPreProcessor(async (fileIDs) => {
       const optimizationPromises = fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
 
         if (file && file.type && file.type.startsWith("image/")) {
           try {
-            let optimizedFile = file.data as File;
+            const rawFile = file.data as File;
 
-            // Validate original file
-            if (optimizedFile.size === 0) {
-              console.warn(
-                `Skipping optimization for ${file.name} - empty file`,
-              );
-              return;
-            }
+            // 1. Off-thread resizing & compression (Web Worker)
+            let optimizedFile = await smartCompress(rawFile);
 
-            // Apply smart compression with fallback
+            // 2. WebP Conversion (Optional, main thread)
+            // Note: smartCompress output is already good, but WebP might squeeze more
             try {
-              const compressedFile = await smartCompress(optimizedFile);
-              if (
-                compressedFile.size > 0 &&
-                compressedFile.size < optimizedFile.size
-              ) {
-                optimizedFile = compressedFile;
-              }
-            } catch (compressionError) {
-              console.warn(
-                `Compression failed for ${file.name}:`,
-                compressionError,
-              );
+               const webpFile = await convertToWebP(optimizedFile);
+               if (webpFile.size < optimizedFile.size) {
+                 optimizedFile = webpFile;
+               }
+            } catch (e) {
+               console.warn("WebP step skipped", e);
             }
 
-            // Convert to WebP if beneficial (with validation)
-            try {
-              const webpFile = await convertToWebP(optimizedFile);
-              if (webpFile.size > 0 && webpFile.size < optimizedFile.size) {
-                optimizedFile = webpFile;
-              }
-            } catch (webpError) {
-              console.warn(
-                `WebP conversion failed for ${file.name}:`,
-                webpError,
-              );
-            }
-
-            // For JPEGs, make them progressive (with validation)
-            try {
-              if (optimizedFile.type === "image/jpeg") {
-                const progressiveFile =
-                  await createProgressiveJPEG(optimizedFile);
-                if (progressiveFile.size > 0) {
-                  optimizedFile = progressiveFile;
-                }
-              }
-            } catch (progressiveError) {
-              console.warn(
-                `Progressive JPEG creation failed for ${file.name}:`,
-                progressiveError,
-              );
-            }
-
-            // Final validation before updating Uppy
-            if (optimizedFile.size === 0) {
-              console.error(
-                `Optimization resulted in empty file for ${file.name}, using original`,
-              );
-              return; // Don't update Uppy, keep original
-            }
-
-            // Update the file in Uppy
+            // 3. Update Uppy state with optimized file
             uppy.setFileState(fileID, {
               data: optimizedFile,
               size: optimizedFile.size,
             });
 
-            const originalSizeMB = ((file.size ?? 0) / 1024 / 1024).toFixed(2);
-            const optimizedSizeMB = (optimizedFile.size / 1024 / 1024).toFixed(
-              2,
-            );
-            const compressionRatio = (
-              (((file.size ?? 0) - optimizedFile.size) / (file.size ?? 1)) *
-              100
-            ).toFixed(1);
-
-            console.log(
-              `Optimized ${file.name}: ${originalSizeMB}MB → ${optimizedSizeMB}MB (${compressionRatio}% reduction)`,
-            );
           } catch (error) {
-            console.warn(`Failed to optimize ${file.name}:`, error);
-            // Keep original file in case of any error
+            console.error(`Optimization failed for ${file.name}:`, error);
+            // On error, Uppy continues with the original file automatically
           }
         }
       });
@@ -85059,22 +83707,6 @@ export const useOptimizedFileUploader = (
 
   return uppyRef.current;
 };
-
-// 8. Utility function to get optimal image settings
-export const getOptimalImageSettings = (file: File) => {
-  const sizeInMB = file.size / (1024 * 1024);
-
-  if (sizeInMB > 10) {
-    return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
-  } else if (sizeInMB > 5) {
-    return { quality: 0.7, maxWidth: 1800, maxHeight: 1350 };
-  } else if (sizeInMB > 2) {
-    return { quality: 0.75, maxWidth: 1920, maxHeight: 1440 };
-  } else {
-    return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
-  }
-};
-
 ```
 
 <!-- path: utils/supabase/middleware.ts -->

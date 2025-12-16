@@ -1,7 +1,8 @@
+// path: components/home/HeroContent.tsx
 "use client";
 
 import { motion, MotionValue, TargetAndTransition, Variants } from "framer-motion";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
 interface HeroContentProps {
@@ -17,8 +18,8 @@ interface HeroContentProps {
 }
 
 // Fixed Spinner to ensure Tailwind classes work reliably
-const LoadingSpinner = ({ size = "sm" }: { size?: "sm" | "lg", color?: string }) => (
-  <div className={`animate-spin rounded-full border-2 border-t-transparent border-white ${
+const LoadingSpinner = ({ size = "sm", color = "border-white" }: { size?: "sm" | "lg", color?: string }) => (
+  <div className={`animate-spin rounded-full border-2 border-t-transparent ${color} ${
     size === "sm" ? "h-4 w-4" : "h-6 w-6"
   }`} />
 );
@@ -28,15 +29,13 @@ export default function HeroContent({
   floatingAnimation,
   textY,
 }: HeroContentProps) {
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Ref to hold the navigation timer to prevent duplicate scheduling
+
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Update time every second (Clock)
   useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
@@ -45,19 +44,15 @@ export default function HeroContent({
     return () => clearInterval(timeInterval);
   }, []);
 
-  // Countdown & Auto-Redirect Logic
   useEffect(() => {
-    // If navigation has started, don't do anything
     if (loading) return;
 
-    // Trigger redirect when countdown hits 0
     if (countdown === 0) {
       setLoading(true);
       router.push("/dashboard");
       return;
     }
 
-    // Decrement countdown
     navTimerRef.current = setTimeout(() => {
       setCountdown((prev) => prev - 1);
     }, 1000);
@@ -70,25 +65,21 @@ export default function HeroContent({
   const handleGetStarted = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Clear any pending countdown timer to prevent race conditions
     if (navTimerRef.current) clearTimeout(navTimerRef.current);
-    
     router.push("/dashboard");
   };
 
-  // Time formatting functions
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -109,10 +100,10 @@ export default function HeroContent({
       const zoneTime = new Date(utcTime + (3600000 * zone.offset));
       return {
         ...zone,
-        time: zoneTime.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
+        time: zoneTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
           minute: '2-digit',
-          hour12: false 
+          hour12: false
         })
       };
     });
@@ -139,7 +130,8 @@ export default function HeroContent({
       <motion.div
         variants={variants.ctaVariants}
         animate={floatingAnimation}
-        className="mb-6 rounded-full border border-red-400/40 bg-red-900/50 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
+        // FIX: Added bg-red-900 fallback
+        className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
       >
         <span className="text-xs font-semibold tracking-wide sm:text-sm">
           🚀 Advanced Database Management
@@ -152,7 +144,8 @@ export default function HeroContent({
         className="mb-8 w-full max-w-4xl"
       >
         {/* Main Clock Display */}
-        <div className="relative overflow-hidden rounded-2xl border border-red-400/30 bg-linear-to-br from-red-950/80 via-purple-950/60 to-red-950/80 p-6 shadow-2xl backdrop-blur-xl">
+        {/* FIX: Added bg-gray-900 fallback */}
+        <div className="relative overflow-hidden rounded-2xl border border-red-400/30 bg-gray-900 bg-linear-to-br from-red-950/80 via-purple-950/60 to-red-950/80 p-6 shadow-2xl backdrop-blur-xl">
           {/* Animated background glow */}
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-0 left-1/4 h-32 w-32 animate-pulse rounded-full bg-red-500 blur-3xl" />
@@ -160,8 +153,7 @@ export default function HeroContent({
           </div>
 
           <div className="relative z-10">
-            {/* Current Date */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
@@ -170,8 +162,7 @@ export default function HeroContent({
               {formatDate(currentTime)}
             </motion.div>
 
-            {/* Main Time Display */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6 }}
@@ -186,7 +177,7 @@ export default function HeroContent({
             </motion.div>
 
             {/* Day Progress Bar */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
@@ -198,7 +189,8 @@ export default function HeroContent({
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-red-950/50">
                 <motion.div
-                  className="h-full rounded-full bg-linear-to-r from-red-500 via-purple-500 to-pink-500 shadow-lg shadow-red-500/50"
+                  // FIX: Added bg-red-500 fallback
+                  className="h-full rounded-full bg-red-500 bg-linear-to-r from-red-500 via-purple-500 to-pink-500 shadow-lg shadow-red-500/50"
                   initial={{ width: 0 }}
                   animate={{ width: `${getDayProgress()}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
@@ -206,8 +198,7 @@ export default function HeroContent({
               </div>
             </motion.div>
 
-            {/* World Clocks Grid */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
@@ -236,7 +227,6 @@ export default function HeroContent({
         </div>
       </motion.div>
 
-      {/* Title */}
       <motion.h1
         variants={variants.titleVariants}
         className="relative mb-4 text-3xl leading-tight font-black text-white sm:mb-6 sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl dark:text-gray-100"
@@ -252,7 +242,6 @@ export default function HeroContent({
         </span>
       </motion.h1>
 
-      {/* Subtitle */}
       <motion.p
         variants={variants.subtitleVariants}
         className="mb-6 max-w-xs px-2 text-base leading-relaxed text-gray-300 sm:mb-8 sm:max-w-2xl sm:px-0 sm:text-lg md:text-xl lg:max-w-3xl lg:text-2xl dark:text-gray-400"
@@ -261,7 +250,6 @@ export default function HeroContent({
         records
       </motion.p>
 
-      {/* CTA buttons */}
       <motion.div
         variants={variants.ctaVariants}
         className="mt-2 flex w-full max-w-xs flex-col gap-3 px-4 sm:mt-4 sm:max-w-md sm:flex-col sm:items-center sm:gap-4 sm:px-0"
@@ -278,17 +266,16 @@ export default function HeroContent({
         >
           {loading ? (
             <div className="flex items-center gap-2">
-              <LoadingSpinner size="sm" color="white" />
+              <LoadingSpinner size="sm" color="border-white" />
               <span>Redirecting...</span>
             </div>
           ) : (
             `Get Started`
           )}
         </motion.button>
-        
-        {/* Countdown Indicator */}
+
         {!loading && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ delay: 1 }}

@@ -98,7 +98,16 @@ export default function DashboardHeader({
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
               <Link href="/">
-                <Image src="/logo.png" alt="Logo" width={60} height={60} className="ml-2" style={{"height":"auto"}}/>
+                {/* THE FIX: Explicitly set both width and height in style to satisfy Next.js warning */}
+                <Image 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  width={60} 
+                  height={60} 
+                  className="ml-2" 
+                  style={{ width: '60px', height: 'auto' }} 
+                  priority // Good practice for LCP element
+                />
               </Link>
             </div>
             {/* Logo */}
