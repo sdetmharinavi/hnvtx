@@ -15,6 +15,7 @@ import {
   validateValue,
   ValidationError,
 } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX: Use centralized parser
 
 export interface SystemUploadOptions {
   file: File;
@@ -22,32 +23,6 @@ export interface SystemUploadOptions {
 }
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_with_details'>;
-
-// CHANGED: Dynamic import wrapper
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  // DYNAMIC IMPORT HERE
-  const XLSX = await import('xlsx');
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetName];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useSystemExcelUpload(
   supabase: SupabaseClient<Database>,
@@ -73,7 +48,8 @@ export function useSystemExcelUpload(
       };
 
       toast.info('Reading and parsing Excel file...');
-      // CHANGED: Await the async parse function
+      
+      // THE FIX: Use the off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -158,7 +134,7 @@ export function useSystemExcelUpload(
           try {
             ringAssociationsJson = JSON.parse(processedData.ring_associations);
           } catch (e) {
-            console.log(e);
+             console.error(e);
             const jsonError = {
               rowIndex: i,
               column: 'ring_associations',
@@ -172,17 +148,6 @@ export function useSystemExcelUpload(
               data: originalData,
               error: 'Invalid JSON in ring_associations.',
             });
-            processingLogs.push(
-              logRowProcessing(
-                i,
-                excelRowNumber,
-                originalData,
-                processedData,
-                [jsonError],
-                true,
-                'JSON parsing failed.'
-              )
-            );
             continue;
           }
         }
@@ -227,17 +192,6 @@ export function useSystemExcelUpload(
             data: originalData,
             error: validationError.error,
           });
-          processingLogs.push(
-            logRowProcessing(
-              i,
-              excelRowNumber,
-              originalData,
-              processedData,
-              [validationError],
-              true,
-              'Missing required IDs.'
-            )
-          );
           continue;
         }
 
@@ -251,7 +205,7 @@ export function useSystemExcelUpload(
       if (recordsToProcess.length === 0) {
         if (allValidationErrors.length > 0) {
           toast.error(
-            `${allValidationErrors.length} rows had validation errors. See console for details.`
+            `${allValidationErrors.length} rows had validation errors. See console.`
           );
           console.error('System Upload Validation Errors:', allValidationErrors);
         } else {
@@ -282,9 +236,8 @@ export function useSystemExcelUpload(
       if (showToasts) {
         if (uploadResult.errorCount > 0) {
           toast.warning(
-            `${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed. Check console for details.`
+            `${uploadResult.successCount} systems saved, but ${uploadResult.errorCount} failed.`
           );
-          console.error('System Upload Errors:', uploadResult.errors);
         } else {
           toast.success(
             `Successfully saved ${uploadResult.successCount} of ${uploadResult.totalRows} systems.`

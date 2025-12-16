@@ -12,6 +12,7 @@ import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { CommandMenu } from "@/components/common/CommandMenu";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary"; // IMPORTED
 
 export default function DashboardLayout({
   children,
@@ -47,19 +48,17 @@ export default function DashboardLayout({
                 marginLeft: `${marginValue}px`,
               }}
             >
-              {/* 
-                OPTION 1: Remove title from header completely
-                Let each page control its own title
-              */}
               <div className="no-print">
-                <DashboardHeader 
-                  onMenuClick={() => setIsCollapsed(!isCollapsed)} 
+                <DashboardHeader
+                  onMenuClick={() => setIsCollapsed(!isCollapsed)}
                 />
               </div>
 
-              {/* Main Content */}
+              {/* Main Content WRAPPED in ErrorBoundary */}
               <main className="flex-1">
-                {children}
+                <ErrorBoundary>
+                    {children}
+                </ErrorBoundary>
               </main>
             </div>
           </ViewSettingsProvider>

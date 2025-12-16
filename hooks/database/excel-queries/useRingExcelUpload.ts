@@ -1,5 +1,4 @@
 // hooks/database/excel-queries/useRingExcelUpload.ts
-import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -7,31 +6,11 @@ import { Database, Json } from '@/types/supabase-types';
 import { RingsInsertSchema } from '@/schemas/zod-schemas';
 import { toPgBoolean } from '@/config/helper-functions';
 import { EnhancedUploadResult, ValidationError } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 interface RingUploadOptions {
   file: File;
 }
-
-const parseExcelFile = (file: File): Promise<unknown[][]> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 type Association = {
   system?: string;
@@ -59,7 +38,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       ] = await Promise.all([
         supabase.from('lookup_types').select('id, name').eq('category', 'RING_TYPES'),
         supabase.from('maintenance_areas').select('id, name'),
-        supabase.from('v_systems_complete').select('id, system_name, node_name'), // THE FIX: Fetch from view with node names
+        supabase.from('v_systems_complete').select('id, system_name, node_name'), 
       ]);
 
       if (ringTypesError) throw new Error(`Failed to fetch ring types: ${ringTypesError.message}`);
@@ -68,12 +47,12 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       const ringTypeMap = new Map(ringTypes.map(item => [item.name.toLowerCase().trim(), item.id]));
       const maintenanceAreaMap = new Map(maintenanceAreas.map(item => [item.name.toLowerCase().trim(), item.id]));
-      
-      // THE FIX: Create two maps for flexible system lookup
       const systemNameMap = new Map(systems.map(item => [item.system_name?.toLowerCase().trim(), item.id]));
       const nodeNameMap = new Map(systems.map(item => [item.node_name?.toLowerCase().trim(), item.id]));
-      
+
       toast.info('Reading and parsing Excel file...');
+      
+      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -105,7 +84,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
         const ringTypeName = String(ringTypeNameRaw || '').toLowerCase().trim();
         const maintenanceAreaName = String(maintenanceAreaNameRaw || '').toLowerCase().trim();
-        
+
         const ringTypeId = ringTypeMap.get(ringTypeName);
         const maintenanceTerminalId = maintenanceAreaMap.get(maintenanceAreaName);
 
@@ -115,14 +94,13 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         if (!maintenanceTerminalId && maintenanceAreaName) {
             rowValidationErrors.push({ rowIndex: i, column: 'maintenance_area_name', value: maintenanceAreaNameRaw, error: `Maintenance Area "${maintenanceAreaNameRaw}" not found.` });
         }
-        
+
         let associatedSystemsJson: Association[] = [];
         if (associatedSystemsRaw && typeof associatedSystemsRaw === 'string') {
             try {
                 associatedSystemsJson = JSON.parse(associatedSystemsRaw);
                 if (!Array.isArray(associatedSystemsJson)) throw new Error("JSON is not an array.");
-                
-                // Validate each system in the JSON array
+
                 for (const sys of associatedSystemsJson) {
                     const sysName = (sys.system)?.toLowerCase().trim();
                     if (!sysName || (!systemNameMap.has(sysName) && !nodeNameMap.has(sysName))) {
@@ -130,8 +108,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                     }
                 }
             } catch (e) {
-              console.log(e);
-              
+                console.error(e);
                 rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
             }
         }
@@ -152,10 +129,10 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
             maintenance_terminal_id: maintenanceTerminalId,
             associated_systems_json: associatedSystemsJson,
         };
-        
+
         ringsToUpsert.push(record);
       }
-      
+
       if (ringsToUpsert.length === 0) {
         if (uploadResult.errorCount > 0) {
             toast.error(`${uploadResult.errorCount} rows had validation errors.`);
@@ -165,11 +142,11 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         }
         return uploadResult;
       }
-      
+
       toast.info(`Upserting ${ringsToUpsert.length} ring records...`);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
-      
+
       const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
 
       if (upsertError) {
@@ -191,7 +168,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
               }
           }
       }
-      
+
       uploadResult.successCount = ringsToUpsert.length - uploadResult.errorCount;
       uploadResult.totalRows = dataRows.length;
       return uploadResult;
@@ -199,9 +176,6 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
     onSuccess: (result) => {
       if (result.successCount > 0) {
         toast.success(`Successfully processed ${result.successCount} of ${result.totalRows} ring records.`);
-      }
-      if (result.errorCount > 0) {
-        toast.warning(`${result.errorCount} records had errors.`);
       }
       queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
       queryClient.invalidateQueries({ queryKey: ['systems-data'] });
