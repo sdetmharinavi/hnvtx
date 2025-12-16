@@ -98,14 +98,15 @@ export default function DashboardHeader({
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
               <Link href="/">
-                {/* THE FIX: Explicitly set both width and height in style to satisfy Next.js warning */}
+                {/* THE FIX: Use width=0/height=0 + sizes="100vw" + CSS width/height: auto to fully control aspect ratio via CSS without prop conflict */}
                 <Image 
                   src="/logo.png" 
                   alt="Logo" 
-                  width={60} 
-                  height={60} 
+                  width={0}
+                  height={0}
+                  sizes="100vw"
                   className="ml-2" 
-                  style={{ width: '60px', height: 'auto' }} 
+                  style={{ width: 'auto', height: isMobile ? '30px' : '60px' }} 
                   priority // Good practice for LCP element
                 />
               </Link>
