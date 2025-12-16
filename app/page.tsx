@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import AnimatedBackground from "@/components/home/AnimatedBackground";
 import HeroContent from "@/components/home/HeroContent";
 import ParticlesOverlay from "@/components/home/ParticlesOverlay";
-import ScrollIndicator from "@/components/home/ScrollIndicator";
+// import ScrollIndicator from "@/components/home/ScrollIndicator";
 import StatsHighlights from "@/components/home/StatsHighlights";
 import { containerVariants, ctaVariants, floatingAnimation, highlightVariants, subtitleVariants, titleVariants } from "@/components/home/variants";
 import OutdatedBrowserModal from "@/components/outdated/OutdatedBrowserModal";
@@ -64,7 +64,7 @@ export default function Home() {
           <StatsHighlights />
         </div>
 
-        <ScrollIndicator />
+        {/* <ScrollIndicator /> */}
       </div>
       <PWAInstallPrompt />
       <OfflineStatus />

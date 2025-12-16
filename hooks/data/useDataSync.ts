@@ -10,7 +10,6 @@ import { SupabaseClient } from '@supabase/supabase-js';
 const BATCH_SIZE = 2500;
 
 // List of tables that should be synced completely (Full Sync)
-// These are entities that can be edited/deleted, so a full refresh ensures deletions are propagated locally.
 const ENTITIES_FULL_SYNC: PublicTableOrViewName[] = [
   'lookup_types',
   'employee_designations',
@@ -42,16 +41,13 @@ const ENTITIES_FULL_SYNC: PublicTableOrViewName[] = [
 ];
 
 // List of tables that should be synced incrementally (Append Only)
-// These are typically logs or history where deletion is rare/forbidden and data volume is high.
 const ENTITIES_INCREMENTAL_SYNC: PublicTableOrViewName[] = [
   'v_audit_logs',
-  'v_inventory_transactions_extended',
+  'v_inventory_transactions_extended'
 ];
 
 /**
  * Performs a safe, atomic Full Sync of an entity.
- * Fetches all data into memory (batched), clears the local table, and bulk inserts.
- * Recommended for datasets < 50,000 rows.
  */
 async function performFullSync(
   supabase: SupabaseClient,
@@ -62,7 +58,6 @@ async function performFullSync(
   let offset = 0;
   let hasMore = true;
 
-  // Temporary storage for the new dataset
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allFetchedData: any[] = [];
 
@@ -78,8 +73,7 @@ async function performFullSync(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const responseData = (rpcResponse as { data: any[] })?.data || [];
-    // Ensure we only sync records with IDs to satisfy Dexie keys
-    const validData = responseData.filter((item) => item.id != null);
+    const validData = responseData.filter(item => item.id != null);
 
     if (validData.length > 0) {
       allFetchedData.push(...validData);
@@ -92,8 +86,6 @@ async function performFullSync(
     }
   }
 
-  // Atomic Update: Clear and Write
-  // Using a transaction ensures we don't leave the table empty if the write fails
   await db.transaction('rw', table, async () => {
     await table.clear();
     if (allFetchedData.length > 0) {
@@ -106,7 +98,6 @@ async function performFullSync(
 
 /**
  * Performs an Incremental Sync for append-only data.
- * Finds the latest `created_at` timestamp locally, then fetches only newer records.
  */
 async function performIncrementalSync(
   supabase: SupabaseClient,
@@ -114,24 +105,26 @@ async function performIncrementalSync(
   entityName: PublicTableOrViewName
 ) {
   const table = getTable(entityName);
-
+  
   // 1. Find the latest timestamp locally
-  // We assume the table has a 'created_at' index as defined in localDb.ts version 25
   const latestRecord = await table.orderBy('created_at').last();
-
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let lastCreatedAt: string | null = (latestRecord as any)?.created_at || null;
-
+  
   let offset = 0;
   let hasMore = true;
   let totalSynced = 0;
 
   while (hasMore) {
-    // Construct filters: fetch records strictly greater than last local timestamp
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filters: any = {};
     if (lastCreatedAt) {
-      filters['created_at'] = { operator: 'gt', value: lastCreatedAt };
+      // THE FIX: Use '>' instead of 'gt' for SQL syntax compatibility in build_where_clause.
+      // Also, we try to ensure the string format is comparable if possible, but usually ISO is safe enough 
+      // if the DB cast::text output is consistent. 
+      // Note: 'get_paged_data' calls 'build_where_clause' which injects this operator directly.
+      filters['created_at'] = { operator: '>', value: lastCreatedAt };
     }
 
     const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
@@ -140,20 +133,20 @@ async function performIncrementalSync(
       p_offset: offset,
       p_filters: filters,
       p_order_by: 'created_at',
-      p_order_dir: 'asc', // Oldest to newest among the new records
+      p_order_dir: 'asc' // Oldest to newest
     });
 
     if (rpcError) throw rpcError;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const responseData = (rpcResponse as { data: any[] })?.data || [];
-    const validData = responseData.filter((item) => item.id != null);
+    const validData = responseData.filter(item => item.id != null);
 
     if (validData.length > 0) {
+      // Use put to upsert to avoid key collision errors if overlap occurs
       await table.bulkPut(validData);
       totalSynced += validData.length;
-
-      // Update tracking cursor
+      
       const lastItem = validData[validData.length - 1];
       if (lastItem.created_at) {
         lastCreatedAt = lastItem.created_at;
@@ -166,7 +159,7 @@ async function performIncrementalSync(
       offset += BATCH_SIZE;
     }
   }
-
+  
   return totalSynced;
 }
 
@@ -176,11 +169,9 @@ export async function syncEntity(
   entityName: PublicTableOrViewName
 ) {
   try {
-    await db.sync_status.put({
-      tableName: entityName,
-      status: 'syncing',
-      lastSynced: new Date().toISOString(),
-    });
+    // Only log if not pending to avoid spam
+    // console.log(`[Sync] Starting sync for ${entityName}...`);
+    await db.sync_status.put({ tableName: entityName, status: 'syncing', lastSynced: new Date().toISOString() });
 
     let count = 0;
 
@@ -190,23 +181,26 @@ export async function syncEntity(
       count = await performFullSync(supabase, db, entityName);
     }
 
-    await db.sync_status.put({
-      tableName: entityName,
-      status: 'success',
+    await db.sync_status.put({ 
+      tableName: entityName, 
+      status: 'success', 
       lastSynced: new Date().toISOString(),
-      count,
+      count
     });
+
   } catch (err) {
-    const errorMessage =
-      err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
+    const errorMessage = err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
+    // Log error to console but do not break the app flow
     console.error(`❌ [Sync] Error syncing entity ${entityName}:`, errorMessage);
+    
     await db.sync_status.put({
       tableName: entityName,
       status: 'error',
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
-    // We throw to let the caller know something failed, but other tables might still succeed
+    
+    // Throw to let the main loop know, but the loop catches it
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -221,18 +215,14 @@ export function useDataSync() {
     queryFn: async () => {
       try {
         const failures: string[] = [];
-
-        // Combine all entities to sync
         const allEntities = [...ENTITIES_FULL_SYNC, ...ENTITIES_INCREMENTAL_SYNC];
 
-        // Process sequentially to manage network load, or use Promise.allLimit if available
-        // For simplicity and reliability, we do it sequentially here.
+        // Process sequentially
         for (const entity of allEntities) {
           try {
-            await syncEntity(supabase, localDb, entity);
+              await syncEntity(supabase, localDb, entity);
           } catch (e) {
-            failures.push(`${entity} (${(e as Error).message})`);
-            // Continue syncing other tables even if one fails
+              failures.push(`${entity} (${(e as Error).message})`);
           }
         }
 
@@ -240,26 +230,23 @@ export function useDataSync() {
           localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
         }
 
-        // Only hard invalidate if everything succeeded, otherwise we might have partial stale data
         if (failures.length === 0) {
           toast.success('Local data is up to date.');
         } else {
-          toast.warning(`Sync completed with errors: ${failures.length} tables failed.`);
+           toast.warning(`Sync completed with errors: ${failures.length} tables failed.`);
         }
-
+        
         await queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey[0] !== 'data-sync-all',
+          predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
 
         if (failures.length > 0) {
-          throw new Error(`Failed entities: ${failures.join(', ')}`);
+            // Log full details to console but don't crash the query
+            console.error("Sync Failures:", failures);
         }
 
         return { lastSynced: new Date().toISOString() };
       } catch (err) {
-        const message = (err as Error).message;
-        console.error(`Data sync failed: ${message}`);
-        // Toast is already handled in the failure block logic usually
         throw err;
       }
     },
@@ -274,7 +261,7 @@ export function useDataSync() {
   return {
     isSyncing: isLoading || isFetching,
     syncError: error,
-    syncStatus,
-    sync: refetch,
+    syncStatus, // Return the live query result for UI usage
+    sync: refetch
   };
 }

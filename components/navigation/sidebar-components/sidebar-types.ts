@@ -1,3 +1,4 @@
+// components/navigation/sidebar-components/sidebar-types.ts
 import { Database } from "@/types/supabase-types";
 import { UserRole } from "@/types/user-roles";
 import { ReactNode } from "react";
@@ -16,7 +17,8 @@ export interface NavItem {
   icon: ReactNode;
   href?: string;
   children?: NavItem[];
-  roles: UserRole[];
+  // CHANGED: Allow strings so we can pass 'SUPER_ADMIN_LOCK'
+  roles: (UserRole | string)[]; 
   external?: boolean;
   preferNative?: boolean;
 }

@@ -1,12 +1,17 @@
 // config/permissions.ts
 import { UserRole } from "@/types/user-roles";
 
+// A virtual role that no user actually has. 
+// Used to trigger the `isSuperAdmin` bypass in `UserProvider`.
+const SUPER_ADMIN_LOCK = "__SUPER_ADMIN_ONLY__";
+
 // Role Groups
 export const ROLES = {
-  // Full Access
-  SUPER_ADMIN: [UserRole.ADMIN] as UserRole[],
+  // STRICTLY Super Admin (is_super_admin = true)
+  // Regular admins will fail this check.
+  SUPER_ADMIN: [SUPER_ADMIN_LOCK],
   
-  // High Level Admins
+  // High Level Admins (Regular Admin Role + Specific Admins)
   ADMINS: [
     UserRole.ADMIN,
     UserRole.CPANADMIN,
@@ -14,16 +19,16 @@ export const ROLES = {
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
     UserRole.MNGADMIN
-  ] as UserRole[],
+  ],
 
   // System Specific Admins
   SYSTEM_ADMINS: [
     UserRole.CPANADMIN,
     UserRole.MAANADMIN,
     UserRole.SDHADMIN
-  ] as UserRole[],
+  ],
 
-  // Read Access
+  // Read Access (Everyone logged in)
   VIEWERS: [
     UserRole.ADMIN,
     UserRole.VIEWER,
@@ -33,27 +38,27 @@ export const ROLES = {
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
     UserRole.MNGADMIN
-  ] as UserRole[],
+  ],
   
   // Specific Features
   INVENTORY_MANAGERS: [
     UserRole.ADMIN, 
     UserRole.ASSETADMIN
-  ] as UserRole[],
+  ],
   
   EMPLOYEE_MANAGERS: [
     UserRole.ADMIN
-  ] as UserRole[]
-} as const;
+  ]
+};
 
 export const PERMISSIONS = {
-  canManageUsers: ROLES.SUPER_ADMIN,
+  canManageUsers: ROLES.SUPER_ADMIN, // Only Super Admins can delete users/manage roles
   canManageEmployees: ROLES.EMPLOYEE_MANAGERS,
   canManageInventory: ROLES.INVENTORY_MANAGERS,
   canManageSystems: ROLES.ADMINS,
   canManageRoutes: ROLES.ADMINS,
   canViewDashboard: ROLES.VIEWERS,
   canViewDocs: ROLES.VIEWERS,
-  canExportData: ROLES.VIEWERS, // Usually viewers can export, restrict if needed
+  canExportData: ROLES.ADMINS,
   canDeleteCritical: ROLES.SUPER_ADMIN,
-} as const;
+};
