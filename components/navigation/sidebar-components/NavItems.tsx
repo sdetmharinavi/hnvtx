@@ -50,16 +50,14 @@ function NavItems() {
         label: 'User Management',
         icon: <FiUsers className="h-5 w-5" />,
         href: '/dashboard/users',
-        // Now correctly restricted to actual Super Admins only
-        roles: PERMISSIONS.canManageUsers, 
+        roles: PERMISSIONS.canManageUsers,
       },
       {
         id: 'audit-logs',
         label: 'Audit Logs',
         icon: <FiShield className="h-5 w-5" />,
         href: '/dashboard/audit-logs',
-        // Now correctly restricted to actual Super Admins only
-        roles: PERMISSIONS.canDeleteCritical, 
+        roles: PERMISSIONS.canViewAuditLogs,
       },
       {
         id: 'employees',
@@ -195,9 +193,7 @@ function NavItems() {
         label: 'Diagrams',
         icon: <TfiLayoutMediaOverlayAlt className="h-5 w-5" />,
         href: '/dashboard/diagrams',
-        // Changed from ROLES.SUPER_ADMIN to ROLES.ADMINS if standard admins should access,
-        // otherwise keep ROLES.SUPER_ADMIN if strict.
-        roles: ROLES.ADMINS, 
+        roles: ROLES.ADMINS,
       },
       {
         id: 'kml-manager',

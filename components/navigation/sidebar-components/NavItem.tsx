@@ -33,7 +33,8 @@ export const NavItem = ({
   const [isLoading, setIsLoading] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
-  const hasPermission = (roles: UserRole[]) => {
+  // UPDATED: Accept readonly array of strings or UserRoles
+  const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
     return roles.includes(role as UserRole);
@@ -63,12 +64,12 @@ export const NavItem = ({
   if (!hasPermission(item.roles)) return null;
 
   const itemContentClasses = `
-    flex cursor-pointer items-center justify-between py-3 text-sm font-medium 
+    flex cursor-pointer items-center justify-between py-3 text-sm font-medium
     transition-all duration-200 rounded-lg mx-2 mb-1
-    ${active 
-      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm" 
+    ${active
+      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm"
       : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm"
-    } 
+    }
     ${isCollapsed ? "justify-center px-4" : `pr-4 ${depth > 0 ? "pl-8" : "pl-4"}`}
   `;
 
@@ -94,8 +95,8 @@ export const NavItem = ({
           className="p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 z-10"
           aria-label={isExpanded ? "Collapse" : "Expand"}
         >
-          <motion.div 
-            animate={{ rotate: isExpanded ? 0 : -90 }} 
+          <motion.div
+            animate={{ rotate: isExpanded ? 0 : -90 }}
             transition={{ duration: 0.2 }}
           >
             <FiChevronDown className="w-4 h-4" />
@@ -108,10 +109,10 @@ export const NavItem = ({
   // --- EXTERNAL LINK RENDERING ---
   if (item.external) {
     return (
-      <div 
-        key={item.id} 
+      <div
+        key={item.id}
         className="relative"
-        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)} 
+        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
         onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
       >
         <a
@@ -130,12 +131,12 @@ export const NavItem = ({
         >
           {renderContent()}
         </a>
-        
+
         {/* Submenu rendering for external items (unlikely but safe to include) */}
         {!isCollapsed && hasChildren && (
           <AnimatePresence initial={false}>
             {isExpanded && (
-              <motion.div 
+              <motion.div
                 initial="hidden"
                 animate="visible"
                 exit="hidden"
@@ -171,7 +172,7 @@ export const NavItem = ({
       toggleExpanded(item.id);
       return;
     }
-    
+
     if (item.href) {
       try {
         setNavigatingTo(item.href);
@@ -187,10 +188,10 @@ export const NavItem = ({
   };
 
   return (
-    <div 
-      key={item.id} 
-      className="relative" 
-      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)} 
+    <div
+      key={item.id}
+      className="relative"
+      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
       onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
     >
       <div
@@ -207,11 +208,11 @@ export const NavItem = ({
       >
         {renderContent()}
       </div>
-      
+
       {!isCollapsed && hasChildren && (
         <AnimatePresence initial={false}>
           {isExpanded && (
-            <motion.div 
+            <motion.div
               initial="hidden"
               animate="visible"
               exit="hidden"

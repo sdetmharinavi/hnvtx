@@ -1,4 +1,4 @@
-// path: components/bsnl/OptimizedNetworkMap.tsx
+// components/bsnl/OptimizedNetworkMap.tsx
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
@@ -6,16 +6,10 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, TileLayerProp
 import { LatLngBounds } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
-
-// Interface for nodes with display coordinates (potentially offset)
-interface DisplayNode extends BsnlNode {
-  displayLat: number;
-  displayLng: number;
-}
+import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils'; // IMPORT FROM UTILS
 
 function MapEventHandler({ setBounds, setZoom }: { setBounds: (bounds: LatLngBounds | null) => void; setZoom: (zoom: number) => void; }) {
   const map = useMap();
@@ -76,49 +70,8 @@ const MapContent = ({
   setZoom: (zoom: number) => void;
 }) => {
 
-  // --- JITTER LOGIC: Spread out overlapping nodes ---
-  const displayNodes = useMemo(() => {
-    const groupedNodes = new Map<string, BsnlNode[]>();
-
-    // 1. Group nodes by exact coordinate
-    visibleNodes.forEach(node => {
-      if(node.latitude && node.longitude) {
-        // Create a key based on coordinates (rounded slightly to catch very close nodes)
-        const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
-        if (!groupedNodes.has(key)) groupedNodes.set(key, []);
-        groupedNodes.get(key)!.push(node);
-      }
-    });
-
-    const results: DisplayNode[] = [];
-    // 2. Apply offset
-    groupedNodes.forEach((nodesAtLoc) => {
-      if (nodesAtLoc.length === 1) {
-        // No overlap, keep original position
-        results.push({
-          ...nodesAtLoc[0],
-          displayLat: nodesAtLoc[0].latitude!,
-          displayLng: nodesAtLoc[0].longitude!
-        });
-      } else {
-        // Overlap detected: Spiral them out
-        // 0.00015 degrees is roughly 15-20 meters
-        const radius = 0.00015; 
-        const angleStep = (2 * Math.PI) / nodesAtLoc.length;
-
-        nodesAtLoc.forEach((node, i) => {
-          const angle = i * angleStep;
-          results.push({
-            ...node,
-            displayLat: node.latitude! + (radius * Math.sin(angle)),
-            displayLng: node.longitude! + (radius * Math.cos(angle))
-          });
-        });
-      }
-    });
-    return results;
-  }, [visibleNodes]);
-
+  // USE UTILITY FUNCTION FOR JITTER
+  const displayNodes = useMemo(() => applyJitterToNodes(visibleNodes), [visibleNodes]);
 
   return (
     <>
@@ -128,12 +81,12 @@ const MapContent = ({
       {visibleLayers.cables && cables.map((cable: BsnlCable) => {
           const startNode = nodeMap.get(cable.sn_id!);
           const endNode = nodeMap.get(cable.en_id!);
-          
+
           if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
               return (
                   <Polyline
                       key={cable.id}
-                      // Use original coordinates for lines so the geometry stays true
+                      // Use original coordinates for lines
                       positions={[[startNode.latitude, startNode.longitude], [endNode.latitude, endNode.longitude]]}
                       pathOptions={{ color: cable.status ? '#3b82f6' : '#ef4444', weight: 3, opacity: 0.7 }}
                   >
@@ -157,15 +110,12 @@ const MapContent = ({
           const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
 
           return (
-            <Marker 
-              key={node.id} 
-              // Use calculated display coordinates (spread out)
-              position={[node.displayLat, node.displayLng]} 
+            <Marker
+              key={node.id}
+              position={[node.displayLat, node.displayLng]} // Use jittered coords
               icon={icon}
-              // THE FIX: riseOnHover allows accessing partially overlapped markers
               riseOnHover={true}
-              // Ensure overlapping markers have stacking context logic if needed
-              zIndexOffset={10} 
+              zIndexOffset={10}
             >
                 <Popup>
                     <div className="min-w-48 max-w-72">
@@ -211,12 +161,8 @@ export function OptimizedNetworkMap({
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
   useEffect(() => {
-    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    });
+    // USE CENTRALIZED LEAFLET FIX
+    fixLeafletIcons();
   }, []);
 
   useEffect(() => {

@@ -16,7 +16,8 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
   const router = useRouter();
   const { isSuperAdmin, role } = useUser();
 
-  const hasPermission = (roles: UserRole[]) => {
+  // UPDATED: Accept readonly array and strings
+  const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
     return roles.includes(role as UserRole);
@@ -57,8 +58,8 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
                 disabled={!hasPermission(child.roles)}
                 className={`
                   flex w-full items-center space-x-3 px-4 py-2 text-left text-sm transition-colors
-                  ${hasPermission(child.roles) 
-                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" 
+                  ${hasPermission(child.roles)
+                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                     : "text-gray-400 cursor-not-allowed dark:text-gray-600"
                   }
                 `}

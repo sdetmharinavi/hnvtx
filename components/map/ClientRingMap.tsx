@@ -1,4 +1,4 @@
-// path: components/map/ClientRingMap.tsx
+// components/map/ClientRingMap.tsx
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip, LayersControl } from 'react-leaflet';
@@ -12,8 +12,7 @@ import { MapLegend } from './MapLegend';
 import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
-
-// --- Interfaces ---
+import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils'; // USE CENTRALIZED UTILS
 
 interface PathConfig {
   source?: string;
@@ -22,31 +21,6 @@ interface PathConfig {
   destPort?: string;
 }
 
-// --- Rate Limiter for ORS API ---
-let fetchChain: Promise<void> = Promise.resolve();
-const requestDelay = 1600;
-
-const rateLimitedFetchDistance = async (start: MapNode, end: MapNode) => {
-  const makeRequest = async () => {
-    const response = await fetch('/api/ors-distance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ a: start, b: end }),
-    });
-    if (!response.ok) throw new Error('Failed to fetch distance');
-    return response.json();
-  };
-
-  const resultPromise = fetchChain.then(makeRequest);
-
-  fetchChain = resultPromise
-    .then(() => new Promise<void>((res) => setTimeout(res, requestDelay)))
-    .catch(() => new Promise<void>((res) => setTimeout(res, requestDelay)));
-
-  return resultPromise;
-};
-
-// --- Sub-component for Lines ---
 interface ConnectionLineProps {
   start: MapNode;
   end: MapNode;
@@ -54,7 +28,7 @@ interface ConnectionLineProps {
   theme: string;
   showPopup: boolean;
   setPolylineRef: (key: string, el: L.Polyline | null) => void;
-  config?: PathConfig; // Added config prop
+  config?: PathConfig; 
 }
 
 const ConnectionLine = ({
@@ -69,9 +43,10 @@ const ConnectionLine = ({
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
 
+  // Use the optimized fetcher
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
-    queryFn: () => rateLimitedFetchDistance(start, end),
+    queryFn: () => fetchOrsDistance(start, end),
     enabled: shouldFetch,
     staleTime: Infinity,
   });
@@ -123,7 +98,6 @@ const ConnectionLine = ({
             {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
           </div>
 
-          {/* Provisioned Info Block */}
           {config && (config.source || config.dest) ? (
             <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-300 uppercase mb-1 tracking-wider">
@@ -184,10 +158,9 @@ interface ClientRingMapProps {
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
-  segmentConfigs?: Record<string, PathConfig>; // Added prop
+  segmentConfigs?: Record<string, PathConfig>; 
 }
 
-// ... MapController, FullscreenControl, MapFlyToController remain identical ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -324,15 +297,8 @@ export default function ClientRingMap({
   }, [nodes]);
 
   useEffect(() => {
-    const iconPrototype = L.Icon.Default.prototype as L.Icon.Default & {
-      _getIconUrl?: () => string;
-    };
-    delete iconPrototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    });
+    // USE CENTRALIZED LEAFLET FIX
+    fixLeafletIcons();
   }, []);
 
   useEffect(() => {
@@ -410,7 +376,6 @@ export default function ClientRingMap({
         <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
         <MapFlyToController coords={flyToCoordinates} />
 
-        {/* THE FIX: Use LayersControl to toggle between Street and Satellite views */}
         <LayersControl position="bottomright">
           <LayersControl.BaseLayer checked name="Street View">
             <TileLayer
@@ -432,7 +397,6 @@ export default function ClientRingMap({
               start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
           )
           .map(([start, end], i) => {
-            // Match key by sorting IDs so A-B matches B-A
             const key1 = `${start.id}-${end.id}`;
             const key2 = `${end.id}-${start.id}`;
             const config = segmentConfigs[key1] || segmentConfigs[key2];

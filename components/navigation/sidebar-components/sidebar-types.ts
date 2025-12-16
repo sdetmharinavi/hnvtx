@@ -17,8 +17,8 @@ export interface NavItem {
   icon: ReactNode;
   href?: string;
   children?: NavItem[];
-  // CHANGED: Allow strings so we can pass 'SUPER_ADMIN_LOCK'
-  roles: (UserRole | string)[]; 
+  // UPDATED: Use 'readonly' to accept constant arrays and string union for lock
+  roles: readonly (UserRole | string)[]; 
   external?: boolean;
   preferNative?: boolean;
 }
