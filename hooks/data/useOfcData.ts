@@ -6,54 +6,54 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  // 1. Online Fetcher (RPC)
-  const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `route_name ILIKE '%${term}%' OR ` +
-        `asset_no ILIKE '%${term}%' OR ` +
-        `transnet_id ILIKE '%${term}%' OR ` +
-        `sn_name ILIKE '%${term}%' OR ` +
-        `en_name ILIKE '%${term}%' OR ` +
-        `ofc_owner_name ILIKE '%${term}%'` +
-      `)`;
-    }
+  // Search Config
+  const searchFields = useMemo(
+    () => [
+      'route_name',
+      'asset_no',
+      'transnet_id',
+      'sn_name',
+      'en_name',
+      'ofc_owner_name',
+    ] as (keyof V_ofc_cables_completeRowSchema)[],
+    []
+  );
 
+  const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, searchFields);
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_ofc_cables_complete",
-      p_limit: 5000, // Fetch large batch for client-side fluidity
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by route_name ascending
       p_order_by: "route_name",
       p_order_dir: "asc",
     });
     if (error) throw error;
     return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, searchFields]);
 
-  // 2. Offline Fetcher (Dexie)
   const localQueryFn = useCallback(() => {
-    // Sort locally by route_name
     return localDb.v_ofc_cables_complete.orderBy('route_name').toArray();
   }, []);
 
-  // 3. Local First Query Hook
   const {
     data: allCables = [],
     isLoading,
@@ -67,50 +67,31 @@ export const useOfcData = (
     dexieTable: localDb.v_ofc_cables_complete,
   });
 
-  // 4. Client-Side Processing
   const processedData = useMemo(() => {
-    if (!allCables) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
-    let filtered = allCables;
+    let filtered = allCables || [];
 
-    // Search Filter
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (cable) =>
-          cable.route_name?.toLowerCase().includes(lowerQuery) ||
-          cable.asset_no?.toLowerCase().includes(lowerQuery) ||
-          cable.transnet_id?.toLowerCase().includes(lowerQuery) ||
-          cable.sn_name?.toLowerCase().includes(lowerQuery) ||
-          cable.en_name?.toLowerCase().includes(lowerQuery) ||
-          cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    
-    // Dropdown Filters
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+    // Filters
     if (filters.ofc_type_id)
       filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
-    if (filters.status) filtered = filtered.filter((c) => c.status === (filters.status === "true"));
+    if (filters.status) 
+      filtered = filtered.filter((c) => String(c.status) === filters.status);
     if (filters.ofc_owner_id)
       filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
     if (filters.maintenance_terminal_id)
-      filtered = filtered.filter(
-        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
-      );
+      filtered = filtered.filter((c) => c.maintenance_terminal_id === filters.maintenance_terminal_id);
 
-    // THE FIX: Explicit client-side sort to ensure order persists after filtering
-    filtered.sort((a, b) => 
-      (a.route_name || '').localeCompare(b.route_name || '', undefined, { sensitivity: 'base' })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'route_name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((c) => c.status === true).length;
-    const inactiveCount = totalCount - activeCount; // Calculate inactive
+    const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -118,6 +99,7 @@ export const useOfcData = (
       activeCount,
       inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCables, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };

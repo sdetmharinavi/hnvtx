@@ -6,55 +6,64 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useSystemsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_systems_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Configuration for Search
+  const searchFields = [
+    'system_name',
+    'system_type_name',
+    'node_name',
+    'make',
+    's_no'
+  ] as (keyof V_systems_completeRowSchema)[];
+
+  // For server-side, we need to handle specific casts manually or pass strings
+  const serverSearchFields = useMemo(() => [
+    'system_name',
+    'system_type_name',
+    'node_name',
+    'ip_address::text', // Special cast for INET
+    'make',
+    's_no'
+  ], []);
+
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
-    
-    // FIX: Construct proper SQL string for search
-    let searchString: string | undefined;
-
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      
-      searchString = `(` +
-        `system_name ILIKE '%${term}%' OR ` +
-        `system_type_name ILIKE '%${term}%' OR ` +
-        `node_name ILIKE '%${term}%' OR ` +
-        `ip_address::text ILIKE '%${term}%' OR ` + // Cast INET to text
-        `make ILIKE '%${term}%' OR ` +
-        `s_no ILIKE '%${term}%'` +
-      `)`;
-    }
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
 
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_systems_complete',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicit ascending sort
       p_order_by: 'system_name',
       p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_systems_completeRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
     return localDb.v_systems_complete.orderBy('system_name').toArray();
   }, []);
 
-  // 3. Use the local-first query hook
+  // 3. Local-First Query
   const {
     data: allSystems = [],
     isLoading,
@@ -68,62 +77,54 @@ export const useSystemsData = (
     dexieTable: localDb.v_systems_complete,
   });
 
-  // 4. Client-side processing
+  // 4. Client-side Processing (Unified Logic)
   const processedData = useMemo(() => {
-    if (!allSystems) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+    let filtered = allSystems || [];
+
+    // Search
+    // Special handling for IP Address which isn't a simple string match on the object sometimes
+    if (searchQuery) {
+        // First standard search
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
+        
+        // Additional manual check for IP address formatting if needed
+        const lowerQ = searchQuery.toLowerCase();
+        // Re-filter to include IP matches if standard search missed them (though performClientSearch handles basic string props)
+        // This ensures complex IP string logic matches server behavior
+        if (!filtered.length && lowerQ.includes('.')) {
+             filtered = (allSystems || []).filter(s => String(s.ip_address).includes(lowerQ));
+        }
     }
 
-    let filtered = allSystems;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (system) =>
-          system.system_name?.toLowerCase().includes(lowerQuery) ||
-          system.system_type_name?.toLowerCase().includes(lowerQuery) ||
-          system.node_name?.toLowerCase().includes(lowerQuery) ||
-          String(system.ip_address)?.split('/')[0].toLowerCase().includes(lowerQuery) ||
-          system.make?.toLowerCase().includes(lowerQuery) ||
-          system.s_no?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Explicit Filters
     if (filters.system_type_name) {
-      filtered = filtered.filter(
-        (system) =>
-          system.system_type_name === filters.system_type_name
-      );
+      filtered = filtered.filter(s => s.system_type_name === filters.system_type_name);
     }
     if (filters.system_capacity_name) {
-      filtered = filtered.filter(
-        (system) =>
-          system.system_capacity_name === filters.system_capacity_name
-      );
+      filtered = filtered.filter(s => s.system_capacity_name === filters.system_capacity_name);
     }
     if (filters.status) {
-      filtered = filtered.filter(
-        (system) => system.status === (filters.status === "true")
-      );
+      filtered = filtered.filter(s => String(s.status) === filters.status);
     }
 
-    filtered.sort((a, b) =>
-      (a.system_name || '').localeCompare(b.system_name || '', undefined, {
-        numeric: true,
-        sensitivity: 'base'
-      })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'system_name');
 
+    // Stats
     const totalCount = filtered.length;
     const activeCount = filtered.filter((s) => s.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    const inactiveCount = totalCount - activeCount;
+
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSystems, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };

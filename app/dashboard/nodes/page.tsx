@@ -171,6 +171,7 @@ const NodesPage = () => {
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
           

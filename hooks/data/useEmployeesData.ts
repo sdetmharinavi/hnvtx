@@ -6,42 +6,43 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useEmployeesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_employeesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `employee_name ILIKE '%${term}%' OR ` +
-        `employee_pers_no ILIKE '%${term}%' OR ` +
-        `employee_email ILIKE '%${term}%' OR ` +
-        `employee_contact ILIKE '%${term}%'` +
-      `)`;
-    }
+  // Search Config
+  const searchFields = useMemo(
+    () => ['employee_name', 'employee_pers_no', 'employee_email', 'employee_contact', 'employee_designation_name'] as (keyof V_employeesRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
 
+  const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: 'employee_name', // Ensure DB sort matches client sort intent
+      p_order_by: 'employee_name',
       p_order_dir: 'asc'
     });
     if (error) throw error;
     return (data as { data: V_employeesRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
     return localDb.v_employees.orderBy('employee_name').toArray();
@@ -61,22 +62,12 @@ export const useEmployeesData = (
   });
 
   const processedData = useMemo(() => {
-    if (!allEmployees) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allEmployees || [];
 
-    let filtered = allEmployees;
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (emp) =>
-          emp.employee_name?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_pers_no?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_email?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_contact?.toLowerCase().includes(lowerQuery) ||
-          emp.employee_designation_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+    // Filters
     if (filters.employee_designation_id) {
       filtered = filtered.filter((emp) => emp.employee_designation_id === filters.employee_designation_id);
     }
@@ -84,22 +75,18 @@ export const useEmployeesData = (
       filtered = filtered.filter((emp) => emp.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
     if (filters.status) {
-      const statusBool = filters.status === 'true';
-      filtered = filtered.filter((emp) => emp.status === statusBool);
+      filtered = filtered.filter((emp) => String(emp.status) === filters.status);
     }
 
-    // THE FIX: Explicit ascending sort by employee_name
-    filtered.sort((a, b) => 
-        (a.employee_name || '').localeCompare(b.employee_name || '', undefined, { sensitivity: 'base' })
-    );
+    // Sort
+    filtered = performClientSort(filtered, 'employee_name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
-    const inactiveCount = totalCount - activeCount; // Calculate inactive count
+    const inactiveCount = totalCount - activeCount;
 
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
@@ -107,6 +94,7 @@ export const useEmployeesData = (
       activeCount,
       inactiveCount: inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allEmployees, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };

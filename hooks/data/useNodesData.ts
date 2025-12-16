@@ -7,32 +7,31 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientSort, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
-/**
- * Implements the local-first data fetching strategy for the Nodes page.
- */
 export const useNodesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_nodes_completeRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
+  // Search Config
+  const searchFields = ['name', 'node_type_code', 'remark'] as (keyof V_nodes_completeRowSchema)[];
+  const serverSearchFields = useMemo(() => [
+    'name', 
+    'node_type_code', 
+    'remark',
+    'latitude::text',
+    'longitude::text'
+  ], []);
+
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
-
-    // Construct robust SQL search string
-    let searchString: string | undefined;
-
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Escape quotes
-
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `node_type_code ILIKE '%${term}%' OR ` +
-        `remark ILIKE '%${term}%' OR ` +
-        `latitude::text ILIKE '%${term}%' OR ` +
-        `longitude::text ILIKE '%${term}%'` +
-      `)`;
-    }
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
 
     const rpcFilters = buildRpcFilters({
       ...filters,
@@ -44,23 +43,20 @@ export const useNodesData = (
       p_limit: DEFAULTS.PAGE_SIZE,
       p_offset: 0,
       p_filters: rpcFilters,
-      // THE FIX: Explicitly sort by name ascending
       p_order_by: 'name',
       p_order_dir: 'asc'
     });
 
     if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  }, [searchQuery, filters]);
+    return (data as { data: V_nodes_completeRowSchema[] })?.data || [];
+  }, [searchQuery, filters, serverSearchFields]);
 
   // 2. Offline Fetcher
   const localQueryFn = useCallback(() => {
-    // THE FIX: Sort locally by name
     return localDb.v_nodes_complete.orderBy('name').toArray();
   }, []);
 
-  // 3. Use the local-first query hook
+  // 3. Query
   const {
     data: allNodes = [],
     isLoading,
@@ -74,60 +70,33 @@ export const useNodesData = (
     dexieTable: localDb.v_nodes_complete,
   });
 
-  // 4. Client-side processing (The Source of Truth for the UI)
+  // 4. Processing
   const processedData = useMemo(() => {
-    if (!allNodes) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    let filtered = allNodes || [];
 
-    let filtered = allNodes;
+    // Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Robust Client-Side Filtering
-    const cleanSearch = (searchQuery || '').trim().toLowerCase();
-
-    if (cleanSearch) {
-        filtered = filtered.filter((node) => {
-            const valuesToCheck = [
-                node.name,
-                node.node_type_code,
-                node.remark,
-                node.latitude,
-                node.longitude
-            ];
-
-            return valuesToCheck.some(val =>
-                val !== null &&
-                val !== undefined &&
-                String(val).toLowerCase().includes(cleanSearch)
-            );
-        });
-    }
-
-    // Apply Dropdown Filters
+    // Filters
     if (filters.node_type_id) {
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
-    
     if (filters.maintenance_terminal_id) {
         filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
-
     if (filters.status) {
-         const statusBool = filters.status === 'true';
-         filtered = filtered.filter((node) => node.status === statusBool);
+         filtered = filtered.filter((node) => String(node.status) === filters.status);
     }
 
-    // THE FIX: Explicit client-side sort to guarantee order even after filtering
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    // Sort
+    filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((n) => n.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    // Pagination Logic
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
         data: paginatedData,
@@ -135,6 +104,7 @@ export const useNodesData = (
         activeCount,
         inactiveCount
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };

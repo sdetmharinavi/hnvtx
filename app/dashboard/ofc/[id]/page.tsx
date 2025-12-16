@@ -276,6 +276,7 @@ export default function OfcCableDetailsPage() {
             onChange={(e) => search.setSearchQuery(e.target.value)}
             className="pl-10"
             fullWidth
+            clearable
           />
         </div>
 
