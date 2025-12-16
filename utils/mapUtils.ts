@@ -2,6 +2,7 @@
 import { BsnlNode } from '@/components/bsnl/types';
 import { MapNode } from '@/components/map/types/node';
 import L from 'leaflet';
+import { localDb } from '@/hooks/data/localDb';
 
 // --- 1. JITTER LOGIC (Map Display) ---
 
@@ -61,17 +62,49 @@ export const applyJitterToNodes = (nodes: BsnlNode[]): DisplayNode[] => {
 };
 
 
-// --- 2. ORS RATE LIMITER (Routing) ---
+// --- 2. ORS RATE LIMITER WITH PERSISTENT CACHE ---
 
 // Singleton promise chain to enforce sequential execution across the entire app
 let orsFetchChain: Promise<void> = Promise.resolve();
-const ORS_REQUEST_DELAY = 1600; // 1.6s delay to respect ~40 req/min limits
+const ORS_REQUEST_DELAY = 1600; // 1.6s delay
+
+// Generate a stable key for two coordinates regardless of direction
+const getDistanceKey = (start: MapNode, end: MapNode) => {
+  const lat1 = start.lat!.toFixed(6);
+  const lng1 = start.long!.toFixed(6);
+  const lat2 = end.lat!.toFixed(6);
+  const lng2 = end.long!.toFixed(6);
+  
+  // Sort pairs so A->B and B->A use the same cache key
+  const p1 = `${lat1},${lng1}`;
+  const p2 = `${lat2},${lng2}`;
+  return p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
+};
 
 /**
- * Fetches driving distance from OpenRouteService via our internal API proxy.
- * Enforces a strict rate limit to stay within free tier quotas using a singleton promise chain.
+ * Fetches driving distance from OpenRouteService.
+ * 
+ * OPTIMIZATIONS:
+ * 1. Checks IndexedDB (localDb) first.
+ * 2. If cached, returns immediately (no network, no delay).
+ * 3. If missing, queues request in singleton chain (1.6s delay).
+ * 4. Saves result to IndexedDB for future use.
  */
 export const fetchOrsDistance = async (start: MapNode, end: MapNode): Promise<{ distance_km: number; source: string }> => {
+  const cacheKey = getDistanceKey(start, end);
+
+  // 1. Check Local Cache (Async)
+  try {
+    const cached = await localDb.route_distances.get(cacheKey);
+    // Valid for 30 days
+    if (cached && (Date.now() - cached.timestamp < 1000 * 60 * 60 * 24 * 30)) {
+       return { distance_km: cached.distance_km, source: 'cache' };
+    }
+  } catch (e) {
+    console.warn("Failed to read route cache", e);
+  }
+
+  // 2. Define Network Request
   const makeRequest = async () => {
     const response = await fetch('/api/ors-distance', {
       method: 'POST',
@@ -83,13 +116,25 @@ export const fetchOrsDistance = async (start: MapNode, end: MapNode): Promise<{ 
         throw new Error(`ORS API failed: ${response.statusText}`);
     }
     
-    return response.json();
+    const data = await response.json();
+
+    // 3. Save to Cache (Fire and forget)
+    if (data.distance_km) {
+        localDb.route_distances.put({
+            id: cacheKey,
+            distance_km: parseFloat(data.distance_km),
+            source: data.source || 'api',
+            timestamp: Date.now()
+        }).catch(err => console.error("Failed to cache route distance", err));
+    }
+
+    return data;
   };
 
-  // Chain the request to the singleton
+  // 4. Chain the request
   const resultPromise = orsFetchChain.then(makeRequest);
 
-  // Append a delay to the chain after this request completes (success or fail)
+  // 5. Update the chain to include the delay
   orsFetchChain = resultPromise
     .then(() => new Promise<void>(res => setTimeout(res, ORS_REQUEST_DELAY)))
     .catch(() => new Promise<void>(res => setTimeout(res, ORS_REQUEST_DELAY)));
@@ -99,10 +144,6 @@ export const fetchOrsDistance = async (start: MapNode, end: MapNode): Promise<{ 
 
 // --- 3. LEAFLET HELPERS ---
 
-/**
- * Fixes the issue where Leaflet default markers are not found in Next.js/Webpack builds.
- * Should be called inside a useEffect on map components.
- */
 export const fixLeafletIcons = () => {
   if (typeof window === 'undefined') return;
   

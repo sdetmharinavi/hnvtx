@@ -5,12 +5,61 @@ import Uppy from "@uppy/core";
 import ImageEditor from "@uppy/image-editor";
 import { useRef, useEffect } from "react";
 
-// Types for better type safety
-interface CompressionOptions {
-  maxWidth?: number;
-  maxHeight?: number;
-  quality?: number;
-}
+// --- WORKER IMPLEMENTATION (INLINED) ---
+// Defined as a string to avoid complex Webpack/Next.js worker loader configurations.
+// Uses OffscreenCanvas for high-performance, non-blocking image processing.
+const workerCode = `
+self.onmessage = async (e) => {
+  const { file, options } = e.data;
+  const { maxWidth = 1920, maxHeight = 1080, quality = 0.8 } = options;
+
+  try {
+    // 1. Create bitmap from file (highly optimized browser API)
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+
+    // 2. Calculate aspect-ratio safe scaling
+    if (width > maxWidth || height > maxHeight) {
+      const aspectRatio = width / height;
+      if (width > height) {
+        width = Math.min(width, maxWidth);
+        height = width / aspectRatio;
+      } else {
+        height = Math.min(height, maxHeight);
+        width = height * aspectRatio;
+      }
+    }
+
+    // 3. Draw to OffscreenCanvas
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) throw new Error('Could not get OffscreenCanvas context');
+
+    // High quality smoothing
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    // 4. Compress and convert to Blob
+    const blob = await canvas.convertToBlob({
+      type: file.type === 'image/png' ? 'image/png' : 'image/jpeg', 
+      quality: quality
+    });
+
+    // 5. Send result back
+    self.postMessage({ success: true, blob });
+    
+    // Cleanup memory
+    bitmap.close();
+  } catch (error) {
+    self.postMessage({ success: false, error: error.message });
+  }
+};
+`;
+
+// --- MAIN THREAD UTILITIES ---
 
 interface OptimizedUppyOptions {
   folderId: string | null;
@@ -18,7 +67,6 @@ interface OptimizedUppyOptions {
   maxNumberOfFiles?: number;
 }
 
-// 1. Improved ImageEditor configuration with better compression
 export const enhancedImageEditorConfig = {
   quality: 0.85,
   cropperOptions: {
@@ -44,92 +92,84 @@ export const enhancedImageEditorConfig = {
   },
 };
 
-// 2. Enhanced image compression utility function
-export const compressImage = (
-  file: File,
-  options: CompressionOptions = {},
-): Promise<File> => {
-  const { maxWidth = 1920, maxHeight = 1080, quality = 0.8 } = options;
+/**
+ * Utility to determine optimal compression settings based on file size.
+ */
+export const getOptimalImageSettings = (file: File) => {
+  const sizeInMB = file.size / (1024 * 1024);
+  
+  // Aggressive compression for very large files
+  if (sizeInMB > 10) return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
+  // Moderate compression for medium files
+  if (sizeInMB > 5) return { quality: 0.7, maxWidth: 1800, maxHeight: 1350 };
+  // Light compression for typical photos
+  return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
+};
+
+/**
+ * Compresses an image using a Web Worker to prevent UI blocking.
+ * Falls back to original file if Workers/OffscreenCanvas are not supported.
+ */
+export const smartCompress = async (file: File): Promise<File> => {
+  // Skip non-images or if Worker API is unavailable
+  if (!file.type.startsWith("image/") || typeof Worker === 'undefined') {
+    return file;
+  }
 
   return new Promise((resolve) => {
-    // Check if it's actually an image
-    if (!file.type.startsWith("image/")) {
-      resolve(file);
-      return;
-    }
+    try {
+      // Create worker from inline blob
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerUrl = URL.createObjectURL(blob);
+      const worker = new Worker(workerUrl);
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+      const options = getOptimalImageSettings(file);
 
-    if (!ctx) {
-      console.warn("Could not get canvas context");
-      resolve(file);
-      return;
-    }
+      // Handle worker response
+      worker.onmessage = (e) => {
+        const { success, blob, error } = e.data;
+        
+        if (success && blob) {
+          // Log compression stats for debugging
+          const reduction = ((file.size - blob.size) / file.size * 100).toFixed(1);
+          console.debug(`[SmartCompress] ${file.name}: -${reduction}% (${(blob.size/1024/1024).toFixed(2)}MB)`);
 
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
-
-        if (width > maxWidth || height > maxHeight) {
-          const aspectRatio = width / height;
-
-          if (width > height) {
-            width = Math.min(width, maxWidth);
-            height = width / aspectRatio;
-          } else {
-            height = Math.min(height, maxHeight);
-            width = height * aspectRatio;
-          }
+          const optimizedFile = new File([blob], file.name, {
+            type: file.type,
+            lastModified: Date.now()
+          });
+          resolve(optimizedFile);
+        } else {
+          console.warn("[SmartCompress] Worker failed, using original:", error);
+          resolve(file);
         }
 
-        canvas.width = width;
-        canvas.height = height;
+        // Cleanup
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+      };
 
-        // Clear canvas and draw image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              try {
-                const compressedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-                resolve(compressedFile);
-              } catch (error) {
-                console.warn("Error creating compressed file:", error);
-                resolve(file);
-              }
-            } else {
-              console.warn("Canvas toBlob produced empty result");
-              resolve(file);
-            }
-          },
-          file.type,
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error compressing image:", error);
+      // Handle worker startup errors
+      worker.onerror = (err) => {
+        console.error("[SmartCompress] Worker error:", err);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
         resolve(file);
-      }
-    };
+      };
 
-    img.onerror = () => {
-      console.warn("Error loading image for compression");
+      // Start the job
+      worker.postMessage({ file, options });
+
+    } catch (e) {
+      console.error("[SmartCompress] Setup failed:", e);
       resolve(file);
-    };
-
-    img.src = URL.createObjectURL(file);
+    }
   });
 };
 
-// 3. Enhanced Uppy configuration with compression
+/**
+ * Creates an Uppy instance configured with restrictions and image editing.
+ */
 export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   const {
     folderId,
@@ -159,28 +199,18 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
       folderId: folderId,
     },
     onBeforeFileAdded: (currentFile, files) => {
-      // Additional validation
-      if (currentFile.size === 0) {
-        uppy.log(`Skipping file ${currentFile.name} - file is empty`);
-        return false;
-      }
-
-      // Check for duplicate files
+      if (currentFile.size === 0) return false;
+      
       const existingFile = Object.values(files).find(
         (file) =>
           file.name === currentFile.name && file.size === currentFile.size,
       );
-
-      if (existingFile) {
-        uppy.log(`Skipping file ${currentFile.name} - duplicate file`);
-        return false;
-      }
-
+      
+      if (existingFile) return false;
       return true;
     },
   });
 
-  // Add ImageEditor plugin with error handling
   try {
     uppy.use(ImageEditor, enhancedImageEditorConfig);
   } catch (error) {
@@ -190,20 +220,22 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   return uppy;
 };
 
-// 4. WebP conversion utility (for modern browsers)
+/**
+ * Converts images to WebP format if supported by the browser (Main Thread).
+ * This is a secondary optimization step.
+ */
 export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
   return new Promise((resolve) => {
+    // Skip if not image or already WebP
     if (!file.type.startsWith("image/") || file.type === "image/webp") {
       resolve(file);
       return;
     }
 
-    // Check if browser supports WebP
+    // Feature detection
     const canvas = document.createElement("canvas");
-    const testBlob = canvas.toDataURL("image/webp");
-
-    if (!testBlob.startsWith("data:image/webp")) {
-      resolve(file);
+    if (!canvas.toDataURL("image/webp").startsWith("data:image/webp")) {
+      resolve(file); // Browser doesn't support WebP export
       return;
     }
 
@@ -214,7 +246,6 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
     }
 
     const img = new Image();
-
     img.onload = () => {
       try {
         canvas.width = img.width;
@@ -227,13 +258,11 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
               const webpFile = new File(
                 [blob],
                 file.name.replace(/\.[^/.]+$/, ".webp"),
-                {
-                  type: "image/webp",
-                  lastModified: Date.now(),
-                },
+                { type: "image/webp", lastModified: Date.now() },
               );
               resolve(webpFile);
             } else {
+              // If WebP is larger (rare but possible), keep original
               resolve(file);
             }
           },
@@ -241,7 +270,7 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
           quality,
         );
       } catch (error) {
-        console.warn("Error converting to WebP:", error);
+        console.warn("WebP conversion failed:", error);
         resolve(file);
       }
     };
@@ -251,151 +280,18 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
   });
 };
 
-// 5. Progressive JPEG utility
+/**
+ * Placeholder for Progressive JPEG creation.
+ * Real progressive encoding requires heavy WASM libraries (mozjpeg).
+ * For now, we return the file as-is to avoid client-side bloat.
+ */
 export const createProgressiveJPEG = (file: File): Promise<File> => {
-  return new Promise((resolve) => {
-    if (file.type !== "image/jpeg") {
-      resolve(file);
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      resolve(file);
-      return;
-    }
-
-    const img = new Image();
-
-    img.onload = () => {
-      try {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              const progressiveFile = new File([blob], file.name, {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              });
-              resolve(progressiveFile);
-            } else {
-              resolve(file);
-            }
-          },
-          "image/jpeg",
-          0.85,
-        );
-      } catch (error) {
-        console.warn("Error creating progressive JPEG:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
+  return Promise.resolve(file); 
 };
 
-// 6. FIXED Smart compression based on image content
-export const smartCompress = async (file: File): Promise<File> => {
-  if (!file.type.startsWith("image/")) {
-    return file;
-  }
-
-  return new Promise((resolve) => {
-    const img = new Image();
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      console.warn("Could not get canvas context for smart compression");
-      resolve(file);
-      return;
-    }
-
-    img.onload = () => {
-      try {
-        // Get optimal settings based on file size
-        const { quality, maxWidth, maxHeight } = getOptimalImageSettings(file);
-
-        // Calculate new dimensions while maintaining aspect ratio
-        let { width, height } = img;
-
-        if (width > maxWidth || height > maxHeight) {
-          const aspectRatio = width / height;
-
-          if (width > height) {
-            width = Math.min(width, maxWidth);
-            height = width / aspectRatio;
-          } else {
-            height = Math.min(height, maxHeight);
-            width = height * aspectRatio;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        // Clear canvas and draw image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size > 0) {
-              try {
-                const optimizedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-
-                console.log(`Smart compression result: ${file.name}`, {
-                  original: (file.size / 1024 / 1024).toFixed(2) + "MB",
-                  compressed:
-                    (optimizedFile.size / 1024 / 1024).toFixed(2) + "MB",
-                  reduction:
-                    (
-                      ((file.size - optimizedFile.size) / file.size) *
-                      100
-                    ).toFixed(1) + "%",
-                });
-
-                resolve(optimizedFile);
-              } catch (error) {
-                console.warn("Error creating optimized file:", error);
-                resolve(file);
-              }
-            } else {
-              console.warn(
-                "Smart compression produced empty result, using original file",
-              );
-              resolve(file);
-            }
-          },
-          file.type,
-          quality,
-        );
-      } catch (error) {
-        console.warn("Error in smart compression:", error);
-        resolve(file);
-      }
-    };
-
-    img.onerror = (error) => {
-      console.warn("Error loading image for smart compression:", error);
-      resolve(file);
-    };
-
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-// 7. Custom hook for optimized file uploader
+/**
+ * React Hook to manage the Uppy instance lifecycle with optimization pipeline.
+ */
 export const useOptimizedFileUploader = (
   folderId: string | null,
 ): Uppy<{ folderId: string | null }, Record<string, never>> | null => {
@@ -405,104 +301,45 @@ export const useOptimizedFileUploader = (
   > | null>(null);
 
   useEffect(() => {
-    // Clean up previous instance
+    // Cleanup previous instance
     if (uppyRef.current) {
       uppyRef.current.destroy();
     }
 
     const uppy = createOptimizedUppy({ folderId });
 
-    // Add comprehensive image optimization preprocessor
+    // Inject Optimization Pipeline
     uppy.addPreProcessor(async (fileIDs) => {
       const optimizationPromises = fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
 
         if (file && file.type && file.type.startsWith("image/")) {
           try {
-            let optimizedFile = file.data as File;
-
-            // Validate original file
-            if (optimizedFile.size === 0) {
-              console.warn(
-                `Skipping optimization for ${file.name} - empty file`,
-              );
-              return;
-            }
-
-            // Apply smart compression with fallback
+            const rawFile = file.data as File;
+            
+            // 1. Off-thread resizing & compression (Web Worker)
+            let optimizedFile = await smartCompress(rawFile);
+            
+            // 2. WebP Conversion (Optional, main thread)
+            // Note: smartCompress output is already good, but WebP might squeeze more
             try {
-              const compressedFile = await smartCompress(optimizedFile);
-              if (
-                compressedFile.size > 0 &&
-                compressedFile.size < optimizedFile.size
-              ) {
-                optimizedFile = compressedFile;
-              }
-            } catch (compressionError) {
-              console.warn(
-                `Compression failed for ${file.name}:`,
-                compressionError,
-              );
+               const webpFile = await convertToWebP(optimizedFile);
+               if (webpFile.size < optimizedFile.size) {
+                 optimizedFile = webpFile;
+               }
+            } catch (e) {
+               console.warn("WebP step skipped", e);
             }
 
-            // Convert to WebP if beneficial (with validation)
-            try {
-              const webpFile = await convertToWebP(optimizedFile);
-              if (webpFile.size > 0 && webpFile.size < optimizedFile.size) {
-                optimizedFile = webpFile;
-              }
-            } catch (webpError) {
-              console.warn(
-                `WebP conversion failed for ${file.name}:`,
-                webpError,
-              );
-            }
-
-            // For JPEGs, make them progressive (with validation)
-            try {
-              if (optimizedFile.type === "image/jpeg") {
-                const progressiveFile =
-                  await createProgressiveJPEG(optimizedFile);
-                if (progressiveFile.size > 0) {
-                  optimizedFile = progressiveFile;
-                }
-              }
-            } catch (progressiveError) {
-              console.warn(
-                `Progressive JPEG creation failed for ${file.name}:`,
-                progressiveError,
-              );
-            }
-
-            // Final validation before updating Uppy
-            if (optimizedFile.size === 0) {
-              console.error(
-                `Optimization resulted in empty file for ${file.name}, using original`,
-              );
-              return; // Don't update Uppy, keep original
-            }
-
-            // Update the file in Uppy
+            // 3. Update Uppy state with optimized file
             uppy.setFileState(fileID, {
               data: optimizedFile,
               size: optimizedFile.size,
             });
-
-            const originalSizeMB = ((file.size ?? 0) / 1024 / 1024).toFixed(2);
-            const optimizedSizeMB = (optimizedFile.size / 1024 / 1024).toFixed(
-              2,
-            );
-            const compressionRatio = (
-              (((file.size ?? 0) - optimizedFile.size) / (file.size ?? 1)) *
-              100
-            ).toFixed(1);
-
-            console.log(
-              `Optimized ${file.name}: ${originalSizeMB}MB → ${optimizedSizeMB}MB (${compressionRatio}% reduction)`,
-            );
+            
           } catch (error) {
-            console.warn(`Failed to optimize ${file.name}:`, error);
-            // Keep original file in case of any error
+            console.error(`Optimization failed for ${file.name}:`, error);
+            // On error, Uppy continues with the original file automatically
           }
         }
       });
@@ -521,19 +358,4 @@ export const useOptimizedFileUploader = (
   }, [folderId]);
 
   return uppyRef.current;
-};
-
-// 8. Utility function to get optimal image settings
-export const getOptimalImageSettings = (file: File) => {
-  const sizeInMB = file.size / (1024 * 1024);
-
-  if (sizeInMB > 10) {
-    return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
-  } else if (sizeInMB > 5) {
-    return { quality: 0.7, maxWidth: 1800, maxHeight: 1350 };
-  } else if (sizeInMB > 2) {
-    return { quality: 0.75, maxWidth: 1920, maxHeight: 1440 };
-  } else {
-    return { quality: 0.85, maxWidth: 1920, maxHeight: 1440 };
-  }
 };

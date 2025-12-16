@@ -91,7 +91,7 @@ export interface SyncStatus {
   lastSynced: string | null;
   status: 'pending' | 'syncing' | 'success' | 'error';
   error?: string;
-  count?: number; // Track how many items are synced
+  count?: number; 
 }
 
 export interface MutationTask {
@@ -105,6 +105,14 @@ export interface MutationTask {
   attempts: number;
   lastAttempt?: string;
   error?: string;
+}
+
+// NEW: Persistent Cache for Route Distances
+export interface RouteDistanceCache {
+  id: string; // "lat1,lng1-lat2,lng2"
+  distance_km: number;
+  source: string;
+  timestamp: number;
 }
 
 export class HNVTMDatabase extends Dexie {
@@ -150,13 +158,15 @@ export class HNVTMDatabase extends Dexie {
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
+  
+  // NEW TABLE
+  route_distances!: Table<RouteDistanceCache, string>;
 
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 25: Ensure indexes are optimized for searching and sorting
-    // Added created_at indexes to logs/history tables for incremental sync
-    this.version(25).stores({
+    // VERSION 26: Added route_distances for ORS cache
+    this.version(26).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -192,15 +202,16 @@ export class HNVTMDatabase extends Dexie {
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
-      // Added created_at index for incremental sync on audit logs
       v_audit_logs: '&id, action_type, table_name, created_at',
       v_services: '&id, name, node_name',
       v_end_to_end_paths: '&path_id, path_name',
-      // Added created_at index for incremental sync on inventory history
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
+      
+      // Cache Table
+      route_distances: 'id, timestamp'
     });
   }
 }
