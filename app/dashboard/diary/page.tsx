@@ -241,6 +241,7 @@ export default function DiaryPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         leftIcon={<FiSearch className="text-gray-400" />}
+                        clearable
                         fullWidth
                     />
                 </div>

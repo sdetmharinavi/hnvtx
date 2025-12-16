@@ -184,12 +184,12 @@ export const v_e_files_extendedRowSchema = z.object({
   status: z.enum(['active', 'closed']),
   created_at: z.string(),
   updated_at: z.string(),
-  
+
   // Employee fields
   initiator_employee_id: z.string().uuid().nullable(),
   initiator_name: z.string().nullable(),
   initiator_designation: z.string().nullable(),
-  
+
   current_holder_employee_id: z.string().uuid().nullable(),
   current_holder_name: z.string().nullable(),
   current_holder_designation: z.string().nullable(),
@@ -208,15 +208,15 @@ export const v_file_movements_extendedRowSchema = z.object({
   action_type: z.enum(['initiated', 'forwarded', 'returned', 'closed']),
   remarks: z.string().nullable(),
   created_at: z.string(),
-  
+
   from_employee_id: z.string().uuid().nullable(),
   from_employee_name: z.string().nullable(),
   from_employee_designation: z.string().nullable(),
-  
+
   to_employee_id: z.string().uuid().nullable(),
   to_employee_name: z.string().nullable(),
   to_employee_designation: z.string().nullable(),
-  
+
   performed_by_user_id: z.string().uuid().nullable(),
   performed_by_name: z.string().nullable(),
 });
@@ -2622,6 +2622,7 @@ export const v_ring_nodesRowSchema = z.object({
   lat: z.number().nullable(),
   long: z.number().nullable(),
   name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  node_id: z.uuid().nullable(),
   order_in_ring: z.number().nullable(),
   remark: z.string().nullable(),
   ring_id: z.uuid().nullable(),
@@ -2987,13 +2988,13 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    // THE FIX: Allow empty string (default state) or valid UUID. 
+    // THE FIX: Allow empty string (default state) or valid UUID.
     // Transform empty string to null for the backend.
     ring_id: z.union([z.uuid(), z.literal('')])
       .optional()
       .nullable()
       .transform((val) => val || null),
-      
+
     // ADDED: order_in_ring with transformation to handle empty form inputs
     order_in_ring: ring_based_systemsInsertSchema.shape.order_in_ring.transform(val => {
       if (val == null) return null; // This catches both null and undefined
@@ -3002,7 +3003,7 @@ export const systemFormValidationSchema = systemsInsertSchema
       const num = Number(stringVal);
       return Number.isNaN(num) ? null : num;
     }).optional(),
-    
+
     // ADDED: System Capacity
     system_capacity_id: z.union([z.uuid(), z.literal('')])
     .optional()
@@ -3204,11 +3205,11 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   .uppy-Dashboard {
     border-radius: 0;
   }
-  
+
   .uppy-Dashboard-inner {
     padding: 1rem;
   }
-  
+
   .uppy-DragDrop-container {
     padding: 2rem 1rem;
   }
@@ -3271,11 +3272,11 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
   .uppy-dashboard-container .uppy-Dashboard {
     height: 350px !important; /* Reduced height for mobile */
   }
-  
+
   .uppy-dashboard-container .uppy-Dashboard-files {
     padding: 0 5px;
   }
-  
+
   .uppy-dashboard-container .uppy-DashboardItem-name {
     white-space: nowrap;
     overflow: hidden;
@@ -3295,6 +3296,33 @@ export type SystemFormData = z.infer<typeof systemFormValidationSchema>;
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* app/globals.css */
+
+html {
+  font-size: 15px; /* Default base size */
+}
+
+/* Large screens (Full HD) */
+@media (min-width: 1920px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* 2K Screens */
+@media (min-width: 2560px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* 4K Screens */
+@media (min-width: 3840px) {
+  html {
+    font-size: 22px;
+  }
 }
 
 @theme inline {
@@ -3355,7 +3383,7 @@ body {
 
 /* --- LEAFLET POPUP DARK MODE FIX --- */
 /* Target any leaflet popup inside a .dark container (like html.dark) */
-.dark .leaflet-popup-content-wrapper, 
+.dark .leaflet-popup-content-wrapper,
 .dark .leaflet-popup-tip {
   background-color: #1f2937 !important; /* gray-800 */
   color: #f9fafb !important; /* gray-50 */
@@ -3442,19 +3470,19 @@ body {
   font-size: 12px;
   font-weight: 600;
   color: #2c3e50; /* A dark slate color for light mode */
-  text-shadow: 
-    1px 1px 0 #ffffff, 
-    -1px -1px 0 #ffffff, 
-    1px -1px 0 #ffffff, 
+  text-shadow:
+    1px 1px 0 #ffffff,
+    -1px -1px 0 #ffffff,
+    1px -1px 0 #ffffff,
     -1px 1px 0 #ffffff; /* White outline for readability */
 }
 
 .dark .permanent-label {
   color: #dfe2e6; /* A light color for dark mode */
-  text-shadow: 
-    1px 1px 0 #2c3e50, 
-    -1px -1px 0 #2c3e50, 
-    1px -1px 0 #2c3e50, 
+  text-shadow:
+    1px 1px 0 #2c3e50,
+    -1px -1px 0 #2c3e50,
+    1px -1px 0 #2c3e50,
     -1px 1px 0 #2c3e50; /* Dark outline for readability */
 }
 
@@ -4558,14 +4586,14 @@ function calculateHaversine(lat1: number, lon1: number, lat2: number, lon2: numb
 export async function POST(req: NextRequest) {
   const controller = new AbortController();
   // 10s timeout for the external API
-  const timeoutId = setTimeout(() => controller.abort(), 10000); 
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
   try {
     const body = await req.text();
     if (!body) {
       return NextResponse.json({ error: "Request body is empty" }, { status: 400 });
     }
-    
+
     // Safely parse body
     let parsedBody;
     try {
@@ -4605,7 +4633,7 @@ export async function POST(req: NextRequest) {
       }),
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
 
     if (!res.ok) {
@@ -4618,7 +4646,7 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
     const meters = data?.routes?.[0]?.summary?.distance;
-    
+
     if (meters === undefined || meters === null) {
        throw new Error("Invalid response structure from ORS");
     }
@@ -4632,15 +4660,15 @@ export async function POST(req: NextRequest) {
     try {
        // We can't re-read the stream, but we can try to parse if we stored it or just log error
        // Since stream is consumed, we can't easily fallback if JSON.parse inside try block succeeded
-       // but fetch failed. 
-       
+       // but fetch failed.
+
        // However, we parsed body into variables `a` and `b` before the fetch.
        // We can access them here via closure scope if they were defined.
        // But `a` and `b` are block scoped inside try.
        // Let's just return the error for now, but the code above handles most "soft" failures.
-       
+
        console.error("ORS Fetch failed completely:", error);
-       
+
        // Return a generic fallback response if we can't calculate
        return NextResponse.json({ error: "Routing service unavailable" }, { status: 500 });
     } catch {
@@ -4659,7 +4687,7 @@ import { createClient } from "@/utils/supabase/server";
 // Increase body size limit config for Vercel/Next.js
 export const config = {
   api: {
-    bodyParser: false, 
+    bodyParser: false,
     responseLimit: false,
   },
 };
@@ -4716,7 +4744,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Max Size: 50MB (Matches client-side Uppy config)
-    const maxSize = 50 * 1024 * 1024; 
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: "File size too large. Maximum 50MB allowed." },
@@ -4745,7 +4773,7 @@ export async function POST(request: NextRequest) {
     // Determine resource type
     let resourceType = "auto";
     if (file.type === "application/pdf") {
-      resourceType = "raw"; 
+      resourceType = "raw";
       cloudinaryFormData.append("resource_type", "raw");
     } else if (file.type.startsWith("image/")) {
        resourceType = "image";
@@ -4971,12 +4999,12 @@ export async function POST(request: Request) {
     // 2. Permissions Check using RPC
     // We use the database function public.is_super_admin() which checks the current user's status
     const { data: isSuperAdmin, error: rpcError } = await supabase.rpc('is_super_admin');
-    
+
     if (rpcError) {
       console.error('RPC Error checking permissions:', rpcError);
       return NextResponse.json({ error: 'Failed to verify permissions' }, { status: 500 });
     }
-    
+
     if (!isSuperAdmin) {
       return NextResponse.json({ error: 'Forbidden: Only Super Admins can delete files' }, { status: 403 });
     }
@@ -4984,7 +5012,7 @@ export async function POST(request: Request) {
     // 3. Process Request
     const body = await request.json();
     const { url } = body;
-    
+
     if (!url) {
       return NextResponse.json({ error: 'URL required' }, { status: 400 });
     }
@@ -4997,9 +5025,9 @@ export async function POST(request: Request) {
     await del(url, {
       token: process.env.HNV_READ_WRITE_TOKEN
     });
-    
+
     return NextResponse.json({ success: true });
-    
+
   } catch (error) {
     console.error("Blob delete error:", error);
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
@@ -5022,11 +5050,11 @@ export async function GET() {
     }
 
     // THE FIX: Pass the token explicitly to the list function
-    const { blobs } = await list({ 
+    const { blobs } = await list({
       prefix: 'kml-files/',
-      token: process.env.HNV_READ_WRITE_TOKEN 
+      token: process.env.HNV_READ_WRITE_TOKEN
     });
-    
+
     return NextResponse.json(blobs);
   } catch (error) {
     console.error("Vercel Blob List Error:", error);
@@ -5063,7 +5091,7 @@ export async function POST(request: Request) {
   } catch (error) {
     // Log the full error object for debugging
     console.error("Vercel Blob Upload Error:", error);
-    
+
     // Return a more specific error message if possible
     const message = error instanceof Error ? error.message : 'Unknown upload error';
     return NextResponse.json({ error: `Upload failed: ${message}` }, { status: 500 });
@@ -5099,7 +5127,7 @@ const evolutionCommitPayloadSchema = z.object({
       distance_km: z.number(),
     })),
   });
-  
+
   // Infer the TypeScript type from the schema.
   export type EvolutionCommitPayload = z.infer<typeof evolutionCommitPayloadSchema>;
 
@@ -5124,7 +5152,7 @@ export async function GET(
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
-    
+
     // 2. Fetch all existing JCs on this cable (now includes the nested node name)
     const { data: jcData, error: jcError } = await supabase
       .from('junction_closures')
@@ -5139,7 +5167,7 @@ export async function GET(
       attributes: {
         position_on_route: (jc.position_km / (routeData.current_rkm || 1)) * 100,
         // The name is now correctly available under the 'node' relation
-        name: jc.node?.name 
+        name: jc.node?.name
       }
     }));
 
@@ -5149,7 +5177,7 @@ export async function GET(
       .select('*')
       .eq('original_cable_id', routeId)
       .order('segment_order');
-      
+
     if (segmentError) throw new Error(`Segment fetch error: ${segmentError.message}`);
 
     // FIX: Construct the final payload correctly
@@ -5191,27 +5219,27 @@ export async function POST(
     if (!routeId) {
       return NextResponse.json({ error: 'Route ID is required' }, { status: 400 });
     }
-  
+
     try {
       const payload = await request.json();
-  
+
       // Validate the incoming payload against our strict Zod schema
       const validationResult = evolutionCommitPayloadSchema.safeParse(payload);
       if (!validationResult.success) {
         return NextResponse.json({ error: 'Invalid payload structure.', details: z.treeifyError(validationResult.error) }, { status: 400 });
       }
-  
+
       const supabase = await createClient();
-  
+
       const { data, error } = await supabase.rpc('commit_route_evolution', {
         p_route_id: routeId,
         p_planned_equipment: validationResult.data.plannedJointBoxes,
       });
-      
+
       if (error) throw error;
-  
+
       return NextResponse.json({ message: 'Route evolution committed successfully', data });
-  
+
     } catch (err: unknown) {
       const error = err as Error;
       console.error(`Error committing evolution for route ${routeId}:`, error);
@@ -5223,7 +5251,7 @@ export async function POST(
 <!-- path: app/manifest.ts -->
 ```typescript
 import type { MetadataRoute } from "next";
- 
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Harinavi Transmission Maintenance",
@@ -5316,7 +5344,7 @@ const customCache: RuntimeCaching[] = [
       networkTimeoutSeconds: 5, // Wait 5s for network, then fall back to cache
     }),
   },
-  
+
   // 2. Static Assets (Images, Fonts): CacheFirst
   // These rarely change. Serve immediately from cache.
   {
@@ -5333,7 +5361,7 @@ const customCache: RuntimeCaching[] = [
   },
 
   // 3. Navigation (HTML Pages): NetworkFirst with Short Timeout
-  // CRITICAL FIX: This makes navigation fast. 
+  // CRITICAL FIX: This makes navigation fast.
   // It tries network for 3 seconds. If slow, it serves the cached HTML immediately.
   // The previous setting of 24h expiration caused the "not working after many days" issue.
   {
@@ -5379,7 +5407,7 @@ self.addEventListener('push', (event) => {
     event.waitUntil(self.registration.showNotification(data.title, options));
   }
 });
- 
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
@@ -5411,7 +5439,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   // The 'next' URL is passed from the client when the OAuth flow is initiated
-  const next = searchParams.get('next') ?? '/dashboard'; 
+  const next = searchParams.get('next') ?? '/dashboard';
   const error = searchParams.get('error');
 
   if (error) {
@@ -5619,8 +5647,8 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
       <UserProvider>
       <Protected allowedRoles={allowedRoles}>
       <div className="flex min-h-[calc(100vh-64px)] bg-gray-50 dark:bg-gray-950">
-        <DocSidebar 
-            sections={workflowSections} 
+        <DocSidebar
+            sections={workflowSections}
             features={featuresData} // PASS DATA
         />
         <main className="flex-1 overflow-y-auto h-screen">
@@ -5743,6 +5771,7 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   return {
     id: node.id,
     ring_id: node.ring_id,
+    node_id: node.node_id,
     name: node.name,
     lat: node.lat,
     long: node.long,
@@ -5765,7 +5794,7 @@ export default function RingMapPage() {
   const router = useRouter();
   const ringId = params.id as string;
   const supabase = createClient();
-  
+
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
@@ -5815,7 +5844,7 @@ export default function RingMapPage() {
     staleTime: 5 * 60 * 1000,
     localQueryDeps: [ringId]
   });
-  
+
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
@@ -5828,11 +5857,11 @@ export default function RingMapPage() {
       const { data, error } = await supabase
         .from('logical_paths')
         .select(`
-           start_node_id, 
-           end_node_id, 
-           source_system:source_system_id(system_name), 
-           source_port, 
-           destination_system:destination_system_id(system_name), 
+           start_node_id,
+           end_node_id,
+           source_system:source_system_id(system_name),
+           source_port,
+           destination_system:destination_system_id(system_name),
            destination_port
         `)
         .eq('ring_id', ringId);
@@ -5849,10 +5878,10 @@ export default function RingMapPage() {
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-    
+
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
-    
+
     if (hubs.length > 1) {
       hubs.forEach((hub, index) => {
         const nextIndex = (index + 1) % hubs.length;
@@ -5901,7 +5930,7 @@ export default function RingMapPage() {
          // Create bidirectional keys
          const key1 = `${p.start_node_id}-${p.end_node_id}`;
          const key2 = `${p.end_node_id}-${p.start_node_id}`;
-         
+
          // Fix TS Error: Handle array return from Supabase join
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const sourceSys = p.source_system as any;
@@ -5933,9 +5962,9 @@ export default function RingMapPage() {
       newDisabled.push(key);
     }
 
-    const newConfig = { 
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}), 
-      disabled_segments: newDisabled 
+    const newConfig = {
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}),
+      disabled_segments: newDisabled
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
@@ -5948,7 +5977,7 @@ export default function RingMapPage() {
     // If loading and we have no cached data yet
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
-    
+
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
@@ -5956,7 +5985,7 @@ export default function RingMapPage() {
         </div>
       );
     }
-    
+
     if (viewMode === 'schematic') {
       return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
     }
@@ -6008,7 +6037,7 @@ export default function RingMapPage() {
           ]}
         />
       </div>
-      
+
       <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
@@ -6060,7 +6089,7 @@ export default function RingMapPage() {
 <!-- path: app/dashboard/rings/page.tsx -->
 ```typescript
 // app/dashboard/rings/page.tsx
-"use client";
+'use client';
 
 import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6089,28 +6118,30 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 
 const STATUS_OPTIONS = {
-    OFC: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Partial Ready', label: 'Partial Ready' },
-        { value: 'Ready', label: 'Ready' }
-    ],
-    SPEC: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Survey', label: 'Survey' },
-        { value: 'Issued', label: 'Issued' }
-    ],
-    BTS: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Configured', label: 'Configured' },
-        { value: 'On-Air', label: 'On-Air' }
-    ]
+  OFC: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Partial Ready', label: 'Partial Ready' },
+    { value: 'Ready', label: 'Ready' },
+  ],
+  SPEC: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Survey', label: 'Survey' },
+    { value: 'Issued', label: 'Issued' },
+  ],
+  BTS: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Configured', label: 'Configured' },
+    { value: 'On-Air', label: 'On-Air' },
+  ],
 };
 
 export default function RingsPage() {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
-  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(null);
+  const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(
+    null
+  );
 
   const { isSuperAdmin, role } = useUser();
 
@@ -6119,9 +6150,17 @@ export default function RingsPage() {
     totalCount,
     // activeCount,
     // inactiveCount,
-    isLoading, isMutating, isFetching, error, refetch,
-    pagination, search, filters,
-    editModal, deleteModal, actions: crudActions
+    isLoading,
+    isMutating,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters,
+    editModal,
+    deleteModal,
+    actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',
     dataQueryHook: useRingsData,
@@ -6132,54 +6171,70 @@ export default function RingsPage() {
   // --- PERMISSIONS ---
   const canEdit = isSuperAdmin || role === UserRole.ADMIN;
   const canDelete = !!isSuperAdmin;
-  
+
   const { ringTypeOptions, maintenanceAreaOptions } = useMemo(() => {
     const uniqueRingTypes = new Map<string, { id: string; name: string }>();
     const uniqueMaintenanceAreas = new Map<string, { id: string; name: string }>();
 
-    (rings || []).forEach(ring => {
+    (rings || []).forEach((ring) => {
       if (ring.ring_type_id && ring.ring_type_name && !uniqueRingTypes.has(ring.ring_type_id)) {
-        uniqueRingTypes.set(ring.ring_type_id, { id: ring.ring_type_id, name: ring.ring_type_name });
+        uniqueRingTypes.set(ring.ring_type_id, {
+          id: ring.ring_type_id,
+          name: ring.ring_type_name,
+        });
       }
-      if (ring.maintenance_terminal_id && ring.maintenance_area_name && !uniqueMaintenanceAreas.has(ring.maintenance_terminal_id)) {
-        uniqueMaintenanceAreas.set(ring.maintenance_terminal_id, { id: ring.maintenance_terminal_id, name: ring.maintenance_area_name });
+      if (
+        ring.maintenance_terminal_id &&
+        ring.maintenance_area_name &&
+        !uniqueMaintenanceAreas.has(ring.maintenance_terminal_id)
+      ) {
+        uniqueMaintenanceAreas.set(ring.maintenance_terminal_id, {
+          id: ring.maintenance_terminal_id,
+          name: ring.maintenance_area_name,
+        });
       }
     });
 
     return {
-      ringTypeOptions: Array.from(uniqueRingTypes.values()).map(rt => ({ value: rt.id, label: rt.name })),
-      maintenanceAreaOptions: Array.from(uniqueMaintenanceAreas.values()).map(ma => ({ value: ma.id, label: ma.name })),
+      ringTypeOptions: Array.from(uniqueRingTypes.values()).map((rt) => ({
+        value: rt.id,
+        label: rt.name,
+      })),
+      maintenanceAreaOptions: Array.from(uniqueMaintenanceAreas.values()).map((ma) => ({
+        value: ma.id,
+        label: ma.name,
+      })),
     };
   }, [rings]);
 
   // --- DYNAMIC STATS CALCULATION ---
   const { stats, totalNodesAcrossRings } = useMemo(() => {
     const s = {
-        spec: { issued: 0, pending: 0 },
-        ofc: { ready: 0, partial: 0, pending: 0 },
-        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
+      spec: { issued: 0, pending: 0 },
+      ofc: { ready: 0, partial: 0, pending: 0 },
+      bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
     };
-    
+
     let nodesSum = 0;
 
-    rings.forEach(r => {
-        nodesSum += (r.total_nodes || 0);
+    rings.forEach((r) => {
+      nodesSum += r.total_nodes || 0;
 
-        if (r.spec_status === 'Issued') s.spec.issued++;
-        else s.spec.pending++;
+      if (r.spec_status === 'Issued') s.spec.issued++;
+      else s.spec.pending++;
 
-        if (r.ofc_status === 'Ready') s.ofc.ready++;
-        else if (r.ofc_status === 'Partial Ready') s.ofc.partial++;
-        else s.ofc.pending++;
+      if (r.ofc_status === 'Ready') s.ofc.ready++;
+      else if (r.ofc_status === 'Partial Ready') s.ofc.partial++;
+      else s.ofc.pending++;
 
-        if (r.bts_status === 'On-Air') {
-          s.bts.onAir++;
-          s.bts.nodesOnAir += (r.total_nodes ?? 0);
-        } else if (r.bts_status === 'Configured') {
-          s.bts.configuredCount++;
-        } else {
-          s.bts.pending++;
-        }
+      if (r.bts_status === 'On-Air') {
+        s.bts.onAir++;
+        s.bts.nodesOnAir += r.total_nodes ?? 0;
+      } else if (r.bts_status === 'Configured') {
+        s.bts.configuredCount++;
+      } else {
+        s.bts.pending++;
+      }
     });
     return { stats: s, totalNodesAcrossRings: nodesSum };
   }, [rings]);
@@ -6187,9 +6242,12 @@ export default function RingsPage() {
   const columns = RingsColumns(rings);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
 
-  const handleView = useCallback((record: V_ringsRowSchema) => {
-    if (record.id) router.push(`/dashboard/rings/${record.id}`);
-  }, [router]);
+  const handleView = useCallback(
+    (record: V_ringsRowSchema) => {
+      if (record.id) router.push(`/dashboard/rings/${record.id}`);
+    },
+    [router]
+  );
 
   const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
     setSelectedRingForSystems(record);
@@ -6203,18 +6261,30 @@ export default function RingsPage() {
       onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
     standardActions.unshift({
-      key: 'manage-systems', label: 'Manage Systems',
-      icon: <FaNetworkWired className='w-4 h-4' />,
-      onClick: handleManageSystems, variant: 'secondary'
+      key: 'manage-systems',
+      label: 'Manage Systems',
+      icon: <FaNetworkWired className="w-4 h-4" />,
+      onClick: handleManageSystems,
+      variant: 'secondary',
     });
     return standardActions;
-  }, [editModal.openEdit, handleView, crudActions.handleDelete, handleManageSystems, canEdit, canDelete]);
+  }, [
+    editModal.openEdit,
+    handleView,
+    crudActions.handleDelete,
+    handleManageSystems,
+    canEdit,
+    canDelete,
+  ]);
 
   const isInitialLoad = isLoading && rings.length === 0;
 
   const headerActions = useStandardHeaderActions({
     data: rings as RingsRowSchema[],
-    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
+    },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'rings' },
@@ -6223,7 +6293,11 @@ export default function RingsPage() {
   const headerStats = [
     // THE FIX: Added Total Nodes sum to the first stat card
     { value: `${totalNodesAcrossRings} / ${totalCount}`, label: 'Total Nodes / Rings' },
-    { value: `${stats.bts.nodesOnAir} / ${stats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
+    {
+      value: `${stats.bts.nodesOnAir} / ${stats.bts.configuredCount}`,
+      label: 'Nodes On-Air / Rings Configured',
+      color: 'success' as const,
+    },
     {
       value: `${stats.spec.issued} / ${stats.spec.pending}`,
       label: 'SPEC (Issued/Pend)',
@@ -6243,41 +6317,47 @@ export default function RingsPage() {
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
             <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-               {record.ring_type_name}
+              {record.ring_type_name}
             </span>
           </div>
           {actions}
         </div>
-        
+
         <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mt-1">
-             <div className="flex items-center gap-1.5">
-                <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
-                <span className="truncate max-w-[120px]">{record.maintenance_area_name}</span>
-             </div>
-             <div className="flex items-center gap-1.5">
-                <span className="font-bold text-gray-900 dark:text-white">{record.total_nodes}</span>
-                <span>Nodes</span>
-             </div>
+          <div className="flex items-center gap-1.5">
+            <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
+            <span className="truncate max-w-[120px]">{record.maintenance_area_name}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-gray-900 dark:text-white">{record.total_nodes}</span>
+            <span>Nodes</span>
+          </div>
         </div>
 
         {/* Phase Statuses */}
         <div className="grid grid-cols-3 gap-1 mt-2">
-            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-                <div className="text-[10px] text-gray-400">OFC</div>
-                <div className="text-xs font-medium text-blue-600 dark:text-blue-400">{record.ofc_status || '-'}</div>
+          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+            <div className="text-[10px] text-gray-400">OFC</div>
+            <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
+              {record.ofc_status || '-'}
             </div>
-            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-                <div className="text-[10px] text-gray-400">BTS</div>
-                <div className="text-xs font-medium text-green-600 dark:text-green-400">{record.bts_status || '-'}</div>
+          </div>
+          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+            <div className="text-[10px] text-gray-400">BTS</div>
+            <div className="text-xs font-medium text-green-600 dark:text-green-400">
+              {record.bts_status || '-'}
             </div>
-            <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-                <div className="text-[10px] text-gray-400">SPEC</div>
-                <div className="text-xs font-medium text-orange-600 dark:text-orange-400">{record.spec_status || '-'}</div>
+          </div>
+          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
+            <div className="text-[10px] text-gray-400">SPEC</div>
+            <div className="text-xs font-medium text-orange-600 dark:text-orange-400">
+              {record.spec_status || '-'}
             </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <StatusBadge status={record.status ?? false} />
+          <StatusBadge status={record.status ?? false} />
         </div>
       </div>
     );
@@ -6288,19 +6368,19 @@ export default function RingsPage() {
   }
 
   return (
-    <div className='mx-auto space-y-4 p-6'>
+    <div className="mx-auto space-y-4 p-6">
       <PageHeader
-        title='Ring Management'
-        description='Manage network rings, assign systems, and track phase progress.'
+        title="Ring Management"
+        description="Manage network rings, assign systems, and track phase progress."
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-           <DataTable
-      autoHideEmptyColumns={true}
-        tableName='v_rings'
+      <DataTable
+        autoHideEmptyColumns={true}
+        tableName="v_rings"
         data={rings}
         columns={orderedColumns}
         loading={isLoading}
@@ -6322,7 +6402,7 @@ export default function RingsPage() {
             searchTerm={search.searchQuery}
             onSearchChange={search.setSearchQuery}
             showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(p => !p)}
+            onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={() => filters.setFilters({})}
             hasActiveFilters={Object.values(filters.filters).some(Boolean)}
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
@@ -6368,7 +6448,10 @@ export default function RingsPage() {
               filterKey="status"
               filters={filters.filters}
               setFilters={filters.setFilters}
-              options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
             />
           </SearchAndFilters>
         }
@@ -6378,9 +6461,13 @@ export default function RingsPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
-        editingRing={editModal.record as RingsRowSchema | null}
-        ringTypes={ringTypeOptions.map(opt => ({ id: opt.value, name: opt.label, code: null }))}
-        maintenanceAreas={maintenanceAreaOptions.map(opt => ({ id: opt.value, name: opt.label, code: null }))}
+        editingRing={editModal.record}
+        ringTypes={ringTypeOptions.map((opt) => ({ id: opt.value, name: opt.label, code: null }))}
+        maintenanceAreas={maintenanceAreaOptions.map((opt) => ({
+          id: opt.value,
+          name: opt.label,
+          code: null,
+        }))}
         isLoading={isMutating}
       />
 
@@ -6404,7 +6491,8 @@ export default function RingsPage() {
       />
     </div>
   );
-};
+}
+
 ```
 
 <!-- path: app/dashboard/e-files/[id]/page.tsx -->
@@ -6633,7 +6721,7 @@ export default function EFilesPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
+
   // Local state for filters/search
   const [searchQuery, setSearchQuery] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -6709,8 +6797,8 @@ export default function EFilesPage() {
 
      if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        result = result.filter(f => 
-            f.subject?.toLowerCase().includes(q) || 
+        result = result.filter(f =>
+            f.subject?.toLowerCase().includes(q) ||
             f.file_number?.toLowerCase().includes(q) ||
             f.description?.toLowerCase().includes(q) ||
             f.current_holder_name?.toLowerCase().includes(q)
@@ -6871,15 +6959,15 @@ export default function EFilesPage() {
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search subject, number, holder..." 
-                value={searchQuery} 
+            <Input
+                placeholder="Search subject, number, holder..."
+                value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[140px]">
                  <select
@@ -6892,7 +6980,7 @@ export default function EFilesPage() {
                     <option value="">All Files</option>
                  </select>
              </div>
-             
+
              {/* Category Filter */}
              <div className="min-w-[140px]">
                  <select
@@ -6931,9 +7019,9 @@ export default function EFilesPage() {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {filteredFiles.map(file => (
-                <EFileCard 
-                   key={file.id} 
-                   file={file} 
+                <EFileCard
+                   key={file.id}
+                   file={file}
                    onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
                    onForward={(f) => setForwardModal({ isOpen: true, fileId: f.id! })}
                    onEdit={(f) => setEditModal({ isOpen: true, file: f })}
@@ -6944,7 +7032,7 @@ export default function EFilesPage() {
              ))}
              {filteredFiles.length === 0 && !isLoading && (
                  <div className="col-span-full">
-                    <FancyEmptyState 
+                    <FancyEmptyState
                         title="No files found"
                         description="Try adjusting your filters or initiate a new file."
                         icon={FileText}
@@ -6978,7 +7066,7 @@ export default function EFilesPage() {
                 variant: 'secondary', hidden: (rec) => rec.status !== 'active' || !canEdit,
               },
               {
-                key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
+                key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger',
                 // Strict hiding based on canDelete boolean
                 hidden: !canDelete,
               },
@@ -7066,12 +7154,12 @@ Status: ${item.status_name || 'N/A'}`.trim();
         <div className="flex flex-col items-center space-y-8">
           {/* QR Code Container - Centered during print */}
           <div className="p-4 border-4 border-gray-200 rounded-lg print:border-0 print:p-0 print:absolute print:top-1/2 print:left-1/2 print:-translate-x-1/2 print:-translate-y-1/2">
-            <QRCodeCanvas 
-                value={qrData} 
-                size={200} 
-                bgColor={"#ffffff"} 
-                fgColor={"#000000"} 
-                level={"H"} 
+            <QRCodeCanvas
+                value={qrData}
+                size={200}
+                bgColor={"#ffffff"}
+                fgColor={"#000000"}
+                level={"H"}
                 // Ensure canvas scales well in print if needed, though pixel size usually holds
                 style={{ width: '100%', height: 'auto', maxWidth: '200px' }}
             />
@@ -7202,7 +7290,7 @@ export default function InventoryPage() {
      async () => (await supabase.from('lookup_types').select('*').eq('category', 'INVENTORY_CATEGORY')).data ?? [],
      async () => await localDb.lookup_types.where({ category: 'INVENTORY_CATEGORY' }).toArray()
   );
-  
+
   const { data: locations } = useOfflineQuery<V_nodes_completeRowSchema[]>(
      ['inventory-locations'],
      async () => (await supabase.from('v_nodes_complete').select('*').eq('status', true)).data ?? [],
@@ -7302,18 +7390,18 @@ export default function InventoryPage() {
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search asset, name, desc..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search asset, name, desc..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[160px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="Category"
                    options={categoryOptions}
                    value={filters.filters.category_id as string}
@@ -7322,7 +7410,7 @@ export default function InventoryPage() {
                 />
              </div>
              <div className="min-w-[160px]">
-                 <SearchableSelect 
+                 <SearchableSelect
                    placeholder="Location"
                    options={locationOptions}
                    value={filters.filters.location_id as string}
@@ -7332,14 +7420,14 @@ export default function InventoryPage() {
              </div>
              {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
+                <button
                    onClick={() => setViewMode('grid')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Grid View"
                 >
                     <FiGrid />
                 </button>
-                <button 
+                <button
                    onClick={() => setViewMode('table')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Table View"
@@ -7354,7 +7442,7 @@ export default function InventoryPage() {
         selectedCount={bulkActions.selectedCount}
         isOperationLoading={isMutating}
         onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={() => {}} 
+        onBulkUpdateStatus={() => {}}
         onClearSelection={bulkActions.handleClearSelection}
         entityName="item"
         showStatusUpdate={false}
@@ -7365,7 +7453,7 @@ export default function InventoryPage() {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {inventory.map(item => (
-                <InventoryItemCard 
+                <InventoryItemCard
                     key={item.id}
                     item={item}
                     onEdit={editModal.openEdit}
@@ -7589,11 +7677,11 @@ export default function GlobalConnectionsPage() {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
-  
+
   // Mobile Render for Table Mode
   const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
      return (
-        <ConnectionCard 
+        <ConnectionCard
             connection={record as V_system_connections_completeRowSchema}
             onViewDetails={handleViewDetails}
             onViewPath={handleTracePath}
@@ -7620,18 +7708,18 @@ export default function GlobalConnectionsPage() {
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search service, system, or ID..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search service, system, or ID..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[160px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="Link Type"
                    options={linkTypeOptions}
                    value={filters.filters.connected_link_type_id as string}
@@ -7640,7 +7728,7 @@ export default function GlobalConnectionsPage() {
                 />
              </div>
              <div className="min-w-[160px]">
-                 <SearchableSelect 
+                 <SearchableSelect
                    placeholder="Media Type"
                    options={mediaOptions}
                    value={filters.filters.media_type_id as string}
@@ -7671,8 +7759,8 @@ export default function GlobalConnectionsPage() {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {connections.map(conn => (
-                <ConnectionCard 
-                    key={conn.id} 
+                <ConnectionCard
+                    key={conn.id}
                     connection={conn}
                     onViewDetails={handleViewDetails}
                     onViewPath={handleTracePath}
@@ -7920,7 +8008,7 @@ const AdminUsersPage = () => {
           </div>
           {actions}
         </div>
-        
+
         <div className="flex flex-wrap gap-2 items-center">
             <RoleBadge role={record.role as UserRole} />
             {record.designation && (
@@ -8104,7 +8192,7 @@ export default function LookupTypesPage() {
     handlers: { handleCategoryChange },
     selectedCategory,
   } = useLookupActions();
-  
+
   const { isSuperAdmin, role } = useUser();
 
   // --- PERMISSIONS ---
@@ -8180,7 +8268,7 @@ export default function LookupTypesPage() {
     data: lookupTypes,
     onRefresh: handleRefresh,
     // Gate Add New button
-    onAddNew: canManage 
+    onAddNew: canManage
       ? (hasSelectedCategory ? editModal.openAdd : () => toast.error("Please select a category first."))
       : undefined,
     isLoading: isLoading,
@@ -8431,7 +8519,7 @@ export default function ServicesPage() {
         hideTextOnMobile: true
       }
   ];
-  
+
   // Reorder to ensure Add New is last
   const addNewAction = enhancedHeaderActions.pop();
   if (addNewAction) enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction);
@@ -8470,18 +8558,18 @@ export default function ServicesPage() {
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search name, node, description..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search name, node, description..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[180px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="Link Type"
                    options={linkTypeOptions}
                    value={filters.filters.link_type_id as string}
@@ -8502,14 +8590,14 @@ export default function ServicesPage() {
              </div>
              {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
+                <button
                    onClick={() => setViewMode('grid')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Grid View"
                 >
                     <FiGrid size={16} />
                 </button>
-                <button 
+                <button
                    onClick={() => setViewMode('table')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Table View"
@@ -8535,7 +8623,7 @@ export default function ServicesPage() {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {data.map(service => (
-                <ServiceCard 
+                <ServiceCard
                     key={service.id}
                     service={service}
                     onEdit={editModal.openEdit}
@@ -8883,8 +8971,8 @@ export default function CategoriesPage() {
   // Fetch unique categories
   // We pass the 4th argument (options) to sort the result set by category name
   const { data: categoriesResult, isLoading: dedupLoading, error: dedupError, refetch: refetchCategories } = useDeduplicated(
-    supabase, 
-    'lookup_types', 
+    supabase,
+    'lookup_types',
     {
       columns: ['category'],
       orderBy: [{ column: 'created_at', ascending: true }], // Determins which row is picked per category
@@ -8893,7 +8981,7 @@ export default function CategoriesPage() {
       orderBy: [{ column: 'category', ascending: true }] // Determines the order of the final list
     }
   );
-  
+
   const categoriesDeduplicated = useMemo(() => categoriesResult?.data || [], [categoriesResult]);
 
   const { data: groupedLookupsByCategory, isLoading: groupedLookupsByCategoryLoading, error: groupedLookupsByCategoryError, refetch: refetchGroupedLookupsByCategory } = useTableQuery(supabase, 'lookup_types', {
@@ -9024,10 +9112,10 @@ export default function CategoriesPage() {
 
   const serverFilters = useMemo((): Filters => ({ name: { operator: 'eq', value: 'DEFAULT' } }), []);
   const headerActions = useStandardHeaderActions({
-    data: categoriesDeduplicated, 
-    onRefresh: handleRefresh, 
+    data: categoriesDeduplicated,
+    onRefresh: handleRefresh,
     onAddNew: canEdit ? openCreateModal : undefined,
-    isLoading: isLoading, 
+    isLoading: isLoading,
     exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
   });
 
@@ -9051,56 +9139,56 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
-      <PageHeader 
-        title="Categories" 
-        description="Manage system-wide categories and lookup types." 
-        icon={<FiLayers />} 
-        stats={headerStats} 
-        actions={headerActions} 
-        isLoading={isLoading} 
+      <PageHeader
+        title="Categories"
+        description="Manage system-wide categories and lookup types."
+        icon={<FiLayers />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading}
       />
-      
+
       <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-      
+
       {isLoading && <LoadingState />}
-      
+
       {!isLoading && !error && (
-        <CategoriesTable 
-          categories={filteredCategories} 
-          categoryLookupCounts={categoryLookupCounts} 
-          totalCategories={categoriesDeduplicated.length} 
-          onEdit={handleEdit} 
-          onDelete={handleDeleteCategory} 
-          isDeleting={bulkDeleteManager.isPending} 
+        <CategoriesTable
+          categories={filteredCategories}
+          categoryLookupCounts={categoryLookupCounts}
+          totalCategories={categoriesDeduplicated.length}
+          onEdit={handleEdit}
+          onDelete={handleDeleteCategory}
+          isDeleting={bulkDeleteManager.isPending}
           searchTerm={searchTerm}
           canEdit={canEdit}
           canDelete={canDelete}
         />
       )}
-      
+
       {categoriesDeduplicated.length === 0 && !isLoading && !error && <EmptyState onCreate={openCreateModal} />}
-      
-      <ConfirmModal 
-        isOpen={bulkDeleteManager.isConfirmModalOpen} 
-        onConfirm={bulkDeleteManager.handleConfirm} 
-        onCancel={bulkDeleteManager.handleCancel} 
-        title="Confirm Deletion" 
-        message={bulkDeleteManager.confirmationMessage} 
-        confirmText="Delete" 
-        cancelText="Cancel" 
-        type="danger" 
-        showIcon 
-        loading={bulkDeleteManager.isPending} 
+
+      <ConfirmModal
+        isOpen={bulkDeleteManager.isConfirmModalOpen}
+        onConfirm={bulkDeleteManager.handleConfirm}
+        onCancel={bulkDeleteManager.handleCancel}
+        title="Confirm Deletion"
+        message={bulkDeleteManager.confirmationMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        showIcon
+        loading={bulkDeleteManager.isPending}
       />
-      
-      <CategoryModal 
-        isOpen={isModalOpen} 
-        onClose={handleModalClose} 
-        onSubmit={handleSaveCategory} 
-        isLoading={isLoading} 
-        editingCategory={editingCategory} 
-        categories={categoriesDeduplicated} 
-        lookupsByCategory={groupedLookupsByCategory} 
+
+      <CategoryModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSubmit={handleSaveCategory}
+        isLoading={isLoading}
+        editingCategory={editingCategory}
+        categories={categoriesDeduplicated}
+        lookupsByCategory={groupedLookupsByCategory}
       />
     </div>
   );
@@ -9195,14 +9283,14 @@ const NodesPage = () => {
   );
 
   // Options Mappers
-  const nodeTypeOptions = useMemo(() => 
+  const nodeTypeOptions = useMemo(() =>
     (nodeTypeOptionsData || [])
       .filter(t => t.name !== 'DEFAULT')
-      .map(t => ({ value: t.id, label: t.name })), 
+      .map(t => ({ value: t.id, label: t.name })),
   [nodeTypeOptionsData]);
 
-  const areaOptions = useMemo(() => 
-    (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })), 
+  const areaOptions = useMemo(() =>
+    (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })),
   [maintenanceAreasData]);
 
   const isInitialLoad = isLoading && nodes.length === 0;
@@ -9248,13 +9336,13 @@ const NodesPage = () => {
 
   const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>) => {
       return (
-         <NodeCard 
+         <NodeCard
             node={record as V_nodes_completeRowSchema}
             onEdit={editModal.openEdit}
             onDelete={crudActions.handleDelete}
             onView={viewModal.open}
             canEdit={canEdit}
-            canDelete={canDelete} 
+            canDelete={canDelete}
          />
       )
   }, [editModal.openEdit, crudActions.handleDelete, viewModal.open, canEdit, canDelete]);
@@ -9276,18 +9364,18 @@ const NodesPage = () => {
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search node name, remark..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search node name, remark..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[180px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="Node Type"
                    options={nodeTypeOptions}
                    value={filters.filters.node_type_id as string}
@@ -9296,7 +9384,7 @@ const NodesPage = () => {
                 />
              </div>
              <div className="min-w-[180px]">
-                 <SearchableSelect 
+                 <SearchableSelect
                    placeholder="Maintenance Area"
                    options={areaOptions}
                    value={filters.filters.maintenance_terminal_id as string}
@@ -9306,14 +9394,14 @@ const NodesPage = () => {
              </div>
              {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
+                <button
                    onClick={() => setViewMode('grid')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Grid View"
                 >
                     <FiGrid />
                 </button>
-                <button 
+                <button
                    onClick={() => setViewMode('table')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Table View"
@@ -9340,14 +9428,14 @@ const NodesPage = () => {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {nodes.map(node => (
-                <NodeCard 
-                    key={node.id} 
-                    node={node} 
-                    onEdit={editModal.openEdit} 
-                    onDelete={crudActions.handleDelete} 
+                <NodeCard
+                    key={node.id}
+                    node={node}
+                    onEdit={editModal.openEdit}
+                    onDelete={crudActions.handleDelete}
                     onView={viewModal.open}
                     canEdit={canEdit}
-                    canDelete={canDelete} 
+                    canDelete={canDelete}
                 />
              ))}
              {nodes.length === 0 && !isLoading && (
@@ -9395,13 +9483,13 @@ const NodesPage = () => {
           isLoading={isMutating}
         />
       )}
-      
+
       <NodeDetailsModal
         isOpen={viewModal.isOpen}
         node={viewModal.record as V_nodes_completeRowSchema}
         onClose={viewModal.close}
       />
-      
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -9792,11 +9880,11 @@ export default function DashboardPage() {
     if (user?.id && profile) {
       const currentPreferences = (profile.preferences as User_profilesRowSchema["preferences"]) || {};
       const newPreferences = { ...currentPreferences, showOnboardingPrompt: false };
-      
+
       updateProfile({ id: user.id, data: { preferences: newPreferences } }, {
         onSuccess: () => {
           toast.success("Preference saved. We won't ask again.");
-          refetch(); 
+          refetch();
         },
         onError: (error) => {
           toast.error(`Failed to save preference: ${error.message}`);
@@ -9830,7 +9918,7 @@ import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner, StatusBadge } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Input, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
@@ -9854,14 +9942,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+// import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { FiAnchor, FiArrowRight, FiDatabase, FiGitBranch, FiMapPin, FiPieChart, FiUpload } from 'react-icons/fi';
+import {  FiDatabase, FiGitBranch, FiPieChart, FiUpload, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { ConnectionCard } from '@/components/connections/ConnectionCard'; // Updated Import
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -9872,13 +9961,16 @@ export default function SystemConnectionsPage() {
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
+  // THE FIX: Set default view mode to 'grid'
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters, setShowFilters] = useState(false);
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -9906,11 +9998,11 @@ export default function SystemConnectionsPage() {
 
   // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || [
-    UserRole.ADMIN, 
-    UserRole.CPANADMIN, 
-    UserRole.MAANADMIN, 
-    UserRole.SDHADMIN, 
-    UserRole.ASSETADMIN, 
+    UserRole.ADMIN,
+    UserRole.CPANADMIN,
+    UserRole.MAANADMIN,
+    UserRole.SDHADMIN,
+    UserRole.ASSETADMIN,
     UserRole.MNGADMIN
   ].includes(role as UserRole);
 
@@ -9933,6 +10025,7 @@ export default function SystemConnectionsPage() {
 
   const useData = useSystemConnectionsData(systemId);
 
+  // THE FIX: The sorting logic is now handled largely by the hook, but we can refine it here
   const {
     data: connections,
     totalCount: totalConnections,
@@ -9944,6 +10037,25 @@ export default function SystemConnectionsPage() {
     searchQuery,
     filters
   });
+
+  // Client-side Sort Enhancement: Prioritize Port sorting
+  const sortedConnections = useMemo(() => {
+    // If user is searching, stick to the hook's relevancy sort.
+    // If browsing, sort by Local Working Interface to mimic physical rack layout.
+    if (!searchQuery && connections.length > 0) {
+       const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+       return [...connections].sort((a, b) => {
+          const portA = a.system_working_interface || '';
+          const portB = b.system_working_interface || '';
+          // Fallback to service name if ports are identical (unlikely for active links)
+          if (portA === portB) {
+              return (a.service_name || '').localeCompare(b.service_name || '');
+          }
+          return collator.compare(portA, portB);
+       });
+    }
+    return connections;
+  }, [connections, searchQuery]);
 
   const { data: uniqueValues } = useOfflineQuery(
       ['connection-filter-options', systemId],
@@ -9960,6 +10072,7 @@ export default function SystemConnectionsPage() {
       }
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const capacityOptions = useMemo(() => {
     const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
     return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
@@ -9968,7 +10081,6 @@ export default function SystemConnectionsPage() {
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];
 
-  // Fetch ports for stats
   const { data: ports = [] } = usePortsData(systemId)({
       currentPage: 1,
       pageLimit: 5000,
@@ -10131,7 +10243,7 @@ export default function SystemConnectionsPage() {
       onDelete: canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined,
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) => Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
-    
+
     return [
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
@@ -10172,63 +10284,24 @@ export default function SystemConnectionsPage() {
   }
 
   const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
+    // Reusing the ConnectionCard for mobile view to ensure consistency
+    // Mobile view implies actions are rendered externally, so we wrap card + actions
     return (
-      <div className="flex flex-col gap-3">
-        {/* Header: Service Name & Actions */}
-        <div className="flex justify-between items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight wrap-break-words">
-              {record.service_name || record.connected_system_name || 'Unnamed Connection'}
-            </h3>
-            <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 font-medium">
-               {record.connected_link_type_name || 'Link'}
-               {record.bandwidth_allocated && <span className="text-gray-400 mx-1">•</span>}
-               {record.bandwidth_allocated}
-            </div>
-          </div>
-          <div className="shrink-0">{actions}</div>
-        </div>
-
-        {/* Port Mapping Card */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 rounded border border-gray-100 dark:border-gray-700 p-2.5">
-            <div className="flex items-center justify-between text-xs mb-1 text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                <span>Local</span>
-                <span>Remote</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 text-sm">
-                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
-                    {record.system_working_interface || '?'}
-                </div>
-                <FiArrowRight className="text-gray-400 w-4 h-4" />
-                <div className="font-mono font-medium text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 px-1.5 py-0.5 rounded border dark:border-gray-600">
-                    {record.en_interface || '?'}
-                </div>
-            </div>
-        </div>
-
-        {/* Remote System Details */}
-        <div className="text-xs text-gray-600 dark:text-gray-300 space-y-1">
-             <div className="flex items-center gap-2">
-                 <FiAnchor className="w-3.5 h-3.5 text-purple-500" />
-                 <span className="truncate font-medium">{record.en_name || 'Unknown Remote System'}</span>
-             </div>
-             <div className="flex items-center gap-2">
-                 <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
-                 <span className="truncate">{record.en_node_name || 'Unknown Location'}</span>
+        <div className="flex flex-col gap-3">
+             <ConnectionCard
+                connection={record as V_system_connections_completeRowSchema}
+                onViewDetails={handleViewDetails}
+                onViewPath={handleTracePath}
+                // No GoTo needed here as we are already on the system page
+                onGoToSystem={() => {}}
+                isSystemContext={true}
+             />
+             <div className="flex justify-end gap-2 px-2">
+                 {actions}
              </div>
         </div>
-
-        {/* Footer: ID & Status */}
-        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 uppercase">Circuit ID</span>
-                <span className="text-xs font-mono text-gray-600 dark:text-gray-400">{record.unique_id || '-'}</span>
-             </div>
-             <StatusBadge status={record.status ?? false} />
-        </div>
-      </div>
     );
-  }, []);
+  }, [handleViewDetails, handleTracePath]);
 
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
@@ -10264,67 +10337,111 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
 
+      {/* Sticky Filter Bar - Moved Outside DataTable for better layout control in Grid View */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
+          <div className="w-full lg:w-96">
+            <Input
+                placeholder="Search service, customer..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+            />
+          </div>
+
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[160px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="media_type_id"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={mediaOptions}
+                    placeholder="All Media Types"
+                 />
+             </div>
+             <div className="min-w-[160px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="connected_link_type_id"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={linkTypeOptions}
+                    placeholder="All Link Types"
+                 />
+             </div>
+             <div className="min-w-[120px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="status"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={[
+                        { value: 'true', label: 'Active' },
+                        { value: 'false', label: 'Inactive' }
+                    ]}
+                    placeholder="All Status"
+                 />
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+                <button
+                   onClick={() => setViewMode('grid')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Grid View"
+                >
+                    <FiGrid size={16} />
+                </button>
+                <button
+                   onClick={() => setViewMode('table')}
+                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
+                   title="Table View"
+                >
+                    <FiList size={16} />
+                </button>
+             </div>
+          </div>
+      </div>
+
+      {/* Conditional Rendering: Grid vs Table */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {sortedConnections.map(conn => (
+                <div key={conn.id} className="h-full">
+                    <ConnectionCard
+                        connection={conn}
+                        onViewDetails={handleViewDetails}
+                        onViewPath={handleTracePath}
+                        onGoToSystem={() => {}} // No-op in this view
+                        isSystemContext={true}
+                    />
+                </div>
+             ))}
+             {sortedConnections.length === 0 && !isLoadingConnections && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No connections found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
            <DataTable
-      autoHideEmptyColumns={true}
-        tableName="v_system_connections_complete"
-        data={connections}
-        columns={orderedColumns}
-        loading={isLoadingConnections}
-        isFetching={isLoadingConnections}
-        actions={tableActions}
-        renderMobileItem={renderMobileItem}
-        pagination={{
-          current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
-          onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
-        }}
-        searchable={false}
-        customToolbar={
-          <SearchAndFilters
-            searchTerm={searchQuery}
-            onSearchChange={setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            onClearFilters={() => { setSearchQuery(''); setFilters({}); }}
-            hasActiveFilters={Object.keys(filters).length > 0 || !!searchQuery}
-            activeFilterCount={Object.keys(filters).length}
-            searchPlaceholder="Search service, customer..."
-          >
-             <SelectFilter
-                label="Media Type"
-                filterKey="media_type_id"
-                filters={filters}
-                setFilters={setFilters}
-                options={mediaOptions}
-             />
-             <SelectFilter
-                label="Link Type"
-                filterKey="connected_link_type_id"
-                filters={filters}
-                setFilters={setFilters}
-                options={linkTypeOptions}
-                placeholder="Filter by Link Type"
-             />
-             <SelectFilter
-                label="Capacity / Bandwidth"
-                filterKey="bandwidth"
-                filters={filters}
-                setFilters={setFilters}
-                options={capacityOptions}
-                placeholder="Filter by Capacity"
-             />
-             <SelectFilter
-                label="Status"
-                filterKey="status"
-                filters={filters}
-                setFilters={setFilters}
-                options={[
-                    { value: 'true', label: 'Active' },
-                    { value: 'false', label: 'Inactive' }
-                ]}
-             />
-          </SearchAndFilters>
-        }
-      />
+            autoHideEmptyColumns={true}
+            tableName="v_system_connections_complete"
+            data={sortedConnections} // Use sorted data
+            columns={orderedColumns}
+            loading={isLoadingConnections}
+            isFetching={isLoadingConnections}
+            actions={tableActions}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+              current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
+              onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
+            }}
+            searchable={false} // Custom toolbar used
+            customToolbar={<></>} // Custom toolbar rendered above
+          />
+      )}
 
       {isEditModalOpen && (
         <SystemConnectionFormModal
@@ -10449,12 +10566,12 @@ export default function SystemsPage() {
     async () => (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_CAPACITY")).data ?? [],
     async () => await localDb.lookup_types.where({ category: "SYSTEM_CAPACITY" }).toArray()
   );
-  
-  const systemTypeOptions = useMemo(() => 
+
+  const systemTypeOptions = useMemo(() =>
     (systemTypesResult || []).filter(s => s.name !== 'DEFAULT').map(t => ({ value: t.name, label: t.code || t.name })),
   [systemTypesResult]);
-  
-  const capacityOptions = useMemo(() => 
+
+  const capacityOptions = useMemo(() =>
     (systemCapacitiesResult || []).filter(s => s.name !== 'DEFAULT').map(t => ({ value: t.name, label: t.name })),
   [systemCapacitiesResult]);
 
@@ -10474,7 +10591,7 @@ export default function SystemsPage() {
   // Table Config
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
-  
+
   const tableActions = useMemo(() => {
     const actions = createStandardActions<V_systems_completeRowSchema>({
       // Condition: Edit
@@ -10505,7 +10622,7 @@ export default function SystemsPage() {
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  
+
   const handleExport = useCallback(() => {
     exportSystems({
       fileName: `${formatDate(new Date(), { format: "dd-mm-yyyy" })}-systems-export.xlsx`,
@@ -10543,7 +10660,7 @@ export default function SystemsPage() {
         variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,
         hideTextOnMobile: true
       });
-      
+
       actions.push({
         label: "Add New", onClick: editModal.openAdd, variant: "primary", leftIcon: <FiDatabase />, disabled: isLoading,
       });
@@ -10587,7 +10704,7 @@ export default function SystemsPage() {
 
   const renderMobileItem = useCallback((record: Row<'v_systems_complete'>) => {
      return (
-        <SystemCard 
+        <SystemCard
             system={record as V_systems_completeRowSchema}
             onView={handleView}
             onEdit={editModal.openEdit}
@@ -10619,18 +10736,18 @@ export default function SystemsPage() {
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search system, node, IP..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search system, node, IP..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[160px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="System Type"
                    options={systemTypeOptions}
                    value={filters.filters.system_type_name as string}
@@ -10639,7 +10756,7 @@ export default function SystemsPage() {
                 />
              </div>
              <div className="min-w-[160px]">
-                 <SearchableSelect 
+                 <SearchableSelect
                    placeholder="Capacity"
                    options={capacityOptions}
                    value={filters.filters.system_capacity_name as string}
@@ -10669,9 +10786,9 @@ export default function SystemsPage() {
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {systems.map(sys => (
-                <SystemCard 
-                    key={sys.id} 
-                    system={sys} 
+                <SystemCard
+                    key={sys.id}
+                    system={sys}
                     onView={handleView}
                     onEdit={editModal.openEdit}
                     onDelete={crudActions.handleDelete}
@@ -10715,15 +10832,15 @@ export default function SystemsPage() {
 
       <SystemModal isOpen={editModal.isOpen} onClose={editModal.close} rowData={editModal.record} onSubmit={handleSave} isLoading={upsertSystemMutation.isPending} />
       <SystemPortsManagerModal isOpen={isPortsModalOpen} onClose={() => setIsPortsModalOpen(false)} system={selectedSystemForPorts} />
-      
-      <ConfirmModal 
-        isOpen={deleteModal.isOpen} 
-        onConfirm={deleteModal.onConfirm} 
-        onCancel={deleteModal.onCancel} 
-        title='Confirm Deletion' 
-        message={deleteModal.message} 
-        loading={deleteModal.loading} 
-        type='danger' 
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title='Confirm Deletion'
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type='danger'
       />
     </div>
   );
@@ -10809,16 +10926,16 @@ export default function MaintenanceAreasPage() {
 
   const handleOpenCreateForm = () => { setEditingArea(null); setFormOpen(true); };
   const handleOpenEditForm = (area: MaintenanceAreaWithRelations) => { setEditingArea(area); setFormOpen(true); };
-  
+
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     // THE FIX: Condition the "Add New" button
-    onAddNew: canEdit ? handleOpenCreateForm : undefined, 
+    onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'maintenance_areas' },
   });
-  
+
   const headerStats = [
     { value: totalCount, label: 'Total Areas' },
     { value: activeCount, label: 'Active', color: 'success' as const },
@@ -10828,26 +10945,26 @@ export default function MaintenanceAreasPage() {
   if (error && isInitialLoad) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
   }
-  
+
   // This is a workaround to satisfy the type expected by EntityManagementComponent
   const areasQuery: UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error> = {
     data: { data: allAreas, count: totalCount },
     isLoading, isFetching, error, isError: !!error, refetch,
   } as UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error>;
-  
+
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
-      <PageHeader 
-        title="Maintenance Areas" 
-        description="Manage maintenance areas, zones, and terminals." 
-        icon={<FiMapPin />} 
-        stats={headerStats} 
-        actions={headerActions} 
+      <PageHeader
+        title="Maintenance Areas"
+        description="Manage maintenance areas, zones, and terminals."
+        icon={<FiMapPin />}
+        stats={headerStats}
+        actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
-        className="mb-4" 
+        className="mb-4"
       />
-      
+
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
@@ -10877,7 +10994,7 @@ export default function MaintenanceAreasPage() {
       )}
 
       <MaintenanceAreaDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} area={selectedEntity} />
-      
+
       <ConfirmModal
         isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel}
         title="Confirm Deletion" message={deleteManager.confirmationMessage} confirmText="Delete" cancelText="Cancel"
@@ -10893,11 +11010,11 @@ export default function MaintenanceAreasPage() {
 // path: app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
-import { FaNetworkWired, FaRoute } from 'react-icons/fa';
+import { FaRoute } from 'react-icons/fa';
 import {
   FiUpload,
   FiEdit,
@@ -10906,6 +11023,7 @@ import {
   FiTrash2,
   FiArrowRightCircle,
   FiGitMerge,
+  FiPlus,
 } from 'react-icons/fi';
 
 import { PageHeader, ActionButton } from '@/components/common/page-header';
@@ -10931,14 +11049,12 @@ import {
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
-  RingsRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
-import { SystemFormData } from '@/schemas/system-schemas';
 import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { EntityConfig } from '@/components/common/entity-management/types';
 import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
@@ -10961,23 +11077,15 @@ const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
     columns: `
-      order_in_ring, 
-      ring_id, 
+      order_in_ring,
+      ring_id,
       system:systems!ring_based_systems_system_id_fkey (
-        id, 
-        system_name, 
-        is_hub, 
-        status, 
-        system_type_id, 
-        node_id, 
-        ip_address, 
-        s_no, 
-        make, 
-        remark, 
-        commissioned_on, 
-        maintenance_terminal_id, 
-        maan_node_id, 
-        system_capacity_id
+        id,
+        system_name,
+        is_hub,
+        status,
+        ip_address,
+        system_type:lookup_types!systems_system_type_id_fkey (name)
       )
     `,
     filters: { ring_id: ringId || '' },
@@ -10997,17 +11105,9 @@ const useRingSystems = (ringId: string | null) => {
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
             status: sys.status,
-            system_type_id: sys.system_type_id,
-            node_id: sys.node_id,
-            ip_address:
-              typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
-            s_no: sys.s_no,
-            make: sys.make,
-            remark: sys.remark,
-            commissioned_on: sys.commissioned_on,
-            maintenance_terminal_id: sys.maintenance_terminal_id,
-            maan_node_id: sys.maan_node_id,
-            system_capacity_id: sys.system_capacity_id,
+            // Extract nested type name
+            system_type_name: sys.system_type?.name || 'Unknown Type',
+            ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
           };
         })
         .filter((item): item is V_systems_completeRowSchema => item !== null);
@@ -11066,14 +11166,20 @@ const RingAssociatedSystemsView = ({
         return (
           <div
             key={system.id}
-            className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
+            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
           >
             <div>
-              <p className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                {system.system_name}
-              </p>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1 rounded">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                    {system.system_name}
+                </span>
+                <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800">
+                    {system.system_type_name}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
                   #{system.order_in_ring ?? '?'}
                 </span>
                 {system.is_hub ? (
@@ -11139,7 +11245,7 @@ export default function RingManagerPage() {
   );
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN);
   const canDelete = !!isSuperAdmin;
 
   // Use the extracted hook via CrudManager
@@ -11165,13 +11271,14 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = manager;
 
-  // THE FIX: Safely extract 'stats' from the hook result by casting the manager object
-  // Since useCrudManager passes through the underlying hook result spread, 'stats' exists at runtime.
+  // THE FIX: Safely extract 'stats' from the hook result
   const dynamicStats = useMemo<DynamicStats>(() => {
-    const s = (manager as unknown as { stats?: DynamicStats }).stats;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = (manager as any).stats;
     return (
       s || {
         total: 0,
+        totalNodes: 0,
         spec: { issued: 0, pending: 0 },
         ofc: { ready: 0, partial: 0, pending: 0 },
         bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
@@ -11204,7 +11311,8 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
-  const handleSaveSystems = async (systemsData: (SystemFormData & { id?: string | null })[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSaveSystems = async (systemsData: any[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
       const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
@@ -11296,6 +11404,7 @@ export default function RingManagerPage() {
       (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
     async () => await localDb.lookup_types.where({ category: 'RING_TYPES' }).toArray()
   );
+
   const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
     ['maintenance-areas-for-modal'],
     async () =>
@@ -11409,12 +11518,12 @@ export default function RingManagerPage() {
           leftIcon: <GiLinkedRings />,
           disabled: isLoading,
         });
-        
+
         actions.push({
           label: 'Add Systems to Ring',
           onClick: () => setIsSystemsModalOpen(true),
           variant: 'primary',
-          leftIcon: <FaNetworkWired />,
+          leftIcon: <FiPlus />, // Changed to Plus icon for better semantics
           disabled: isLoading,
         });
     }
@@ -11433,7 +11542,7 @@ export default function RingManagerPage() {
 
   const headerStats = useMemo(() => {
     return [
-      { value: dynamicStats.total, label: 'Total Rings' },
+      { value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`, label: 'Total Rings / Nodes' },
       { value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
       {
         value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
@@ -11452,7 +11561,7 @@ export default function RingManagerPage() {
     () => ({
       ...ringConfig,
       detailFields: [
-        ...ringConfig.detailFields.filter((f) => f.key !== 'description'), 
+        ...ringConfig.detailFields.filter((f) => f.key !== 'description'),
         { key: 'ofc_status', label: 'OFC Status', type: 'text' },
         { key: 'spec_status', label: 'SPEC Status', type: 'text' },
         { key: 'bts_status', label: 'BTS Status', type: 'text' },
@@ -11497,7 +11606,7 @@ export default function RingManagerPage() {
             />
           ),
         },
-      ],
+      ] as EntityConfig<RingEntity>['detailFields'],
       filterOptions: [
         ...ringConfig.filterOptions,
         {
@@ -11505,6 +11614,7 @@ export default function RingManagerPage() {
           label: 'OFC Status',
           type: 'select' as const,
           options: [
+            {value: '', label: 'All'},
             { value: 'Ready', label: 'Ready' },
             { value: 'Pending', label: 'Pending' },
             { value: 'Partial Ready', label: 'Partial Ready' },
@@ -11515,6 +11625,7 @@ export default function RingManagerPage() {
           label: 'BTS Status',
           type: 'select' as const,
           options: [
+            { value: '', label: 'All' },
             { value: 'On-Air', label: 'On-Air' },
             { value: 'Pending', label: 'Pending' },
             { value: 'Configured', label: 'Configured' },
@@ -11524,7 +11635,20 @@ export default function RingManagerPage() {
         if (opt.key === 'ring_type_id') {
           return {
             ...opt,
-            options: (ringTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+            // 1. Map "DEFAULT" to empty string (which clears the filter)
+            options: (ringTypesData || [])
+              .map((t) => {
+                if (t.name === 'DEFAULT') {
+                  return { value: '', label: 'All' };
+                }
+                return { value: t.id, label: t.name };
+              })
+              // 2. Sort to ensure "All Ring Types" is always at the top
+              .sort((a, b) => {
+                if (a.value === '') return -1;
+                if (b.value === '') return 1;
+                return a.label.localeCompare(b.label);
+              }),
           };
         }
         if (opt.key === 'maintenance_terminal_id') {
@@ -11538,6 +11662,22 @@ export default function RingManagerPage() {
     }),
     [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
   );
+
+    useEffect(() => {
+    // Only set if data is loaded and no filter is currently set
+    if (ringTypesData && !filters.filters.ring_type_id) {
+      const defaultType = ringTypesData.find(t => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS');
+
+      if (defaultType) {
+        // Set the filter
+        filters.setFilters(prev => ({
+          ...prev,
+          ring_type_id: defaultType.id
+        }));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ringTypesData]);
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
@@ -11615,7 +11755,7 @@ export default function RingManagerPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         onSubmit={handleSave}
-        editingRing={editModal.record as RingsRowSchema | null}
+        editingRing={editModal.record}
         ringTypes={ringTypesData || []}
         maintenanceAreas={maintenanceAreasData || []}
         isLoading={isMutating}
@@ -11714,7 +11854,7 @@ export default function DiaryPage() {
   } = useDiaryData(currentDate);
 
   const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
-  
+
   // PERMISSIONS LOGIC
   const canEdit = isSuperAdmin || currentUserRole === UserRole.ADMIN;
   // Strict Super Admin Check for Deletion
@@ -11723,14 +11863,14 @@ export default function DiaryPage() {
   // Filter Logic: Role + Search + Date
   const filteredNotes = useMemo(() => {
     // 1. Role Filter
-    let notes = canViewAll 
-      ? allNotesForMonth 
+    let notes = canViewAll
+      ? allNotesForMonth
       : allNotesForMonth.filter(note => note.user_id === user?.id);
 
     // 2. Search Filter
     if (debouncedSearch) {
         const query = debouncedSearch.toLowerCase();
-        notes = notes.filter(note => 
+        notes = notes.filter(note =>
             (note.content?.toLowerCase() || '').includes(query) ||
             (note.tags && note.tags.some(tag => tag.toLowerCase().includes(query)))
         );
@@ -11865,7 +12005,7 @@ export default function DiaryPage() {
         </div>
 
         <div className='grid grid-cols-1 xl:grid-cols-12 gap-6'>
-          
+
           {/* Calendar Sidebar */}
           <div className='xl:col-span-4 space-y-6'>
             <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative'>
@@ -11883,7 +12023,7 @@ export default function DiaryPage() {
                  </Button>
               </div>
             </div>
-            
+
             <div className="hidden xl:block bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
                 <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
                     <FiCalendar /> Usage Tips
@@ -11896,12 +12036,12 @@ export default function DiaryPage() {
 
           {/* Main Content Area */}
           <div className='xl:col-span-8 space-y-6'>
-            
+
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="relative w-full sm:w-72">
-                    <Input 
-                        placeholder="Search logs or tags..." 
+                    <Input
+                        placeholder="Search logs or tags..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         leftIcon={<FiSearch className="text-gray-400" />}
@@ -11910,13 +12050,13 @@ export default function DiaryPage() {
                 </div>
 
                 <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                    <button 
+                    <button
                         onClick={() => setViewMode('day')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'day' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                     >
                         <FiClock className="w-4 h-4" /> Day
                     </button>
-                    <button 
+                    <button
                         onClick={() => setViewMode('feed')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'feed' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                     >
@@ -12030,14 +12170,14 @@ export default function NetworkTopologyPage() {
     { columns: 'id, name, code', filters: { status: true } }
   );
 
-  const areaOptions = useMemo(() => 
+  const areaOptions = useMemo(() =>
     areasResult?.data?.map(area => ({
       value: area.id,
       label: `${area.name} ${area.code ? `(${area.code})` : ''}`
     })) || [],
     [areasResult]
   );
-  
+
   // Fetch topology data based on the selected area
   const { nodes, cables, isLoading, isError, error, refetch } = useNetworkTopologyData(selectedAreaId);
 
@@ -12105,7 +12245,7 @@ import { formatDate } from '@/utils/formatters';
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const {
     data: logs,
     totalCount,
@@ -12121,7 +12261,7 @@ export default function AuditLogsPage() {
     bulkActions,
     deleteModal,
   } = useCrudManager<'user_activity_logs', V_audit_logsRowSchema>({
-    tableName: 'user_activity_logs', 
+    tableName: 'user_activity_logs',
     localTableName: 'v_audit_logs',
     // THE FIX: Identify IDs as numbers for correct local DB operations
     idType: 'number',
@@ -12150,7 +12290,7 @@ export default function AuditLogsPage() {
   });
 
   const renderMobileItem = useCallback((record: Row<'v_audit_logs'>, actions: React.ReactNode) => {
-    
+
     // Action Badge Logic
     const getActionColor = (action: string) => {
         switch(action) {
@@ -12174,7 +12314,7 @@ export default function AuditLogsPage() {
           </div>
           {actions}
         </div>
-        
+
         <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 font-mono break-all line-clamp-2">
            ID: {record.record_id}
         </div>
@@ -12593,6 +12733,7 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   return {
     id: node.id,
     ring_id: node.ring_id,
+    node_id: node.node_id,
     name: node.name,
     lat: node.lat,
     long: node.long,
@@ -12615,7 +12756,7 @@ export default function RingMapPage() {
   const router = useRouter();
   const ringId = params.id as string;
   const supabase = createClient();
-  
+
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
@@ -12660,7 +12801,7 @@ export default function RingMapPage() {
     },
     { enabled: !!ringId, staleTime: 5 * 60 * 1000 }
   );
-  
+
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
@@ -12673,11 +12814,11 @@ export default function RingMapPage() {
       const { data, error } = await supabase
         .from('logical_paths')
         .select(`
-           start_node_id, 
-           end_node_id, 
-           source_system:source_system_id(system_name), 
-           source_port, 
-           destination_system:destination_system_id(system_name), 
+           start_node_id,
+           end_node_id,
+           source_system:source_system_id(system_name),
+           source_port,
+           destination_system:destination_system_id(system_name),
            destination_port
         `)
         .eq('ring_id', ringId);
@@ -12694,10 +12835,10 @@ export default function RingMapPage() {
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-    
+
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
-    
+
     if (hubs.length > 1) {
       hubs.forEach((hub, index) => {
         const nextIndex = (index + 1) % hubs.length;
@@ -12746,7 +12887,7 @@ export default function RingMapPage() {
          // Create bidirectional keys
          const key1 = `${p.start_node_id}-${p.end_node_id}`;
          const key2 = `${p.end_node_id}-${p.start_node_id}`;
-         
+
          // Handle potential array response for joined relations
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const sourceSys = p.source_system as any;
@@ -12782,9 +12923,9 @@ export default function RingMapPage() {
       newDisabled.push(key);
     }
 
-    const newConfig = { 
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}), 
-      disabled_segments: newDisabled 
+    const newConfig = {
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}),
+      disabled_segments: newDisabled
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
@@ -12796,7 +12937,7 @@ export default function RingMapPage() {
   const renderContent = () => {
     const isLoading = isLoadingNodes || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
-    
+
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
@@ -12804,7 +12945,7 @@ export default function RingMapPage() {
         </div>
       );
     }
-    
+
     if (viewMode === 'schematic') {
       return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
     }
@@ -12856,7 +12997,7 @@ export default function RingMapPage() {
           ]}
         />
       </div>
-      
+
       <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
@@ -12913,7 +13054,7 @@ export default function RingMapPage() {
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ConfirmModal, StatusBadge } from '@/components/common/ui';
+import { PageSpinner, ConfirmModal, Input } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -12923,7 +13064,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit, GitBranch } from 'lucide-react';
+import { GitCommit, GitBranch, Search, Grid, List, Trash2, Edit2 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -12938,8 +13079,11 @@ import { PageHeader, useStandardHeaderActions } from '@/components/common/page-h
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
-import { FiActivity, FiArrowRight } from 'react-icons/fi';
 import { UserRole } from '@/types/user-roles';
+import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCard';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { Button } from '@/components/common/ui/Button';
+import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
@@ -12947,11 +13091,18 @@ export default function OfcCableDetailsPage() {
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
 
+  // 1. Initialize with a safe default (e.g., 'table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  // 2. Track if we've already set the smart default
+  const [hasInitializedView, setHasInitializedView] = useState(false);
+
   const {
     data: cableConnectionsData,
     isLoading,
     refetch,
     pagination,
+    search, // Destructure search control
+    filters, // Destructure filter control
     editModal,
     deleteModal,
     actions: crudActions,
@@ -12963,9 +13114,7 @@ export default function OfcCableDetailsPage() {
 
   // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  // Strictly Super Admin for deletion of fibers (should come from capacity)
   const canDelete = !!isSuperAdmin;
-  // Adding new fibers manually is also restricted
   const canAdd = !!isSuperAdmin;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(
@@ -13003,6 +13152,74 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, routeDetails, ensureConnectionsExist]);
 
+  const handleTraceClick = useCallback(
+    (record: V_ofc_connections_completeRowSchema) => {
+      const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
+      if (firstSegment && record.fiber_no_sn) {
+        setTracingFiber({
+          startSegmentId: firstSegment.id,
+          fiberNo: record.fiber_no_sn,
+          record,
+        });
+      } else {
+        toast.error(
+          'Cannot trace fiber: No cable segments found for this route or fiber number is missing.'
+        );
+      }
+    },
+    [cableSegments]
+  );
+
+  // Generate Actions for Cards (Grid View)
+  const getCardActions = useCallback(
+    (record: V_ofc_connections_completeRowSchema) => {
+      return (
+        <>
+          {canEdit && (
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => editModal.openEdit(record)}
+              title="Edit Fiber"
+            >
+              <Edit2 className="w-4 h-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              size="xs"
+              variant="ghost"
+              className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => crudActions.handleDelete(record)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+          <div className="flex-1"></div>
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => handleTraceClick(record)}
+            title="Trace Path"
+          >
+            <GitCommit className="w-4 h-4 mr-1" /> Trace
+          </Button>
+        </>
+      );
+    },
+    [canEdit, canDelete, editModal, crudActions, handleTraceClick]
+  );
+
+  // 3. Effect to set mode once data loads
+  useEffect(() => {
+    // Only run if data is loaded, we have records, and we haven't set it yet
+    if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
+      const smartMode = cableConnectionsData.length > 48 ? 'table' : 'grid';
+      setViewMode(smartMode);
+      setHasInitializedView(true); // Lock it so manual toggles aren't overridden
+    }
+  }, [isLoading, cableConnectionsData.length, hasInitializedView]);
+
   const columns = OfcDetailsTableColumns(cableConnectionsData);
   const orderedColumns = useOrderedColumns(columns, [
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
@@ -13012,28 +13229,13 @@ export default function OfcCableDetailsPage() {
     () => [
       {
         key: 'trace',
-        label: 'Trace Fiber Path',
+        label: 'Trace Path',
         icon: <GitCommit className="h-4 w-4" />,
-        onClick: (record: V_ofc_connections_completeRowSchema) => {
-          const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
-          if (firstSegment && record.fiber_no_sn) {
-            setTracingFiber({
-              startSegmentId: firstSegment.id,
-              fiberNo: record.fiber_no_sn,
-              record,
-            });
-          } else {
-            toast.error(
-              'Cannot trace fiber: No cable segments found for this route or fiber number is missing.'
-            );
-          }
-        },
+        onClick: handleTraceClick,
         variant: 'secondary' as const,
       },
       ...createStandardActions({
-        // Conditionally allow editing
         onEdit: canEdit ? editModal.openEdit : undefined,
-        // Conditionally allow deletion
         onDelete: canDelete ? crudActions.handleDelete : undefined,
         onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
       }),
@@ -13044,7 +13246,7 @@ export default function OfcCableDetailsPage() {
       crudActions.handleToggleStatus,
       canEdit,
       canDelete,
-      cableSegments,
+      handleTraceClick,
     ]
   );
 
@@ -13054,7 +13256,6 @@ export default function OfcCableDetailsPage() {
       await refetch();
       toast.success('Connections refreshed!');
     },
-    // Conditionally allow adding new fibers
     onAddNew: canAdd ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: {
@@ -13070,77 +13271,21 @@ export default function OfcCableDetailsPage() {
       { value: utilization?.capacity ?? 0, label: 'Total Capacity', color: 'default' },
       { value: utilization?.used_fibers ?? 0, label: 'Utilized', color: 'primary' },
       { value: utilization?.available_fibers ?? 0, label: 'Available', color: 'success' },
-      { value: `${utilPercent}%`, label: 'Utilization', color: utilPercent > 80 ? 'warning' : 'default' },
+      {
+        value: `${utilPercent}%`,
+        label: 'Utilization',
+        color: utilPercent > 80 ? 'warning' : 'default',
+      },
     ];
   }, [utilization]);
 
   const renderMobileItem = useCallback(
     (record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
       return (
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                F{record.fiber_no_sn}
-              </span>
-              {record.fiber_no_sn !== record.fiber_no_en && (
-                <>
-                  <FiArrowRight className="w-3 h-3 text-gray-400" />
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                    F{record.fiber_no_en}
-                  </span>
-                </>
-              )}
-            </div>
-            {actions}
-          </div>
-
-          <div className="min-w-0 mt-1">
-            {record.system_name ? (
-              <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
-                  {record.system_name}
-                </h4>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-blue-600 dark:text-blue-400">
-                  <span className="uppercase font-bold tracking-wider">
-                    {record.connection_type || 'Connection'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <span className="text-sm text-gray-400 italic">Unallocated Fiber</span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-2 text-xs bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700">
-            <div>
-              <span className="block text-gray-400 text-[10px] uppercase">End A (Node)</span>
-              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                {record.updated_sn_name || 'N/A'}
-              </div>
-              <div className="text-gray-500 mt-0.5">
-                {record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}
-              </div>
-            </div>
-            <div>
-              <span className="block text-gray-400 text-[10px] uppercase">End B (Node)</span>
-              <div className="truncate font-medium text-gray-700 dark:text-gray-300">
-                {record.updated_en_name || 'N/A'}
-              </div>
-              <div className="text-gray-500 mt-0.5">
-                {record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <FiActivity className="w-3.5 h-3.5" />
-              <span>Loss: {record.route_loss_db ? `${record.route_loss_db} dB` : '-'}</span>
-            </div>
-            <StatusBadge status={record.status ?? false} />
-          </div>
-        </div>
+        <FiberConnectionCard
+          fiber={record as V_ofc_connections_completeRowSchema}
+          actions={actions}
+        />
       );
     },
     []
@@ -13171,30 +13316,102 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-        <DataTable<'v_ofc_connections_complete'>
-          autoHideEmptyColumns={true}
-          tableName="v_ofc_connections_complete"
-          data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
-          columns={orderedColumns}
-          loading={isLoading}
-          actions={tableActions}
-          // THE FIX: Restrict bulk selection
-          selectable={canDelete}
-          searchable={true}
-          renderMobileItem={renderMobileItem}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: utilization?.capacity ?? 0,
-            showSizeChanger: true,
-            onChange: (page, limit) => {
-              pagination.setCurrentPage(page);
-              pagination.setPageLimit(limit);
-            },
-          }}
-        />
+      {/* Sticky Toolbar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
+        <div className="w-full lg:w-96 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search fibers, systems..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            className="pl-10"
+            fullWidth
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[150px]">
+            <SelectFilter
+              label=""
+              filterKey="status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+              placeholder="All Status"
+            />
+          </div>
+          {/* View Toggle */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
+
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {cableConnectionsData.map((fiber) => (
+              <FiberConnectionCard key={fiber.id} fiber={fiber} actions={getCardActions(fiber)} />
+            ))}
+            {cableConnectionsData.length === 0 && (
+              <div className="col-span-full">
+                <FancyEmptyState
+                  title="No fibers found"
+                  description="Adjust filters to see results"
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <DataTable<'v_ofc_connections_complete'>
+            autoHideEmptyColumns={true}
+            tableName="v_ofc_connections_complete"
+            data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
+            columns={orderedColumns}
+            loading={isLoading}
+            actions={tableActions}
+            selectable={canDelete}
+            searchable={false} // Custom search bar used
+            customToolbar={<></>}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+              current: pagination.currentPage,
+              pageSize: pagination.pageLimit,
+              total: utilization?.capacity ?? 0,
+              showSizeChanger: true,
+              onChange: (page, limit) => {
+                pagination.setCurrentPage(page);
+                pagination.setPageLimit(limit);
+              },
+            }}
+          />
+        )}
+      </div>
+
       <OfcConnectionsFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
@@ -13223,6 +13440,7 @@ export default function OfcCableDetailsPage() {
     </div>
   );
 }
+
 ```
 
 <!-- path: app/dashboard/ofc/page.tsx -->
@@ -13317,7 +13535,7 @@ const OfcPage = () => {
   // Table Config
   const columns = OfcTableColumns(ofcData);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
-  
+
   const tableActions = useMemo(
     () =>
       createStandardActions<V_ofc_cables_completeRowSchema>({
@@ -13347,7 +13565,7 @@ const OfcPage = () => {
 
   const renderMobileItem = useCallback((record: Row<'v_ofc_cables_complete'>) => {
     return (
-        <OfcCableCard 
+        <OfcCableCard
             cable={record as V_ofc_cables_completeRowSchema}
             onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
             onEdit={editModal.openEdit}
@@ -13371,22 +13589,22 @@ const OfcPage = () => {
         isLoading={isInitialLoad}
         isFetching={isFetching}
       />
-      
+
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search route name, asset no..." 
-                value={search.searchQuery} 
+            <Input
+                placeholder="Search route name, asset no..."
+                value={search.searchQuery}
                 onChange={(e) => search.setSearchQuery(e.target.value)}
                 leftIcon={<FiSearch className="text-gray-400" />}
                 fullWidth
             />
           </div>
-          
+
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[160px]">
-                <SearchableSelect 
+                <SearchableSelect
                    placeholder="Cable Type"
                    options={ofcTypes.map(t => ({ value: t.id, label: t.name }))}
                    value={filters.filters.ofc_type_id as string}
@@ -13395,7 +13613,7 @@ const OfcPage = () => {
                 />
              </div>
              <div className="min-w-[160px]">
-                 <SearchableSelect 
+                 <SearchableSelect
                    placeholder="Owner"
                    options={ofcOwners.map(o => ({ value: o.id, label: o.name }))}
                    value={filters.filters.ofc_owner_id as string}
@@ -13405,14 +13623,14 @@ const OfcPage = () => {
              </div>
              {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
+                <button
                    onClick={() => setViewMode('grid')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Grid View"
                 >
                     <FiGrid />
                 </button>
-                <button 
+                <button
                    onClick={() => setViewMode('table')}
                    className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
                    title="Table View"
@@ -13434,14 +13652,14 @@ const OfcPage = () => {
         // THE FIX: Pass delete capability
         canDelete={() => canDelete}
       />
-      
+
       {/* Content */}
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {ofcData.map(cable => (
-                <OfcCableCard 
-                    key={cable.id} 
-                    cable={cable} 
+                <OfcCableCard
+                    key={cable.id}
+                    cable={cable}
                     onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
                     onEdit={editModal.openEdit}
                     onDelete={crudActions.handleDelete}
@@ -13509,82 +13727,437 @@ export default OfcPage;
 
 <!-- path: app/dashboard/route-manager/page.tsx -->
 ```typescript
-// app/dashboard/route-manager/page.tsx
-"use client";
+// path: app/dashboard/ring-manager/page.tsx
+'use client';
 
-import { useState, useMemo, useCallback, useRef } from "react";
-import { useRouteDetails } from "@/hooks/database/route-manager-hooks";
-import { PageSpinner, ConfirmModal } from "@/components/common/ui";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/common/ui/tabs";
-import { JcFormModal } from "@/components/route-manager/JcFormModal";
-import RouteVisualization from "@/components/route-manager/ui/RouteVisualization";
-import { FiberSpliceManager } from "@/components/route-manager/FiberSpliceManager";
-import { JointBox } from "@/schemas/custom-schemas";
-import { useDeleteManager } from "@/hooks/useDeleteManager";
-import RouteSelection from "@/components/route-manager/RouteSelection";
-import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
-import { FiUpload, FiDownload, FiPlus, FiRefreshCw } from "react-icons/fi";
-import { useExportRouteTopology, useImportRouteTopology } from "@/hooks/database/excel-queries/useRouteTopologyExcel";
-import { ActionButton } from "@/components/common/page-header";
-import { useUser } from "@/providers/UserProvider";
-import { UserRole } from "@/types/user-roles";
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { GiLinkedRings } from 'react-icons/gi';
+import {
+  FiUpload,
+  FiEdit,
+  FiDownload,
+  FiRefreshCw,
+  FiTrash2,
+  FiArrowRightCircle,
+  FiGitMerge,
+  FiPlus,
+} from 'react-icons/fi';
 
-export default function RouteManagerPage() {
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
-  const [selectedJc, setSelectedJc] = useState<JointBox | null>(null);
-  const [editingJc, setEditingJc] = useState<JointBox | null>(null);
-  const [isJcFormModalOpen, setIsJcFormModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("visualization");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+import { PageHeader, ActionButton } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { RingModal } from '@/components/rings/RingModal';
+import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
+import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
+import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
+
+import {
+  useTableInsert,
+  useTableUpdate,
+  RpcFunctionArgs,
+  useRpcMutation,
+  useTableQuery,
+  PagedQueryResult,
+  Filters,
+} from '@/hooks/database';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import {
+  RingsInsertSchema,
+  Lookup_typesRowSchema,
+  Maintenance_areasRowSchema,
+  V_ringsRowSchema,
+  V_systems_completeRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { ringConfig, RingEntity } from '@/config/ring-config';
+import { useUser } from '@/providers/UserProvider';
+import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
+import { EntityConfig } from '@/components/common/entity-management/types';
+import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { formatDate } from '@/utils/formatters';
+import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
+import { UserRole } from '@/types/user-roles';
+import { FaRoute } from 'react-icons/fa';
+
+// --- Types ---
+interface SystemToDisassociate {
+  ringId: string;
+  systemId: string;
+  systemName: string;
+  ringName: string;
+}
+
+// --- Helper Hooks ---
+
+const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
+  return useTableQuery(supabase, 'ring_based_systems', {
+    columns: `
+      order_in_ring,
+      ring_id,
+      system:systems!ring_based_systems_system_id_fkey (
+        id,
+        system_name,
+        is_hub,
+        status,
+        ip_address,
+        system_type:lookup_types!systems_system_type_id_fkey (name)
+      )
+    `,
+    filters: { ring_id: ringId || '' },
+    enabled: !!ringId,
+    orderBy: [{ column: 'order_in_ring', ascending: true }],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    select: (result: PagedQueryResult<any>) => {
+      const flattened = result.data
+        .map((item) => {
+          const sys = item.system || item.systems;
+          if (!sys) return null;
 
-  const { isSuperAdmin, role } = useUser();
+          return {
+            id: sys.id,
+            system_name: sys.system_name,
+            is_hub: sys.is_hub,
+            order_in_ring: item.order_in_ring,
+            ring_id: item.ring_id,
+            status: sys.status,
+            // Extract nested type name
+            system_type_name: sys.system_type?.name || 'Unknown Type',
+            ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
+          };
+        })
+        .filter((item): item is V_systems_completeRowSchema => item !== null);
 
-  // --- PERMISSIONS ---
-  // Admins/Asset Admins can Edit (Create JCs, Splice)
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  // Super Admin can Delete (Deleting a JC is destructive to the route segments)
-  const canDelete = !!isSuperAdmin;
-
-  const { data: routeDetails, isLoading: isLoadingRouteDetails, refetch: refetchRouteDetails, error: routeDetailsError, isError: routeDetailsIsError } = useRouteDetails(selectedRouteId as string);
-  
-  const deleteManager = useDeleteManager({
-    tableName: "junction_closures",
-    onSuccess: () => {
-      refetchRouteDetails();
-      if (selectedJc && selectedJc.id === deleteManager.itemToDelete?.id) {
-        setSelectedJc(null);
-        setActiveTab("visualization");
-      }
+      return {
+        data: flattened,
+        count: result.count,
+      };
     },
   });
+};
 
-  const { mutate: exportTopology, isPending: isExporting } = useExportRouteTopology(supabase);
-  const { mutate: importTopology, isPending: isUploading } = useImportRouteTopology(supabase);
+const RingAssociatedSystemsView = ({
+  ringId,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete
+}: {
+  ringId: string;
+  onEdit: (sys: V_systems_completeRowSchema) => void;
+  onDelete: (sys: V_systems_completeRowSchema) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
+  const { data: systemsData, isLoading } = useRingSystems(ringId);
+  const systems = systemsData?.data || [];
 
-  const allJointBoxesOnRoute = useMemo(() => routeDetails?.jointBoxes || [], [routeDetails]);
-  const currentSegments = useMemo(() => routeDetails?.segments || [], [routeDetails]);
+  if (isLoading)
+    return (
+      <div className="py-4 text-center text-sm text-gray-500">Loading associated systems...</div>
+    );
 
-  const handleRouteChange = useCallback((routeId: string | null) => {
-    setSelectedRouteId(routeId);
-    setSelectedJc(null);
-    setActiveTab("visualization");
-  }, []);
+  if (systems.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700">
+        No systems associated with this ring yet.
+      </div>
+    );
+  }
 
-  const handleAddJunctionClosure = useCallback(() => {
-    setEditingJc(null);
-    setIsJcFormModalOpen(true);
-  }, []);
-  
+  const hubMap = new Map<number, string>();
+  systems.forEach((s) => {
+    if (s.is_hub && s.order_in_ring !== null) {
+      hubMap.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
+    }
+  });
+
+  return (
+    <div className="space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+      {systems.map((system) => {
+        const isSpur = !system.is_hub && system.order_in_ring !== null;
+        const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
+        const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
+
+        return (
+          <div
+            key={system.id}
+            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                    {system.system_name}
+                </span>
+                <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800">
+                    {system.system_type_name}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                  #{system.order_in_ring ?? '?'}
+                </span>
+                {system.is_hub ? (
+                  <span className="text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
+                    <FiArrowRightCircle className="w-3 h-3" /> Hub
+                  </span>
+                ) : (
+                  <span className="text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
+                    <FiGitMerge className="w-3 h-3" /> Spur
+                    {parentName && (
+                      <span className="text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal">
+                        via {parentName}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {canEdit && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                    onClick={() => onEdit(system)}
+                    title="Edit Order / Hub Status"
+                >
+                    <FiEdit className="w-4 h-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                    onClick={() => onDelete(system)}
+                    title="Remove System from Ring"
+                >
+                    <FiTrash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default function RingManagerPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+  const { isSuperAdmin, role } = useUser();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Modals State
+  const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
+  const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
+  const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
+  const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(
+    null
+  );
+
+  // --- PERMISSIONS ---
+  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN);
+  const canDelete = !!isSuperAdmin;
+
+  // Use the extracted hook via CrudManager
+  const manager = useCrudManager<'rings', V_ringsRowSchema>({
+    tableName: 'rings',
+    dataQueryHook: useRingManagerData,
+    displayNameField: 'name',
+  });
+
+  const {
+    data: rings,
+    isLoading,
+    isMutating: isCrudMutating,
+    isFetching,
+    error,
+    refetch,
+    queryResult,
+    search,
+    filters,
+    editModal,
+    deleteModal,
+    viewModal,
+    actions: crudActions,
+  } = manager;
+
+  // THE FIX: Safely extract 'stats' from the hook result
+  const dynamicStats = useMemo<DynamicStats>(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = (manager as any).stats;
+    return (
+      s || {
+        total: 0,
+        spec: { issued: 0, pending: 0 },
+        ofc: { ready: 0, partial: 0, pending: 0 },
+        bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
+      }
+    );
+  }, [manager]);
+
+  const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
+  const { mutate: uploadRings, isPending: isUploading } = useRingExcelUpload(supabase);
+  const { mutate: exportRings, isPending: isExporting } = useRPCExcelDownload(supabase);
+
+  const isMutating = isCrudMutating || isInserting || isUpdating;
+
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
+    onSuccess: () => {
+      void refetch();
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+    },
+    onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
+  });
+
+  const disassociateSystemMutation = useRpcMutation(supabase, 'disassociate_system_from_ring', {
+    onSuccess: () => {
+      toast.success('System disassociated from ring.');
+      void refetch();
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+      setSystemToDisassociate(null);
+    },
+    onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSaveSystems = async (systemsData: any[]) => {
+    toast.info(`Saving ${systemsData.length} system associations...`);
+    const promises = systemsData.map((systemData) => {
+      const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+        p_id: systemData.id ?? undefined,
+        p_system_name: systemData.system_name!,
+        p_system_type_id: systemData.system_type_id!,
+        p_node_id: systemData.node_id!,
+        p_status: systemData.status ?? true,
+        p_is_hub: systemData.is_hub ?? false,
+        p_ring_associations: systemData.ring_id
+          ? [
+              {
+                ring_id: systemData.ring_id,
+                order_in_ring:
+                  systemData.order_in_ring != null ? Number(systemData.order_in_ring) : null,
+              },
+            ]
+          : null,
+        p_ip_address: systemData.ip_address ? systemData.ip_address.split('/')[0] : undefined,
+        p_s_no: systemData.s_no ?? undefined,
+        p_make: systemData.make ?? undefined,
+        p_maan_node_id: systemData.maan_node_id ?? undefined,
+        p_maintenance_terminal_id: systemData.maintenance_terminal_id ?? undefined,
+        p_commissioned_on: systemData.commissioned_on ?? undefined,
+        p_remark: systemData.remark ?? undefined,
+        p_system_capacity_id: systemData.system_capacity_id ?? undefined,
+      };
+      return upsertSystemMutation.mutateAsync(payload);
+    });
+    try {
+      await Promise.all(promises);
+      toast.success('All system associations saved successfully!');
+      void refetch();
+    } catch {
+      toast.error('One or more system associations failed to save.');
+    }
+  };
+
+  const handleUpdateSystemInRing = (formData: {
+    order_in_ring: number | null;
+    is_hub: boolean | null;
+  }) => {
+    if (!systemToEdit) return;
+
+    if (!systemToEdit.ring_id) {
+      toast.error('Cannot update: System is not correctly associated with a ring context.');
+      return;
+    }
+
+    const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+      p_id: systemToEdit.id!,
+      p_system_name: systemToEdit.system_name!,
+      p_system_type_id: systemToEdit.system_type_id!,
+      p_node_id: systemToEdit.node_id!,
+      p_status: systemToEdit.status!,
+      p_is_hub: formData.is_hub ?? systemToEdit.is_hub ?? false,
+      p_ring_associations: [
+        {
+          ring_id: systemToEdit.ring_id,
+          order_in_ring:
+            formData.order_in_ring != null
+              ? Number(formData.order_in_ring)
+              : systemToEdit.order_in_ring ?? null,
+        },
+      ],
+      p_ip_address: systemToEdit.ip_address ? systemToEdit.ip_address.split('/')[0] : undefined,
+      p_s_no: systemToEdit.s_no ?? undefined,
+      p_make: systemToEdit.make ?? undefined,
+      p_maan_node_id: systemToEdit.maan_node_id ?? undefined,
+      p_maintenance_terminal_id: systemToEdit.maintenance_terminal_id ?? undefined,
+      p_commissioned_on: systemToEdit.commissioned_on ?? undefined,
+      p_remark: systemToEdit.remark ?? undefined,
+      p_system_capacity_id: systemToEdit.system_capacity_id ?? undefined,
+    };
+
+    upsertSystemMutation.mutate(payload, {
+      onSuccess: () => {
+        toast.success(`Updated "${systemToEdit.system_name}" in ring.`);
+        setIsEditSystemModalOpen(false);
+        setSystemToEdit(null);
+        void refetch();
+      },
+    });
+  };
+
+  const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['ring-types-for-modal'],
+    async () =>
+      (await supabase.from('lookup_types').select('*').eq('category', 'RING_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'RING_TYPES' }).toArray()
+  );
+  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
+    ['maintenance-areas-for-modal'],
+    async () =>
+      (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
+    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
+  );
+
+  const handleMutationSuccess = () => {
+    toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
+    editModal.close();
+    refetch();
+  };
+
+  const handleSave = (data: RingsInsertSchema) => {
+    if (editModal.record?.id) {
+      updateRing({ id: editModal.record.id, data }, { onSuccess: handleMutationSuccess });
+    } else {
+      insertRing(data, { onSuccess: handleMutationSuccess });
+    }
+  };
+
+  const handleViewDetails = useCallback(
+    (record: V_ringsRowSchema) => {
+      if (record.id) router.push(`/dashboard/rings/${record.id}`);
+    },
+    [router]
+  );
+
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && selectedRouteId) {
-      importTopology({ file, routeId: selectedRouteId });
+    if (file) {
+      uploadRings({ file });
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -13592,144 +14165,322 @@ export default function RouteManagerPage() {
   };
 
   const handleExportClick = useCallback(() => {
-  if (selectedRouteId && routeDetails?.route?.route_name) {
-    exportTopology({ routeId: selectedRouteId, routeName: routeDetails.route.route_name });
-  } else {
-    toast.error("Please select a route to export.");
-  }
-}, [selectedRouteId, routeDetails?.route?.route_name, exportTopology]);
+    exportRings({
+      fileName: `${formatDate(new Date(), {
+        format: 'dd-mm-yyyy',
+      })}-rings-export.xlsx`,
+      sheetName: 'Rings',
+      rpcConfig: {
+        functionName: 'get_rings_for_export',
+      },
+      columns: [
+        { key: 'id', title: 'id', dataIndex: 'id' },
+        { key: 'name', title: 'name', dataIndex: 'name' },
+        { key: 'description', title: 'description', dataIndex: 'description' },
+        { key: 'ring_type_name', title: 'ring_type_name', dataIndex: 'ring_type_name' },
+        {
+          key: 'maintenance_area_name',
+          title: 'maintenance_area_name',
+          dataIndex: 'maintenance_area_name',
+        },
+        { key: 'status', title: 'status', dataIndex: 'status' },
+        { key: 'ofc_status', title: 'ofc_status', dataIndex: 'ofc_status' },
+        { key: 'spec_status', title: 'spec_status', dataIndex: 'spec_status' },
+        { key: 'bts_status', title: 'bts_status', dataIndex: 'bts_status' },
+        { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
+        {
+          key: 'associated_systems',
+          title: 'associated_systems',
+          dataIndex: 'associated_systems',
+          excelFormat: 'json',
+        },
+      ],
+    });
+  }, [exportRings]);
 
-  const handleOpenEditJcModal = useCallback((jc: JointBox) => {
-    setEditingJc(jc);
-    setIsJcFormModalOpen(true);
-  }, []);
-
-  const handleJcClick = useCallback((jc: JointBox) => {
-    setSelectedJc(jc);
-    setActiveTab("splicing");
-  }, []);
-
-  const handleRemoveJc = useCallback(
-    (jcId: string) => {
-      const jcToRemove = allJointBoxesOnRoute.find((jc) => jc.id === jcId);
-      if (!jcToRemove) return;
-      const name = jcToRemove.attributes?.name || jcToRemove.node?.name || `JC ${jcId.slice(-4)}`;
-      deleteManager.deleteSingle({ id: jcId, name });
-    },
-    [allJointBoxesOnRoute, deleteManager]
-  );
-  
-  const headerActions = useMemo((): ActionButton[] => {
+  const headerActions = useMemo(() => {
     const actions: ActionButton[] = [
         {
-            label: 'Refresh',
-            onClick: () => { refetchRouteDetails(); toast.success('Route details refreshed!'); },
-            variant: 'outline',
-            leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
-            disabled: isLoadingRouteDetails,
+          label: 'Refresh',
+          onClick: () => {
+            refetch();
+          },
+          variant: 'outline',
+          leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
+          disabled: isLoading,
         },
         {
-            label: isExporting ? 'Exporting...' : 'Export Topology',
-            onClick: handleExportClick,
-            variant: 'outline',
-            leftIcon: <FiDownload />,
-            disabled: isExporting || !selectedRouteId,
+          label: isExporting ? 'Exporting...' : 'Export Rings',
+          onClick: handleExportClick,
+          variant: 'outline',
+          leftIcon: <FiDownload />,
+          disabled: isExporting || isLoading,
+          hideTextOnMobile: true
         }
     ];
 
-    // Restrict Import to Admins
     if (canEdit) {
-        actions.push({
-            label: isUploading ? 'Importing...' : 'Import Topology',
-            onClick: handleUploadClick,
-            variant: 'outline',
-            leftIcon: <FiUpload />,
-            disabled: isUploading || !selectedRouteId,
+        actions.splice(1, 0, {
+          label: isUploading ? 'Uploading...' : 'Upload Rings',
+          onClick: handleUploadClick,
+          variant: 'outline',
+          leftIcon: <FiUpload />,
+          disabled: isUploading || isLoading,
+          hideTextOnMobile: true
         });
-    }
 
-    // Restrict Add JC to Admins
-    if (canEdit) {
         actions.push({
-            label: 'Add Junction Closure',
-            onClick: handleAddJunctionClosure,
-            variant: 'primary',
-            leftIcon: <FiPlus />,
-            disabled: !selectedRouteId || isLoadingRouteDetails,
+          label: 'Add New Ring',
+          onClick: editModal.openAdd,
+          variant: 'primary',
+          leftIcon: <GiLinkedRings />,
+          disabled: isLoading,
+        });
+
+        actions.push({
+          label: 'Add Systems to Ring',
+          onClick: () => setIsSystemsModalOpen(true),
+          variant: 'primary',
+          leftIcon: <FiPlus />, // Changed to Plus icon for better semantics
+          disabled: isLoading,
         });
     }
 
     return actions;
-  }, [isLoadingRouteDetails, isExporting, isUploading, selectedRouteId, handleAddJunctionClosure, refetchRouteDetails, handleExportClick, handleUploadClick, canEdit]);
+  }, [
+    isLoading,
+    isUploading,
+    isExporting,
+    refetch,
+    handleUploadClick,
+    handleExportClick,
+    editModal.openAdd,
+    canEdit
+  ]);
+
+  const headerStats = useMemo(() => {
+    return [
+      { value: dynamicStats.total, label: 'Total Rings' },
+      { value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`, label: 'Nodes On-Air / Rings Configured', color: 'success' as const },
+      {
+        value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
+        label: 'SPEC (Issued/Pend)',
+        color: 'primary' as const,
+      },
+      {
+        value: `${dynamicStats.ofc.ready} / ${dynamicStats.ofc.partial} / ${dynamicStats.ofc.pending}`,
+        label: 'OFC (Ready/Partial/Pend)',
+        color: 'warning' as const,
+      },
+    ];
+  }, [dynamicStats]);
+
+  const dynamicFilterConfig: EntityConfig<RingEntity> = useMemo(
+    () => ({
+      ...ringConfig,
+      detailFields: [
+        ...ringConfig.detailFields.filter((f) => f.key !== 'description'),
+        { key: 'ofc_status', label: 'OFC Status', type: 'text' },
+        { key: 'spec_status', label: 'SPEC Status', type: 'text' },
+        { key: 'bts_status', label: 'BTS Status', type: 'text' },
+        { key: 'description', label: 'Description', type: 'html' },
+        {
+          key: 'id',
+          label: 'Path Management',
+          type: 'custom',
+          render: (_value, entity) => (
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full mb-4"
+              leftIcon={<FaRoute />}
+              onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}
+            >
+              Manage Logical Paths
+            </Button>
+          ),
+        },
+        {
+          key: 'id',
+          label: 'Associated Systems',
+          type: 'custom',
+          render: (_value, entity) => (
+            <RingAssociatedSystemsView
+              ringId={entity.id}
+              onEdit={(system) => {
+                setSystemToEdit(system);
+                setIsEditSystemModalOpen(true);
+              }}
+              onDelete={(system) =>
+                setSystemToDisassociate({
+                  ringId: entity.id,
+                  systemId: system.id!,
+                  ringName: entity.name,
+                  systemName: system.system_name || 'this system',
+                })
+              }
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+          ),
+        },
+      ],
+      filterOptions: [
+        ...ringConfig.filterOptions,
+        {
+          key: 'ofc_status',
+          label: 'OFC Status',
+          type: 'select' as const,
+          options: [
+            { value: 'Ready', label: 'Ready' },
+            { value: 'Pending', label: 'Pending' },
+            { value: 'Partial Ready', label: 'Partial Ready' },
+          ],
+        },
+        {
+          key: 'bts_status',
+          label: 'BTS Status',
+          type: 'select' as const,
+          options: [
+            { value: 'On-Air', label: 'On-Air' },
+            { value: 'Pending', label: 'Pending' },
+            { value: 'Configured', label: 'Configured' },
+          ],
+        },
+      ].map((opt) => {
+        if (opt.key === 'ring_type_id') {
+          return {
+            ...opt,
+            options: (ringTypesData || []).map((t) => ({ value: t.id, label: t.name })),
+          };
+        }
+        if (opt.key === 'maintenance_terminal_id') {
+          return {
+            ...opt,
+            options: (maintenanceAreasData || []).map((m) => ({ value: m.id, label: m.name })),
+          };
+        }
+        return opt;
+      }),
+    }),
+    [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
+  );
+
+  const uiFilters = useMemo<Record<string, string>>(() => {
+    const src = (filters.filters || {}) as Record<string, unknown>;
+    const out: Record<string, string> = {};
+    Object.keys(src).forEach((k) => {
+      const v: unknown = src[k as keyof typeof src];
+      if (v === undefined || v === null) return;
+      out[k] =
+        typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
+    });
+    return out;
+  }, [filters.filters]);
+
+  const handleConfirmDisassociation = useCallback(() => {
+    if (!systemToDisassociate) return;
+    disassociateSystemMutation.mutate({
+      p_ring_id: systemToDisassociate.ringId,
+      p_system_id: systemToDisassociate.systemId,
+    });
+  }, [systemToDisassociate, disassociateSystemMutation]);
+
+  if (error)
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <div className='p-6 space-y-6'>
+    <div className="p-4 md:p-6 h-full flex flex-col">
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
-        accept=".xlsx"
+        accept=".xlsx, .xls"
       />
-      <RouteSelection 
-        selectedRouteId={selectedRouteId} 
-        onRouteChange={handleRouteChange} 
-        isLoadingRouteDetails={isLoadingRouteDetails}
+      <PageHeader
+        title="Ring Manager"
+        description="Manage network rings, status, and topology."
+        icon={<GiLinkedRings />}
+        stats={headerStats}
         actions={headerActions}
+        isLoading={isLoading}
+        isFetching={isFetching}
+      />
+      <div className="grow mt-6">
+        <EntityManagementComponent
+          config={dynamicFilterConfig}
+          entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
+          toggleStatusMutation={{ mutate: crudActions.handleToggleStatus, isPending: isMutating }}
+          // THE FIX: Correctly pass permission checks
+          onEdit={canEdit ? (e) => {
+            const orig = rings.find((r) => r.id === e.id);
+            if (orig) editModal.openEdit(orig);
+          } : undefined}
+          onDelete={canDelete ? crudActions.handleDelete : undefined}
+          onCreateNew={canEdit ? editModal.openAdd : undefined}
+          selectedEntityId={viewModal.record?.id ?? null}
+          onSelect={(id) => {
+            if (!id) {
+              viewModal.close();
+              return;
+            }
+            const rec = rings.find((r) => r.id === id);
+            if (rec) viewModal.open(rec);
+          }}
+          onViewDetails={() => handleViewDetails(viewModal.record!)}
+          searchTerm={search.searchQuery}
+          onSearchChange={search.setSearchQuery}
+          filters={uiFilters}
+          onFilterChange={(f) => filters.setFilters(f as Filters)}
+          onClearFilters={() => filters.setFilters({})}
+          isFetching={isFetching}
+        />
+      </div>
+
+      <RingModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        onSubmit={handleSave}
+        editingRing={editModal.record}
+        ringTypes={ringTypesData || []}
+        maintenanceAreas={maintenanceAreasData || []}
+        isLoading={isMutating}
       />
 
-      {isLoadingRouteDetails && <PageSpinner text='Loading route details...' />}
-      {routeDetailsIsError && <div className='p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg'>Error: {routeDetailsError.message}</div>}
+      <SystemRingModal
+        isOpen={isSystemsModalOpen}
+        onClose={() => setIsSystemsModalOpen(false)}
+        onSubmit={handleSaveSystems}
+        isLoading={isMutating || upsertSystemMutation.isPending}
+      />
 
-      {routeDetails && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
-          <TabsList>
-            <TabsTrigger value='visualization'>Route Visualization</TabsTrigger>
-            <TabsTrigger value='splicing' disabled={!selectedJc}>
-              Splice Management {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value='visualization'>
-            <RouteVisualization 
-                routeDetails={{ ...routeDetails, jointBoxes: allJointBoxesOnRoute, segments: currentSegments }} 
-                onJcClick={handleJcClick} 
-                onEditJc={handleOpenEditJcModal} 
-                onDeleteJc={handleRemoveJc} 
-                canEdit={canEdit}
-                canDelete={canDelete}
-            />
-          </TabsContent>
-          <TabsContent value='splicing'>
-            <FiberSpliceManager 
-                junctionClosureId={selectedJc?.id ?? null} 
-                canEdit={canEdit}
-            />
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {isJcFormModalOpen && (
-        <JcFormModal
-          isOpen={isJcFormModalOpen}
-          onClose={() => {
-            setEditingJc(null);
-            setIsJcFormModalOpen(false);
-          }}
-          onSave={() => refetchRouteDetails()}
-          routeId={selectedRouteId}
-          editingJc={editingJc}
-          rkm={routeDetails?.route.current_rkm ?? null}
-        />
-      )}
+      <EditSystemInRingModal
+        isOpen={isEditSystemModalOpen}
+        onClose={() => setIsEditSystemModalOpen(false)}
+        system={systemToEdit}
+        onSubmit={handleUpdateSystemInRing}
+        isLoading={upsertSystemMutation.isPending}
+      />
 
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
-        title='Confirm Deletion'
-        message={deleteManager.confirmationMessage}
-        loading={deleteManager.isPending}
-        type='danger'
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title="Confirm Deletion"
+        message={deleteModal.message}
+        loading={deleteModal.loading}
+        type="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!systemToDisassociate}
+        onConfirm={handleConfirmDisassociation}
+        onCancel={() => setSystemToDisassociate(null)}
+        title="Confirm Disassociation"
+        message={`Are you sure you want to remove the system "${systemToDisassociate?.systemName}" from the ring "${systemToDisassociate?.ringName}"?`}
+        loading={disassociateSystemMutation.isPending}
+        type="danger"
       />
     </div>
   );
@@ -13766,11 +14517,11 @@ export default function KmlManagerPage() {
   const [selectedKml, setSelectedKml] = useState<BlobFile | null>(null);
   const [fileToDelete, setFileToDelete] = useState<BlobFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Get User Permissions
   const { isSuperAdmin, role } = useUser();
-  
-  
+
+
   // Permission Logic
   const canDelete = isSuperAdmin; // Strict Super Admin only
   const canUpload = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN; // Admins can upload
@@ -13799,8 +14550,8 @@ export default function KmlManagerPage() {
 
   return (
     <div className="p-4 md:p-6 h-[calc(100vh-64px)] flex flex-col space-y-4">
-      <PageHeader 
-        title="KML Manager" 
+      <PageHeader
+        title="KML Manager"
         description="Upload, manage, and visualize Google Earth KML network routes."
         icon={<FiMap />}
         actions={[
@@ -13823,16 +14574,16 @@ export default function KmlManagerPage() {
       />
 
       {/* Hidden Input */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept=".kml,.kmz" 
-        onChange={handleFileChange} 
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept=".kml,.kmz"
+        onChange={handleFileChange}
       />
 
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
-        
+
         {/* LEFT: File List */}
         <div className="w-full lg:w-1/3 xl:w-1/4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 shadow-sm flex flex-col overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 flex justify-between items-center">
@@ -13841,7 +14592,7 @@ export default function KmlManagerPage() {
               {kmlFiles.length}
             </span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
             {isLoading ? (
               <div className="flex justify-center py-10"><PageSpinner text="Loading list..." /></div>
@@ -13859,13 +14610,13 @@ export default function KmlManagerPage() {
                 const isSelected = selectedKml?.url === file.url;
 
                 return (
-                  <div 
+                  <div
                     key={file.url}
                     onClick={() => setSelectedKml(file)}
                     className={`
                       p-3 rounded-lg border cursor-pointer transition-all group relative
                       ${isSelected
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500/50 shadow-sm' 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500/50 shadow-sm'
                         : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/30'}
                     `}
                   >
@@ -13900,7 +14651,7 @@ export default function KmlManagerPage() {
                         >
                             <FiDownload size={14} />
                         </button>
-                        
+
                         {/* Conditionally render Delete button based on permissions */}
                         {canDelete && (
                           <button
@@ -13944,7 +14695,7 @@ export default function KmlManagerPage() {
       </div>
 
       {/* Delete Confirmation */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!fileToDelete}
         title="Delete KML File"
         message={`Are you sure you want to delete "${fileToDelete?.pathname.replace('kml-files/', '')}"? This action cannot be undone.`}
@@ -14015,13 +14766,13 @@ export default function DashboardLayout({
                 marginLeft: `${marginValue}px`,
               }}
             >
-              {/* 
+              {/*
                 OPTION 1: Remove title from header completely
                 Let each page control its own title
               */}
               <div className="no-print">
-                <DashboardHeader 
-                  onMenuClick={() => setIsCollapsed(!isCollapsed)} 
+                <DashboardHeader
+                  onMenuClick={() => setIsCollapsed(!isCollapsed)}
                 />
               </div>
 
@@ -14049,7 +14800,7 @@ import { PageSpinner } from "@/components/common/ui";
 // Disable SSR for the heavy Uploader component
 const FileUploader = dynamic(
   () => import("@/components/diagrams/FileUploader"),
-  { 
+  {
     ssr: false,
     loading: () => <PageSpinner text="Loading File Manager..." />
   },
@@ -14148,7 +14899,7 @@ export default function OnboardingFormEnhanced() {
       onSuccess: (data) => {
         toast.success("Profile updated successfully!");
         refetch();
-        
+
         // THE FIX: Explicitly invalidate the user permissions query to ensure
         // the `needsOnboarding` flag updates globally immediately.
         queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
@@ -14184,7 +14935,7 @@ export default function OnboardingFormEnhanced() {
         language: normalizePreferenceValue(preferences.language) || "en",
         theme: normalizePreferenceValue(preferences.theme) || "light",
       };
-      
+
       const formData = {
         first_name: profile.first_name ?? "",
         last_name: profile.last_name ?? "",
@@ -14195,7 +14946,7 @@ export default function OnboardingFormEnhanced() {
         address: toObject(profile.address),
         preferences: normalizedPreferences,
       };
-      
+
       reset(formData);
     }
   }, [profile, isProfileLoading, reset]);
@@ -14221,7 +14972,7 @@ export default function OnboardingFormEnhanced() {
     const newPreferences = {
       ...toObject(profile?.preferences),
       ...toObject(data.preferences),
-      needsOnboarding: false, 
+      needsOnboarding: false,
     };
     updates.preferences = newPreferences;
 
@@ -14390,7 +15141,7 @@ export default function OnboardingFormEnhanced() {
                 const handleChange = (value: string) => {
                   if (value) field.onChange(value);
                 };
-                
+
                 return (
                   <div>
                     <Label htmlFor='preferences_language' className='block text-sm font-medium mb-1'>
@@ -14424,7 +15175,7 @@ export default function OnboardingFormEnhanced() {
                 const handleChange = (value: string) => {
                   if (value) field.onChange(value);
                 };
-                
+
                 return (
                   <div>
                     <Label htmlFor='preferences_theme' className='block text-sm font-medium mb-1'>
@@ -14520,7 +15271,7 @@ export default function OnboardingPage() {
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Update Your Profile</h1>
         <div className="flex items-center gap-4">
-          
+
           {/* THE FIX: Added Refresh Button */}
           <button
              onClick={handleRefresh}
@@ -14567,7 +15318,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { UserProvider } from "@/providers/UserProvider"; // THE FIX: Import UserProvider
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
-    
+
   return (
     <QueryProvider>
       {/* THE FIX: Wrap the Protected component and its children with UserProvider */}
@@ -14684,7 +15435,7 @@ export default function RootLayout({
                       }
                     }
                   }
-                  
+
                   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
@@ -14717,29 +15468,29 @@ export default function RootLayout({
 <!-- path: config/user-details-config.tsx -->
 ```typescript
 // ==== USER DETAILS MODAL CONFIGURATION ====
-import { 
-    DetailsModal, 
-    defaultFormatters, 
-    type HeaderConfig, 
-    type SectionConfig 
+import {
+    DetailsModal,
+    defaultFormatters,
+    type HeaderConfig,
+    type SectionConfig
   } from '@/components/common/ui/Modal/DetailsModal';
-  import { 
-    FiUser, 
-    FiPhone, 
-    FiCalendar, 
-    FiUserCheck, 
-    FiBriefcase, 
-    FiMail, 
-    FiShield, 
-    FiClock, 
-    FiSettings, 
-    FiMapPin 
+  import {
+    FiUser,
+    FiPhone,
+    FiCalendar,
+    FiUserCheck,
+    FiBriefcase,
+    FiMail,
+    FiShield,
+    FiClock,
+    FiSettings,
+    FiMapPin
   } from "react-icons/fi";
   import { RoleBadge } from "@/components/common/ui/badges/RoleBadge";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
-  
+
   // User details modal configuration
   export const userDetailsConfig = {
     header: {
@@ -14892,7 +15643,7 @@ import {
   import { FiGitBranch, FiMapPin, FiClock, FiInfo, FiHash, FiActivity } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
   import { BsnlCable } from '@/components/bsnl/types';
-  
+
   export const cableDetailsConfig = {
     header: {
       title: (cable: BsnlCable) => cable.route_name || "Unnamed Route",
@@ -14912,7 +15663,7 @@ import {
         },
       ]
     } as HeaderConfig<BsnlCable>,
-  
+
     sections: [
       {
         title: "Route Information",
@@ -14944,7 +15695,7 @@ import {
       }
     ] as SectionConfig<BsnlCable>[],
   };
-  
+
   export const CableDetailsModal = ({ cable, onClose, isOpen }: { cable: BsnlCable | null; onClose: () => void; isOpen: boolean; }) => {
     return (
       <DetailsModal
@@ -14996,7 +15747,7 @@ const PORT_TYPES = {
   TEN_GE: '6c9460cb-22dd-4457-82e3-0ccebe0f3afc',
   STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc',
   // New Type for C1 System (Ensure this UUID exists in lookup_types or replace with existing Ethernet UUID)
-  HUNDRED_GE: '8495033c-5353-4876-b605-65476a6a9787' 
+  HUNDRED_GE: '8495033c-5353-4876-b605-65476a6a9787'
 };
 
 export const PORT_TEMPLATES: Record<string, PortTemplate> = {
@@ -15059,7 +15810,7 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
       // Slot 1 (STM1 & E1)
       ...['1.1', '1.2', '1.3', '1.4'].map(p => createPort(p, PORT_TYPES.STM1, 'STM1')),
       ...Array.from({length: 16}, (_, i) => createPort(`1.${i+5}`, PORT_TYPES.E1_2MBPS, '2mbps')),
-      
+
       // Slot 2 (STM1 & E1)
       ...['2.1', '2.2', '2.3', '2.4'].map(p => createPort(p, PORT_TYPES.STM1, 'STM1')),
       ...Array.from({length: 16}, (_, i) => createPort(`2.${i+5}`, PORT_TYPES.E1_2MBPS, '2mbps')),
@@ -15096,11 +15847,11 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
        // Slot 1 (STM1 & E1)
       ...['1.1', '1.2', '1.3', '1.4'].map(p => createPort(p, PORT_TYPES.STM1, 'STM1')),
       ...Array.from({length: 16}, (_, i) => createPort(`1.${i+5}`, PORT_TYPES.E1_2MBPS, '2mbps')),
-      
+
       // Slot 2 (STM1 & E1)
       ...['2.1', '2.2', '2.3', '2.4'].map(p => createPort(p, PORT_TYPES.STM1, 'STM1')),
       ...Array.from({length: 16}, (_, i) => createPort(`2.${i+5}`, PORT_TYPES.E1_2MBPS, '2mbps')),
-      
+
       // Slot 3
       createPort('3.1', PORT_TYPES.TEN_GE, '10GE'),
       ...Array.from({length: 5}, (_, i) => createPort(`3.${i+2}`, PORT_TYPES.GE_OPTICAL, 'GE(O)')),
@@ -15132,7 +15883,7 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
     ports: [
       ...Array.from({length: 12}, (_, i) => createPort(`ETH-1-1-${i+1}`, PORT_TYPES.GE_OPTICAL, 'GE(O)')),
       ...['13', '14', '15', '16'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.TEN_GE, '10GE')),
-      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')), 
+      ...['17', '18', '19', '20'].map(n => createPort(`ETH-1-1-${n}`, PORT_TYPES.GE_OPTICAL, 'GE(E)')),
       createPort('NMS', PORT_TYPES.FE, 'FE')
     ]
   },
@@ -15349,25 +16100,25 @@ export type UploadMetaMap = {
 <!-- path: config/ofc-details-config.tsx -->
 ```typescript
 // ==== OFC DETAILS MODAL CONFIGURATION ====
-import { 
-    DetailsModal, 
-    defaultFormatters, 
-    type HeaderConfig, 
-    type SectionConfig 
+import {
+    DetailsModal,
+    defaultFormatters,
+    type HeaderConfig,
+    type SectionConfig
   } from '@/components/common/ui/Modal/DetailsModal';
-  import { 
+  import {
     FiActivity,
-    FiCalendar, 
-    FiClock, 
-    FiDatabase, 
-    FiMapPin, 
+    FiCalendar,
+    FiClock,
+    FiDatabase,
+    FiMapPin,
     FiInfo,
     FiGitBranch,
     FiTool
   } from "react-icons/fi";
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
-  
+
   // OFC details modal configuration
   export const ofcDetailsConfig = {
     header: {
@@ -15394,7 +16145,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
         }
       ]
     } as HeaderConfig<V_ofc_cables_completeRowSchema>,
-  
+
     sections: [
       {
         title: "Route Information",
@@ -15455,7 +16206,7 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
       }
     ] as SectionConfig<V_ofc_cables_completeRowSchema>[]
   };
-  
+
   export const OfcDetailsModal = ({ ofc, onClose, isOpen }: { ofc: V_ofc_cables_completeRowSchema, onClose: () => void, isOpen: boolean }) => {
     return (
       <DetailsModal
@@ -15466,28 +16217,28 @@ import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
       />
     );
   };
-  
+
 ```
 
 <!-- path: config/employee-details-config.tsx -->
 ```typescript
 // ==== EMPLOYEE DETAILS MODAL CONFIGURATION ====
 
-import { 
-  DetailsModal, 
-  defaultFormatters, 
-  type HeaderConfig, 
-  type SectionConfig 
+import {
+  DetailsModal,
+  defaultFormatters,
+  type HeaderConfig,
+  type SectionConfig
 } from '@/components/common/ui/Modal/DetailsModal';
-import { 
-  FiUser, 
-  FiPhone, 
-  FiMail, 
-  FiBriefcase, 
-  FiCalendar, 
-  FiClock, 
-  FiMapPin, 
-  FiInfo 
+import {
+  FiUser,
+  FiPhone,
+  FiMail,
+  FiBriefcase,
+  FiCalendar,
+  FiClock,
+  FiMapPin,
+  FiInfo
 } from "react-icons/fi";
 import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
 import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
@@ -15511,7 +16262,7 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
   badges: [
     {
       key: 'designation',
-      component: (value: unknown, data: EmployeeDetails) => 
+      component: (value: unknown, data: EmployeeDetails) =>
         data.employee_designation_name ? (
           <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-200">
             {data.employee_designation_name}
@@ -15520,7 +16271,7 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
     },
     {
       key: 'status',
-      component: (value: unknown, data: EmployeeDetails) => 
+      component: (value: unknown, data: EmployeeDetails) =>
         <StatusBadge status={data.status ? "ACTIVE" : "INACTIVE"} />
     }
   ]
@@ -15529,40 +16280,40 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
 // Employee details modal configuration
 export const employeeDetailsConfig = {
   header: createHeaderConfig({} as EmployeeDetails), // Will be overridden in the component
-  
+
   sections: [
     {
       title: "Personal Information",
       icon: <FiUser size={20} />,
       fields: [
-        { 
-          key: 'employee_email', 
-          label: 'Email', 
-          icon: <FiMail size={18} />, 
+        {
+          key: 'employee_email',
+          label: 'Email',
+          icon: <FiMail size={18} />,
           formatter: (email: string | null) => email || 'Not provided'
         },
-        { 
-          key: 'employee_contact', 
-          label: 'Contact', 
-          icon: <FiPhone size={18} />, 
+        {
+          key: 'employee_contact',
+          label: 'Contact',
+          icon: <FiPhone size={18} />,
           formatter: (contact: string | null) => contact || 'Not provided'
         },
-        { 
-          key: 'employee_dob', 
-          label: 'Date of Birth', 
-          icon: <FiCalendar size={18} />, 
-          formatter: defaultFormatters.date 
+        {
+          key: 'employee_dob',
+          label: 'Date of Birth',
+          icon: <FiCalendar size={18} />,
+          formatter: defaultFormatters.date
         },
-        { 
-          key: 'employee_doj', 
-          label: 'Date of Joining', 
-          icon: <FiCalendar size={18} />, 
-          formatter: defaultFormatters.date 
+        {
+          key: 'employee_doj',
+          label: 'Date of Joining',
+          icon: <FiCalendar size={18} />,
+          formatter: defaultFormatters.date
         },
-        { 
-          key: 'employee_addr', 
-          label: 'Address', 
-          icon: <FiMapPin size={18} />, 
+        {
+          key: 'employee_addr',
+          label: 'Address',
+          icon: <FiMapPin size={18} />,
           formatter: (addr: string | null) => addr || 'Not provided'
         }
       ]
@@ -15571,15 +16322,15 @@ export const employeeDetailsConfig = {
       title: "Employment Details",
       icon: <FiBriefcase size={20} />,
       fields: [
-        { 
-          key: 'employee_designation_name', 
-          label: 'Designation', 
+        {
+          key: 'employee_designation_name',
+          label: 'Designation',
           icon: <FiBriefcase size={18} />,
           formatter: (designation: string | null) => designation || 'Not assigned'
         },
-        { 
-          key: 'status', 
-          label: 'Status', 
+        {
+          key: 'status',
+          label: 'Status',
           icon: <FiInfo size={18} />,
           formatter: (status: boolean | null) => status ? 'Active' : 'Inactive'
         }
@@ -15589,36 +16340,36 @@ export const employeeDetailsConfig = {
       title: "Timestamps",
       icon: <FiCalendar size={20} />,
       fields: [
-        { 
-          key: 'created_at', 
-          label: 'Created At', 
-          icon: <FiCalendar size={18} />, 
-          formatter: defaultFormatters.dateTime 
+        {
+          key: 'created_at',
+          label: 'Created At',
+          icon: <FiCalendar size={18} />,
+          formatter: defaultFormatters.dateTime
         },
-        { 
-          key: 'updated_at', 
-          label: 'Updated At', 
-          icon: <FiClock size={18} />, 
-          formatter: defaultFormatters.dateTime 
+        {
+          key: 'updated_at',
+          label: 'Updated At',
+          icon: <FiClock size={18} />,
+          formatter: defaultFormatters.dateTime
         }
       ]
     }
   ] as SectionConfig<EmployeeDetails>[]
 };
 
-export const EmployeeDetailsModal = ({ 
-  employee, 
-  onClose, 
-  isOpen 
-}: { 
-  employee: EmployeeDetails | null; 
-  onClose: () => void; 
-  isOpen: boolean 
+export const EmployeeDetailsModal = ({
+  employee,
+  onClose,
+  isOpen
+}: {
+  employee: EmployeeDetails | null;
+  onClose: () => void;
+  isOpen: boolean
 }) => {
   if (!employee) {
     return null;
   }
-  
+
   return (
     <DetailsModal<EmployeeDetails>
       data={employee}
@@ -15646,7 +16397,7 @@ import {
   import { StatusBadge } from "@/components/common/ui/badges/StatusBadge";
   import { BsnlSystem } from '@/components/bsnl/types';
 import { formatIP } from '@/utils/formatters';
-  
+
   export const systemDetailsConfig = {
     header: {
       title: (system: BsnlSystem) => system.system_name || "Unnamed System",
@@ -15658,7 +16409,7 @@ import { formatIP } from '@/utils/formatters';
         },
       ]
     } as HeaderConfig<BsnlSystem>,
-  
+
     sections: [
       {
         title: "Primary Information",
@@ -15689,7 +16440,7 @@ import { formatIP } from '@/utils/formatters';
       }
     ] as SectionConfig<BsnlSystem>[],
   };
-  
+
   export const SystemDetailsModal = ({ system, onClose, isOpen }: { system: BsnlSystem | null; onClose: () => void; isOpen: boolean; }) => {
     return (
       <DetailsModal
@@ -15706,18 +16457,18 @@ import { formatIP } from '@/utils/formatters';
 <!-- path: config/node-details-config.tsx -->
 ```typescript
 // ==== NODE DETAILS MODAL CONFIGURATION ====
-import { 
-  DetailsModal, 
-  defaultFormatters, 
-  type HeaderConfig, 
-  type SectionConfig 
+import {
+  DetailsModal,
+  defaultFormatters,
+  type HeaderConfig,
+  type SectionConfig
 } from '@/components/common/ui/Modal/DetailsModal';
-import { 
+import {
   FiCpu,
-  FiCalendar, 
-  FiClock, 
-  FiMapPin, 
-  FiDatabase, 
+  FiCalendar,
+  FiClock,
+  FiMapPin,
+  FiDatabase,
   FiServer,
   FiCode,
   FiInfo
@@ -15964,7 +16715,7 @@ export const OfcDetailsTableColumns = (
     omit: [
       'id', 'ofc_id', 'created_at', 'updated_at', 'sn_id', 'en_id', 'connection_category',
       'destination_port', 'en_name', 'path_segment_order', 'sn_name', 'source_port',
-      'system_id', 
+      'system_id',
       // REMOVED 'system_name' from here so it shows up
       'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
       'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", "connection_type","fiber_role","path_direction"
@@ -15978,9 +16729,9 @@ export const OfcDetailsTableColumns = (
         render: (value) => (
           <div className="flex flex-col justify-center">
              {value ? (
-                <TruncateTooltip 
-                  text={value as string} 
-                  className="font-medium text-gray-900 dark:text-gray-100 text-sm" 
+                <TruncateTooltip
+                  text={value as string}
+                  className="font-medium text-gray-900 dark:text-gray-100 text-sm"
                 />
              ) : (
                 <span className="text-gray-400 text-xs italic">Unassigned</span>
@@ -16034,19 +16785,19 @@ export const OfcDetailsTableColumns = (
           return <TruncateTooltip text={record.updated_en_name || (value as string) || '—'} />;
         },
       },
-      en_dom: { 
-        title: 'End B D.O.M.', 
-        sortable: true, 
-        width: 120, 
-        searchable: true, 
-        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
+      en_dom: {
+        title: 'End B D.O.M.',
+        sortable: true,
+        width: 120,
+        searchable: true,
+        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' })
       },
-      sn_dom: { 
-        title: 'End A D.O.M.', 
-        sortable: true, 
-        width: 120, 
-        searchable: true, 
-        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
+      sn_dom: {
+        title: 'End A D.O.M.',
+        sortable: true,
+        width: 120,
+        searchable: true,
+        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' })
       },
       // Simplify headers to save space
       sn_power_dbm: { title: 'End A (dBm)', sortable: true },
@@ -16112,7 +16863,7 @@ const ActionBadge = ({ action }: { action: string }) => {
     LOGIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   };
   const className = colors[action] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  
+
   return (
     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${className}`}>
       {action}
@@ -16141,11 +16892,11 @@ export const AuditLogsTableColumns = (data: V_audit_logsRowSchema[]) => {
         render: (_, record) => (
           <div className="flex items-center gap-2">
              {record.performed_by_avatar ? (
-                <Image 
-                  src={record.performed_by_avatar} 
-                  alt="avatar" 
-                  width={24} height={24} 
-                  className="rounded-full" 
+                <Image
+                  src={record.performed_by_avatar}
+                  alt="avatar"
+                  width={24} height={24}
+                  className="rounded-full"
                 />
              ) : (
                 <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs">
@@ -16921,8 +17672,8 @@ export const getInventoryTableColumns = (): Column<V_inventory_itemsRowSchema>[]
         width: 100,
         render: (val) => (
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                val === 'Working' || val === 'Good' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 
-                val === 'Faulty' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : 
+                val === 'Working' || val === 'Good' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                val === 'Faulty' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
                 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
             }`}>
                 {val as string || 'Unknown'}
@@ -16955,16 +17706,16 @@ export const PortsManagementTableColumns = (
     data: data,
     // THE FIX: Added 'port_type_name' and 'port_capacity' to the omit array
     omit: [
-      'id', 
-      'system_id', 
-      'port_type_id', 
-      'services_count', 
-      'created_at', 
-      'updated_at', 
+      'id',
+      'system_id',
+      'port_type_id',
+      'services_count',
+      'created_at',
+      'updated_at',
       'system_name',
       'port_type_name', // Hiding Port Type
       'port_capacity'   // Hiding Capacity
-    ], 
+    ],
     overrides: {
       port: {
         title: 'Port',
@@ -16977,8 +17728,8 @@ export const PortsManagementTableColumns = (
         title: 'SFP Serial',
         width: 150,
         render: (value) => (
-          value ? 
-            <span className="font-mono text-xs bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded border dark:border-gray-700">{value as string}</span> 
+          value ?
+            <span className="font-mono text-xs bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded border dark:border-gray-700">{value as string}</span>
             : <span className="text-gray-300 text-xs">-</span>
         ),
       },
@@ -17016,14 +17767,14 @@ export const PortsManagementTableColumns = (
   const servicesColumn: Column<Row<'v_ports_management_complete'>> = {
     key: 'services_info',
     title: 'Allocated Services',
-    dataIndex: 'port', 
+    dataIndex: 'port',
     width: 350,
     render: (value, _record) => {
-        const portName = value as string; 
+        const portName = value as string;
         if (!portName || !portServicesMap) return <span className="text-gray-400 italic text-xs">No info</span>;
-        
+
         const services = portServicesMap[portName] || [];
-        
+
         if (services.length === 0) {
             return <span className="text-gray-300 dark:text-gray-600 text-xs italic">Unallocated</span>;
         }
@@ -17042,7 +17793,7 @@ export const PortsManagementTableColumns = (
                                 <Shield size={10} className="text-purple-600 dark:text-purple-400" />
                             </div>
                         )}
-                        
+
                         <div className="flex flex-col min-w-0 flex-1">
                             <div className="font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[180px]">
                                 <TruncateTooltip text={svc.service_name || svc.connected_system_name || 'Unknown'} className='truncate' />
@@ -17098,7 +17849,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         width: 250,
         render: (value, record) => {
           const strValue = String(value ?? '');
-          
+
           const namePart = strValue.trim().toLowerCase();
           const typePart = (record.link_type_name || '').trim().toLowerCase();
           const compositeKey = `${namePart}|${typePart}`;
@@ -17114,8 +17865,8 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
                 }`}
               />
               {isDuplicate && (
-                <div 
-                   className="shrink-0 cursor-help" 
+                <div
+                   className="shrink-0 cursor-help"
                    title={`Duplicate Entry: Another service exists with name "${strValue}" and type "${record.link_type_name}".`}
                 >
                    <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
@@ -17134,7 +17885,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         render: (value, record) => {
            const start = value as string;
            const end = record.end_node_name;
-           
+
            if (start && end) {
                return (
                    <div className="flex items-center gap-2 text-sm">
@@ -19149,7 +19900,7 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "inventory_items_location_id_fkey"
@@ -19290,7 +20041,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -19408,6 +20159,13 @@ export type Database = {
             foreignKeyName: "fk_lfp_destination_system"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -19416,6 +20174,13 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -19601,6 +20366,13 @@ export type Database = {
             foreignKeyName: "logical_paths_destination_system_id_fkey"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_destination_system_id_fkey"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -19623,7 +20395,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "logical_paths_end_node_id_fkey"
@@ -19671,6 +20443,13 @@ export type Database = {
             foreignKeyName: "logical_paths_source_system_id_fkey"
             columns: ["source_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logical_paths_source_system_id_fkey"
+            columns: ["source_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -19693,7 +20472,7 @@ export type Database = {
             columns: ["start_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "logical_paths_start_node_id_fkey"
@@ -19979,7 +20758,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -20056,7 +20835,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -20226,6 +21005,13 @@ export type Database = {
             foreignKeyName: "fk_ofc_connections_system"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ofc_connections_system"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -20269,7 +21055,7 @@ export type Database = {
             columns: ["updated_en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_en_id_fkey"
@@ -20304,7 +21090,7 @@ export type Database = {
             columns: ["updated_sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_sn_id_fkey"
@@ -20388,6 +21174,13 @@ export type Database = {
             foreignKeyName: "ports_management_system_id_fkey"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -20453,6 +21246,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ring_based_systems_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -20655,7 +21455,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_end_node_id_fkey"
@@ -20704,7 +21504,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -20816,6 +21616,13 @@ export type Database = {
             foreignKeyName: "system_connections_en_id_fkey"
             columns: ["en_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -20865,6 +21672,13 @@ export type Database = {
             foreignKeyName: "system_connections_sn_id_fkey"
             columns: ["sn_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -20873,6 +21687,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -20973,7 +21794,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "systems_node_id_fkey"
@@ -21201,7 +22022,7 @@ export type Database = {
             columns: ["jc_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -21405,6 +22226,13 @@ export type Database = {
             foreignKeyName: "fk_lfp_destination_system"
             columns: ["destination_system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_destination_system"
+            columns: ["destination_system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -21413,6 +22241,13 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lfp_source_system"
+            columns: ["source_system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -21565,7 +22400,7 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "inventory_items_location_id_fkey"
@@ -21669,7 +22504,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "junction_closures_node_id_fkey"
@@ -21897,7 +22732,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -21974,7 +22809,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -22094,6 +22929,13 @@ export type Database = {
             foreignKeyName: "fk_ofc_connections_system"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ofc_connections_system"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -22116,7 +22958,7 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_en_id_fkey"
@@ -22151,7 +22993,7 @@ export type Database = {
             columns: ["sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_cables_sn_id_fkey"
@@ -22207,7 +23049,7 @@ export type Database = {
             columns: ["updated_en_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_en_id_fkey"
@@ -22242,7 +23084,7 @@ export type Database = {
             columns: ["updated_sn_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "ofc_connections_updated_sn_id_fkey"
@@ -22303,6 +23145,13 @@ export type Database = {
             foreignKeyName: "ports_management_system_id_fkey"
             columns: ["system_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ports_management_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -22316,6 +23165,7 @@ export type Database = {
           lat: number | null
           long: number | null
           name: string | null
+          node_id: string | null
           order_in_ring: number | null
           remark: string | null
           ring_id: string | null
@@ -22420,7 +23270,7 @@ export type Database = {
             columns: ["end_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_end_node_id_fkey"
@@ -22469,7 +23319,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -22577,7 +23427,7 @@ export type Database = {
             columns: ["service_node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "services_node_id_fkey"
@@ -22598,6 +23448,13 @@ export type Database = {
             columns: ["en_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_en_id_fkey"
+            columns: ["en_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -22632,6 +23489,13 @@ export type Database = {
             foreignKeyName: "system_connections_sn_id_fkey"
             columns: ["sn_id"]
             isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_sn_id_fkey"
+            columns: ["sn_id"]
+            isOneToOne: false
             referencedRelation: "v_systems_complete"
             referencedColumns: ["id"]
           },
@@ -22640,6 +23504,13 @@ export type Database = {
             columns: ["system_id"]
             isOneToOne: false
             referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_connections_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
             referencedColumns: ["id"]
           },
           {
@@ -22718,7 +23589,7 @@ export type Database = {
             columns: ["node_id"]
             isOneToOne: false
             referencedRelation: "v_ring_nodes"
-            referencedColumns: ["id"]
+            referencedColumns: ["node_id"]
           },
           {
             foreignKeyName: "systems_node_id_fkey"
@@ -26006,6 +26877,7 @@ export type V_ring_nodesRow = {
     lat: number | null;
     long: number | null;
     name: string | null;
+    node_id: string | null;
     order_in_ring: number | null;
     remark: string | null;
     ring_id: string | null;
@@ -26448,7 +27320,7 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   systems: {
     commissioned_on: { transform: toPgDate, excelFormat: "date" },
     status: { transform: toPgBoolean },
-    ip_address: { transform: removeSubnet }, 
+    ip_address: { transform: removeSubnet },
   },
   ports_management: {
     port_utilization: { title: "Utilized", transform: toPgBoolean },
@@ -26507,7 +27379,7 @@ export const TABLE_COLUMN_META: TableMetaMap = {
      current_holder_name: { title: "Current Holder" }, // Matches the import mapping key
      status: { title: "Status" },
      // Hide ID columns to clean up the export
-     id: { excelFormat: "text" }, 
+     id: { excelFormat: "text" },
      initiator_employee_id: { title: "Initiator ID" },
      current_holder_employee_id: { title: "Holder ID" },
   },
@@ -26517,7 +27389,7 @@ export const TABLE_COLUMN_META: TableMetaMap = {
       last_issued_date: { title: "Last Issue Date (History)", transform: toPgDate, excelFormat: "date" },
       cost: { title: "Unit Cost" },
       total_value: { title: "Total Value (Calculated)" },
-      
+
       // ADDED: Virtual columns for Import Mapping
       // These keys don't exist in the view, but we add them here so the importer can recognize them
       // if the user adds them to the Excel file manually for bulk actions.
@@ -26753,7 +27625,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
     id: "id",
   },
-  
+
 
   // ==================== System Tables ====================
   systems: {
@@ -26991,7 +27863,7 @@ const TABLE_COLUMN_OBJECTS = {
     performed_by_user_id: "performed_by_user_id",
     created_at: "created_at",
   },
-  
+
   // ==================== Views ====================
   v_inventory_transactions_extended: {
     asset_no: "asset_no",
@@ -27345,6 +28217,7 @@ const TABLE_COLUMN_OBJECTS = {
     order_in_ring: "order_in_ring",
     remark: "remark",
     ring_id: "ring_id",
+    node_id: "node_id",
     system_type: "system_type",
     ring_name: "ring_name",
     ring_status: "ring_status",
@@ -27682,7 +28555,7 @@ BEGIN
     IF (is_super_admin() OR get_my_role() = 'admin') THEN
         -- Admins can see all notes in the date range and the user's full name.
         RETURN QUERY
-        SELECT 
+        SELECT
             d.id,
             d.user_id,
             p.full_name,
@@ -27698,7 +28571,7 @@ BEGIN
     ELSE
         -- Regular users can only see their own notes.
         RETURN QUERY
-        SELECT 
+        SELECT
             d.id,
             d.user_id,
             p.full_name,
@@ -28067,7 +28940,7 @@ BEGIN
         previous_splice_id UUID,
         visited_segments UUID[]
     ) ON COMMIT DROP;
-    
+
     -- Trace forward
     INSERT INTO temp_path_trace
     WITH RECURSIVE forward_trace AS (
@@ -28077,9 +28950,9 @@ BEGIN
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
-        
+
         UNION ALL
-        
+
         SELECT
             p.step + 1,
             s.outgoing_segment_id,
@@ -28087,15 +28960,15 @@ BEGIN
             s.id,
             p.visited_segments || s.outgoing_segment_id
         FROM forward_trace p
-        JOIN public.fiber_splices s 
-            ON p.current_segment_id = s.incoming_segment_id 
+        JOIN public.fiber_splices s
+            ON p.current_segment_id = s.incoming_segment_id
             AND p.current_fiber_no = s.incoming_fiber_no
         WHERE s.outgoing_segment_id IS NOT NULL
           AND NOT (s.outgoing_segment_id = ANY(p.visited_segments))
           AND p.step < 100
     )
     SELECT * FROM forward_trace;
-    
+
     -- Trace backward
     INSERT INTO temp_path_trace
     WITH RECURSIVE backward_trace AS (
@@ -28105,9 +28978,9 @@ BEGIN
             p_start_fiber_no as current_fiber_no,
             NULL::uuid as previous_splice_id,
             ARRAY[p_start_segment_id] as visited_segments
-        
+
         UNION ALL
-        
+
         SELECT
             p.step - 1,
             s.incoming_segment_id,
@@ -28115,15 +28988,15 @@ BEGIN
             s.id,
             p.visited_segments || s.incoming_segment_id
         FROM backward_trace p
-        JOIN public.fiber_splices s 
-            ON p.current_segment_id = s.outgoing_segment_id 
+        JOIN public.fiber_splices s
+            ON p.current_segment_id = s.outgoing_segment_id
             AND p.current_fiber_no = s.outgoing_fiber_no
         WHERE s.incoming_segment_id IS NOT NULL
           AND NOT (s.incoming_segment_id = ANY(p.visited_segments))
           AND p.step > -100
     )
     SELECT * FROM backward_trace WHERE step < 0;
-    
+
     -- Return results
     RETURN QUERY
     WITH path_elements AS (
@@ -28135,9 +29008,9 @@ BEGIN
             fp.current_fiber_no as fiber_in,
             fp.current_fiber_no as fiber_out
         FROM temp_path_trace fp
-        
+
         UNION ALL
-        
+
         -- Splices
         SELECT
             fp.step * 2 - 1 AS order_key,
@@ -28157,9 +29030,9 @@ BEGIN
             WHEN pe.element_type = 'SPLICE' THEN n.name
         END AS element_name,
         CASE
-            WHEN pe.element_type = 'SEGMENT' THEN 
+            WHEN pe.element_type = 'SEGMENT' THEN
                 'Segment ' || cs.segment_order || ' (' || sn.name || ' → ' || en.name || ')'
-            WHEN pe.element_type = 'SPLICE' THEN 
+            WHEN pe.element_type = 'SPLICE' THEN
                 'Junction Closure Splice'
         END AS details,
         pe.fiber_in,
@@ -28167,23 +29040,23 @@ BEGIN
         cs.distance_km,
         fs.loss_db,
         cs.original_cable_id,
-        cs.start_node_id,     
-        cs.end_node_id        
+        cs.start_node_id,
+        cs.end_node_id
     FROM path_elements pe
-    LEFT JOIN public.cable_segments cs 
+    LEFT JOIN public.cable_segments cs
         ON pe.element_type = 'SEGMENT' AND pe.element_id = cs.id
-    LEFT JOIN public.ofc_cables oc 
+    LEFT JOIN public.ofc_cables oc
         ON cs.original_cable_id = oc.id
     LEFT JOIN public.nodes sn ON cs.start_node_id = sn.id
     LEFT JOIN public.nodes en ON cs.end_node_id = en.id
-    LEFT JOIN public.fiber_splices fs 
+    LEFT JOIN public.fiber_splices fs
         ON pe.element_type = 'SPLICE' AND pe.element_id = fs.id
-    LEFT JOIN public.junction_closures jc 
+    LEFT JOIN public.junction_closures jc
         ON fs.jc_id = jc.id
-    LEFT JOIN public.nodes n 
+    LEFT JOIN public.nodes n
         ON jc.node_id = n.id
     ORDER BY pe.order_key;
-    
+
     -- Cleanup
     DROP TABLE IF EXISTS temp_path_trace;
 END;
@@ -28242,66 +29115,66 @@ SET search_path = public
 AS $$
 -- Fetches info about the requested JC
 WITH jc_info AS (
-  SELECT jc.id, n.name, jc.node_id 
-  FROM public.junction_closures jc 
-  JOIN public.nodes n ON jc.node_id = n.id 
+  SELECT jc.id, n.name, jc.node_id
+  FROM public.junction_closures jc
+  JOIN public.nodes n ON jc.node_id = n.id
   WHERE jc.id = p_jc_id
 ),
--- Finds all JCs at the same node 
+-- Finds all JCs at the same node
 all_jcs_at_node AS (
-  SELECT id 
-  FROM public.junction_closures 
+  SELECT id
+  FROM public.junction_closures
   WHERE node_id = (SELECT node_id FROM jc_info)
-), 
--- Finds all segments at the same node 
+),
+-- Finds all segments at the same node
 segments_at_jc AS (
-  SELECT 
-    cs.id as segment_id, 
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
+  SELECT
+    cs.id as segment_id,
+    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
     cs.fiber_count
-  FROM public.cable_segments cs 
+  FROM public.cable_segments cs
   JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
+  WHERE cs.start_node_id = (SELECT node_id FROM jc_info)
      OR cs.end_node_id = (SELECT node_id FROM jc_info)
-), 
+),
 fiber_universe AS (
-  SELECT s.segment_id, series.i as fiber_no 
+  SELECT s.segment_id, series.i as fiber_no
   FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-), 
+),
 splice_info AS (
   SELECT
-    fs.id as splice_id, 
-    fs.jc_id, 
-    fs.incoming_segment_id, 
-    fs.incoming_fiber_no, 
-    fs.outgoing_segment_id, 
-    fs.outgoing_fiber_no, 
+    fs.id as splice_id,
+    fs.jc_id,
+    fs.incoming_segment_id,
+    fs.incoming_fiber_no,
+    fs.outgoing_segment_id,
+    fs.outgoing_fiber_no,
     fs.loss_db,
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
-     FROM cable_segments cs_out 
-     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')'
+     FROM cable_segments cs_out
+     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id
      WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
-     FROM cable_segments cs_in 
-     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')'
+     FROM cable_segments cs_in
+     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id
      WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs 
+  FROM public.fiber_splices fs
   WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
 )
 SELECT jsonb_build_object(
   'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
   'segments_at_jc', (
     SELECT jsonb_agg(jsonb_build_object(
-      'segment_id', seg.segment_id, 
-      'segment_name', seg.segment_name, 
+      'segment_id', seg.segment_id,
+      'segment_name', seg.segment_name,
       'fiber_count', seg.fiber_count,
       'fibers', (
         SELECT jsonb_agg(jsonb_build_object(
           'fiber_no', fu.fiber_no,
-          'status', CASE 
-            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
-            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
-            ELSE 'available' 
+          'status', CASE
+            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming'
+            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing'
+            ELSE 'available'
           END,
           'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
           'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
@@ -28309,11 +29182,11 @@ SELECT jsonb_build_object(
           'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
         ) ORDER BY fu.fiber_no)
         FROM fiber_universe fu
-        LEFT JOIN splice_info s_in 
-          ON fu.segment_id = s_in.incoming_segment_id 
+        LEFT JOIN splice_info s_in
+          ON fu.segment_id = s_in.incoming_segment_id
           AND fu.fiber_no = s_in.incoming_fiber_no
-        LEFT JOIN splice_info s_out 
-          ON fu.segment_id = s_out.outgoing_segment_id 
+        LEFT JOIN splice_info s_out
+          ON fu.segment_id = s_out.outgoing_segment_id
           AND fu.fiber_no = s_out.outgoing_fiber_no
         WHERE fu.segment_id = seg.segment_id
       )
@@ -28388,8 +29261,8 @@ GRANT EXECUTE ON FUNCTION public.provision_logical_path(TEXT, UUID, INT, INT, UU
 
 -- Description: Automatically create 1-to-1 "straight" splices for available fibers between two segments.
 CREATE OR REPLACE FUNCTION public.auto_splice_straight_segments(
-    p_jc_id UUID, 
-    p_segment1_id UUID, 
+    p_jc_id UUID,
+    p_segment1_id UUID,
     p_segment2_id UUID,
     p_loss_db NUMERIC DEFAULT 0
 )
@@ -28399,11 +29272,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    segment1_fibers INT; 
-    segment2_fibers INT; 
-    i INT; 
+    segment1_fibers INT;
+    segment2_fibers INT;
+    i INT;
     splice_count INT := 0;
-    available_fibers_s1 INT[]; 
+    available_fibers_s1 INT[];
     available_fibers_s2 INT[];
     v_straight_splice_id UUID;
 BEGIN
@@ -28415,31 +29288,31 @@ BEGIN
     -- Get fiber counts for both segments
     SELECT fiber_count INTO segment1_fibers FROM public.cable_segments WHERE id = p_segment1_id;
     SELECT fiber_count INTO segment2_fibers FROM public.cable_segments WHERE id = p_segment2_id;
-    
-    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN 
-        RAISE EXCEPTION 'One or both segments not found.'; 
+
+    IF segment1_fibers IS NULL OR segment2_fibers IS NULL THEN
+        RAISE EXCEPTION 'One or both segments not found.';
     END IF;
 
     -- Find available fibers in segment 1
-    SELECT array_agg(s.i) INTO available_fibers_s1 
+    SELECT array_agg(s.i) INTO available_fibers_s1
     FROM generate_series(1, segment1_fibers) s(i)
     WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs 
-        WHERE fs.jc_id = p_jc_id 
+        SELECT 1 FROM public.fiber_splices fs
+        WHERE fs.jc_id = p_jc_id
         AND (
-            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i) 
+            (fs.incoming_segment_id = p_segment1_id AND fs.incoming_fiber_no = s.i)
             OR (fs.outgoing_segment_id = p_segment1_id AND fs.outgoing_fiber_no = s.i)
         )
     );
-    
+
     -- Find available fibers in segment 2
-    SELECT array_agg(s.i) INTO available_fibers_s2 
+    SELECT array_agg(s.i) INTO available_fibers_s2
     FROM generate_series(1, segment2_fibers) s(i)
     WHERE NOT EXISTS (
-        SELECT 1 FROM public.fiber_splices fs 
-        WHERE fs.jc_id = p_jc_id 
+        SELECT 1 FROM public.fiber_splices fs
+        WHERE fs.jc_id = p_jc_id
         AND (
-            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i) 
+            (fs.incoming_segment_id = p_segment2_id AND fs.incoming_fiber_no = s.i)
             OR (fs.outgoing_segment_id = p_segment2_id AND fs.outgoing_fiber_no = s.i)
         )
     );
@@ -28447,28 +29320,28 @@ BEGIN
     -- Create splices for each available fiber pair
     FOR i IN 1..LEAST(cardinality(available_fibers_s1), cardinality(available_fibers_s2)) LOOP
         INSERT INTO public.fiber_splices (
-            jc_id, 
-            incoming_segment_id, 
-            incoming_fiber_no, 
-            outgoing_segment_id, 
-            outgoing_fiber_no, 
+            jc_id,
+            incoming_segment_id,
+            incoming_fiber_no,
+            outgoing_segment_id,
+            outgoing_fiber_no,
             splice_type_id,
             loss_db
         )
         VALUES (
-            p_jc_id, 
-            p_segment1_id, 
-            available_fibers_s1[i], 
-            p_segment2_id, 
-            available_fibers_s2[i], 
+            p_jc_id,
+            p_segment1_id,
+            available_fibers_s1[i],
+            p_segment2_id,
+            available_fibers_s2[i],
             v_straight_splice_id,
             p_loss_db
         );
         splice_count := splice_count + 1;
     END LOOP;
-    
+
     RETURN jsonb_build_object(
-        'status', 'success', 
+        'status', 'success',
         'splices_created', splice_count,
         'loss_db_applied', p_loss_db
     );
@@ -28479,7 +29352,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) TO authenticated;
 
 -- Optional: Keep backward compatibility with old function signature
-COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS 
+COMMENT ON FUNCTION public.auto_splice_straight_segments(UUID, UUID, UUID, NUMERIC) IS
 'Automatically creates pass-through splices between available fibers on two segments at a junction closure. Applies specified loss_db to all created splices.';
 
 
@@ -28746,7 +29619,7 @@ BEGIN
   GRANT SELECT ON public.v_cable_segments_at_jc TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_cable_utilization TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
   GRANT SELECT ON public.v_end_to_end_paths TO admin, viewer, cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;
-  
+
   RAISE NOTICE 'Applied SELECT grants on advanced OFC views for ALL relevant roles.';
 END;
 $$;
@@ -29262,12 +30135,12 @@ BEGIN
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-    
+
     -- Grant permissions to specific roles
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
-    
+
     -- Grant SELECT to the base authenticated role so SECURITY INVOKER functions can access the tables.
     EXECUTE format('GRANT SELECT ON public.%I TO authenticated;', tbl);
 
@@ -29300,7 +30173,7 @@ $$;
 DO $$
 BEGIN
   -- Grant SELECT on all views created in this module to all relevant roles.
-  GRANT SELECT ON 
+  GRANT SELECT ON
     public.v_lookup_types,
     public.v_maintenance_areas,
     public.v_employee_designations,
@@ -29579,7 +30452,7 @@ BEGIN
             -- We expect the frontend to send a valid SQL fragment like "col1 ILIKE '%x%' OR col2::text ILIKE '%x%'"
             IF jsonb_typeof(filter_value) = 'string' THEN
                  where_clause := where_clause || ' AND (' || trim(both '"' from filter_value::text) || ')';
-            
+
             -- Case B: OR is a JSON Object (Legacy/Simple Method)
             ELSIF jsonb_typeof(filter_value) = 'object' THEN
                 or_conditions := '';
@@ -29638,7 +30511,7 @@ DECLARE
   result_json JSON;
 BEGIN
   cleaned_query := lower(regexp_replace(sql_query, '^\s+', ''));
-  
+
   IF cleaned_query !~ '^(select|with|call)\s' THEN
     RAISE EXCEPTION 'Only read-only statements (SELECT, WITH, CALL) are allowed.';
   END IF;
@@ -29691,7 +30564,7 @@ BEGIN
   ELSE select_clause := '*'; END IF;
 
   where_clause := public.build_where_clause(filters, '');
-  
+
   IF where_clause != '' THEN
     where_clause := 'WHERE ' || substr(where_clause, 6);
   END IF;
@@ -29810,10 +30683,10 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 --     -- Runs on DELETE, or on UPDATE (to clear previous ports)
 --     -- ========================================================================
 --     IF (TG_OP = 'DELETE') OR (TG_OP = 'UPDATE') THEN
-        
+
 --         -- A. Clean Source Side (system_id)
 --         IF OLD.system_working_interface IS NOT NULL THEN
---             SELECT COUNT(*) INTO v_count FROM public.system_connections 
+--             SELECT COUNT(*) INTO v_count FROM public.system_connections
 --             WHERE system_id = OLD.system_id AND system_working_interface = OLD.system_working_interface;
 
 --             UPDATE public.ports_management
@@ -29826,7 +30699,7 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 --             -- Check if en_id is actually a system (optimization: check ports table existence)
 --             IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = OLD.en_id AND port = OLD.en_interface) THEN
 --                 -- Count connections where this system is the Destination OR the Source using this port
---                 SELECT COUNT(*) INTO v_count FROM public.system_connections 
+--                 SELECT COUNT(*) INTO v_count FROM public.system_connections
 --                 WHERE (en_id = OLD.en_id AND en_interface = OLD.en_interface)
 --                    OR (system_id = OLD.en_id AND system_working_interface = OLD.en_interface);
 
@@ -29842,14 +30715,14 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 --     -- Runs on INSERT, or on UPDATE
 --     -- ========================================================================
 --     IF (TG_OP = 'INSERT') OR (TG_OP = 'UPDATE') THEN
-        
+
 --         -- A. Update Source Side
 --         IF NEW.system_working_interface IS NOT NULL THEN
---             SELECT COUNT(*) INTO v_count FROM public.system_connections 
+--             SELECT COUNT(*) INTO v_count FROM public.system_connections
 --             WHERE system_id = NEW.system_id AND system_working_interface = NEW.system_working_interface;
 
 --             UPDATE public.ports_management
---             SET 
+--             SET
 --                 services_count = v_count,
 --                 port_utilization = (v_count > 0),
 --                 port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
@@ -29859,13 +30732,13 @@ GRANT EXECUTE ON FUNCTION public.get_entity_counts(TEXT, JSONB) TO authenticated
 --         -- B. Update Destination Side
 --         IF NEW.en_id IS NOT NULL AND NEW.en_interface IS NOT NULL THEN
 --             IF EXISTS (SELECT 1 FROM public.ports_management WHERE system_id = NEW.en_id AND port = NEW.en_interface) THEN
-                
---                 SELECT COUNT(*) INTO v_count FROM public.system_connections 
+
+--                 SELECT COUNT(*) INTO v_count FROM public.system_connections
 --                 WHERE (en_id = NEW.en_id AND en_interface = NEW.en_interface)
 --                    OR (system_id = NEW.en_id AND system_working_interface = NEW.en_interface);
 
 --                 UPDATE public.ports_management
---                 SET 
+--                 SET
 --                     services_count = v_count,
 --                     port_utilization = (v_count > 0),
 --                     port_admin_status = CASE WHEN v_count > 0 THEN true ELSE port_admin_status END
@@ -30086,7 +30959,7 @@ BEGIN
 
     -- Delete the logical_fiber_paths records themselves (cascading delete will handle protection path)
     DELETE FROM public.logical_fiber_paths WHERE id = v_working_path_id;
-    
+
 END;
 $$;
 
@@ -30107,23 +30980,23 @@ GRANT EXECUTE ON FUNCTION public.deprovision_logical_path(UUID) TO authenticated
 -- THE DEFINITIVE FIX: The count query now explicitly casts the status column to text before comparison.
 -- This resolves the "operator does not exist: text = boolean" error.
 CREATE OR REPLACE FUNCTION public.get_paged_data(
-    p_view_name TEXT, 
-    p_limit INT, 
-    p_offset INT, 
+    p_view_name TEXT,
+    p_limit INT,
+    p_offset INT,
     p_order_by TEXT DEFAULT 'name',
-    p_order_dir TEXT DEFAULT 'asc', 
+    p_order_dir TEXT DEFAULT 'asc',
     p_filters JSONB DEFAULT '{}',
     row_limit INT DEFAULT NULL
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-    data_query TEXT; 
-    count_query TEXT; 
-    where_clause TEXT; 
+    data_query TEXT;
+    count_query TEXT;
+    where_clause TEXT;
     order_by_column TEXT;
-    result_data JSONB; 
-    total_records BIGINT; 
-    active_records BIGINT := 0; 
+    result_data JSONB;
+    total_records BIGINT;
+    active_records BIGINT := 0;
     inactive_records BIGINT := 0;
     status_column_exists BOOLEAN;
     effective_limit INT;
@@ -30255,7 +31128,7 @@ FROM
     public.v_rings r
 -- Apply row limit if provided
 ORDER BY
-    CASE 
+    CASE
         WHEN order_by IS NULL THEN r.name
         ELSE
             CASE order_by
@@ -30295,7 +31168,7 @@ BEGIN
 
     -- Fetch Folders
     SELECT jsonb_agg(f) INTO v_folders FROM (
-        SELECT 
+        SELECT
             fo.id,
             fo.name,
             fo.created_at,
@@ -30308,7 +31181,7 @@ BEGIN
 
     -- Fetch Files
     SELECT jsonb_agg(fi) INTO v_files FROM (
-        SELECT 
+        SELECT
             f.id,
             f.file_name,
             f.file_type,
@@ -30343,10 +31216,10 @@ AS $$
 DECLARE
     folder_item JSONB;
     file_item JSONB;
-    
+
     v_folder_id UUID;
     v_user_id UUID := auth.uid();
-    
+
     v_folders_processed INT := 0;
     v_files_processed INT := 0;
     v_errors JSONB := '[]'::JSONB;
@@ -30369,7 +31242,7 @@ BEGIN
             ON CONFLICT (id) DO UPDATE SET
                 name = EXCLUDED.name,
                 created_at = EXCLUDED.created_at;
-                
+
             v_folders_processed := v_folders_processed + 1;
         EXCEPTION WHEN OTHERS THEN
              v_errors := v_errors || jsonb_build_object('type', 'folder', 'name', folder_item->>'name', 'error', SQLERRM);
@@ -30383,20 +31256,20 @@ BEGIN
             -- 1. Resolve Folder ID
             -- Try exact ID match first
             v_folder_id := (file_item->>'folder_id')::UUID;
-            
+
             -- If that folder doesn't exist (maybe new ID generated), try finding by name
             IF NOT EXISTS (SELECT 1 FROM public.folders WHERE id = v_folder_id) THEN
-                SELECT id INTO v_folder_id 
-                FROM public.folders 
-                WHERE name = (file_item->>'folder_name') 
-                  AND user_id = v_user_id 
+                SELECT id INTO v_folder_id
+                FROM public.folders
+                WHERE name = (file_item->>'folder_name')
+                  AND user_id = v_user_id
                 LIMIT 1;
             END IF;
 
             -- If still no folder, we skip or create a "Restored" folder? Skipping for now.
-            IF v_folder_id IS NULL THEN 
+            IF v_folder_id IS NULL THEN
                 -- Optional: Create a default folder?
-                CONTINUE; 
+                CONTINUE;
             END IF;
 
             INSERT INTO public.files (
@@ -30639,7 +31512,7 @@ DECLARE
     v_working_path_id UUID;
     v_protection_path_id UUID;
     v_all_fiber_ids UUID[];
-    
+
     -- Variables for Error Reporting
     v_err_fiber_no INT;
     v_err_cable_name TEXT;
@@ -30651,16 +31524,16 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id; END IF;
 
     SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN 
+    IF v_active_status_id IS NULL THEN
         -- Fallback if 'active' status missing, though lookup should exist
-        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.'; 
+        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.';
     END IF;
-    
+
     v_all_fiber_ids := p_working_tx_fiber_ids || p_working_rx_fiber_ids || p_protection_tx_fiber_ids || p_protection_rx_fiber_ids;
 
     -- 2. SMART CONFLICT CHECK
     -- Check if any selected fiber is used by a logical path that belongs to a DIFFERENT connection
-    SELECT 
+    SELECT
         oc.fiber_no_sn,
         c.route_name,
         COALESCE(lp.path_name, 'Unknown Path')
@@ -30683,49 +31556,49 @@ BEGIN
     -- This allows "Updating" the allocation (e.g. adding protection fibers) without manual de-provisioning.
     FOR v_old_path_id IN SELECT id FROM public.logical_fiber_paths WHERE system_connection_id = p_system_connection_id LOOP
         -- Release fibers associated with old paths of this connection
-        UPDATE public.ofc_connections 
+        UPDATE public.ofc_connections
         SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_direction = NULL
         WHERE logical_path_id = v_old_path_id;
-        
+
         -- Delete the old logical path record
         DELETE FROM public.logical_fiber_paths WHERE id = v_old_path_id;
     END LOOP;
 
     -- 4. Create "Working" Logical Path
     INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
-    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) 
+    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id)
     RETURNING id INTO v_working_path_id;
 
     -- 5. Assign Fibers to Working Path
-    UPDATE public.ofc_connections 
+    UPDATE public.ofc_connections
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx'
     WHERE id = ANY(p_working_tx_fiber_ids);
-    
-    UPDATE public.ofc_connections 
+
+    UPDATE public.ofc_connections
     SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx'
     WHERE id = ANY(p_working_rx_fiber_ids);
 
     -- 6. Handle Protection Path (if provided)
     IF array_length(p_protection_tx_fiber_ids, 1) > 0 THEN
         INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id, system_connection_id)
-        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) 
+        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id)
         RETURNING id INTO v_protection_path_id;
-        
-        UPDATE public.ofc_connections 
+
+        UPDATE public.ofc_connections
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx'
         WHERE id = ANY(p_protection_tx_fiber_ids);
 
-        UPDATE public.ofc_connections 
+        UPDATE public.ofc_connections
         SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx'
         WHERE id = ANY(p_protection_rx_fiber_ids);
     END IF;
 
     -- 7. Update Connection Record with Fiber IDs Cache
-    UPDATE public.system_connections 
-    SET 
-        working_fiber_in_ids = p_working_tx_fiber_ids, 
+    UPDATE public.system_connections
+    SET
+        working_fiber_in_ids = p_working_tx_fiber_ids,
         working_fiber_out_ids = p_working_rx_fiber_ids,
-        protection_fiber_in_ids = p_protection_tx_fiber_ids, 
+        protection_fiber_in_ids = p_protection_tx_fiber_ids,
         protection_fiber_out_ids = p_protection_rx_fiber_ids,
         updated_at = NOW()
     WHERE id = p_system_connection_id;
@@ -30769,12 +31642,12 @@ aggregated_paths AS (
   GROUP BY path_role, path_direction
 )
 SELECT jsonb_object_agg(
-  CASE 
+  CASE
       WHEN path_role = 'working' AND path_direction = 'tx' THEN 'working_tx'
       WHEN path_role = 'working' AND path_direction = 'rx' THEN 'working_rx'
       WHEN path_role = 'protection' AND path_direction = 'tx' THEN 'protection_tx'
       WHEN path_role = 'protection' AND path_direction = 'rx' THEN 'protection_rx'
-      ELSE path_role || '_' || path_direction 
+      ELSE path_role || '_' || path_direction
   END,
   path_string
 )
@@ -30924,11 +31797,11 @@ BEGIN
 
     SELECT jsonb_build_object(
         'system_status_counts', COALESCE((
-            SELECT jsonb_object_agg(CASE WHEN s.status THEN 'Active' ELSE 'Inactive' END, count) 
+            SELECT jsonb_object_agg(CASE WHEN s.status THEN 'Active' ELSE 'Inactive' END, count)
             FROM (
-                SELECT s.status, COUNT(*) as count 
+                SELECT s.status, COUNT(*) as count
                 FROM public.v_systems_complete s
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR s.status = v_status_bool) AND
                     (p_type IS NULL OR s.system_type_name = p_type) AND
                     (p_region IS NULL OR s.system_maintenance_terminal_name = p_region) AND
@@ -30939,11 +31812,11 @@ BEGIN
         ), '{}'::jsonb),
 
         'node_status_counts', COALESCE((
-            SELECT jsonb_object_agg(CASE WHEN n.status THEN 'Active' ELSE 'Inactive' END, count) 
+            SELECT jsonb_object_agg(CASE WHEN n.status THEN 'Active' ELSE 'Inactive' END, count)
             FROM (
-                SELECT n.status, COUNT(*) as count 
+                SELECT n.status, COUNT(*) as count
                 FROM public.v_nodes_complete n
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR n.status = v_status_bool) AND
                     (p_node_type IS NULL OR n.node_type_name = p_node_type) AND
                     (p_region IS NULL OR n.maintenance_area_name = p_region) AND
@@ -30953,12 +31826,12 @@ BEGIN
         ), '{}'::jsonb),
 
         'path_operational_status', COALESCE((
-            SELECT jsonb_object_agg(operational_status, count) 
+            SELECT jsonb_object_agg(operational_status, count)
             FROM (
-                SELECT lfp.operational_status, COUNT(*) as count 
+                SELECT lfp.operational_status, COUNT(*) as count
                 FROM public.v_end_to_end_paths lfp
                 JOIN public.v_systems_complete src ON lfp.source_system_id = src.id
-                WHERE 
+                WHERE
                     (p_type IS NULL OR src.system_type_name = p_type) AND
                     (p_region IS NULL OR src.system_maintenance_terminal_name = p_region) AND
                     (p_query IS NULL OR lfp.path_name ILIKE '%' || p_query || '%')
@@ -30971,7 +31844,7 @@ BEGIN
                 'average_utilization_percent', COALESCE(ROUND(AVG(u.utilization_percent)::numeric, 2), 0),
                 'high_utilization_count', COUNT(*) FILTER (WHERE u.utilization_percent > 80),
                 'total_cables', COUNT(*)
-            ) 
+            )
             FROM public.v_cable_utilization u
             JOIN public.v_ofc_cables_complete c ON u.cable_id = c.id
             WHERE
@@ -30989,14 +31862,14 @@ BEGIN
                 'used', p.used
             ))
             FROM (
-                SELECT 
+                SELECT
                     pm.port_type_code,
                     COUNT(*) as count,
                     COUNT(*) FILTER (WHERE pm.port_admin_status = true) as active,
                     COUNT(*) FILTER (WHERE pm.port_utilization = true) as used
                 FROM public.v_ports_management_complete pm
                 JOIN public.v_systems_complete s ON pm.system_id = s.id
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR s.status = v_status_bool) AND
                     (p_type IS NULL OR s.system_type_name = p_type) AND
                     (p_region IS NULL OR s.maintenance_area_name = p_region) AND
@@ -31009,13 +31882,13 @@ BEGIN
         'user_activity_last_30_days', v_user_activity,
 
         'systems_per_maintenance_area', COALESCE((
-            SELECT jsonb_object_agg(ma.name, s.system_count) 
+            SELECT jsonb_object_agg(ma.name, s.system_count)
             FROM (
-                SELECT maintenance_terminal_id, COUNT(id) as system_count 
-                FROM public.systems 
-                WHERE maintenance_terminal_id IS NOT NULL 
+                SELECT maintenance_terminal_id, COUNT(id) as system_count
+                FROM public.systems
+                WHERE maintenance_terminal_id IS NOT NULL
                 GROUP BY maintenance_terminal_id
-            ) as s 
+            ) as s
             JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
         ), '{}'::jsonb)
     ) INTO result;
@@ -31216,45 +32089,45 @@ SELECT
   sc.system_id,
   s.system_name,
   lt_system.name AS system_type_name,
-  
+
   -- Connection Specifics
   sc.services_ip,         -- From system_connections
   sc.services_interface,  -- From system_connections
-  
+
   sc.sn_id,
   sc.en_id,
   na.id AS sn_node_id,
   nb.id AS en_node_id,
   sc.media_type_id,
-  
+
   -- End A details
-  s_sn.system_name AS sn_name, 
-  na.name AS sn_node_name, 
-  sc.sn_ip, 
+  s_sn.system_name AS sn_name,
+  na.name AS sn_node_name,
+  sc.sn_ip,
   sc.sn_interface,
-  
+
   -- End B details
-  s_en.system_name AS en_name, 
-  nb.name AS en_node_name, 
-  sc.en_ip, 
+  s_en.system_name AS en_name,
+  nb.name AS en_node_name,
+  sc.en_ip,
   sc.en_interface,
-  
+
   lt_media.name AS media_type_name,
-  sc.bandwidth, 
+  sc.bandwidth,
   COALESCE(s_sn.system_name, s_en.system_name) AS connected_system_name,
   lt_sn_type.name AS sn_system_type_name,
   lt_en_type.name AS en_system_type_name,
-  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name, 
-  
+  COALESCE(lt_sn_type.name, lt_en_type.name) AS connected_system_type_name,
+
   sc.commissioned_on,
   sc.remark,
   sc.status,
   sc.created_at,
   sc.updated_at,
-  
+
   -- SERVICE DATA (Logical)
   svc.id AS service_id,
-  svc.name AS service_name, 
+  svc.name AS service_name,
   svc.node_id AS service_node_id,
   svc_node.name AS service_node_name,
   svc.bandwidth_allocated,
@@ -31263,24 +32136,24 @@ SELECT
   svc.unique_id,
   svc.link_type_id AS connected_link_type_id,
   lt_link_type.name as connected_link_type_name,
-  
+
   -- Fiber Arrays
   sc.working_fiber_in_ids,
   sc.working_fiber_out_ids,
   sc.protection_fiber_in_ids,
   sc.protection_fiber_out_ids,
-  
+
   -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
   sc.en_protection_interface, -- NEW COLUMN ADDED HERE
-  
+
   -- SDH Details
-  scs.stm_no AS sdh_stm_no, 
-  scs.carrier AS sdh_carrier, 
+  scs.stm_no AS sdh_stm_no,
+  scs.carrier AS sdh_carrier,
   scs.a_slot AS sdh_a_slot,
-  scs.a_customer AS sdh_a_customer, 
-  scs.b_slot AS sdh_b_slot, 
+  scs.a_customer AS sdh_a_customer,
+  scs.b_slot AS sdh_b_slot,
   scs.b_customer AS sdh_b_customer
 
 FROM public.system_connections sc
@@ -31367,14 +32240,14 @@ SELECT
   nb.name AS en_name,
   updated_na.name AS updated_sn_name,
   updated_nb.name AS updated_en_name,
-  
+
   -- UPDATED SYSTEM NAME LOGIC: System / Interface / Service
-  CONCAT_WS(' / ', 
-    s.system_name, 
-    CASE 
-      WHEN oc.fiber_role = 'protection' THEN sc.system_protection_interface 
-      ELSE sc.system_working_interface 
-    END, 
+  CONCAT_WS(' / ',
+    s.system_name,
+    CASE
+      WHEN oc.fiber_role = 'protection' THEN sc.system_protection_interface
+      ELSE sc.system_working_interface
+    END,
     svc.name
   ) AS system_name
 
@@ -31396,7 +32269,8 @@ FROM public.ofc_connections oc
 -- View for Ring Map Node Data
 CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
 SELECT
-    n.id,
+    s.id as id,          -- SYSTEM ID (Unique entity in the ring)
+    n.id as node_id,     -- Physical Location ID
     r.id as ring_id,
     r.name as ring_name,
     n.name,
@@ -31404,8 +32278,8 @@ SELECT
     n.longitude as long,
     s.is_hub,
     rbs.order_in_ring as order_in_ring,
-    lt_node.name as type, -- This is the physical node type
-    lt_system.name as system_type, -- This is the logical system type for the icon
+    lt_node.name as type,
+    lt_system.name as system_type,
     lt_system.code AS system_type_code,
     r.status AS ring_status,
     s.status AS system_status,
@@ -31422,7 +32296,7 @@ JOIN
     public.nodes n ON s.node_id = n.id
 LEFT JOIN
     public.lookup_types lt_node ON n.node_type_id = lt_node.id
-LEFT JOIN -- Added this join
+LEFT JOIN
     public.lookup_types lt_system ON s.system_type_id = lt_system.id;
 
 -- View for rings with joined data
@@ -31475,9 +32349,9 @@ DECLARE
     v_en_interface TEXT;
 BEGIN
     -- Get the parent system_id and interface names from the system_connection
-    SELECT system_id, sn_interface, en_interface 
+    SELECT system_id, sn_interface, en_interface
     INTO v_system_id, v_sn_interface, v_en_interface
-    FROM public.system_connections 
+    FROM public.system_connections
     WHERE id = p_system_connection_id;
 
     IF NOT FOUND THEN
@@ -31498,7 +32372,7 @@ BEGIN
     -- The `source_port` is the interface on the Start Node (sn) of the connection.
     -- The `destination_port` is the interface on the End Node (en) of the connection.
     UPDATE public.ofc_connections
-    SET 
+    SET
         system_id = v_system_id,
         source_port = v_sn_interface,
         destination_port = v_en_interface,
@@ -31508,7 +32382,7 @@ BEGIN
     -- Step 3: Atomically update ALL protection fibers, if they exist.
     IF array_length(p_protection_fiber_ids, 1) > 0 THEN
         UPDATE public.ofc_connections
-        SET 
+        SET
             system_id = v_system_id,
             source_port = v_sn_interface, -- Assuming same interfaces for protection path
             destination_port = v_en_interface,
@@ -31544,10 +32418,10 @@ DECLARE
 BEGIN
     -- Basic Ring Counts
     SELECT COUNT(*) INTO v_total_rings FROM public.rings WHERE status = true;
-    
+
     SELECT COUNT(*) INTO v_spec_issued FROM public.rings WHERE status = true AND spec_status = 'Issued';
     SELECT COUNT(*) INTO v_spec_pending FROM public.rings WHERE status = true AND (spec_status = 'Pending' OR spec_status IS NULL);
-    
+
     SELECT COUNT(*) INTO v_ofc_ready FROM public.rings WHERE status = true AND ofc_status = 'Ready';
     SELECT COUNT(*) INTO v_ofc_partial_ready FROM public.rings WHERE status = true AND ofc_status = 'Partial Ready';
     SELECT COUNT(*) INTO v_ofc_pending FROM public.rings WHERE status = true AND (ofc_status = 'Pending' OR ofc_status IS NULL);
@@ -31563,8 +32437,8 @@ BEGIN
     JOIN public.systems s ON s.node_id = n.id
     JOIN public.ring_based_systems rbs ON rbs.system_id = s.id
     JOIN public.rings r ON r.id = rbs.ring_id
-    WHERE 
-        r.status = true 
+    WHERE
+        r.status = true
         AND r.bts_status = 'On-Air'
         AND lt.category = 'NODE_TYPES'
         AND (lt.code = 'BTS' OR lt.code = 'BTS-RL');
@@ -31651,10 +32525,10 @@ BEGIN
 
     -- Step 2: Handle ring associations if the system is ring-based and associations are provided.
     IF v_system_type_record.is_ring_based = true AND p_ring_associations IS NOT NULL AND jsonb_array_length(p_ring_associations) > 0 THEN
-        -- THE FIX: Removed the bulk DELETE statement here. 
-        -- We want to merge/upsert the provided associations without destroying existing ones 
+        -- THE FIX: Removed the bulk DELETE statement here.
+        -- We want to merge/upsert the provided associations without destroying existing ones
         -- for other rings that aren't part of this payload.
-        
+
         -- Loop through the provided JSON array and insert the new associations.
         FOR ring_assoc_record IN SELECT * FROM jsonb_to_recordset(p_ring_associations) AS x(ring_id UUID, order_in_ring NUMERIC)
         LOOP
@@ -31680,7 +32554,7 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_media_type_id UUID,
     p_status BOOLEAN,
     p_id UUID DEFAULT NULL,
-    
+
     -- Service Params (Logical)
     p_service_name TEXT DEFAULT NULL,
     p_link_type_id UUID DEFAULT NULL,
@@ -31689,11 +32563,11 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_lc_id TEXT DEFAULT NULL,
     p_unique_id TEXT DEFAULT NULL,
     p_service_node_id UUID DEFAULT NULL,
-    
+
     -- Connection Params (Physical)
-    p_services_ip INET DEFAULT NULL,      
+    p_services_ip INET DEFAULT NULL,
     p_services_interface TEXT DEFAULT NULL,
-    
+
     -- Topology Params
     p_sn_id UUID DEFAULT NULL,
     p_en_id UUID DEFAULT NULL,
@@ -31704,15 +32578,15 @@ CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(
     p_bandwidth TEXT DEFAULT NULL,
     p_commissioned_on DATE DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
-    
+
     p_working_fiber_in_ids UUID[] DEFAULT NULL,
     p_working_fiber_out_ids UUID[] DEFAULT NULL,
     p_protection_fiber_in_ids UUID[] DEFAULT NULL,
     p_protection_fiber_out_ids UUID[] DEFAULT NULL,
-    
+
     p_system_working_interface TEXT DEFAULT NULL,
     p_system_protection_interface TEXT DEFAULT NULL,
-    
+
     -- SDH Params
     p_stm_no TEXT DEFAULT NULL,
     p_carrier TEXT DEFAULT NULL,
@@ -31736,25 +32610,25 @@ DECLARE
     v_target_node_id UUID;
     v_system_type_record public.lookup_types;
 BEGIN
-    SELECT s.node_id INTO v_system_node_id 
-    FROM public.systems s 
+    SELECT s.node_id INTO v_system_node_id
+    FROM public.systems s
     WHERE s.id = p_system_id;
 
     IF NOT FOUND THEN RAISE EXCEPTION 'Parent system with ID % not found', p_system_id; END IF;
 
-    SELECT lt.* INTO v_system_type_record 
-    FROM public.systems s 
-    JOIN public.lookup_types lt ON s.system_type_id = lt.id 
+    SELECT lt.* INTO v_system_type_record
+    FROM public.systems s
+    JOIN public.lookup_types lt ON s.system_type_id = lt.id
     WHERE s.id = p_system_id;
 
     -- =================================================================
     -- SERVICE RESOLUTION & UPSERT
     -- =================================================================
-    
+
     -- Priority 1: Use Explicit Service ID if provided (Linking to existing)
     IF p_service_id IS NOT NULL THEN
         v_service_id := p_service_id;
-        
+
         -- Optionally update that service's details if new info is provided
         IF p_service_name IS NOT NULL THEN
             UPDATE public.services SET
@@ -31770,7 +32644,7 @@ BEGIN
 
     -- Priority 2: Logic for creating/finding by name if no explicit ID
     ELSIF p_service_name IS NOT NULL THEN
-        
+
         v_target_node_id := COALESCE(p_service_node_id, v_system_node_id);
 
         -- 2a. Try to find existing service ID from current connection record if editing
@@ -31780,9 +32654,9 @@ BEGIN
 
         -- 2b. If not found, try to find by Name + Node (Prevent Duplicates at same location)
         IF v_service_id IS NULL THEN
-            SELECT id INTO v_service_id 
-            FROM public.services 
-            WHERE name = p_service_name 
+            SELECT id INTO v_service_id
+            FROM public.services
+            WHERE name = p_service_name
               AND node_id = v_target_node_id
             LIMIT 1;
         END IF;
@@ -31818,10 +32692,10 @@ BEGIN
     -- CONNECTION UPSERT
     -- =================================================================
     INSERT INTO public.system_connections (
-        id, system_id, service_id, media_type_id, status, 
+        id, system_id, service_id, media_type_id, status,
         services_ip, services_interface,
-        sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface, 
-        bandwidth, commissioned_on, remark, 
+        sn_id, en_id, sn_ip, sn_interface, en_ip, en_interface,
+        bandwidth, commissioned_on, remark,
         working_fiber_in_ids, working_fiber_out_ids, protection_fiber_in_ids, protection_fiber_out_ids,
         system_working_interface, system_protection_interface,en_protection_interface,
         updated_at
@@ -31834,30 +32708,30 @@ BEGIN
         p_system_working_interface, p_system_protection_interface,p_en_protection_interface,
         NOW()
     ) ON CONFLICT (id) DO UPDATE SET
-        media_type_id = EXCLUDED.media_type_id, 
+        media_type_id = EXCLUDED.media_type_id,
         service_id = EXCLUDED.service_id,
         status = EXCLUDED.status,
         services_ip = EXCLUDED.services_ip,
         services_interface = EXCLUDED.services_interface,
         sn_id = EXCLUDED.sn_id,
-        en_id = EXCLUDED.en_id, 
+        en_id = EXCLUDED.en_id,
         sn_ip = EXCLUDED.sn_ip,
-        sn_interface = EXCLUDED.sn_interface, 
-        en_ip = EXCLUDED.en_ip, 
+        sn_interface = EXCLUDED.sn_interface,
+        en_ip = EXCLUDED.en_ip,
         en_interface = EXCLUDED.en_interface,
-        bandwidth = EXCLUDED.bandwidth, 
+        bandwidth = EXCLUDED.bandwidth,
         commissioned_on = EXCLUDED.commissioned_on,
-        remark = EXCLUDED.remark, 
-        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids, 
+        remark = EXCLUDED.remark,
+        working_fiber_in_ids = EXCLUDED.working_fiber_in_ids,
         working_fiber_out_ids = EXCLUDED.working_fiber_out_ids,
-        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids, 
+        protection_fiber_in_ids = EXCLUDED.protection_fiber_in_ids,
         protection_fiber_out_ids = EXCLUDED.protection_fiber_out_ids,
         system_working_interface = EXCLUDED.system_working_interface,
         system_protection_interface = EXCLUDED.system_protection_interface,
         en_protection_interface = EXCLUDED.en_protection_interface,
         updated_at = NOW()
     RETURNING id INTO v_connection_id;
-    
+
     IF v_system_type_record.name IN ('Plesiochronous Digital Hierarchy', 'Synchronous Digital Hierarchy', 'Next Generation SDH') THEN
         INSERT INTO public.sdh_connections (
             system_connection_id, stm_no, carrier, a_slot, a_customer, b_slot, b_customer
@@ -31867,21 +32741,21 @@ BEGIN
             stm_no = EXCLUDED.stm_no, carrier = EXCLUDED.carrier, a_slot = EXCLUDED.a_slot,
             a_customer = EXCLUDED.a_customer, b_slot = EXCLUDED.b_slot, b_customer = EXCLUDED.b_customer;
     END IF;
-    
+
     RETURN QUERY SELECT * FROM public.system_connections WHERE id = v_connection_id;
 END;
 $$;
 
 -- Grant execute permission with the exact new signature
 GRANT EXECUTE ON FUNCTION public.upsert_system_connection_with_details(
-    UUID, UUID, BOOLEAN, UUID, 
-    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID, 
-    INET, TEXT, 
-    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT, 
-    UUID[], UUID[], UUID[], UUID[], 
-    TEXT, TEXT, 
+    UUID, UUID, BOOLEAN, UUID,
+    TEXT, UUID, TEXT, TEXT, TEXT, TEXT, UUID,
+    INET, TEXT,
+    UUID, UUID, INET, TEXT, INET, TEXT, TEXT, DATE, TEXT,
+    UUID[], UUID[], UUID[], UUID[],
+    TEXT, TEXT,
     TEXT, TEXT, TEXT, TEXT, TEXT, TEXT,
-    UUID, TEXT 
+    UUID, TEXT
 ) TO authenticated;
 
 -- NEW FUNCTION: To manage system associations for a ring
@@ -31938,7 +32812,7 @@ BEGIN
         JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
         WHERE rbs.ring_id = p_ring_id
         -- Order by the specified ring order, not alphabetically
-        ORDER BY rbs.order_in_ring 
+        ORDER BY rbs.order_in_ring
     LOOP
         IF first_node_rec IS NULL THEN
             first_node_rec := node_rec;
@@ -32099,7 +32973,7 @@ BEGIN
         SELECT * FROM public.v_system_connections_complete
         WHERE (system_id = p_system_id OR en_id = p_system_id) -- Show if Source OR Destination
           AND (
-             p_search_query IS NULL OR 
+             p_search_query IS NULL OR
              (service_name ILIKE '%' || p_search_query || '%' OR connected_system_name ILIKE '%' || p_search_query || '%')
           )
         ORDER BY created_at DESC
@@ -32110,7 +32984,7 @@ BEGIN
     FROM public.v_system_connections_complete
     WHERE (system_id = p_system_id OR en_id = p_system_id)
       AND (
-         p_search_query IS NULL OR 
+         p_search_query IS NULL OR
          (service_name ILIKE '%' || p_search_query || '%' OR connected_system_name ILIKE '%' || p_search_query || '%')
       );
 
@@ -32133,7 +33007,7 @@ GRANT EXECUTE ON FUNCTION public.get_paged_system_connections(UUID, INT, INT, TE
 CREATE TABLE IF NOT EXISTS public.systems (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   system_type_id UUID REFERENCES public.lookup_types (id) NOT NULL,
-  maan_node_id TEXT, 
+  maan_node_id TEXT,
   node_id UUID REFERENCES public.nodes (id) NOT NULL,
   system_name TEXT,
   system_capacity_id UUID REFERENCES public.lookup_types (id),
@@ -32196,38 +33070,38 @@ CREATE TABLE IF NOT EXISTS public.services (
 CREATE TABLE IF NOT EXISTS public.system_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   en_protection_interface TEXT,
-  
+
   -- The System providing the connection
   system_id UUID REFERENCES public.systems (id) NOT NULL,
-  
+
   -- Link to the Logical Service
   service_id UUID REFERENCES public.services(id) ON DELETE SET NULL,
-  
+
   -- Physical Configuration (IPs moved here)
   services_ip INET,            -- The IP assigned to this specific connection leg
   services_interface TEXT,     -- The interface on the system (e.g., Gi0/0/1)
-  
+
   -- Topology / Path logic
   sn_id UUID REFERENCES public.systems (id), -- Start System (usually same as system_id)
   sn_ip INET,
   sn_interface TEXT,
-  
+
   en_id UUID REFERENCES public.systems (id), -- End System (Destination)
   en_ip INET,
   en_interface TEXT,
-  
+
   media_type_id UUID REFERENCES public.lookup_types (id),
   bandwidth TEXT, -- Physical Port Bandwidth (e.g., 1G)
-  
+
   -- Fiber Path References
   working_fiber_in_ids UUID[],
   working_fiber_out_ids UUID[],
   protection_fiber_in_ids UUID[],
   protection_fiber_out_ids UUID[],
-  
+
   system_working_interface TEXT,
   system_protection_interface TEXT,
-  
+
   commissioned_on DATE,
   remark TEXT,
   status BOOLEAN DEFAULT true,
@@ -32266,7 +33140,7 @@ BEGIN
   ]
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-    
+
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO admin;', tbl);
     EXECUTE format('GRANT SELECT ON public.%I TO viewer;', tbl);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO cpan_admin, maan_admin, sdh_admin, asset_admin, mng_admin;', tbl);
@@ -32351,7 +33225,7 @@ BEGIN
     EXISTS (
       SELECT 1 FROM public.systems s
       JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id 
+      WHERE s.id = system_connections.system_id
       AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
@@ -32363,7 +33237,7 @@ BEGIN
     EXISTS (
       SELECT 1 FROM public.systems s
       JOIN public.lookup_types lt ON s.system_type_id = lt.id
-      WHERE s.id = system_connections.system_id 
+      WHERE s.id = system_connections.system_id
       AND lt.category = 'SYSTEM_TYPES' AND (
           (public.get_my_role() = 'cpan_admin' AND lt.name = 'CPAN') OR
           (public.get_my_role() = 'maan_admin' AND lt.name = 'MAAN') OR
@@ -32380,7 +33254,7 @@ $$;
 -- =================================================================
 DO $$
 BEGIN
-  GRANT SELECT ON 
+  GRANT SELECT ON
     public.v_systems_complete,
     public.v_system_connections_complete,
     public.v_ring_nodes,
@@ -32546,7 +33420,7 @@ CREATE OR REPLACE FUNCTION public.admin_get_all_users_extended(
     date_to TIMESTAMPTZ DEFAULT NULL,
     page_offset INTEGER DEFAULT 0,
     page_limit INTEGER DEFAULT 50
-) 
+)
 -- CORRECTED: Returns a single JSONB object
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -32991,14 +33865,14 @@ SECURITY DEFINER
 AS $$
 BEGIN
     UPDATE public.e_files
-    SET 
+    SET
         subject = p_subject,
         description = p_description,
         category = p_category,
         priority = p_priority,
         updated_at = NOW()
     WHERE id = p_file_id;
-    
+
     -- We don't insert into file_movements here because the location didn't change,
     -- only the metadata.
 END;
@@ -33033,7 +33907,7 @@ TO authenticated
 USING (true);
 
 -- path: data/migrations/10_efiles/07_rpc_delete_file.sql
--- Description: Creates a secure RPC function to handle file deletion. 
+-- Description: Creates a secure RPC function to handle file deletion.
 -- This bypasses client-side permission issues by running as a privileged function.
 
 CREATE OR REPLACE FUNCTION public.delete_e_file_record(
@@ -33059,7 +33933,7 @@ BEGIN
     -- Because this function is SECURITY DEFINER, it bypasses RLS and Table Grants
     -- on the e_files table for the current user.
     DELETE FROM public.e_files WHERE id = p_file_id;
-    
+
     -- Raise an error if nothing was deleted (id didn't exist)
     IF NOT FOUND THEN
         RAISE EXCEPTION 'File not found or already deleted';
@@ -33120,9 +33994,9 @@ BEGIN
     LOOP
         BEGIN
             -- 1. Find Initiator
-            SELECT id INTO v_initiator_id 
-            FROM public.employees 
-            WHERE employee_name ILIKE (file_item->>'initiator_name') 
+            SELECT id INTO v_initiator_id
+            FROM public.employees
+            WHERE employee_name ILIKE (file_item->>'initiator_name')
                OR employee_pers_no = (file_item->>'initiator_name')
             LIMIT 1;
 
@@ -33132,16 +34006,16 @@ BEGIN
 
             -- 2. Find Current Holder (Optional)
             v_current_holder_id := v_initiator_id; -- Default to initiator
-            
+
             IF file_item->>'current_holder_name' IS NOT NULL AND (file_item->>'current_holder_name') != '' THEN
-                SELECT id INTO v_current_holder_id 
-                FROM public.employees 
-                WHERE employee_name ILIKE (file_item->>'current_holder_name') 
+                SELECT id INTO v_current_holder_id
+                FROM public.employees
+                WHERE employee_name ILIKE (file_item->>'current_holder_name')
                    OR employee_pers_no = (file_item->>'current_holder_name')
                 LIMIT 1;
 
                 IF v_current_holder_id IS NULL THEN
-                     -- Warning: fallback to initiator if holder not found, but log it? 
+                     -- Warning: fallback to initiator if holder not found, but log it?
                      -- For now, fail safe to initiator or raise error? Let's raise error to ensure data integrity.
                      RAISE EXCEPTION 'Current Holder "%" not found.', (file_item->>'current_holder_name');
                 END IF;
@@ -33152,13 +34026,13 @@ BEGIN
             -- 3. Insert File Record
             -- Note: We set current_holder_employee_id to the FINAL destination immediately
             INSERT INTO public.e_files (
-                file_number, 
-                subject, 
-                description, 
-                category, 
-                priority, 
+                file_number,
+                subject,
+                description,
+                category,
+                priority,
                 recorded_by_user_id,
-                initiator_employee_id, 
+                initiator_employee_id,
                 current_holder_employee_id, -- Set directly to final holder
                 status
             ) VALUES (
@@ -33169,7 +34043,7 @@ BEGIN
                 COALESCE(file_item->>'priority', 'normal'),
                 v_app_user_id,
                 v_initiator_id,
-                v_current_holder_id, 
+                v_current_holder_id,
                 'active'
             ) RETURNING id INTO v_file_id;
 
@@ -33229,8 +34103,8 @@ BEGIN
     -- We use the view to get readable names, but we need raw IDs for perfect restoration if available.
     -- However, for portability, we rely on 'file_number' as the key and 'employee_pers_no' or 'email' for users.
     SELECT jsonb_agg(f) INTO v_files FROM (
-        SELECT 
-            ef.*, 
+        SELECT
+            ef.*,
             emp_init.employee_pers_no as initiator_pers_no,
             emp_hold.employee_pers_no as holder_pers_no
         FROM public.e_files ef
@@ -33241,7 +34115,7 @@ BEGIN
     -- Fetch Movements (History Data)
     -- We link movements to files via 'file_number' instead of UUID to make the Excel readable/portable.
     SELECT jsonb_agg(m) INTO v_movements FROM (
-        SELECT 
+        SELECT
             fm.action_type,
             fm.remarks,
             fm.created_at,
@@ -33276,14 +34150,14 @@ AS $$
 DECLARE
     file_item JSONB;
     mov_item JSONB;
-    
+
     v_file_id UUID;
     v_initiator_id UUID;
     v_holder_id UUID;
     v_from_id UUID;
     v_to_id UUID;
     v_performer_id UUID;
-    
+
     v_files_processed INT := 0;
     v_movements_processed INT := 0;
     v_errors JSONB := '[]'::JSONB;
@@ -33295,7 +34169,7 @@ BEGIN
             -- Resolve IDs from Personal Numbers (Portable)
             SELECT id INTO v_initiator_id FROM public.employees WHERE employee_pers_no = file_item->>'initiator_pers_no';
             SELECT id INTO v_holder_id FROM public.employees WHERE employee_pers_no = file_item->>'holder_pers_no';
-            
+
             -- Fallback to current user if IDs missing (safe default)
             IF v_initiator_id IS NULL THEN RAISE EXCEPTION 'Initiator not found for file %', file_item->>'file_number'; END IF;
             IF v_holder_id IS NULL THEN v_holder_id := v_initiator_id; END IF;
@@ -33323,7 +34197,7 @@ BEGIN
                 current_holder_employee_id = EXCLUDED.current_holder_employee_id,
                 status = EXCLUDED.status,
                 updated_at = EXCLUDED.updated_at;
-                
+
             v_files_processed := v_files_processed + 1;
         EXCEPTION WHEN OTHERS THEN
              v_errors := v_errors || jsonb_build_object('type', 'file', 'key', file_item->>'file_number', 'error', SQLERRM);
@@ -33336,8 +34210,8 @@ BEGIN
         BEGIN
             -- 1. Find the File ID using File Number
             SELECT id INTO v_file_id FROM public.e_files WHERE file_number = mov_item->>'file_number';
-            
-            IF v_file_id IS NULL THEN 
+
+            IF v_file_id IS NULL THEN
                 CONTINUE; -- Skip movement if file doesn't exist
             END IF;
 
@@ -33346,9 +34220,9 @@ BEGIN
             IF mov_item->>'from_pers_no' IS NOT NULL THEN
                 SELECT id INTO v_from_id FROM public.employees WHERE employee_pers_no = mov_item->>'from_pers_no';
             END IF;
-            
+
             SELECT id INTO v_to_id FROM public.employees WHERE employee_pers_no = mov_item->>'to_pers_no';
-            
+
             -- 3. Resolve User ID (Best effort via email, else current user)
             SELECT id INTO v_performer_id FROM auth.users WHERE email = mov_item->>'performed_by_email';
             IF v_performer_id IS NULL THEN v_performer_id := auth.uid(); END IF;
@@ -33356,8 +34230,8 @@ BEGIN
             -- 4. Insert Movement (Avoid duplicates based on timestamp/file/action)
             -- Note: We don't have a unique constraint on movements, so we do a check first.
             IF NOT EXISTS (
-                SELECT 1 FROM public.file_movements 
-                WHERE file_id = v_file_id 
+                SELECT 1 FROM public.file_movements
+                WHERE file_id = v_file_id
                   AND action_type = mov_item->>'action_type'
                   AND created_at = (mov_item->>'created_at')::timestamptz
             ) THEN
@@ -33408,20 +34282,20 @@ CREATE TABLE public.e_files (
     file_number TEXT NOT NULL UNIQUE,
     subject TEXT NOT NULL,
     description TEXT,
-    category TEXT NOT NULL, 
+    category TEXT NOT NULL,
     priority TEXT DEFAULT 'normal', -- 'normal', 'urgent', 'immediate'
-    
+
     -- The Employee who physically started/owns the file
     initiator_employee_id UUID NOT NULL REFERENCES public.employees(id),
-    
+
     -- The Employee currently holding the physical file
     current_holder_employee_id UUID NOT NULL REFERENCES public.employees(id),
-    
+
     -- The App User who performed the data entry
     recorded_by_user_id UUID NOT NULL REFERENCES auth.users(id),
-    
+
     status TEXT DEFAULT 'active', -- 'active', 'closed'
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -33430,17 +34304,17 @@ CREATE TABLE public.e_files (
 CREATE TABLE public.file_movements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     file_id UUID NOT NULL REFERENCES public.e_files(id) ON DELETE CASCADE,
-    
+
     -- Movement: From Employee -> To Employee
     from_employee_id UUID REFERENCES public.employees(id),
     to_employee_id UUID NOT NULL REFERENCES public.employees(id),
-    
+
     -- The App User who clicked the button
     performed_by_user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
-    
+
     action_type TEXT NOT NULL, -- 'initiated', 'forwarded', 'returned', 'closed'
     remarks TEXT,
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -33457,30 +34331,30 @@ ALTER TABLE public.file_movements ENABLE ROW LEVEL SECURITY;
 -- Since App Users are operators managing files for Employees, they generally need broad read access.
 
 -- E-Files Policies
-CREATE POLICY "Authenticated users can view e_files" 
-ON public.e_files FOR SELECT 
-TO authenticated 
+CREATE POLICY "Authenticated users can view e_files"
+ON public.e_files FOR SELECT
+TO authenticated
 USING (true);
 
-CREATE POLICY "Authenticated users can insert e_files" 
-ON public.e_files FOR INSERT 
-TO authenticated 
+CREATE POLICY "Authenticated users can insert e_files"
+ON public.e_files FOR INSERT
+TO authenticated
 WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can update e_files" 
-ON public.e_files FOR UPDATE 
-TO authenticated 
+CREATE POLICY "Authenticated users can update e_files"
+ON public.e_files FOR UPDATE
+TO authenticated
 USING (true);
 
 -- File Movements Policies
-CREATE POLICY "Authenticated users can view movements" 
-ON public.file_movements FOR SELECT 
-TO authenticated 
+CREATE POLICY "Authenticated users can view movements"
+ON public.file_movements FOR SELECT
+TO authenticated
 USING (true);
 
-CREATE POLICY "Authenticated users can insert movements" 
-ON public.file_movements FOR INSERT 
-TO authenticated 
+CREATE POLICY "Authenticated users can insert movements"
+ON public.file_movements FOR INSERT
+TO authenticated
 WITH CHECK (true);
 
 
@@ -33488,7 +34362,7 @@ WITH CHECK (true);
 
 -- View: Extended E-Files List
 CREATE OR REPLACE VIEW public.v_e_files_extended WITH (security_invoker = true) AS
-SELECT 
+SELECT
     f.id,
     f.file_number,
     f.subject,
@@ -33498,22 +34372,22 @@ SELECT
     f.status,
     f.created_at,
     f.updated_at,
-    
+
     -- Initiator (Employee)
     f.initiator_employee_id,
     e_init.employee_name as initiator_name,
     d_init.name as initiator_designation,
-    
+
     -- Current Holder (Employee)
     f.current_holder_employee_id,
     e_hold.employee_name as current_holder_name,
     d_hold.name as current_holder_designation,
     m_hold.name as current_holder_area,
-    
+
     -- Recorded By (App User)
     f.recorded_by_user_id,
     p_rec.first_name || ' ' || p_rec.last_name as recorded_by_name
-    
+
 FROM public.e_files f
 LEFT JOIN public.employees e_init ON f.initiator_employee_id = e_init.id
 LEFT JOIN public.employee_designations d_init ON e_init.employee_designation_id = d_init.id
@@ -33530,17 +34404,17 @@ SELECT
     m.action_type,
     m.remarks,
     m.created_at,
-    
+
     -- From Employee
     m.from_employee_id,
     e_from.employee_name as from_employee_name,
     d_from.name as from_employee_designation,
-    
+
     -- To Employee
     m.to_employee_id,
     e_to.employee_name as to_employee_name,
     d_to.name as to_employee_designation,
-    
+
     -- Operator
     m.performed_by_user_id,
     p_op.first_name || ' ' || p_op.last_name as performed_by_name
@@ -33575,8 +34449,8 @@ DECLARE
 BEGIN
     -- 1. Insert File Record
     INSERT INTO public.e_files (
-        file_number, subject, description, category, priority, 
-        initiator_employee_id, current_holder_employee_id, 
+        file_number, subject, description, category, priority,
+        initiator_employee_id, current_holder_employee_id,
         recorded_by_user_id, status
     ) VALUES (
         p_file_number, p_subject, p_description, p_category, p_priority,
@@ -33586,7 +34460,7 @@ BEGIN
 
     -- 2. Log 'Initiated' Movement
     INSERT INTO public.file_movements (
-        file_id, from_employee_id, to_employee_id, 
+        file_id, from_employee_id, to_employee_id,
         performed_by_user_id, action_type, remarks
     ) VALUES (
         v_file_id, NULL, p_initiator_employee_id,
@@ -33612,19 +34486,19 @@ DECLARE
     v_current_holder_id UUID;
 BEGIN
     -- Get current holder
-    SELECT current_holder_employee_id INTO v_current_holder_id 
+    SELECT current_holder_employee_id INTO v_current_holder_id
     FROM public.e_files WHERE id = p_file_id;
-    
+
     IF v_current_holder_id IS NULL THEN RAISE EXCEPTION 'File not found'; END IF;
 
     -- Update File Holder
-    UPDATE public.e_files 
+    UPDATE public.e_files
     SET current_holder_employee_id = p_to_employee_id, updated_at = NOW()
     WHERE id = p_file_id;
 
     -- Log Movement
     INSERT INTO public.file_movements (
-        file_id, from_employee_id, to_employee_id, 
+        file_id, from_employee_id, to_employee_id,
         performed_by_user_id, action_type, remarks
     ) VALUES (
         p_file_id, v_current_holder_id, p_to_employee_id,
@@ -33645,17 +34519,17 @@ AS $$
 DECLARE
     v_current_holder_id UUID;
 BEGIN
-    SELECT current_holder_employee_id INTO v_current_holder_id 
+    SELECT current_holder_employee_id INTO v_current_holder_id
     FROM public.e_files WHERE id = p_file_id;
 
     -- Update Status
-    UPDATE public.e_files 
+    UPDATE public.e_files
     SET status = 'closed', updated_at = NOW()
     WHERE id = p_file_id;
 
     -- Log Closing Action (To same user, just marks status change)
     INSERT INTO public.file_movements (
-        file_id, from_employee_id, to_employee_id, 
+        file_id, from_employee_id, to_employee_id,
         performed_by_user_id, action_type, remarks
     ) VALUES (
         p_file_id, v_current_holder_id, v_current_holder_id,
@@ -33697,6 +34571,58 @@ ANALYZE public.ofc_connections;
 ANALYZE public.ofc_cables;
 ```
 
+<!-- path: data/migrations/09_performance/03_fix_dom_triggers.sql -->
+```sql
+-- path: data/migrations/09_performance/03_fix_dom_triggers.sql
+-- Description: Attaches triggers to auto-update Date of Measurement (DOM) when OTDR values change.
+
+-- 1. Redefine functions to be more robust (removing the 0.05 threshold for manual edits)
+CREATE OR REPLACE FUNCTION public.update_sn_dom_on_otdr_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- If the distance value has changed (and isn't just null -> null)
+  IF NEW.otdr_distance_sn_km IS DISTINCT FROM OLD.otdr_distance_sn_km THEN
+      -- Automatically set the measurement date to today
+      NEW.sn_dom := CURRENT_DATE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_en_dom_on_otdr_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- If the distance value has changed (and isn't just null -> null)
+  IF NEW.otdr_distance_en_km IS DISTINCT FROM OLD.otdr_distance_en_km THEN
+      -- Automatically set the measurement date to today
+      NEW.en_dom := CURRENT_DATE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- 2. Drop existing triggers if they exist (cleanup)
+DROP TRIGGER IF EXISTS trigger_update_sn_dom ON public.ofc_connections;
+DROP TRIGGER IF EXISTS trigger_update_en_dom ON public.ofc_connections;
+
+-- 3. Attach Triggers
+CREATE TRIGGER trigger_update_sn_dom
+BEFORE UPDATE ON public.ofc_connections
+FOR EACH ROW
+EXECUTE FUNCTION public.update_sn_dom_on_otdr_change();
+
+CREATE TRIGGER trigger_update_en_dom
+BEFORE UPDATE ON public.ofc_connections
+FOR EACH ROW
+EXECUTE FUNCTION public.update_en_dom_on_otdr_change();
+```
+
 <!-- path: data/migrations/08_inventory/04_bulk_import_rpc.sql -->
 ```sql
 -- path: data/migrations/data/migrations/08_inventory/05_bulk_import_rpc.sql
@@ -33716,13 +34642,13 @@ DECLARE
     v_location_id UUID;
     v_func_loc_id UUID;
     v_item_id UUID;
-    
+
     v_qty INT;
     v_cost NUMERIC;
     v_trans_type TEXT;
     v_current_qty INT;
     v_delta INT;
-    
+
     v_success_count INT := 0;
     v_error_count INT := 0;
     v_errors JSONB := '[]'::JSONB;
@@ -33737,22 +34663,22 @@ BEGIN
             v_trans_type := UPPER(COALESCE(item_record->>'transaction_type', 'ADD')); -- Default to ADD
 
             -- 2. Resolve Lookups
-            SELECT id INTO v_category_id FROM public.lookup_types 
+            SELECT id INTO v_category_id FROM public.lookup_types
             WHERE category = 'INVENTORY_CATEGORY' AND name ILIKE (item_record->>'category') LIMIT 1;
-            
-            SELECT id INTO v_status_id FROM public.lookup_types 
+
+            SELECT id INTO v_status_id FROM public.lookup_types
             WHERE category = 'INVENTORY_STATUS' AND name ILIKE (item_record->>'status') LIMIT 1;
-            
-            SELECT id INTO v_location_id FROM public.nodes 
+
+            SELECT id INTO v_location_id FROM public.nodes
             WHERE name ILIKE (item_record->>'location') LIMIT 1;
-            
-            SELECT id INTO v_func_loc_id FROM public.maintenance_areas 
+
+            SELECT id INTO v_func_loc_id FROM public.maintenance_areas
             WHERE name ILIKE (item_record->>'functional_location') LIMIT 1;
 
             -- 3. Upsert Item (Create or Get ID)
             INSERT INTO public.inventory_items (
-                asset_no, name, description, category_id, status_id, 
-                location_id, functional_location_id, 
+                asset_no, name, description, category_id, status_id,
+                location_id, functional_location_id,
                 quantity, -- Initial qty if new
                 vendor, cost, purchase_date
             ) VALUES (
@@ -33768,7 +34694,7 @@ BEGIN
                 v_cost,
                 (NULLIF(item_record->>'purchase_date', ''))::DATE
             )
-            ON CONFLICT (asset_no) 
+            ON CONFLICT (asset_no)
             DO UPDATE SET
                 updated_at = NOW() -- We update quantity explicitly below
             RETURNING id, quantity INTO v_item_id, v_current_qty;
@@ -33779,20 +34705,20 @@ BEGIN
                 IF v_current_qty < v_qty THEN
                     RAISE EXCEPTION 'Insufficient stock for asset %. Curr: %, Req: %', (item_record->>'asset_no'), v_current_qty, v_qty;
                 END IF;
-                
+
                 -- Update Master Table
                 UPDATE public.inventory_items SET quantity = quantity - v_qty WHERE id = v_item_id;
-                
+
                 -- Log Transaction
                 INSERT INTO public.inventory_transactions (
-                    inventory_item_id, transaction_type, quantity, 
-                    unit_cost_at_time, total_cost_calculated, 
+                    inventory_item_id, transaction_type, quantity,
+                    unit_cost_at_time, total_cost_calculated,
                     issued_to, issue_reason, performed_by_user_id, issued_date
                 ) VALUES (
-                    v_item_id, 'ISSUE', v_qty, 
-                    v_cost, (v_qty * v_cost), 
-                    item_record->>'issued_to', 
-                    COALESCE(item_record->>'issue_reason', 'Bulk Issue'), 
+                    v_item_id, 'ISSUE', v_qty,
+                    v_cost, (v_qty * v_cost),
+                    item_record->>'issued_to',
+                    COALESCE(item_record->>'issue_reason', 'Bulk Issue'),
                     v_user_id,
                     COALESCE((NULLIF(item_record->>'transaction_date', ''))::DATE, CURRENT_DATE)
                 );
@@ -33800,20 +34726,20 @@ BEGIN
             ELSIF v_trans_type = 'SET' THEN
                 -- Calculate Adjustment
                 v_delta := v_qty - v_current_qty;
-                
+
                 IF v_delta != 0 THEN
                     -- Update Master Table
                     UPDATE public.inventory_items SET quantity = v_qty WHERE id = v_item_id;
-                    
+
                     -- Log Adjustment
                     INSERT INTO public.inventory_transactions (
-                        inventory_item_id, transaction_type, quantity, 
-                        unit_cost_at_time, total_cost_calculated, 
+                        inventory_item_id, transaction_type, quantity,
+                        unit_cost_at_time, total_cost_calculated,
                         issue_reason, performed_by_user_id
                     ) VALUES (
-                        v_item_id, 'ADJUSTMENT', ABS(v_delta), 
-                        v_cost, (ABS(v_delta) * v_cost), 
-                        'Stock Correction (Bulk Set)', 
+                        v_item_id, 'ADJUSTMENT', ABS(v_delta),
+                        v_cost, (ABS(v_delta) * v_cost),
+                        'Stock Correction (Bulk Set)',
                         v_user_id
                     );
                 END IF;
@@ -33824,13 +34750,13 @@ BEGIN
 
                 -- Log Transaction
                 INSERT INTO public.inventory_transactions (
-                    inventory_item_id, transaction_type, quantity, 
-                    unit_cost_at_time, total_cost_calculated, 
+                    inventory_item_id, transaction_type, quantity,
+                    unit_cost_at_time, total_cost_calculated,
                     issue_reason, performed_by_user_id, issued_date
                 ) VALUES (
-                    v_item_id, 'RESTOCK', v_qty, 
-                    v_cost, (v_qty * v_cost), 
-                    COALESCE(item_record->>'issue_reason', 'Bulk Restock'), 
+                    v_item_id, 'RESTOCK', v_qty,
+                    v_cost, (v_qty * v_cost),
+                    COALESCE(item_record->>'issue_reason', 'Bulk Restock'),
                     v_user_id,
                     COALESCE((NULLIF(item_record->>'transaction_date', ''))::DATE, CURRENT_DATE)
                 );
@@ -33876,8 +34802,8 @@ REVOKE ALL ON public.inventory_transactions FROM authenticated;
 -- We grant these to 'authenticated' so the API can attempt the operation.
 -- RLS policies below will determine if the operation is actually allowed.
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO authenticated;
-GRANT SELECT ON public.inventory_transactions TO authenticated; 
--- Note: No INSERT/UPDATE/DELETE grant on transactions for direct API access. 
+GRANT SELECT ON public.inventory_transactions TO authenticated;
+-- Note: No INSERT/UPDATE/DELETE grant on transactions for direct API access.
 -- Those happen via SECURITY DEFINER functions only.
 
 
@@ -33891,7 +34817,7 @@ ON public.inventory_items
 FOR SELECT
 TO authenticated
 USING (
-  public.is_super_admin() OR 
+  public.is_super_admin() OR
   public.get_my_role() IN ('viewer', 'admin', 'asset_admin')
 );
 
@@ -33903,7 +34829,7 @@ ON public.inventory_items
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  public.is_super_admin() OR 
+  public.is_super_admin() OR
   public.get_my_role() IN ('admin', 'asset_admin')
 );
 
@@ -33913,11 +34839,11 @@ ON public.inventory_items
 FOR UPDATE
 TO authenticated
 USING (
-  public.is_super_admin() OR 
+  public.is_super_admin() OR
   public.get_my_role() IN ('admin', 'asset_admin')
 )
 WITH CHECK (
-  public.is_super_admin() OR 
+  public.is_super_admin() OR
   public.get_my_role() IN ('admin', 'asset_admin')
 );
 
@@ -33939,7 +34865,7 @@ ON public.inventory_transactions
 FOR SELECT
 TO authenticated
 USING (
-  public.is_super_admin() OR 
+  public.is_super_admin() OR
   public.get_my_role() IN ('viewer', 'admin', 'asset_admin')
 );
 
@@ -34055,19 +34981,19 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
 CREATE TABLE IF NOT EXISTS public.inventory_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     inventory_item_id UUID NOT NULL REFERENCES public.inventory_items(id) ON DELETE CASCADE,
-    
+
     transaction_type TEXT NOT NULL CHECK (transaction_type IN ('ISSUE', 'RESTOCK', 'ADJUSTMENT')),
     quantity INT NOT NULL,
-    
+
     -- Financial snapshot at the time of issue
     unit_cost_at_time NUMERIC(10, 2),
     total_cost_calculated NUMERIC(10, 2),
-    
+
     -- Metadata
     issued_to TEXT,           -- Person or Dept Name
     issue_reason TEXT,
     issued_date DATE DEFAULT CURRENT_DATE,
-    
+
     performed_by_user_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -34103,9 +35029,9 @@ DECLARE
     v_item_name TEXT;
 BEGIN
     -- 1. Lock the item row and get current details
-    SELECT quantity, cost, name 
+    SELECT quantity, cost, name
     INTO v_current_qty, v_unit_cost, v_item_name
-    FROM public.inventory_items 
+    FROM public.inventory_items
     WHERE id = p_item_id
     FOR UPDATE; -- Locks row to prevent race conditions
 
@@ -34125,7 +35051,7 @@ BEGIN
 
     -- 4. Deduct Stock from Main Table
     UPDATE public.inventory_items
-    SET 
+    SET
         quantity = quantity - p_quantity,
         updated_at = NOW()
     WHERE id = p_item_id;
@@ -34516,7 +35442,7 @@ const MapContent = ({
       } else {
         // Overlap detected: Spiral them out
         // 0.00015 degrees is roughly 15-20 meters
-        const radius = 0.00015; 
+        const radius = 0.00015;
         const angleStep = (2 * Math.PI) / nodesAtLoc.length;
 
         nodesAtLoc.forEach((node, i) => {
@@ -34541,7 +35467,7 @@ const MapContent = ({
       {visibleLayers.cables && cables.map((cable: BsnlCable) => {
           const startNode = nodeMap.get(cable.sn_id!);
           const endNode = nodeMap.get(cable.en_id!);
-          
+
           if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
               return (
                   <Polyline
@@ -34570,15 +35496,15 @@ const MapContent = ({
           const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
 
           return (
-            <Marker 
-              key={node.id} 
+            <Marker
+              key={node.id}
               // Use calculated display coordinates (spread out)
-              position={[node.displayLat, node.displayLng]} 
+              position={[node.displayLat, node.displayLng]}
               icon={icon}
               // THE FIX: riseOnHover allows accessing partially overlapped markers
               riseOnHover={true}
               // Ensure overlapping markers have stacking context logic if needed
-              zIndexOffset={10} 
+              zIndexOffset={10}
             >
                 <Popup>
                     <div className="min-w-48 max-w-72">
@@ -34950,13 +35876,13 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
              <div className="border rounded-lg border-gray-200 dark:border-gray-600">
                 <div className="p-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-300">Working Path</div>
                 <div className="p-4">
-                  <PathBuilder 
-                    path={paths.working} 
-                    onPathChange={p => setPaths(c => ({ ...c, working: p }))} 
-                    startNodeId={selectedSystem.node_id!} 
-                    nodes={nodes} 
-                    cables={cables} 
-                    allAllocatedFibers={allAllocatedFibers} 
+                  <PathBuilder
+                    path={paths.working}
+                    onPathChange={p => setPaths(c => ({ ...c, working: p }))}
+                    startNodeId={selectedSystem.node_id!}
+                    nodes={nodes}
+                    cables={cables}
+                    allAllocatedFibers={allAllocatedFibers}
                   />
                 </div>
               </div>
@@ -34986,8 +35912,8 @@ function AdvancedAllocationModal({ isOpen, onClose, onSave, systems, nodes, cabl
           <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">Cancel</button>
           <div className="space-x-3">
             {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">Back</button>}
-            {step < 2 ? 
-              <button onClick={() => setStep(s => s + 1)} disabled={!selectedSystemId} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-500">Next</button> : 
+            {step < 2 ?
+              <button onClick={() => setStep(s => s + 1)} disabled={!selectedSystemId} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-500">Next</button> :
               <button onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Create Allocation</button>}
           </div>
         </div>
@@ -35052,7 +35978,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleCables = visibleCables.filter(c => c.status === isActive);
       visibleSystems = visibleSystems.filter(s => s.status === isActive);
     }
-    
+
     if (filters.region) visibleNodes = visibleNodes.filter(n => n.maintenance_area_name === filters.region);
     if (filters.nodeType) visibleNodes = visibleNodes.filter(n => n.node_type_name === filters.nodeType);
     if (filters.type) {
@@ -35063,8 +35989,8 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     // THE FIX: Instead of filtering strictly by mapBounds, create a larger "buffered" bounds.
     if (mapBounds) {
       // Expand the bounds by 50% to fetch a wider area of data.
-      const bufferedBounds = mapBounds.pad(0.5); 
-      visibleNodes = visibleNodes.filter(n => 
+      const bufferedBounds = mapBounds.pad(0.5);
+      visibleNodes = visibleNodes.filter(n =>
         n.latitude && n.longitude &&
         bufferedBounds.contains([n.latitude, n.longitude])
       );
@@ -35073,14 +35999,14 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
     visibleCables = visibleCables.filter(c => visibleNodeIds.has(c.sn_id!) || visibleNodeIds.has(c.en_id!));
     visibleSystems = visibleSystems.filter(s => visibleNodeIds.has(s.node_id!));
-    
+
     return {
       nodes: visibleNodes,
       ofcCables: visibleCables,
       systems: visibleSystems,
     };
   }, [allNodes, allCables, allSystems, filters, mapBounds, isLoading]);
-  
+
   return {
     data,
     isLoading,
@@ -35109,13 +36035,13 @@ interface DashboardStatsGridProps {
 }
 
 // ... StatCard and StatsGridSkeleton remain the same ...
-const StatCard: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  value: string | number; 
-  subtext?: string; 
+const StatCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  subtext?: string;
   color: string;
-  action?: React.ReactNode; 
+  action?: React.ReactNode;
 }> = ({ icon, label, value, subtext, color, action }) => (
   <Card className={`p-4 border-l-4 ${color} bg-white dark:bg-gray-800 dark:border-l-4 h-full shadow-xs hover:shadow-md transition-shadow relative overflow-visible`}>
     <div className="flex items-center justify-between">
@@ -35145,10 +36071,10 @@ const StatsGridSkeleton: React.FC = () => (
 export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ filters: pageFilters }) => {
   // Pass the page filters to the hook
   const { data, isLoading, isError, error } = useDashboardOverview(pageFilters);
-  
+
   // Local state for the Port Type MultiSelect
   const [portFilters, setPortFilters] = useState<Filters>({
-    type_code: ['GE(O)', 'GE(E)'] 
+    type_code: ['GE(O)', 'GE(E)']
   });
 
   const typeOptions: Option[] = useMemo(() => {
@@ -35165,7 +36091,7 @@ export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ filters:
 
     const selectedTypes = (portFilters['type_code'] as string[]) || [];
 
-    const filtered = data.port_utilization_by_type.filter(p => 
+    const filtered = data.port_utilization_by_type.filter(p =>
       selectedTypes.length > 0 ? selectedTypes.includes(p.type_code || '') : false
     );
 
@@ -35187,8 +36113,8 @@ export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ filters:
 
   return (
     <div className="space-y-4">
-      {/* 
-         Optional: Show active page filters summary here if needed 
+      {/*
+         Optional: Show active page filters summary here if needed
          e.g. "Showing stats for Region: North"
       */}
 
@@ -35198,10 +36124,10 @@ export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ filters:
            <Filter className="w-4 h-4" />
            <span>Utilization Filters</span>
         </div>
-        
+
         <div className="w-full sm:w-72">
-          <MultiSelectFilter 
-            label="" 
+          <MultiSelectFilter
+            label=""
             filterKey="type_code"
             filters={portFilters}
             setFilters={setPortFilters}
@@ -35356,11 +36282,11 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
             <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
 
             {/* Replaced Textarea with WYSIWYG */}
-            <FormRichTextEditor 
-                name="description" 
-                label="Description" 
-                control={control} 
-                error={errors.description} 
+            <FormRichTextEditor
+                name="description"
+                label="Description"
+                control={control}
+                error={errors.description}
             />
 
             <FormTextarea name="remarks" label="Initial Note" control={control} rows={2} placeholder="e.g. Starting new file..." />
@@ -35470,10 +36396,10 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
                     />
                  </div>
                  {/* Replaced Textarea with WYSIWYG */}
-                 <FormRichTextEditor 
-                    name="description" 
-                    label="Description" 
-                    control={control} 
+                 <FormRichTextEditor
+                    name="description"
+                    label="Description"
+                    control={control}
                  />
             </FormCard>
         </Modal>
@@ -35504,7 +36430,7 @@ interface EFileCardProps {
 export const EFileCard: React.FC<EFileCardProps> = ({
   file, onView, onForward, onEdit, onDelete, canEdit, canDelete
 }) => {
-  
+
   // Visual Logic
   const getPriorityColor = (p: string | null) => {
     switch(p) {
@@ -35517,12 +36443,12 @@ export const EFileCard: React.FC<EFileCardProps> = ({
   const isClosed = file.status === 'closed';
 
   return (
-    <div 
+    <div
       onClick={() => onView(file)}
       className={`
         relative flex flex-col h-full rounded-xl border transition-all duration-200 hover:shadow-md cursor-pointer group
-        ${isClosed 
-            ? 'bg-gray-50 border-gray-200 opacity-75 dark:bg-gray-800/50 dark:border-gray-700' 
+        ${isClosed
+            ? 'bg-gray-50 border-gray-200 opacity-75 dark:bg-gray-800/50 dark:border-gray-700'
             : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'
         }
       `}
@@ -35622,7 +36548,7 @@ interface Props {
 export const EFileTimeline: React.FC<Props> = ({ history }) => {
   // Sort history chronologically: Oldest (Initiated) at Top -> Newest (Current) at Bottom
   const chronologicalHistory = useMemo(() => {
-    return [...history].sort((a, b) => 
+    return [...history].sort((a, b) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }, [history]);
@@ -35641,18 +36567,18 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
     <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-8">
       {chronologicalHistory.map((move, index) => {
         const isLast = index === chronologicalHistory.length - 1;
-        
+
         return (
             <div key={move.id} className="relative group">
             {/* Timeline Dot/Icon */}
             <div className={`absolute -left-[25px] p-1 rounded-full shadow-sm z-10 group-hover:scale-110 transition-transform border ${
-                isLast 
-                    ? 'bg-blue-100 border-blue-300 dark:bg-blue-900 dark:border-blue-700' 
+                isLast
+                    ? 'bg-blue-100 border-blue-300 dark:bg-blue-900 dark:border-blue-700'
                     : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'
             }`}>
                 {getIcon(move.action_type)}
             </div>
-            
+
             <div className={`rounded-lg border p-4 shadow-sm hover:shadow-md transition-all ${
                 isLast
                     ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900'
@@ -35662,7 +36588,7 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase ${
-                                isLast 
+                                isLast
                                     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                             }`}>
@@ -35700,7 +36626,7 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
                         </div>
                     )}
                 </div>
-                
+
                 {move.remarks && (
                     <div className="mt-3 p-3 bg-white/50 dark:bg-gray-900/30 rounded-lg border-l-2 border-gray-300 dark:border-gray-600">
                         <p className="text-sm text-gray-700 dark:text-gray-300 italic whitespace-pre-wrap wrap-break-words leading-relaxed">
@@ -35970,8 +36896,8 @@ export function TableFilterPanel<T extends TableOrViewName>({
         ))}
       {Object.keys(filters).length > 0 && (
         <div className='flex items-end'>
-          <button 
-            onClick={() => setFilters({})} 
+          <button
+            onClick={() => setFilters({})}
             className='px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
           >
             Clear All
@@ -36489,7 +37415,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             ) : (
               processedData.map((record, idx) => (
                 <Card
-                  key={record.id}
+                  key={`${record.id}-${idx}`}
                   className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative"
                 >
                   {selectable && (
@@ -36640,9 +37566,9 @@ export interface DataTableProps<T extends TableOrViewName> {
     fallbackToCsv?: boolean;
   } & Omit<DownloadOptions<T>, "rpcConfig">;
   renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
-  
+
   // NEW PROP
-  autoHideEmptyColumns?: boolean; 
+  autoHideEmptyColumns?: boolean;
 }
 
 export type SortDirection = "asc" | "desc";
@@ -36797,7 +37723,7 @@ function TableRowBase<T extends TableOrViewName>({
     }, [editingCell, rowIndex]);
 
     // Loading UI is handled at the TableBodyBase level.
-    
+
     return (
         <tr
           className={`${striped && rowIndex % 2 === 1 ? "bg-gray-50/50 dark:bg-gray-700/25" : ""} ${hoverable ? "hover:bg-gray-50 dark:hover:bg-gray-700/50" : ""} ${
@@ -36816,7 +37742,7 @@ function TableRowBase<T extends TableOrViewName>({
                 {actions?.map((action) => {
                   const isHidden = typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
                   if (isHidden) return null;
-                  
+
                   const isDisabled = typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
                   const variants = {
                     primary: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
@@ -36824,10 +37750,10 @@ function TableRowBase<T extends TableOrViewName>({
                     danger: "text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300",
                     success: "text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300",
                   };
-                  
+
                   const icon = action.getIcon ? action.getIcon(record) : action.icon;
                   const variant = action.variant || 'secondary';
-                  
+
                   return (
                     <button
                       key={action.key}
@@ -36869,18 +37795,18 @@ function TableRowBase<T extends TableOrViewName>({
                     }}
                     className='flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
                   />
-                  <button 
+                  <button
                     type="button"
-                    onClick={saveCellEdit} 
-                    className='p-1 text-green-600 hover:text-green-700' 
+                    onClick={saveCellEdit}
+                    className='p-1 text-green-600 hover:text-green-700'
                     aria-label="Save cell edit"
                   >
                     <FiCheck size={14} />
                   </button>
-                  <button 
+                  <button
                     type="button"
-                    onClick={cancelCellEdit} 
-                    className='p-1 text-red-600 hover:text-red-700' 
+                    onClick={cancelCellEdit}
+                    className='p-1 text-red-600 hover:text-red-700'
                     aria-label="Cancel cell edit"
                   >
                     <FiX size={14} />
@@ -36947,9 +37873,9 @@ function TableBodyBase<T extends TableOrViewName>({
         <tr>
           <td colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)} className={rest.bordered ? "border-b border-gray-200 dark:border-gray-700" : ""}>
              {/* THE FIX: Use FancyEmptyState */}
-             <FancyEmptyState 
-                title="No Data Found" 
-                description={emptyText || "Try adjusting your search or filters."} 
+             <FancyEmptyState
+                title="No Data Found"
+                description={emptyText || "Try adjusting your search or filters."}
              />
           </td>
         </tr>
@@ -37036,8 +37962,8 @@ export function createStandardActions<V extends ActionableRecord>({
     actions.push({
       key: "toggleStatus",
       label: "Toggle Status",
-      getIcon: (record: V) => 
-        React.createElement(record.status ? ToggleRight : ToggleLeft, { 
+      getIcon: (record: V) =>
+        React.createElement(record.status ? ToggleRight : ToggleLeft, {
           className: `w-4 h-4 ${record.status ? 'text-green-500' : 'text-gray-400'}`,
         }),
       variant: 'secondary',
@@ -37117,16 +38043,16 @@ export function TableColumnSelector<T extends TableOrViewName>({
   useLayoutEffect(() => {
     if (showColumnSelector && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const dropdownWidth = 256; 
-      
+      const dropdownWidth = 256;
+
       let left = rect.right - dropdownWidth;
-      if (left < 10) left = rect.left; 
+      if (left < 10) left = rect.left;
 
       // Adjust if it goes off bottom of screen
       let top = rect.bottom + 4;
       const viewportHeight = window.innerHeight;
-      const estimatedHeight = Math.min(300, 50 + columns.length * 36); 
-      
+      const estimatedHeight = Math.min(300, 50 + columns.length * 36);
+
       if (top + estimatedHeight > viewportHeight) {
           // Position above if not enough space below
           top = rect.top - estimatedHeight - 4;
@@ -37146,7 +38072,7 @@ export function TableColumnSelector<T extends TableOrViewName>({
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node) &&
         triggerRef.current &&
         !triggerRef.current.contains(e.target as Node)
@@ -37166,9 +38092,9 @@ export function TableColumnSelector<T extends TableOrViewName>({
 
     if (showColumnSelector) {
       document.addEventListener('mousedown', handleClickOutside, false);
-      document.addEventListener('scroll', handleScroll, true); 
+      document.addEventListener('scroll', handleScroll, true);
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside, false);
       document.removeEventListener('scroll', handleScroll, true);
@@ -37190,7 +38116,7 @@ export function TableColumnSelector<T extends TableOrViewName>({
           {visibleColumns.length}/{columns.length}
         </span>
       </div>
-      
+
       <div className="p-2 overflow-y-auto custom-scrollbar flex-1">
         {columns.map((column) => (
           <label
@@ -37215,7 +38141,7 @@ export function TableColumnSelector<T extends TableOrViewName>({
           </label>
         ))}
       </div>
-      
+
       <div className="p-2 border-t border-gray-200 dark:border-gray-700 shrink-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-lg flex gap-2">
         <button
             onClick={() => setVisibleColumns(columns.map(c => c.key))}
@@ -37302,7 +38228,7 @@ export function TableToolbar<T extends TableOrViewName>({
 }: TableToolbarProps<T>) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { showToolbar, setShowToolbar } = useViewSettings();
-  
+
   // Create a ref for the Columns toggle button
   const columnsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -37359,7 +38285,7 @@ export function TableToolbar<T extends TableOrViewName>({
                     ref={columnsButtonRef} // Attach ref here
                     onClick={() => setShowColumnSelector(!showColumnSelector)}
                     className={`flex items-center justify-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${
-                       showColumnSelector 
+                       showColumnSelector
                          ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-900/50 dark:text-blue-300"
                          : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                     }`}
@@ -37368,7 +38294,7 @@ export function TableToolbar<T extends TableOrViewName>({
                     <span className='hidden sm:inline'>Columns</span>
                     <FiChevronDown size={12} className={`sm:w-3.5 sm:h-3.5 transition-transform ${showColumnSelector ? 'rotate-180' : ''}`} />
                   </button>
-                  
+
                   {/* Selector Component (renders via Portal) */}
                   <TableColumnSelector
                     columns={columns.filter((c) => !c.hidden)}
@@ -37424,8 +38350,8 @@ interface DuplicateAwareCellProps {
   className?: string;
 }
 
-export const DuplicateAwareCell: React.FC<DuplicateAwareCellProps> = ({ 
-  text, 
+export const DuplicateAwareCell: React.FC<DuplicateAwareCellProps> = ({
+  text,
   isDuplicate = false,
   className = ''
 }) => {
@@ -37433,14 +38359,14 @@ export const DuplicateAwareCell: React.FC<DuplicateAwareCellProps> = ({
 
   return (
     <div className={`flex items-center gap-2 max-w-full ${className}`}>
-      <TruncateTooltip 
-        text={strValue} 
-        className={`font-medium ${isDuplicate ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-gray-900 dark:text-white'}`} 
+      <TruncateTooltip
+        text={strValue}
+        className={`font-medium ${isDuplicate ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-gray-900 dark:text-white'}`}
       />
-      
+
       {isDuplicate && (
-         <div 
-            className="shrink-0 cursor-help" 
+         <div
+            className="shrink-0 cursor-help"
             title="Duplicate Entry: This name appears multiple times in the list."
          >
             <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
@@ -37465,22 +38391,22 @@ import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
-  FormSelect // Import FormSelect
+  FormSelect
 } from "@/components/common/form/FormControls";
-import { ringsInsertSchema, RingsInsertSchema, RingsRowSchema } from "@/schemas/zod-schemas";
+import { ringsInsertSchema, RingsInsertSchema, V_ringsRowSchema } from "@/schemas/zod-schemas";
 import { DynamicStatusBuilder } from "@/components/common/form/DynamicStatusBuilder";
 
 interface RingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingRing?: RingsRowSchema | null;
+  // THE FIX: Use the View schema to match the data passed from the Page
+  editingRing?: V_ringsRowSchema | null;
   onSubmit: (data: RingsInsertSchema) => void;
   isLoading: boolean;
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
 }
 
-// Options for the new statuses
 const STATUS_OPTIONS = {
     OFC: [
         { value: 'Pending', label: 'Pending' },
@@ -37532,7 +38458,7 @@ export function RingModal({
 
   const ringTypeOptions: Option[] = useMemo(
     () =>
-      (ringTypes || []).map((rt) => ({
+      (ringTypes || []).filter((rt) => rt.name !== "DEFAULT").map((rt) => ({
         value: rt.id,
         label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
       })),
@@ -37549,31 +38475,37 @@ export function RingModal({
   );
 
   useEffect(() => {
-    if (!isOpen) return;
-    
-    if (editingRing) {
-      reset({
-        name: editingRing.name ?? "",
-        description: editingRing.description ?? null,
-        status: editingRing.status ?? true,
-        ring_type_id: editingRing.ring_type_id ?? null,
-        maintenance_terminal_id: editingRing.maintenance_terminal_id ?? null,
-        // New Fields
-        ofc_status: editingRing.ofc_status ?? 'Pending',
-        spec_status: editingRing.spec_status ?? 'Pending',
-        bts_status: editingRing.bts_status ?? 'Pending',
-      });
-    } else {
-      reset({
-        name: "",
-        description: null,
-        status: true,
-        ring_type_id: null,
-        maintenance_terminal_id: null,
-        ofc_status: 'Pending',
-        spec_status: 'Pending',
-        bts_status: 'Pending',
-      });
+    if (isOpen) {
+      if (editingRing) {
+        // Use setTimeout to ensure the modal DOM is ready and form is mounted before resetting values
+        // This fixes race conditions where select inputs might not catch the update
+        const timer = setTimeout(() => {
+          reset({
+            name: editingRing.name ?? "",
+            description: editingRing.description ?? null,
+            status: editingRing.status ?? true,
+            ring_type_id: editingRing.ring_type_id ?? null,
+            maintenance_terminal_id: editingRing.maintenance_terminal_id ?? null,
+
+            // Explicitly map these fields. If null/undefined in DB, force 'Pending'.
+            ofc_status: editingRing.ofc_status || 'Pending',
+            spec_status: editingRing.spec_status || 'Pending',
+            bts_status: editingRing.bts_status || 'Pending',
+          });
+        }, 0);
+        return () => clearTimeout(timer);
+      } else {
+        reset({
+          name: "",
+          description: null,
+          status: true,
+          ring_type_id: null,
+          maintenance_terminal_id: null,
+          ofc_status: 'Pending',
+          spec_status: 'Pending',
+          bts_status: 'Pending',
+        });
+      }
     }
   }, [isOpen, editingRing, reset]);
 
@@ -37584,7 +38516,8 @@ export function RingModal({
     [onSubmit]
   );
 
-  const builderKey = isOpen ? (editingRing ? `edit-${editingRing.id}` : 'new') : 'closed';
+  // Key to force re-render of dynamic elements when switching records
+  const formKey = isOpen ? (editingRing ? `edit-${editingRing.id}` : 'new') : 'closed';
 
   return (
     <Modal
@@ -37601,7 +38534,7 @@ export function RingModal({
         onCancel={onClose}
         isLoading={isLoading}
         standalone={true}>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
             name='name'
@@ -37612,6 +38545,7 @@ export function RingModal({
             placeholder='Enter ring name'
             />
             <FormSearchableSelect
+            key={`ring-type-${formKey}`} // Force re-mount on change
             name='ring_type_id'
             label='Ring Type'
             control={control}
@@ -37623,6 +38557,7 @@ export function RingModal({
         </div>
 
         <FormSearchableSelect
+          key={`ma-${formKey}`} // Force re-mount on change
           name='maintenance_terminal_id'
           label='Maintenance Terminal'
           control={control}
@@ -37632,48 +38567,54 @@ export function RingModal({
           options={maintenanceAreaOptions}
         />
 
-        {/* NEW STATUS DROPDOWNS */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+        {/* STATUS DROPDOWNS */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 mt-4">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Phase Status</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormSelect 
-                    name="spec_status" 
-                    label="SPEC Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.SPEC} 
+                <FormSelect
+                    key={`spec-${formKey}`} // Force re-mount ensures default value is picked up from control
+                    name="spec_status"
+                    label="SPEC Status"
+                    control={control}
+                    options={STATUS_OPTIONS.SPEC}
                     error={errors.spec_status}
+                    placeholder="Select Status"
                 />
-                <FormSelect 
-                    name="ofc_status" 
-                    label="OFC Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.OFC} 
+                <FormSelect
+                    key={`ofc-${formKey}`}
+                    name="ofc_status"
+                    label="OFC Status"
+                    control={control}
+                    options={STATUS_OPTIONS.OFC}
                     error={errors.ofc_status}
+                    placeholder="Select Status"
                 />
-                <FormSelect 
-                    name="bts_status" 
-                    label="Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.BTS} 
+                <FormSelect
+                    key={`bts-${formKey}`}
+                    name="bts_status"
+                    label="BTS Status"
+                    control={control}
+                    options={STATUS_OPTIONS.BTS}
                     error={errors.bts_status}
+                    placeholder="Select Status"
                 />
             </div>
         </div>
 
         <DynamicStatusBuilder
-          key={builderKey}
+          key={`dynamic-${formKey}`}
           name="description"
           label="Extra Details"
           control={control}
           error={errors.description}
         />
-        
+
         <FormSwitch
           name='status'
           label='Active Record'
           control={control}
           error={errors.status}
-          className='my-2'
+          className='my-4'
         />
       </FormCard>
     </Modal>
@@ -37695,8 +38636,8 @@ import { Logical_pathsRowSchema } from "@/schemas/zod-schemas";
 import { ArrowRight, Server, Cable } from "lucide-react";
 
 // Extended type to include joined data
-type ExtendedLogicalPath = Logical_pathsRowSchema & { 
-    start_node?: { name: string } | null; 
+type ExtendedLogicalPath = Logical_pathsRowSchema & {
+    start_node?: { name: string } | null;
     end_node?: { name: string } | null;
     // New columns from migration
     source_system_id?: string | null;
@@ -37768,20 +38709,20 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
     enabled: !!destSystemId
   });
 
-  const sourceSystemOptions = useMemo(() => 
-    (sourceSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })), 
+  const sourceSystemOptions = useMemo(() =>
+    (sourceSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })),
   [sourceSystemsData]);
 
-  const sourcePortOptions = useMemo(() => 
-    (sourcePortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })), 
+  const sourcePortOptions = useMemo(() =>
+    (sourcePortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })),
   [sourcePortsData]);
 
-  const destSystemOptions = useMemo(() => 
-    (destSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })), 
+  const destSystemOptions = useMemo(() =>
+    (destSystemsData?.data || []).map(s => ({ value: s.id, label: s.system_name || 'Unnamed System' })),
   [destSystemsData]);
 
-  const destPortOptions = useMemo(() => 
-    (destPortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })), 
+  const destPortOptions = useMemo(() =>
+    (destPortsData?.data || []).map(p => ({ value: p.port!, label: p.port! })),
   [destPortsData]);
 
   const handleSave = () => {
@@ -37803,7 +38744,7 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Configure Path Endpoints" size="lg">
       <div className="space-y-6 p-4">
-        
+
         {/* Visual Header */}
         <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
             <div className="text-center flex-1">
@@ -37834,14 +38775,14 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                     <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300">Source Configuration</h4>
                 </div>
-                <SearchableSelect 
+                <SearchableSelect
                     label="System"
                     options={sourceSystemOptions}
                     value={sourceSystemId}
                     onChange={setSourceSystemId}
                     placeholder="Select System..."
                 />
-                <SearchableSelect 
+                <SearchableSelect
                     label="Interface / Port"
                     options={sourcePortOptions}
                     value={sourcePort}
@@ -37857,14 +38798,14 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
                     <span className="w-2 h-2 rounded-full bg-purple-500"></span>
                     <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300">Destination Configuration</h4>
                 </div>
-                <SearchableSelect 
+                <SearchableSelect
                     label="System"
                     options={destSystemOptions}
                     value={destSystemId}
                     onChange={setDestSystemId}
                     placeholder="Select System..."
                 />
-                <SearchableSelect 
+                <SearchableSelect
                     label="Interface / Port"
                     options={destPortOptions}
                     value={destPort}
@@ -37877,8 +38818,8 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
 
         <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button 
-                onClick={handleSave} 
+            <Button
+                onClick={handleSave}
                 disabled={!sourceSystemId || !sourcePort || !destSystemId || !destPort || updatePathMutation.isPending}
                 variant="primary"
             >
@@ -37963,7 +38904,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
       setAvailable(data.available.map(item => ({ id: item.id!, name: item.system_name })));
     }
   }, [data]);
-  
+
   const updateMutation = useMutation({
     mutationFn: async (systemIds: string[]) => {
       if (!ring?.id) throw new Error("Ring ID is missing.");
@@ -37975,7 +38916,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
     },
     onSuccess: async () => {
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
-      
+
       // Step 1: Manually trigger a re-sync of the v_rings view to update IndexedDB
       await syncEntity(supabase, localDb, 'v_rings');
 
@@ -38047,12 +38988,12 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center">
             <ListBox title="Available Systems" items={available} selected={selectedAvailable} onSelect={(id) => handleToggleSelection('available', id)} />
-            
+
             <div className="flex flex-col gap-2">
               <Button onClick={() => moveItems('available')} disabled={selectedAvailable.size === 0}><ArrowRight className="h-4 w-4" /></Button>
               <Button onClick={() => moveItems('associated')} disabled={selectedAssociated.size === 0}><ArrowLeft className="h-4 w-4" /></Button>
             </div>
-            
+
             <ListBox title="Associated Systems" items={associated} selected={selectedAssociated} onSelect={(id) => handleToggleSelection('associated', id)} />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -38375,7 +39316,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
   const { data: statusesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_STATUS' } });
   const { data: locationsResult } = useTableQuery(supabase, 'v_nodes_complete', { filters: { status: true } });
   const { data: functionalLocationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
-  
+
   const categoryOptions = useMemo(() => categoriesResult?.data?.filter(c => c.name !== 'DEFAULT').map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
   const statusOptions = useMemo(() => statusesResult?.data?.map(s => ({ value: s.id, label: s.name })) || [], [statusesResult]);
   const locationOptions = useMemo(() => locationsResult?.data?.filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
@@ -38476,7 +39417,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   item, onEdit, onDelete, onIssue, onHistory, onQr, canManage, canDelete
 }) => {
   const quantity = item.quantity || 0;
-  
+
   // Stock Status Logic
   let stockStatus = { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', label: 'In Stock' };
   if (quantity === 0) {
@@ -38525,7 +39466,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
             <FiTag className="w-4 h-4 shrink-0 text-gray-400" />
             <span>{item.category_name || 'Uncategorized'}</span>
          </div>
-         
+
          <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
              <div className="text-xs text-gray-500">Unit Cost</div>
              <div className="font-mono font-medium text-gray-700 dark:text-gray-300">{formatCurrency(item.cost || 0)}</div>
@@ -38549,7 +39490,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
          <Button size="xs" variant="secondary" onClick={() => onQr(item)} title="QR Code">
              <FaQrcode className="w-4 h-4" />
          </Button>
-         
+
          <div className="flex-1"></div>
 
          {canManage && (
@@ -38557,7 +39498,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
                 <FiEdit2 className="w-4 h-4" />
             </Button>
          )}
-         
+
          {canDelete && (
             <Button size="xs" variant="danger" onClick={() => onDelete(item)}>
                 <FiTrash2 className="w-4 h-4" />
@@ -38603,7 +39544,7 @@ export const MobileSidebar = ({
   const handleBackdropClick = () => {
     setIsCollapsed(true);
   };
-  
+
   // THE FIX: Added useViewSettings hook to get state and setters
   const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
@@ -38611,13 +39552,13 @@ export const MobileSidebar = ({
 
   return (
     <>
-      <motion.div 
+      <motion.div
         initial="hidden"
         animate="visible"
         exit="hidden"
         variants={mobileOverlayVariants}
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" 
-        aria-label="Sidebar backdrop" 
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        aria-label="Sidebar backdrop"
         onClick={handleBackdropClick}
       />
       <motion.aside
@@ -38632,15 +39573,15 @@ export const MobileSidebar = ({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Navigation
           </h2>
-          <button 
-            onClick={() => setIsCollapsed(true)} 
-            className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800" 
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Close sidebar"
           >
             <FiX className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1" role="navigation">
             {navItems.map((item) => (
@@ -38665,20 +39606,20 @@ export const MobileSidebar = ({
           <button
             onClick={() => setShowHeader(!showHeader)}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              showHeader 
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+              showHeader
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
             <FiLayout className="h-4 w-4 shrink-0" />
             <span>{showHeader ? 'Hide' : 'Show'} Header</span>
           </button>
-          
+
           <button
             onClick={() => setShowToolbar(!showToolbar)}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              showToolbar 
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+              showToolbar
+                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                 : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
             }`}
           >
@@ -38783,7 +39724,7 @@ function NavItems() {
         id: 'home',
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
-        href: '/',
+        href: '/dashboard',
         roles: [
           UserRole.ADMIN,
           UserRole.VIEWER,
@@ -39130,12 +40071,12 @@ export const NavItem = ({
   if (!hasPermission(item.roles)) return null;
 
   const itemContentClasses = `
-    flex cursor-pointer items-center justify-between py-3 text-sm font-medium 
+    flex cursor-pointer items-center justify-between py-3 text-sm font-medium
     transition-all duration-200 rounded-lg mx-2 mb-1
-    ${active 
-      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm" 
+    ${active
+      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm"
       : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm"
-    } 
+    }
     ${isCollapsed ? "justify-center px-4" : `pr-4 ${depth > 0 ? "pl-8" : "pl-4"}`}
   `;
 
@@ -39161,8 +40102,8 @@ export const NavItem = ({
           className="p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 z-10"
           aria-label={isExpanded ? "Collapse" : "Expand"}
         >
-          <motion.div 
-            animate={{ rotate: isExpanded ? 0 : -90 }} 
+          <motion.div
+            animate={{ rotate: isExpanded ? 0 : -90 }}
             transition={{ duration: 0.2 }}
           >
             <FiChevronDown className="w-4 h-4" />
@@ -39175,10 +40116,10 @@ export const NavItem = ({
   // --- EXTERNAL LINK RENDERING ---
   if (item.external) {
     return (
-      <div 
-        key={item.id} 
+      <div
+        key={item.id}
         className="relative"
-        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)} 
+        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
         onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
       >
         <a
@@ -39197,12 +40138,12 @@ export const NavItem = ({
         >
           {renderContent()}
         </a>
-        
+
         {/* Submenu rendering for external items (unlikely but safe to include) */}
         {!isCollapsed && hasChildren && (
           <AnimatePresence initial={false}>
             {isExpanded && (
-              <motion.div 
+              <motion.div
                 initial="hidden"
                 animate="visible"
                 exit="hidden"
@@ -39238,7 +40179,7 @@ export const NavItem = ({
       toggleExpanded(item.id);
       return;
     }
-    
+
     if (item.href) {
       try {
         setNavigatingTo(item.href);
@@ -39254,10 +40195,10 @@ export const NavItem = ({
   };
 
   return (
-    <div 
-      key={item.id} 
-      className="relative" 
-      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)} 
+    <div
+      key={item.id}
+      className="relative"
+      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
       onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
     >
       <div
@@ -39274,11 +40215,11 @@ export const NavItem = ({
       >
         {renderContent()}
       </div>
-      
+
       {!isCollapsed && hasChildren && (
         <AnimatePresence initial={false}>
           {isExpanded && (
-            <motion.div 
+            <motion.div
               initial="hidden"
               animate="visible"
               exit="hidden"
@@ -39369,8 +40310,8 @@ export const HoverMenu = ({ hoveredItem, setHoveredItem }: HoverMenuProps) => {
                 disabled={!hasPermission(child.roles)}
                 className={`
                   flex w-full items-center space-x-3 px-4 py-2 text-left text-sm transition-colors
-                  ${hasPermission(child.roles) 
-                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" 
+                  ${hasPermission(child.roles)
+                    ? "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                     : "text-gray-400 cursor-not-allowed dark:text-gray-600"
                   }
                 `}
@@ -39677,20 +40618,20 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         <button
           onClick={() => setShowHeader(!showHeader)}
           className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            showHeader 
-              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+            showHeader
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
           <FiLayout className="h-4 w-4 shrink-0" />
           {!isCollapsed && <span>{showHeader ? 'Hide' : 'Show'} Header</span>}
         </button>
-        
+
         <button
           onClick={() => setShowToolbar(!showToolbar)}
           className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            showToolbar 
-              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+            showToolbar
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
         >
@@ -39731,12 +40672,25 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
 import { createClient } from "@/utils/supabase/client";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
 import { FormInput, FormTextarea, FormSwitch } from "@/components/common/form/FormControls";
-import { ofc_connectionsInsertSchema, Ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
+import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
+import { toast } from "sonner";
+import { z } from "zod";
 
+// THE FIX: Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
+const connectionFormSchema = ofc_connectionsInsertSchema.omit({
+    created_at: true,
+    updated_at: true,
+    sn_dom: true,
+    en_dom: true
+    // We omit IDs if we handle them via mutation params,
+    // but usually, we keep ofc_id and id for references.
+});
+
+type FormValues = z.infer<typeof connectionFormSchema>;
 
 interface OfcConnectionsFormModalProps {
   isOpen: boolean;
@@ -39747,132 +40701,115 @@ interface OfcConnectionsFormModalProps {
 }
 
 export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections, onCreated, onUpdated }: OfcConnectionsFormModalProps) {
+  const supabase = createClient();
+  const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
     control,
-  } = useForm<Ofc_connectionsInsertSchema>({
-    resolver: zodResolver(ofc_connectionsInsertSchema),
+  } = useForm<FormValues>({
+    resolver: zodResolver(connectionFormSchema),
     defaultValues: {
-      connection_category: "",
-      connection_type: "",
-      destination_port: null,
-      en_dom: null,
-      en_power_dbm: null,
-      fiber_no_en: 1,
+      status: true,
       fiber_no_sn: 1,
-      fiber_role: null,
-      logical_path_id: null,
-      ofc_id: "",
-      otdr_distance_en_km: null,
-      otdr_distance_sn_km: null,
-      path_segment_order: null,
-      remark: null,
-      route_loss_db: null,
-      sn_dom: null,
-      sn_power_dbm: null,
-      source_port: null,
-      status: null,
-      system_id: null,
+      fiber_no_en: 1,
     },
   });
 
-  const supabase = createClient();
   const { mutate: insertOfcConnections, isPending: creating } = useTableInsert(supabase, "ofc_connections");
   const { mutate: updateOfcConnections, isPending: updating } = useTableUpdate(supabase, "ofc_connections");
 
-  const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
-
   useEffect(() => {
-    if (!isOpen) return;
-    if (editingOfcConnections) {
-      reset({
-        ...editingOfcConnections,
-        sn_dom: editingOfcConnections.sn_dom,
-        en_dom: editingOfcConnections.en_dom,
-        en_power_dbm: editingOfcConnections.en_power_dbm ?? null,
-        sn_power_dbm: editingOfcConnections.sn_power_dbm ?? null,
-        otdr_distance_sn_km: editingOfcConnections.otdr_distance_sn_km ?? null,
-        otdr_distance_en_km: editingOfcConnections.otdr_distance_en_km ?? null,
-        route_loss_db: editingOfcConnections.route_loss_db ?? null,
-      });
-    } else {
-      reset({
-        ofc_id: "",
-        logical_path_id: null,
-        system_id: null,
-        fiber_role: "",
-        fiber_no_sn: 1,
-        fiber_no_en: 1,
-        path_segment_order: null,
-        connection_category: "",
-        connection_type: "",
-        source_port: null,
-        destination_port: null,
-        sn_dom: undefined,
-        otdr_distance_sn_km: null,
-        sn_power_dbm: null,
-        en_dom: undefined,
-        otdr_distance_en_km: null,
-        en_power_dbm: null,
-        route_loss_db: undefined,
-        status: true,
-        remark: null,
-      });
+    if (isOpen) {
+      if (editingOfcConnections) {
+        reset({
+          id: editingOfcConnections.id,
+          ofc_id: editingOfcConnections.ofc_id,
+          fiber_no_sn: editingOfcConnections.fiber_no_sn,
+          fiber_no_en: editingOfcConnections.fiber_no_en,
+          otdr_distance_sn_km: editingOfcConnections.otdr_distance_sn_km,
+          otdr_distance_en_km: editingOfcConnections.otdr_distance_en_km,
+          sn_power_dbm: editingOfcConnections.sn_power_dbm,
+          en_power_dbm: editingOfcConnections.en_power_dbm,
+          route_loss_db: editingOfcConnections.route_loss_db,
+          status: editingOfcConnections.status ?? true,
+          remark: editingOfcConnections.remark,
+          connection_category: editingOfcConnections.connection_category || 'SPLICE_TYPES',
+          connection_type: editingOfcConnections.connection_type || 'straight',
+        });
+      } else {
+        reset({
+            status: true,
+            connection_category: 'SPLICE_TYPES',
+            connection_type: 'straight'
+        });
+      }
     }
   }, [isOpen, editingOfcConnections, reset]);
+
+  const onValidSubmit = (formData: FormValues) => {
+    if (isEdit && editingOfcConnections?.id) {
+      updateOfcConnections(
+        { id: editingOfcConnections.id, data: formData },
+        {
+          onSuccess: (data) => {
+            onUpdated?.(Array.isArray(data) ? data[0] : data);
+            onClose();
+            toast.success("Connection updated successfully");
+          },
+          onError: (err) => toast.error(`Update failed: ${err.message}`)
+        }
+      );
+    } else {
+      insertOfcConnections(formData, {
+        onSuccess: (data) => {
+          onCreated?.(Array.isArray(data) ? data[0] : data);
+          onClose();
+          toast.success("Connection created successfully");
+        },
+        onError: (err) => toast.error(`Creation failed: ${err.message}`)
+      });
+    }
+  };
+
+  const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
+    console.error("Form Validation Errors:", errors);
+    const errorFields = Object.keys(errors).join(", ");
+    toast.error(`Validation error in: ${errorFields}`);
+  };
 
   const handleClose = useCallback(() => {
     if (creating || updating) return;
     onClose();
   }, [creating, updating, onClose]);
 
-  const onValidSubmit = useCallback(
-    (formData: Ofc_connectionsInsertSchema) => {
-      if (isEdit && editingOfcConnections) {
-        updateOfcConnections(
-          { id: editingOfcConnections.id, data: formData as Partial<Ofc_connectionsInsertSchema> },
-          {
-            onSuccess: (data: unknown) => {
-              onUpdated?.(Array.isArray(data) ? data[0] : data);
-              onClose();
-            },
-          }
-        );
-      } else {
-        insertOfcConnections(formData as Ofc_connectionsInsertSchema, {
-          onSuccess: (data: unknown) => {
-            onCreated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-          },
-        });
-      }
-    },
-    [isEdit, editingOfcConnections, updateOfcConnections, insertOfcConnections, onUpdated, onCreated, onClose]
-  );
-
-  const submitting = creating || updating || isSubmitting;
-
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} size='full' visible={false} className='h-screen w-screen transparent bg-gray-700 rounded-2xl'>
-      <FormCard title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} onSubmit={handleSubmit(onValidSubmit)} onCancel={handleClose} standalone>
+      <FormCard
+        title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"}
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        onCancel={handleClose}
+        isLoading={creating || updating || isSubmitting}
+        standalone
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput name='fiber_no_sn' label='Start Node Fiber No. *' register={register} error={errors.fiber_no_sn} disabled={true} />
-            <FormInput name='fiber_no_en' label='End Node Fiber No.' register={register} error={errors.fiber_no_en} disabled={submitting} />
-            <FormInput name='path_segment_order' label='Path Segment Order' register={register} error={errors.path_segment_order} disabled={submitting} />
-            <FormInput name='otdr_distance_sn_km' label='OTDR Distance SN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_sn_km} disabled={submitting} />
-            <FormInput name='sn_power_dbm' label='SN Power (dBm)' register={register} type="number" step='0.01' error={errors.sn_power_dbm} disabled={submitting} />
-            <FormInput name='otdr_distance_en_km' label='OTDR Distance EN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_en_km} disabled={submitting} />
-            <FormInput name='en_power_dbm' label='EN Power (dBm)' register={register} type="number" step='0.01' error={errors.en_power_dbm} disabled={submitting} />
-            <FormInput name='route_loss_db' label='Route Loss (dB)' register={register} type="number" step='0.01' error={errors.route_loss_db} disabled={submitting} />
+            <FormInput name='fiber_no_sn' label='Start Node Fiber No. *' register={register} error={errors.fiber_no_sn} disabled />
+            <FormInput name='fiber_no_en' label='End Node Fiber No.' register={register} error={errors.fiber_no_en} disabled />
+
+            <FormInput name='otdr_distance_sn_km' label='OTDR Distance SN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_sn_km} />
+            <FormInput name='sn_power_dbm' label='SN Power (dBm)' register={register} type="number" step='0.01' error={errors.sn_power_dbm} />
+            <FormInput name='otdr_distance_en_km' label='OTDR Distance EN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_en_km} />
+            <FormInput name='en_power_dbm' label='EN Power (dBm)' register={register} type="number" step='0.01' error={errors.en_power_dbm} />
+            <FormInput name='route_loss_db' label='Route Loss (dB)' register={register} type="number" step='0.01' error={errors.route_loss_db} />
         </div>
-        <div className='flex items-center mt-4'>
-          <FormSwitch name='status' label='Active' control={control} error={errors.status} className='my-2' />
+        <div className='mt-4'>
+          <FormSwitch name='status' label='Active' control={control} error={errors.status} />
         </div>
         <div className="mt-4">
-            <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} disabled={submitting} />
+            <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} rows={4} />
         </div>
       </FormCard>
     </Modal>
@@ -39906,7 +40843,7 @@ interface FiberTraceVisualizerProps {
 // Small helper component for rendering a single SEGMENT step with correct orientation
 const SegmentStep = ({ item }: { item: OrientedStep }) => {
   const detailText = `Segment ${item.step_order} (${item.oriented_from_node_name} → ${item.oriented_to_node_name})`;
-  
+
   return (
     <li className='mb-10 ml-8'>
       <span className='absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 ring-8 ring-white dark:bg-blue-900 dark:ring-gray-900'>
@@ -39963,7 +40900,7 @@ const SpliceStep = ({ item, prevStep }: { item: FiberTraceSegment; prevStep: Fib
 };
 
 export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ traceData, onSync, isSyncing }) => {
-  
+
   // ** NEW LOGIC: Process the trace data to orient segments correctly **
   const orientedTrace = useMemo(() => {
     if (!traceData || traceData.length === 0) {
@@ -40030,7 +40967,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 
     const firstSegment = orientedSteps.find(s => s.element_type === 'SEGMENT');
     const lastSegment = [...orientedSteps].reverse().find(s => s.element_type === 'SEGMENT');
-    
+
     return {
         steps: orientedSteps,
         pathStartNodeName: firstSegment?.oriented_from_node_name || "Unknown Start",
@@ -40050,8 +40987,8 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 
   return (
     <div className='p-4 font-sans relative'>
-      <Button 
-        className='absolute top-0 right-10 z-10 animate-pulse' 
+      <Button
+        className='absolute top-0 right-10 z-10 animate-pulse'
         onClick={onSync}
         disabled={isSyncing}
         leftIcon={isSyncing ? <FiRefreshCw className="animate-spin" /> : <FiRefreshCw />}
@@ -40093,8 +41030,156 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({ trac
 };
 ```
 
+<!-- path: components/ofc-details/FiberConnectionCard.tsx -->
+```typescript
+import React from 'react';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { FiActivity, FiArrowRight } from 'react-icons/fi';
+import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
+import { formatDate } from '@/utils/formatters';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
+
+interface FiberConnectionCardProps {
+  fiber: V_ofc_connections_completeRowSchema;
+  actions?: React.ReactNode;
+}
+
+export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({
+  fiber,
+  actions,
+}) => {
+  // Determine if this fiber connects to something specific
+  const isAllocated = !!fiber.system_name;
+
+  // Use updated values if they exist (from tracing/splicing), otherwise fallback to physical defaults
+  const startNodeName = fiber.updated_sn_name || fiber.sn_name || 'Start Node';
+  const endNodeName = fiber.updated_en_name || fiber.en_name || 'End Node';
+
+  const startFiberNo = fiber.updated_fiber_no_sn || fiber.fiber_no_sn;
+  const endFiberNo = fiber.updated_fiber_no_en || fiber.fiber_no_en;
+
+  const startDom = fiber.sn_dom ? formatDate(fiber.sn_dom, { format: 'dd-mm-yyyy' }) : null;
+  const endDom = fiber.en_dom ? formatDate(fiber.en_dom, { format: 'dd-mm-yyyy' }) : null;
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col group relative overflow-hidden">
+
+      {/* Header */}
+      <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start gap-2 bg-gray-50/50 dark:bg-gray-800/50">
+        <div className="flex items-center gap-2">
+             <span className="font-mono font-bold text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-2 py-1 rounded text-gray-700 dark:text-gray-200">
+                F-{fiber.fiber_no_sn}
+             </span>
+             {isAllocated ? (
+                 <div className="flex flex-col">
+                    <span className="text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider">Allocated</span>
+                    <span className="text-xs font-medium text-gray-900 dark:text-white truncate max-w-[150px]" title={fiber.system_name || ''}>
+                        {fiber.system_name}
+                    </span>
+                 </div>
+             ) : (
+                 <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full">
+                    Available
+                 </span>
+             )}
+        </div>
+        <StatusBadge status={fiber.status ?? false} />
+      </div>
+
+      {/* Connection Flow Body */}
+      <div className="p-4 space-y-4">
+
+         {/* A -> B Visual */}
+         <div className="relative">
+            {/* Connector Line */}
+            <div className="absolute top-1/2 left-[15%] right-[15%] h-px bg-gray-300 dark:bg-gray-600 -z-10 transform -translate-y-1/2" />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-1 rounded-full border border-gray-200 dark:border-gray-600 z-0">
+                 <FiArrowRight className="w-3 h-3 text-gray-400" />
+            </div>
+
+            <div className="flex justify-between items-start relative z-10">
+                {/* END A */}
+                <div className="flex flex-col items-start max-w-[45%]">
+                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END A</div>
+
+                    <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" title={startNodeName}>
+                        {startNodeName}
+                    </div>
+
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Fiber: <span className="font-mono font-medium text-gray-700 dark:text-gray-300">{startFiberNo}</span>
+                    </div>
+
+                    {/* End A Metrics */}
+                    <div className="bg-gray-50 dark:bg-gray-700/30 p-1.5 rounded border border-gray-100 dark:border-gray-700 w-full text-[10px]">
+                        <div className="flex justify-between mb-0.5">
+                            <span className="text-gray-400">OTDR</span>
+                            <span className="font-mono">{fiber.otdr_distance_sn_km ? `${fiber.otdr_distance_sn_km}km` : '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">DOM</span>
+                            <span className="font-mono text-gray-600 dark:text-gray-400">{startDom || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* END B */}
+                <div className="flex flex-col items-end max-w-[45%] text-right">
+                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END B</div>
+
+                     <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" title={endNodeName}>
+                        {endNodeName}
+                     </div>
+
+                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Fiber: <span className="font-mono font-medium text-gray-700 dark:text-gray-300">{endFiberNo}</span>
+                     </div>
+
+                    {/* End B Metrics */}
+                    <div className="bg-gray-50 dark:bg-gray-700/30 p-1.5 rounded border border-gray-100 dark:border-gray-700 w-full text-[10px]">
+                        <div className="flex justify-between mb-0.5">
+                            <span className="text-gray-400">OTDR</span>
+                            <span className="font-mono">{fiber.otdr_distance_en_km ? `${fiber.otdr_distance_en_km}km` : '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">DOM</span>
+                            <span className="font-mono text-gray-600 dark:text-gray-400">{endDom || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+         </div>
+
+         {/* Shared Metrics */}
+         <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                <FiActivity className="w-3.5 h-3.5" />
+                <span>Loss: <span className="font-mono font-medium text-gray-900 dark:text-gray-200">{fiber.route_loss_db ? `${fiber.route_loss_db}dB` : '-'}</span></span>
+            </div>
+
+            {fiber.remark && (
+                <TruncateTooltip
+                    text={fiber.remark}
+                    className="text-gray-400 italic max-w-[150px]"
+                />
+            )}
+         </div>
+      </div>
+
+      {/* Footer / Actions */}
+      {actions && (
+        <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
+            {actions}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
 <!-- path: components/ofc-details/OfcDetailsHeader.tsx -->
 ```typescript
+// path: components/ofc-details/OfcDetailsHeader.tsx
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Cable, Calendar, MapPin, Settings, Hash, Route, LucideIcon } from 'lucide-react';
@@ -40104,212 +41189,212 @@ import { Row } from '@/hooks/database';
 interface OfcDetailsHeaderProps {
     cable: Row<'v_ofc_cables_complete'>;
 }
-  
-  const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
-    const containerVariants: Variants = {
-      hidden: { opacity: 0 },
-      visible: {
-        opacity: 1,
-        transition: {
-          staggerChildren: 0.1,
-          delayChildren: 0.2
-        }
-      }
-    };
-  
-    const cardVariants: Variants = {
-      hidden: { 
-        opacity: 0, 
-        y: 20,
-        scale: 0.95
-      },
-      visible: { 
-        opacity: 1, 
-        y: 0,
-        scale: 1,
-        transition: {
-          type: "spring" as const,
-          stiffness: 100,
-          damping: 15
-        }
-      }
-    };
-  
-    const itemVariants: Variants = {
-      hidden: { opacity: 0, x: -10 },
-      visible: { 
-        opacity: 1, 
-        x: 0,
-        transition: {
-          type: "spring" as const,
-          stiffness: 150,
-          damping: 20
-        }
-      }
-    };
-  
-    interface InfoItemProps {
-      icon: LucideIcon;
-      label: string;
-      value: string;
-      delay?: number;
+
+// --- Moved Variants Outside to prevent re-creation ---
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
     }
-  
-    const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => (
-      <motion.div 
-        variants={itemVariants}
-        className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
+  }
+};
+
+const cardVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 20,
+    scale: 0.95
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring" as const,
+      stiffness: 100,
+      damping: 15
+    }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: "spring" as const,
+      stiffness: 150,
+      damping: 20
+    }
+  }
+};
+
+interface InfoItemProps {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}
+
+// --- Moved Component Outside ---
+// Now React treats this as a stable component and will only update props (value)
+const InfoItem: React.FC<InfoItemProps> = ({ icon: Icon, label, value }) => (
+  <motion.div
+    variants={itemVariants}
+    className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
+  >
+    <div className="flex items-center gap-3">
+      <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+        <Icon size={16} />
+      </div>
+      <span className="text-gray-600 dark:text-gray-400 font-medium text-sm">
+        {label}
+      </span>
+    </div>
+    <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm max-w-[60%] text-right truncate">
+      {value}
+    </span>
+  </motion.div>
+);
+
+const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+    >
+      {/* Summary Card */}
+      <motion.div
+        variants={cardVariants}
+        whileHover={{
+          y: -2,
+          boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
+        }}
+        className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
       >
-        <div className="flex items-center gap-3">
-          <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-            <Icon size={16} />
-          </div>
-          <span className="text-gray-600 dark:text-gray-400 font-medium text-sm">
-            {label}
-          </span>
-        </div>
-        <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm max-w-[60%] text-right truncate">
-          {value}
-        </span>
-      </motion.div>
-    );
-  
-    return (
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
-      >
-        {/* Summary Card */}
-        <motion.div 
-          variants={cardVariants}
-          whileHover={{ 
-            y: -2,
-            boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
-          }}
-          className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          {/* Gradient Background */}
-          <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
-          
-          {/* Decorative Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-blue-100/20 to-transparent dark:from-blue-800/10 rounded-bl-full" />
-          
-          <div className="relative p-6">
-            <motion.div 
-              className="flex items-center gap-3 mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
+
+        {/* Decorative Element */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-blue-100/20 to-transparent dark:from-blue-800/10 rounded-bl-full" />
+
+        <div className="relative p-6">
+          <motion.div
+            className="flex items-center gap-3 mb-6"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="p-2.5 rounded-xl bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
+              <Cable size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Summary
+            </h2>
+          </motion.div>
+
+          <motion.div
+            variants={containerVariants}
+            className="space-y-1"
+          >
+            <InfoItem
+              icon={Hash}
+              label="Asset No."
+              value={String(cable.asset_no ?? '-')}
+            />
+            <InfoItem
+              icon={Route}
+              label="Route Name"
+              value={String(cable.route_name ?? '-')}
+            />
+            <motion.div
+              variants={itemVariants}
+              className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
             >
-              <div className="p-2.5 rounded-xl bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow-lg">
-                <Cable size={20} />
-              </div>
-              {/* FIX: Replaced gradient text with solid colors */}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Summary
-              </h2>
-            </motion.div>
-            
-            <motion.div 
-              variants={containerVariants}
-              className="space-y-1"
-            >
-              <InfoItem 
-                icon={Hash}
-                label="Asset No."
-                value={String(cable.asset_no ?? '-')}
-              />
-              <InfoItem 
-                icon={Route}
-                label="Route Name"
-                value={String(cable.route_name ?? '-')}
-              />
-              <motion.div 
-                variants={itemVariants}
-                className="flex items-center justify-between py-3 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-                    <Settings size={16} />
-                  </div>
-                  <span className="text-gray-600 dark:text-gray-400 font-medium text-sm">
-                    Status
-                  </span>
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                  <Settings size={16} />
                 </div>
-                <StatusBadge status={cable.status || 'Unknown'} />
-              </motion.div>
-            </motion.div>
-          </div>
-        </motion.div>
-  
-        {/* Metadata Card */}
-        <motion.div 
-          variants={cardVariants}
-          whileHover={{ 
-            y: -2,
-            boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
-          }}
-          className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
-        >
-          {/* Gradient Background */}
-          <div className="absolute inset-0 bg-linear-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
-          
-          {/* Decorative Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-emerald-100/20 to-transparent dark:from-emerald-800/10 rounded-bl-full" />
-          
-          <div className="relative p-6">
-            <motion.div 
-              className="flex items-center gap-3 mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <div className="p-2.5 rounded-xl bg-linear-to-r from-emerald-500 to-teal-600 text-white shadow-lg">
-                <Settings size={20} />
+                <span className="text-gray-600 dark:text-gray-400 font-medium text-sm">
+                  Status
+                </span>
               </div>
-              {/* FIX: Replaced gradient text with solid colors */}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Metadata
-              </h2>
+              <StatusBadge status={cable.status || 'Unknown'} />
             </motion.div>
-            
-            <motion.div 
-              variants={containerVariants}
-              className="space-y-1"
-            >
-              <InfoItem 
-                icon={Cable}
-                label="OFC Type"
-                value={cable?.ofc_type_name || '-'}
-              />
-              <InfoItem 
-                icon={MapPin}
-                label="Maintenance Area"
-                value={cable?.maintenance_area_name || '-'}
-              />
-              <InfoItem 
-                icon={Calendar}
-                label="Commissioned On"
-                value={
-                  cable.commissioned_on
-                    ? new Date(String(cable.commissioned_on)).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })
-                    : '-'
-                }
-              />
-            </motion.div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </motion.div>
-    );
-  };
-  
-  export default OfcDetailsHeader;
+
+      {/* Metadata Card */}
+      <motion.div
+        variants={cardVariants}
+        whileHover={{
+          y: -2,
+          boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
+        }}
+        className="group relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-lg transition-all duration-300"
+      >
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-linear-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
+
+        {/* Decorative Element */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-emerald-100/20 to-transparent dark:from-emerald-800/10 rounded-bl-full" />
+
+        <div className="relative p-6">
+          <motion.div
+            className="flex items-center gap-3 mb-6"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="p-2.5 rounded-xl bg-linear-to-r from-emerald-500 to-teal-600 text-white shadow-lg">
+              <Settings size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Metadata
+            </h2>
+          </motion.div>
+
+          <motion.div
+            variants={containerVariants}
+            className="space-y-1"
+          >
+            <InfoItem
+              icon={Cable}
+              label="OFC Type"
+              value={cable?.ofc_type_name || '-'}
+            />
+            <InfoItem
+              icon={MapPin}
+              label="Maintenance Area"
+              value={cable?.maintenance_area_name || '-'}
+            />
+            <InfoItem
+              icon={Calendar}
+              label="Commissioned On"
+              value={
+                cable.commissioned_on
+                  ? new Date(String(cable.commissioned_on)).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })
+                  : '-'
+              }
+            />
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export default OfcDetailsHeader;
 ```
 
 <!-- path: components/ofc-details/FiberTraceModal.tsx -->
@@ -40381,7 +41466,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
     // Fiber numbers are consistent regardless of segment direction
     const firstSegment = traceData.find((s) => s.element_type === "SEGMENT");
     const lastSegment = [...traceData].reverse().find((s) => s.element_type === "SEGMENT");
-    
+
     const startFiberNo = firstSegment?.fiber_in ?? 0;
     const endFiberNo = lastSegment?.fiber_out ?? 0;
 
@@ -40389,7 +41474,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({ isOpen, onClos
       toast.error("Cannot sync: Trace is incomplete and start/end nodes could not be determined.");
       return;
     }
-    
+
     if (startFiberNo === 0 || endFiberNo === 0) {
       toast.error("Cannot sync: Invalid fiber numbers found in trace.");
       return;
@@ -40579,121 +41664,152 @@ export default CableNotFound;
 // components/connections/ConnectionCard.tsx
 import React from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
-import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import { formatIP } from '@/utils/formatters';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 interface ConnectionCardProps {
   connection: V_system_connections_completeRowSchema;
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
-  onGoToSystem: (conn: V_system_connections_completeRowSchema) => void;
+  onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
+  isSystemContext?: boolean;
 }
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
-  connection, onViewDetails, onViewPath, onGoToSystem
+  connection, onViewDetails, onViewPath, onGoToSystem, isSystemContext = false
 }) => {
-  
+
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
+  const hasProtection = !!connection.system_protection_interface || !!connection.en_protection_interface;
+
+  // Determine End A Name: Prefer SN Name, fallback to System Name
+  const endAName = connection.sn_name || connection.system_name || 'Local System';
+  const endBName = connection.en_name || 'External';
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group relative">
-      
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group relative overflow-hidden">
+
+      {/* Status Stripe */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${connection.status ? 'bg-green-500' : 'bg-red-500'}`} />
+
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start gap-3">
+      <div className="p-4 border-b border-gray-100 dark:border-gray-700 pl-5 flex justify-between items-start gap-2">
         <div className="min-w-0 flex-1">
-             <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-                    {connection.connected_link_type_name || 'Link'}
-                </span>
+             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                {connection.connected_link_type_name && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                        {connection.connected_link_type_name}
+                    </span>
+                )}
                 {connection.bandwidth_allocated && (
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 flex items-center gap-1">
                         <FiActivity className="w-3 h-3" /> {connection.bandwidth_allocated}
                     </span>
                 )}
              </div>
-             <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate text-base" title={connection.service_name || connection.connected_system_name || ''}>
-                {connection.service_name || connection.connected_system_name || 'Unnamed Connection'}
+             <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight">
+                <TruncateTooltip text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} />
              </h3>
         </div>
-        <StatusBadge status={connection.status ?? false} />
+        {!connection.status && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded uppercase">Inactive</span>}
       </div>
 
-      {/* Body */}
-      <div className="p-4 space-y-3 flex-1 text-sm">
-         
-         {/* Route Visual */}
-         <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 space-y-2">
-            <div className="flex items-center justify-between text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-                <span>Source (Local)</span>
-                <span>Dest (Remote)</span>
-            </div>
-            
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-700 dark:text-gray-300 truncate" title={connection.system_name || ''}>
-                        {connection.system_name}
+      {/* Connection Flow Body */}
+      <div className="p-4 space-y-4 flex-1 text-sm pl-5">
+
+         {/* Flow Visual Box */}
+         <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700 relative">
+
+            <div className="flex justify-between items-center relative z-10">
+
+                {/* END A (Left) */}
+                <div className="flex flex-col items-start max-w-[42%]">
+                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END A</div>
+
+                    <div
+                        className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-2"
+                        title={endAName}
+                    >
+                        {endAName}
                     </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-0.5">
-                        {connection.system_working_interface || '?'}
+
+                    <div className="inline-flex items-center justify-center font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 px-2.5 py-1 rounded border border-blue-200 dark:border-blue-900 text-xs shadow-sm min-w-12">
+                        {connection.system_working_interface || 'N/A'}
+                    </div>
+
+                    {hasProtection && (
+                         <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 dark:text-purple-400 font-mono" title="Protection Port">
+                            <FiShield className="w-3 h-3" />
+                            <span>{connection.system_protection_interface}</span>
+                         </div>
+                    )}
+                </div>
+
+                {/* Arrow (Center) */}
+                <div className="flex flex-col items-center justify-center px-1">
+                    <div className="p-1.5 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-400 shadow-sm">
+                        <FiArrowRight className="w-4 h-4" />
                     </div>
                 </div>
 
-                <div className="shrink-0 text-gray-300 dark:text-gray-600">
-                    <FiArrowRight />
-                </div>
+                {/* END B (Right) */}
+                <div className="flex flex-col items-end max-w-[42%] text-right">
+                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END B</div>
 
-                <div className="flex-1 min-w-0 text-right">
-                    <div className="font-medium text-gray-700 dark:text-gray-300 truncate" title={connection.en_name || ''}>
-                        {connection.en_name || 'External'}
-                    </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 font-mono mt-0.5">
-                        {connection.en_interface || '?'}
-                    </div>
+                     <div
+                        className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1"
+                        title={endBName}
+                     >
+                        {endBName}
+                     </div>
+
+                     <div className="font-mono text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        {connection.en_interface || 'N/A'}
+                     </div>
+
+                     <div className="flex items-center justify-end gap-1 text-[10px] text-gray-400 truncate w-full">
+                        <FiMapPin className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{connection.en_node_name || 'Unknown'}</span>
+                     </div>
                 </div>
             </div>
          </div>
 
-         {/* Technical Info */}
+         {/* Meta Grid */}
          <div className="grid grid-cols-2 gap-2 text-xs">
-            {(connection.unique_id || connection.vlan) && (
-                <div className="flex flex-col bg-blue-50/50 dark:bg-blue-900/10 p-1.5 rounded">
-                    <span className="text-gray-500 dark:text-gray-400 text-[10px] uppercase">VLAN/UNIQUE ID</span>
-                    <span className="font-mono text-gray-700 dark:text-gray-300">
-                        {connection.vlan || '-'} <span className="text-gray-400">/</span> {connection.unique_id || '-'}
-                    </span>
+            {connection.vlan && (
+                <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">VLAN</span>
+                    <span className="font-mono font-medium text-gray-700 dark:text-gray-200">{connection.vlan}</span>
                 </div>
             )}
-             {/* Use 'any' cast if services_ip is typed as unknown in schema, otherwise remove cast */}
-             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {((connection as any).services_ip) && (
-                <div className="flex flex-col bg-green-50/50 dark:bg-green-900/10 p-1.5 rounded">
-                    <span className="text-gray-500 dark:text-gray-400 text-[10px] uppercase">Service IP</span>
-                    <span className="font-mono text-gray-700 dark:text-gray-300">
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {formatIP((connection as any).services_ip)}
-                    </span>
+            {connection.media_type_name && (
+                <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">Media</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200 truncate">{connection.media_type_name}</span>
                 </div>
             )}
          </div>
       </div>
 
       {/* Footer / Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-         <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
-            <FiServer className="w-4 h-4" />
-         </Button>
+      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2 pl-5" onClick={(e) => e.stopPropagation()}>
+         {onGoToSystem && !isSystemContext && (
+             <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
+                <FiServer className="w-4 h-4" />
+             </Button>
+         )}
 
          <div className="flex-1"></div>
 
-         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details">
-            <FiMonitor className="w-4 h-4" /> Details
+         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details" className="flex-1 sm:flex-none">
+            <FiMonitor className="w-3.5 h-3.5 mr-1" /> Details
          </Button>
 
          {hasPath && (
-            <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="View Fiber Path">
-                <FiEye className="w-4 h-4" /> Path
+            <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20">
+                <FiEye className="w-3.5 h-3.5 mr-1" /> Trace
             </Button>
          )}
       </div>
@@ -40705,14 +41821,14 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 <!-- path: components/pwa/offline-status.tsx -->
 ```typescript
 'use client'
- 
+
 import { useState, useEffect } from 'react'
 import { MdWifiOff, MdWifi } from 'react-icons/md'
- 
+
 export default function OfflineStatus() {
   const [isOnline, setIsOnline] = useState(true)
   const [wasOffline, setWasOffline] = useState(false)
- 
+
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true)
@@ -40721,24 +41837,24 @@ export default function OfflineStatus() {
         setTimeout(() => setWasOffline(false), 3000)
       }
     }
- 
+
     const handleOffline = () => {
       setIsOnline(false)
       setWasOffline(true)
     }
- 
+
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
- 
+
     // Check initial status
     setIsOnline(navigator.onLine)
- 
+
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [wasOffline])
- 
+
   // Show offline message
   if (!isOnline) {
     return (
@@ -40750,7 +41866,7 @@ export default function OfflineStatus() {
       </div>
     )
   }
- 
+
   // Show "back online" message briefly
   if (isOnline && wasOffline) {
     return (
@@ -40762,7 +41878,7 @@ export default function OfflineStatus() {
       </div>
     )
   }
- 
+
   return null
 }
 ```
@@ -40802,11 +41918,11 @@ export default PwaRegistry;
 <!-- path: components/pwa/pwa-install-prompt.tsx -->
 ```typescript
 'use client'
- 
+
 import { useState, useEffect } from 'react'
 import { MdClose, MdDownload } from 'react-icons/md'
 import { Button } from '../common/ui/Button'
- 
+
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
   readonly userChoice: Promise<{
@@ -40815,58 +41931,58 @@ interface BeforeInstallPromptEvent extends Event {
   }>
   prompt(): Promise<void>
 }
- 
+
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
- 
+
   useEffect(() => {
     // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
       return
     }
- 
+
     // Listen for beforeinstallprompt event
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       setShowInstallPrompt(true)
     }
- 
+
     window.addEventListener('beforeinstallprompt', handler)
- 
+
     // Listen for app installed event
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true)
       setShowInstallPrompt(false)
     })
- 
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handler)
     }
   }, [])
- 
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return
- 
+
     deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-    
+
     if (outcome === 'accepted') {
       setDeferredPrompt(null)
       setShowInstallPrompt(false)
     }
   }
- 
+
   const handleDismiss = () => {
     setShowInstallPrompt(false)
     setDeferredPrompt(null)
   }
- 
+
   if (isInstalled || !showInstallPrompt) return null
- 
+
   return (
     <div className="fixed bottom-4 left-4 right-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 z-50">
       <div className="flex items-center justify-between">
@@ -41215,13 +42331,13 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
       onClose();
       return;
     }
-    
+
     const updateParams: Partial<AdminUpdateUserProfile> & { user_id: string } = { user_id: user.id };
 
     for (const key in dirtyFields) {
       const typedKey = key as keyof UserProfileFormData;
       const rpcKey = `update_${typedKey}` as keyof AdminUpdateUserProfile;
-      
+
       if (typedKey === 'address' || typedKey === 'preferences') {
         if(data[typedKey]) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41234,7 +42350,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
     }
 
     console.log(updateParams);
-    
+
 
     try {
       await updateProfile.mutateAsync(updateParams as AdminUpdateUserProfile);
@@ -41248,13 +42364,13 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
  const onInvalidSubmit = () => {
     // Get all error messages from the form
     const errorMessages: string[] = [];
-    
+
     // Iterate through all errors and collect messages
     Object.entries(errors).forEach(([field, error]) => {
       if (error?.message) {
         errorMessages.push(`${field}: ${error.message}`);
       }
-      
+
       // Handle nested errors (address, preferences)
       if (typeof error === 'object' && error !== null && !error.message) {
         Object.entries(error).forEach(([nestedField, nestedError]) => {
@@ -41264,14 +42380,14 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
         });
       }
     });
-    
+
     // Display error messages
     if (errorMessages.length > 0) {
       toast.error('Validation failed', {
         description: errorMessages.join('\n'),
         duration: 5000,
       });
-      
+
       // Also log to console for debugging
       console.error('Form validation errors:', errors);
     } else {
@@ -41302,7 +42418,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
           </div>
 
           <FormInput name="designation" label="Designation" register={register} error={errors.designation} placeholder="e.g., Senior Engineer" />
-          
+
           <div>
             <Label>Address</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
@@ -41312,7 +42428,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
               <Input {...register("address.zip_code")} placeholder="ZIP/Postal Code" error={errors.address?.zip_code?.message} />
             </div>
           </div>
-          
+
           <div>
             <Label>Preferences</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
@@ -41381,9 +42497,9 @@ export function BulkActions({
   if (selectedCount === 0) return null;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -8 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
       className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6"
     >
       <div className="flex items-center justify-between">
@@ -41707,9 +42823,9 @@ interface UnauthorizedModalProps {
   currentRole?: string | null;
 }
 
-export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({ 
-  allowedRoles, 
-  currentRole 
+export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
+  allowedRoles,
+  currentRole
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const router = useRouter();
@@ -41744,26 +42860,26 @@ export const UnauthorizedModal: React.FC<UnauthorizedModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={handleClose}
       />
-      
+
       {/* Modal */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-md mx-4 p-6 z-10">
         {/* Icon */}
         <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-          <svg 
-            className="w-8 h-8 text-red-600" 
-            fill="none" 
-            stroke="currentColor" 
+          <svg
+            className="w-8 h-8 text-red-600"
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" 
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"
             />
           </svg>
         </div>
@@ -42078,8 +43194,8 @@ export default function OAuthProviders({
   showDivider = true,
   dividerText,
 }: OAuthProvidersProps) {
-  const defaultDividerText = variant === 'signup' 
-    ? 'Or sign up with email' 
+  const defaultDividerText = variant === 'signup'
+    ? 'Or sign up with email'
     : 'Or continue with email';
 
   return (
@@ -42115,24 +43231,24 @@ export default function OAuthProviders({
 ```typescript
 // components/auth/authButton.tsx
 'use client'
- 
+
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/authStore'
 import { BiLogOut, BiUser } from 'react-icons/bi'
 import { CiSettings } from 'react-icons/ci'
 import Image from 'next/image'
- 
+
 export default function AuthButton() {
   const { logout } = useAuth()
   const user = useAuthStore((state) => state.user)
- 
+
   if (!user) {
     return (
       <div className="h-9 w-24 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg border border-gray-200 dark:border-gray-700"></div>
     )
   }
- 
+
   if (user) {
     return (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm min-w-[220px]">
@@ -42174,7 +43290,7 @@ export default function AuthButton() {
             <CiSettings className="h-4 w-4 mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
             <span className="font-medium">Update Profile</span>
           </Link>
-          
+
           <button
             onClick={logout}
             className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
@@ -42186,7 +43302,7 @@ export default function AuthButton() {
       </div>
     )
   }
- 
+
   return (
     <div className="flex items-center space-x-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 shadow-sm">
       <Link
@@ -42229,7 +43345,7 @@ interface ProtectedProps {
 const ProtectedContent = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: UserRole[] }) => {
   // THE FIX: Get all user data from the single, consolidated useUser context.
   const { canAccess, isSuperAdmin, role, isLoading: isUserLoading } = useUser();
-  
+
   if (isUserLoading) {
      return <PageSpinner text="Verifying permissions..." />;
   }
@@ -42361,7 +43477,7 @@ export function OAuthButton({
   const { signInWithGoogle, authState } = useAuth();
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
-  
+
   //  Use ref to track if action is in progress
   const isProcessingRef = useRef(false);
 
@@ -42656,8 +43772,8 @@ export function LookupTypesTable({
   getSortDirection,
   canManage
 }: LookupTypesTableProps) {
-  
-  // Use local sorting for display if onSort is not provided by parent, 
+
+  // Use local sorting for display if onSort is not provided by parent,
   // though the parent hook already sorts data. This is a safe fallback.
   const { sortedData: sortedLookups } = useSorting({
     data: lookups,
@@ -42900,8 +44016,8 @@ export function LookupModal({
   category,
   categories,
 }: LookupModalProps) {
-  
-  // THE FIX: Removed internal useTableInsert/useTableUpdate hooks. 
+
+  // THE FIX: Removed internal useTableInsert/useTableUpdate hooks.
   // The modal is now purely presentational regarding data persistence.
 
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
@@ -42977,7 +44093,7 @@ export function LookupModal({
         name: data.name?.trim(),
         category: data.category?.trim(),
       };
-      
+
       // THE FIX: Delegate submission to the parent component
       onSubmit(submissionData as Lookup_typesInsertSchema);
     },
@@ -43204,7 +44320,7 @@ import { LoadingSpinner } from "@/components/common/ui/LoadingSpinner";
 
 export function NoCategoriesState({ error, isLoading }: { error?: Error; isLoading: boolean }) {
   const router = useRouter();
-  
+
   return (
     <Card className="p-8 text-center ">
       <p className="mb-4 text-gray-500 dark:text-gray-400">
@@ -43776,7 +44892,7 @@ const EmployeeDetailsModal = ({ employee, employeeId, onClose, onEdit }: Props) 
             <div>
               <p className="text-sm text-gray-500">Designation</p>
               <p className="font-medium">
-                {typeof currentEmployee.employee_designation_id === 'object' 
+                {typeof currentEmployee.employee_designation_id === 'object'
                   ? currentEmployee.employee_name
                   : 'Not provided'}
               </p>
@@ -43839,10 +44955,10 @@ interface EmployeeCardProps {
   viewMode?: 'grid' | 'list';
 }
 
-export const EmployeeCard: React.FC<EmployeeCardProps> = ({ 
-  employee, 
-  onEdit, 
-  onDelete, 
+export const EmployeeCard: React.FC<EmployeeCardProps> = ({
+  employee,
+  onEdit,
+  onDelete,
   canDelete,
   canEdit,
   viewMode = 'grid'
@@ -43853,7 +44969,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
   if (viewMode === 'grid') {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all p-5 flex flex-col h-full group relative">
-        
+
         {/* Status Indicator */}
         <div className="absolute top-4 right-4">
              <span className={`w-3 h-3 rounded-full block ${employee.status ? 'bg-green-500' : 'bg-red-500'}`} title={employee.status ? 'Active' : 'Inactive'} />
@@ -43940,7 +45056,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
              </a>
         )}
       </div>
-      
+
       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 px-1">
          <FiMapPin className="w-3 h-3" />
          <span className="truncate">{employee.maintenance_area_name}</span>
@@ -43980,7 +45096,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-xl border shadow-sm hover:shadow-md transition-all flex flex-col h-full group relative ${isDuplicate ? 'border-amber-300 dark:border-amber-700 ring-1 ring-amber-300 dark:ring-amber-900' : 'border-gray-200 dark:border-gray-700'}`}>
-      
+
       {/* Header */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start gap-3">
         <div className="min-w-0 flex-1">
@@ -44006,7 +45122,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
       {/* Body */}
       <div className="p-4 space-y-3 flex-1 text-sm">
-         
+
          {/* Route */}
          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 space-y-2">
             <div className="flex items-start gap-2">
@@ -44018,7 +45134,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                     </div>
                 </div>
             </div>
-            
+
             {service.end_node_name && (
                 <>
                 <div className="flex justify-center -my-1">
@@ -44069,7 +45185,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                 <FiEdit2 className="w-4 h-4" />
             </Button>
          )}
-         
+
          {canDelete && (
             <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(service)} title="Delete Service">
                 <FiTrash2 className="w-4 h-4" />
@@ -44099,10 +45215,10 @@ import { V_servicesRowSchema } from "@/schemas/zod-schemas";
 // --- Corrected Schema ---
 const serviceFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  node_id: z.uuid("Start Location is required"), 
+  node_id: z.uuid("Start Location is required"),
   // NEW: Optional End Node
   end_node_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
-  
+
   link_type_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -44133,29 +45249,29 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: { status: true }
   });
-  
+
   const startNodeId = watch('node_id');
 
   // --- Data Fetching ---
-  const { data: nodes } = useTableQuery(supabase, "nodes", { 
-    columns: "id, name", 
+  const { data: nodes } = useTableQuery(supabase, "nodes", {
+    columns: "id, name",
     filters: { status: true },
     orderBy: [{ column: 'name', ascending: true }],
-    limit: 5000 
+    limit: 5000
   });
-  
-  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", { 
+
+  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", {
     filters: { category: "LINK_TYPES" },
     orderBy: [{ column: 'name', ascending: true }]
   });
 
   const nodeOptions = useMemo(() => nodes?.data.map(n => ({ value: n.id!, label: n.name! })) || [], [nodes]);
-  
+
   // Filter end node options to prevent selecting same node as start
   const endNodeOptions = useMemo(() => {
      return nodeOptions.filter(n => n.value !== startNodeId);
   }, [nodeOptions, startNodeId]);
-  
+
   const linkTypeOptions = useMemo(() => linkTypes?.data.map(l => ({ value: l.id!, label: l.name! })) || [], [linkTypes]);
 
   // --- Reset Logic ---
@@ -44164,7 +45280,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
         if (editingService) {
             reset({
                 name: editingService.name || "",
-                node_id: editingService.node_id || "", 
+                node_id: editingService.node_id || "",
                 end_node_id: editingService.end_node_id || "", // NEW
                 link_type_id: editingService.link_type_id || "",
                 bandwidth_allocated: editingService.bandwidth_allocated || "",
@@ -44175,8 +45291,8 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
                 status: editingService.status ?? true,
             });
         } else {
-            reset({ 
-              name: "", 
+            reset({
+              name: "",
               status: true,
               node_id: "",
               end_node_id: "", // NEW
@@ -44220,85 +45336,85 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                    <FormInput 
-                    name="name" 
-                    label="Service / Customer Name" 
-                    register={register} 
-                    error={errors.name} 
-                    required 
-                    placeholder="e.g. SBI-Kolkata-Main" 
+                    <FormInput
+                    name="name"
+                    label="Service / Customer Name"
+                    register={register}
+                    error={errors.name}
+                    required
+                    placeholder="e.g. SBI-Kolkata-Main"
                     />
                 </div>
-                
-                <FormSearchableSelect<ServiceFormValues> 
-                  name="node_id" 
-                  label="Start Node / Location" 
-                  control={control} 
-                  options={nodeOptions} 
-                  error={errors.node_id} 
-                  required 
+
+                <FormSearchableSelect<ServiceFormValues>
+                  name="node_id"
+                  label="Start Node / Location"
+                  control={control}
+                  options={nodeOptions}
+                  error={errors.node_id}
+                  required
                   placeholder="Select location A"
                 />
 
-                <FormSearchableSelect<ServiceFormValues> 
-                  name="end_node_id" 
-                  label="End Node / Destination (Optional)" 
-                  control={control} 
-                  options={endNodeOptions} 
-                  error={errors.end_node_id} 
+                <FormSearchableSelect<ServiceFormValues>
+                  name="end_node_id"
+                  label="End Node / Destination (Optional)"
+                  control={control}
+                  options={endNodeOptions}
+                  error={errors.end_node_id}
                   placeholder="Select location B"
                 />
 
-                <FormSearchableSelect<ServiceFormValues> 
-                  name="link_type_id" 
-                  label="Link Type" 
-                  control={control} 
-                  options={linkTypeOptions} 
-                  error={errors.link_type_id} 
+                <FormSearchableSelect<ServiceFormValues>
+                  name="link_type_id"
+                  label="Link Type"
+                  control={control}
+                  options={linkTypeOptions}
+                  error={errors.link_type_id}
                   placeholder="e.g. MPLS, ILL"
                 />
-                
-                <FormInput 
-                  name="bandwidth_allocated" 
-                  label="Bandwidth" 
-                  register={register} 
-                  error={errors.bandwidth_allocated} 
+
+                <FormInput
+                  name="bandwidth_allocated"
+                  label="Bandwidth"
+                  register={register}
+                  error={errors.bandwidth_allocated}
                   placeholder="e.g. 100 Mbps"
                 />
 
-                <FormInput 
-                  name="vlan" 
-                  label="VLAN" 
-                  register={register} 
-                  error={errors.vlan} 
+                <FormInput
+                  name="vlan"
+                  label="VLAN"
+                  register={register}
+                  error={errors.vlan}
                 />
-                
-                <FormInput 
-                  name="lc_id" 
-                  label="LC ID / Circuit ID" 
-                  register={register} 
-                  error={errors.lc_id} 
+
+                <FormInput
+                  name="lc_id"
+                  label="LC ID / Circuit ID"
+                  register={register}
+                  error={errors.lc_id}
                 />
-                
-                <FormInput 
-                  name="unique_id" 
-                  label="Unique ID" 
-                  register={register} 
-                  error={errors.unique_id} 
+
+                <FormInput
+                  name="unique_id"
+                  label="Unique ID"
+                  register={register}
+                  error={errors.unique_id}
                 />
             </div>
             <div className="mt-4">
-                <FormTextarea<ServiceFormValues> 
-                  name="description" 
-                  label="Description / Notes" 
-                  control={control} 
-                  error={errors.description} 
+                <FormTextarea<ServiceFormValues>
+                  name="description"
+                  label="Description / Notes"
+                  control={control}
+                  error={errors.description}
                 />
-                <FormSwitch<ServiceFormValues> 
-                  name="status" 
-                  label="Active Status" 
-                  control={control} 
-                  className="mt-4" 
+                <FormSwitch<ServiceFormValues>
+                  name="status"
+                  label="Active Status"
+                  control={control}
+                  className="mt-4"
                 />
             </div>
         </FormCard>
@@ -44327,10 +45443,10 @@ export default function AnimatedBackground() {
     // Check for dark mode preference
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-    
+
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-    
+
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
@@ -44338,13 +45454,13 @@ export default function AnimatedBackground() {
     <>
       {/* Dynamic gradient overlay that adjusts for dark mode */}
       <div className={`fixed inset-0 z-0 transition-opacity duration-500 ${
-        isDarkMode 
-          ? "bg-blue-500/70 bg-gradient-to-b from-blue-500/70 via-blue-500/40 to-blue-500/70" 
+        isDarkMode
+          ? "bg-blue-500/70 bg-gradient-to-b from-blue-500/70 via-blue-500/40 to-blue-500/70"
           : "bg-blue-500/40 bg-gradient-to-b from-blue-500/40 via-transparent to-blue-500/40"
       }`} />
-      
-      <motion.div 
-        className="fixed inset-0 -z-10" 
+
+      <motion.div
+        className="fixed inset-0 -z-10"
         style={{ y: backgroundY }}
       >
         <Image
@@ -44390,14 +45506,14 @@ export default function StatsHighlights() {
           key={index}
           initial={{ opacity: 0, y: 20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ 
-            duration: 0.6, 
+          transition={{
+            duration: 0.6,
             delay: 2.5 + index * 0.15,
             type: "spring",
             stiffness: 100
           }}
-          whileHover={{ 
-            scale: 1.05, 
+          whileHover={{
+            scale: 1.05,
             y: -5,
             transition: { duration: 0.2 }
           }}
@@ -44405,14 +45521,14 @@ export default function StatsHighlights() {
         >
           {/* Background glow effect - using standard bg color with opacity instead of gradient for safety */}
           <div className="absolute inset-0 rounded-2xl bg-red-500/10 dark:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          
+
           <div className="relative z-10 text-center">
             {/* Icon */}
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{ 
-                duration: 0.6, 
+              transition={{
+                duration: 0.6,
                 delay: 2.7 + index * 0.1,
                 type: "spring",
                 stiffness: 200
@@ -44421,23 +45537,23 @@ export default function StatsHighlights() {
             >
               {stat.icon}
             </motion.div>
-            
+
             {/* Number */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ 
-                duration: 0.5, 
-                delay: 2.8 + index * 0.1, 
-                type: "spring", 
-                stiffness: 200 
+              transition={{
+                duration: 0.5,
+                delay: 2.8 + index * 0.1,
+                type: "spring",
+                stiffness: 200
               }}
               // FIX: Removed text-transparent, using solid red/blue
               className="text-2xl sm:text-3xl md:text-4xl font-black text-red-500 dark:text-blue-400 mb-1 sm:mb-2"
             >
               {stat.number}
             </motion.div>
-            
+
             {/* Label */}
             <div className="text-xs sm:text-sm font-semibold text-gray-200 dark:text-gray-300 tracking-wide">
               {stat.label}
@@ -44462,10 +45578,10 @@ export default function ScrollIndicator() {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-    
+
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-    
+
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
@@ -44489,14 +45605,14 @@ export default function ScrollIndicator() {
         <div className={`
           relative flex justify-center rounded-full border-2 shadow-lg backdrop-blur-sm
           h-8 w-5 sm:h-10 sm:w-6
-          ${isDarkMode 
-            ? "border-gray-300/70 bg-gray-800/30" 
+          ${isDarkMode
+            ? "border-gray-300/70 bg-gray-800/30"
             : "border-white/70 bg-white/20"}
         `}>
           <motion.div
-            animate={{ 
-              y: [2, 10, 2], 
-              opacity: [1, 0.3, 1] 
+            animate={{
+              y: [2, 10, 2],
+              opacity: [1, 0.3, 1]
             }}
             transition={{
               duration: 2,
@@ -44510,7 +45626,7 @@ export default function ScrollIndicator() {
             `}
           />
         </div>
-        
+
         {/* Scroll text */}
         <motion.span
           initial={{ opacity: 0 }}
@@ -44545,16 +45661,16 @@ export const containerVariants: Variants = {
 };
 
 export const titleVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
-    y: 60, 
-    scale: 0.8 
+  hidden: {
+    opacity: 0,
+    y: 60,
+    scale: 0.8
   },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { 
+    transition: {
       duration: 1.2,
       type: "spring",
       stiffness: 100,
@@ -44564,9 +45680,9 @@ export const titleVariants: Variants = {
 };
 
 export const subtitleVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
-    y: 40 
+  hidden: {
+    opacity: 0,
+    y: 40
   },
   visible: {
     opacity: 1,
@@ -44580,7 +45696,7 @@ export const subtitleVariants: Variants = {
 };
 
 export const highlightVariants: Variants = {
-  hidden: { 
+  hidden: {
     opacity: 0,
     scaleX: 0,
     transformOrigin: "left"
@@ -44597,17 +45713,17 @@ export const highlightVariants: Variants = {
 };
 
 export const ctaVariants: Variants = {
-  hidden: { 
-    opacity: 0, 
-    y: 30, 
-    scale: 0.9 
+  hidden: {
+    opacity: 0,
+    y: 30,
+    scale: 0.9
   },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { 
-      duration: 0.8, 
+    transition: {
+      duration: 0.8,
       delay: 0.5,
       type: "spring",
       stiffness: 120,
@@ -44663,7 +45779,7 @@ export default function HeroContent({
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
+
   // Ref to hold the navigation timer to prevent duplicate scheduling
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -44701,25 +45817,25 @@ export default function HeroContent({
   const handleGetStarted = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Clear any pending countdown timer to prevent race conditions
     if (navTimerRef.current) clearTimeout(navTimerRef.current);
-    
+
     router.push("/dashboard");
   };
 
   // Time formatting functions
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -44740,10 +45856,10 @@ export default function HeroContent({
       const zoneTime = new Date(utcTime + (3600000 * zone.offset));
       return {
         ...zone,
-        time: zoneTime.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
+        time: zoneTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
           minute: '2-digit',
-          hour12: false 
+          hour12: false
         })
       };
     });
@@ -44792,7 +45908,7 @@ export default function HeroContent({
 
           <div className="relative z-10">
             {/* Current Date */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
@@ -44802,7 +45918,7 @@ export default function HeroContent({
             </motion.div>
 
             {/* Main Time Display */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6 }}
@@ -44817,7 +45933,7 @@ export default function HeroContent({
             </motion.div>
 
             {/* Day Progress Bar */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
@@ -44838,7 +45954,7 @@ export default function HeroContent({
             </motion.div>
 
             {/* World Clocks Grid */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
@@ -44916,10 +46032,10 @@ export default function HeroContent({
             `Get Started`
           )}
         </motion.button>
-        
+
         {/* Countdown Indicator */}
         {!loading && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ delay: 1 }}
@@ -44946,23 +46062,23 @@ export default function ParticlesOverlay() {
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
-    
+
     const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener('change', handler);
-    
+
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
   // Colors that adapt to dark/light mode
   const colors = {
-    red: isDarkMode 
-      ? { gradient: 'rgba(239, 68, 68, 0.8)' } 
+    red: isDarkMode
+      ? { gradient: 'rgba(239, 68, 68, 0.8)' }
       : { gradient: 'rgba(220, 38, 38, 0.6)' },
-    purple: isDarkMode 
-      ? { gradient: 'rgba(168, 85, 247, 0.8)' } 
+    purple: isDarkMode
+      ? { gradient: 'rgba(168, 85, 247, 0.8)' }
       : { gradient: 'rgba(147, 51, 234, 0.6)' },
-    white: isDarkMode 
-      ? { gradient: 'rgba(255, 255, 255, 0.4)' } 
+    white: isDarkMode
+      ? { gradient: 'rgba(255, 255, 255, 0.4)' }
       : { gradient: 'rgba(255, 255, 255, 0.2)' }
   };
 
@@ -44978,12 +46094,12 @@ export default function ParticlesOverlay() {
             top: `${Math.random() * 100}%`,
             width: `${4 + Math.random() * 8}px`,
             height: `${4 + Math.random() * 8}px`,
-            background: i % 3 === 0 
+            background: i % 3 === 0
               ? `radial-gradient(circle, ${colors.red.gradient}, transparent 70%)`
               : i % 3 === 1
               ? `radial-gradient(circle, ${colors.purple.gradient}, transparent 70%)`
               : `radial-gradient(circle, ${colors.white.gradient}, transparent 70%)`,
-            boxShadow: i % 3 === 0 
+            boxShadow: i % 3 === 0
               ? `0 0 20px rgba(239, 68, 68, ${isDarkMode ? 0.6 : 0.4})`
               : i % 3 === 1
               ? `0 0 20px rgba(168, 85, 247, ${isDarkMode ? 0.6 : 0.4})`
@@ -45003,7 +46119,7 @@ export default function ParticlesOverlay() {
           }}
         />
       ))}
-      
+
       {/* Floating geometric shapes */}
       {[...Array(6)].map((_, i) => (
         <motion.div
@@ -45026,7 +46142,7 @@ export default function ParticlesOverlay() {
             delay: i * 0.5,
           }}
         >
-          <div 
+          <div
             className="w-full h-full rounded-full"
             style={{
               background: `radial-gradient(circle, ${colors.white.gradient}, transparent 70%)`,
@@ -45046,7 +46162,7 @@ export default function ParticlesOverlay() {
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { MapContainer, Marker, Popup, Polyline, useMap, Tooltip } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Polyline, useMap, Tooltip, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { RingMapNode } from './types/node';
@@ -45078,13 +46194,13 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
   const { theme } = useThemeStore();
 
   const isDark = theme === 'dark';
-  const bgColor = isDark ? '#0f172a' : '#f8fafc'; // Slighly lighter bg for light mode
+  const bgColor = isDark ? '#0f172a' : '#f8fafc';
   const hubLineColor = isDark ? '#60a5fa' : '#3b82f6';
   const spurLineColor = isDark ? '#b4083f' : '#ff0066';
 
   const { nodePositions, bounds } = useMemo(() => {
     const positions = new Map<string, L.LatLng>();
-    
+
     // Configuration
     const CENTER_X = 1000;
     const CENTER_Y = 1000;
@@ -45138,8 +46254,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         // Find parent position
         const parentNode = backboneNodes.find(n => Math.round(n.order_in_ring || 0) === parentOrder);
         if (!parentNode) {
-            // Orphaned spur? Just place it somewhere or treat as backbone
-            // For now, ignore or place at 0,0
             return;
         }
 
@@ -45150,7 +46264,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         const vecX = parentPos.lng - CENTER_X;
         const vecY = parentPos.lat - CENTER_Y;
         const mag = Math.sqrt(vecX * vecX + vecY * vecY);
-        
+
         // Normalized direction vector
         const dirX = mag === 0 ? 1 : vecX / mag;
         const dirY = mag === 0 ? 0 : vecY / mag;
@@ -45158,7 +46272,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         // Fan out logic if multiple spurs on one node
         const fanAngle = Math.PI / 4; // 45 degrees spread
         const totalSpurs = children.length;
-        
+
         children.forEach((child, idx) => {
             // If multiple spurs, rotate the vector slightly
             let rotation = 0;
@@ -45178,7 +46292,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
             positions.set(child.id!, new L.LatLng(childLat, childLng));
         });
     });
-    
+
     // 5. Calculate Bounds
     const lats = Array.from(positions.values()).map((p) => p.lat);
     const lngs = Array.from(positions.values()).map((p) => p.lng);
@@ -45248,10 +46362,13 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
-        zoomControl={false}
-        className="dark:bg-blue-950! shadow-lg" // Darker blue background for schematics
+        zoomControl={false} // We add it manually below
+        className="dark:bg-blue-950! shadow-lg"
       >
         <MeshController bounds={bounds} />
+
+        {/* ADDED: Standard Zoom Controls in top-left */}
+        <ZoomControl position="bottomright" />
 
         {/* Render Connections */}
         {connections.map(([nodeA, nodeB], index) => {
@@ -45259,11 +46376,8 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
           const posB = nodePositions.get(nodeB.id!);
           if (!posA || !posB) return null;
 
-          // Determine connection type based on order logic
           const orderA = nodeA.order_in_ring || 0;
           const orderB = nodeB.order_in_ring || 0;
-          
-          // It's a spur if either node is a decimal (e.g. 3.1)
           const isSpur = (orderA % 1 !== 0) || (orderB % 1 !== 0);
 
           return (
@@ -45272,8 +46386,8 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               positions={[posA, posB]}
               pathOptions={{
                 color: isSpur ? spurLineColor : hubLineColor,
-                weight: isSpur ? 2 : 4, // Backbone thicker
-                dashArray: isSpur ? '5, 5' : undefined, // Spurs dashed
+                weight: isSpur ? 2 : 4,
+                dashArray: isSpur ? '5, 5' : undefined,
                 opacity: 0.8,
                 lineCap: 'round',
                 lineJoin: 'round',
@@ -45293,7 +46407,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
               position={pos}
               icon={getNodeIcon(node.system_type, node.type, false)}
             >
-              {/* Permanent Label Tooltip */}
               <Tooltip
                 direction="bottom"
                 offset={[0, 10]}
@@ -45305,16 +46418,9 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                     <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
                     {node.name}
                     </div>
-                    {/* Show Order in Ring */}
-                    {/* {node.order_in_ring !== null && (
-                        <div className="mt-0.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px] font-mono rounded-full">
-                            #{node.order_in_ring}
-                        </div>
-                    )} */}
                 </div>
               </Tooltip>
 
-              {/* Popup Details */}
               <Popup className="custom-popup">
                 <div className="text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
                   <div className="bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
@@ -45334,7 +46440,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                         </span>
                       </div>
                     )}
-                    
+
                     {node.system_type && (
                          <div className="flex items-center justify-between">
                          <span className="font-medium text-slate-700 dark:text-slate-200">
@@ -45385,10 +46491,10 @@ export type MapNode = RingMapNode;
 import { useState } from "react";
 import Image from "next/image";
 import { FiChevronDown, FiChevronUp, FiMap } from "react-icons/fi";
-import { 
-  SVG_NETWORK_SWITCH, 
-  SVG_COMPASS, 
-  SVG_NETWORK_NODE 
+import {
+  SVG_NETWORK_SWITCH,
+  SVG_COMPASS,
+  SVG_NETWORK_NODE
 } from "@/utils/getNodeIcons";
 
 interface LegendItemProps {
@@ -45405,17 +46511,17 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
     <div className="w-8 flex justify-center items-center">
       {/* 1. Render SVG Icon */}
       {type === 'icon' && icon && !imgSrc && (
-        <div 
-          className="w-4 h-6" 
-          dangerouslySetInnerHTML={{ __html: icon }} 
+        <div
+          className="w-4 h-6"
+          dangerouslySetInnerHTML={{ __html: icon }}
         />
       )}
 
       {/* 2. Render PNG Image */}
       {type === 'icon' && imgSrc && (
         <div className="relative w-6 h-8">
-          <Image 
-            src={imgSrc} 
+          <Image
+            src={imgSrc}
             alt={label}
             fill
             className="object-contain drop-shadow-sm"
@@ -45426,12 +46532,12 @@ const LegendItem = ({ icon, imgSrc, color, label, type = 'icon', dashed }: Legen
 
       {/* 3. Render Polyline Style */}
       {type === 'line' && (
-        <div 
-          className="w-8 h-0.5" 
-          style={{ 
+        <div
+          className="w-8 h-0.5"
+          style={{
             backgroundColor: dashed ? 'transparent' : color,
-            borderTop: dashed ? `2px dashed ${color}` : 'none' 
-          }} 
+            borderTop: dashed ? `2px dashed ${color}` : 'none'
+          }}
         />
       )}
     </div>
@@ -45457,7 +46563,7 @@ export function MapLegend() {
 
       {isOpen && (
         <div className="p-3 space-y-0.5 max-h-[40vh] overflow-y-auto custom-scrollbar text-xs">
-          
+
           {/* PNG BASED ICONS (High Priority Equipment) */}
           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 mt-1">Key Equipment</div>
           <LegendItem imgSrc="/images/switch_image.png" label="MAAN Aggregator" />
@@ -45469,9 +46575,9 @@ export function MapLegend() {
           <LegendItem icon={SVG_NETWORK_SWITCH} label="CPAN / Aggregation" />
           <LegendItem icon={SVG_COMPASS} label="Exchange / Terminal" />
           <LegendItem icon={SVG_NETWORK_NODE} label="Network Node / OLT" />
-          
+
           <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-          
+
           {/* LINES */}
           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Connection Status</div>
           <LegendItem type="line" color="#3b82f6" label="Active Route" />
@@ -46304,7 +47410,7 @@ export function CategoriesTable({
               {categories.map((category) => {
                 const categoryInfo = categoryLookupCounts[category.category];
                 const hasDefaults = categoryInfo?.hasSystemDefaults;
-                
+
                 return (
                   <tr
                     key={category.id}
@@ -46363,8 +47469,8 @@ export function CategoriesTable({
                             className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 dark:border-gray-600 dark:hover:bg-gray-700"
                             disabled={isDeleting || hasDefaults}
                             title={
-                              hasDefaults 
-                                ? "Cannot delete category with system defaults" 
+                              hasDefaults
+                                ? "Cannot delete category with system defaults"
                                 : `Delete "${category.category}"`
                             }
                           >
@@ -46444,7 +47550,7 @@ const NodesFiltersComponent = memo(({
 }: NodesFiltersProps) => {
 
   const nodeTypeOptions: Option[] = (nodeTypes || []).map((nt) => ({ value: nt.id, label: nt.name }));
-  
+
   // Create options for Maintenance Areas
   const maintenanceAreaOptions: Option[] = (maintenanceAreas || []).map((ma) => ({ value: ma.id, label: ma.name }));
 
@@ -46463,7 +47569,7 @@ const NodesFiltersComponent = memo(({
             className="dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
           />
         </div>
-        
+
         {/* Node Type Filter */}
         <div className='w-full sm:w-56'>
           <SearchableSelect
@@ -46694,21 +47800,21 @@ interface NodeCardProps {
   canDelete: boolean;
 }
 
-export const NodeCard: React.FC<NodeCardProps> = ({ 
-  node, onEdit, onDelete, onView, canEdit, canDelete 
+export const NodeCard: React.FC<NodeCardProps> = ({
+  node, onEdit, onDelete, onView, canEdit, canDelete
 }) => {
-  
+
   // Determine icon based on node type
   // This returns either an L.DivIcon (SVG inside HTML) or L.Icon (Image URL)
   const icon = getNodeIcon(null, node.node_type_name, false);
-  
+
   // Format coordinates for display
-  const coords = node.latitude && node.longitude 
+  const coords = node.latitude && node.longitude
     ? `${node.latitude.toFixed(5)}, ${node.longitude.toFixed(5)}`
     : 'No Coordinates';
 
   return (
-    <div 
+    <div
       onClick={() => onView(node)}
       className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group cursor-pointer overflow-hidden"
     >
@@ -46737,7 +47843,7 @@ export const NodeCard: React.FC<NodeCardProps> = ({
                      <FiMapPin className="w-5 h-5 text-gray-400" />
                  )}
             </div>
-            
+
             <div className="min-w-0">
                 <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate" title={node.name || ''}>
                     {node.name}
@@ -46752,7 +47858,7 @@ export const NodeCard: React.FC<NodeCardProps> = ({
 
       {/* Body */}
       <div className="p-4 space-y-3 flex-1 text-sm">
-         
+
          <div className="flex items-start gap-2 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg border border-gray-100 dark:border-gray-700">
             <FiMapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
             <div className="min-w-0 flex-1">
@@ -46786,7 +47892,7 @@ export const NodeCard: React.FC<NodeCardProps> = ({
                 <FiEdit2 className="w-4 h-4" />
             </Button>
          )}
-         
+
          {canDelete && (
             <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(node)} title="Delete Node">
                 <FiTrash2 className="w-4 h-4" />
@@ -46822,11 +47928,11 @@ interface SystemCardProps {
 export const SystemCard: React.FC<SystemCardProps> = ({
   system, onView, onEdit, onDelete, onManagePorts, canEdit, canDelete
 }) => {
-  
+
   const displayIP = system.ip_address ? formatIP(system.ip_address) : 'No IP';
 
   return (
-    <div 
+    <div
       onClick={() => onView(system)}
       className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group cursor-pointer relative"
     >
@@ -46852,7 +47958,7 @@ export const SystemCard: React.FC<SystemCardProps> = ({
 
       {/* Body */}
       <div className="p-4 space-y-3 flex-1 text-sm">
-         
+
          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 space-y-2">
             <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                 <FiMapPin className="w-4 h-4 shrink-0 text-gray-400" />
@@ -46879,7 +47985,7 @@ export const SystemCard: React.FC<SystemCardProps> = ({
 
       {/* Footer / Actions */}
       <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-         
+
          <Button size="xs" variant="secondary" onClick={() => onManagePorts(system)} title="Manage Ports">
             <FiGrid className="w-3.5 h-3.5 mr-1" /> Ports
          </Button>
@@ -46895,7 +48001,7 @@ export const SystemCard: React.FC<SystemCardProps> = ({
                 <FiEdit2 className="w-4 h-4" />
             </Button>
          )}
-         
+
          {canDelete && (
             <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(system)} title="Delete System">
                 <FiTrash2 className="w-4 h-4" />
@@ -47175,8 +48281,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         {services && services.length > 0 ? (
            <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
               <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Allocated Service</div>
-              {services.map(svc => (
-                 <div key={svc.id} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
+              {services.map((svc,i) => (
+                 <div key={`${svc.id} + ${i}`} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700">
                     {svc.system_working_interface === portName ?
                         <Activity className="w-3.5 h-3.5 text-blue-500" /> :
                         <Shield className="w-3.5 h-3.5 text-purple-500" />
@@ -47263,7 +48369,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
                 onClearFilters={() => {
                   search.setSearchQuery('');
                   // THE FIX: Reset filters to empty object to actually clear all filters
-                  filters.setFilters({}); 
+                  filters.setFilters({});
                 }}
                 hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
                 activeFilterCount={Object.keys(filters.filters).length}
@@ -47432,7 +48538,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     { columns: "id, name" }
   );
   const maintenanceTerminals = maintenanceTerminalsResult.data;
-  
+
   const { data: ringsResult = { data: [] } } = useTableQuery(supabase, "rings", {
     columns: "id, name",
     filters: { status: true },
@@ -47491,7 +48597,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     const name = selectedSystemType?.name?.toLowerCase() || "";
     return name.includes("synchronous") || name.includes("sdh");
   }, [selectedSystemType]);
-  
+
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   // SAFE CLOSE HANDLER
@@ -47500,7 +48606,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
       if (!confirmClose) return;
     }
-    
+
     onClose();
     setTimeout(() => {
       reset(createDefaultFormValues());
@@ -47641,7 +48747,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.system_type_id}
           required
         />{" "}
-        
+
         {/* Added System Capacity Field */}
         <FormSearchableSelect
           name='system_capacity_id'
@@ -47738,7 +48844,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       </div>
     </motion.div>
   );
-  
+
   const modalTitle = isEditMode
     ? "Edit System"
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ""}`;
@@ -47788,7 +48894,7 @@ interface PortTemplateModalProps {
 
 export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({ isOpen, onClose, onSubmit, isLoading }) => {
   const { control, handleSubmit, watch } = useForm<{ templateKey: string }>();
-  
+
   const templateOptions = useMemo(() => {
     return Object.entries(PORT_TEMPLATES).map(([key, template]) => ({
       value: key,
@@ -47823,7 +48929,7 @@ export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({ isOpen, on
             placeholder="Choose a configuration..."
             required
           />
-          
+
           {selectedDescription && (
              <div className="p-3 bg-blue-50 text-blue-800 rounded-md text-sm border border-blue-100">
                 <strong>Description:</strong> {selectedDescription}
@@ -47862,10 +48968,10 @@ interface PortsFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   systemId: string;
-  editingRecord: (V_ports_management_completeRowSchema & { 
-    port_utilization?: boolean | null; 
-    port_admin_status?: boolean | null; 
-    services_count?: number | null; 
+  editingRecord: (V_ports_management_completeRowSchema & {
+    port_utilization?: boolean | null;
+    port_admin_status?: boolean | null;
+    services_count?: number | null;
   }) | null;
    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
@@ -47904,15 +49010,15 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
           services_count: editingRecord.services_count ?? 0,
         });
       } else {
-        reset({ 
-          system_id: systemId, 
-          port: '', 
-          port_type_id: null, 
-          port_capacity: null, 
+        reset({
+          system_id: systemId,
+          port: '',
+          port_type_id: null,
+          port_capacity: null,
           sfp_serial_no: null,
           port_utilization: false,
           port_admin_status: false,
-          services_count: 0 
+          services_count: 0
         });
       }
     }
@@ -47921,7 +49027,7 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
   const onValidSubmit = useCallback((formData: PortsFormValues) => {
     onSubmit(formData);
   }, [onSubmit]);
-  
+
   const onInvalidSubmit: SubmitErrorHandler<PortsFormValues> = () => {
     toast.error("Please fix the validation errors.");
   };
@@ -47938,34 +49044,34 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
             <FormInput name='port_capacity' label='Port Capacity' register={register} error={errors.port_capacity} placeholder="e.g., 1G, 10G" />
             <FormInput name='sfp_serial_no' label='SFP Serial No.' register={register} error={errors.sfp_serial_no} />
           </div>
-          
+
           <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
             <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Port Status & Metrics</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-4">
-                <FormSwitch 
-                  name='port_admin_status' 
-                  label='Admin Status' 
-                  control={control} 
+                <FormSwitch
+                  name='port_admin_status'
+                  label='Admin Status'
+                  control={control}
                   error={errors.port_admin_status}
                   description="Enable/Disable port (Up/Down)"
                 />
-                <FormSwitch 
-                  name='port_utilization' 
-                  label='Port Utilization' 
-                  control={control} 
+                <FormSwitch
+                  name='port_utilization'
+                  label='Port Utilization'
+                  control={control}
                   error={errors.port_utilization}
-                  description="Mark as currently in use" 
+                  description="Mark as currently in use"
                 />
               </div>
               <div>
-                <FormInput 
-                  name='services_count' 
-                  label='Services Count' 
-                  type="number" 
+                <FormInput
+                  name='services_count'
+                  label='Services Count'
+                  type="number"
                   min="0"
-                  register={register} 
-                  error={errors.services_count} 
+                  register={register}
+                  error={errors.services_count}
                   placeholder="0"
                 />
               </div>
@@ -47990,7 +49096,7 @@ interface PortHeatmapProps {
 }
 
 export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
-  
+
   // Sort ports naturally (1, 2, 10 instead of 1, 10, 2)
   const sortedPorts = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -48016,19 +49122,19 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
     <div className="bg-white dark:bg-gray-800 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Port Status Map</h4>
-        
+
         {/* Legend */}
         <div className="flex gap-4 text-xs font-medium">
             <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-green-500 rounded-sm"></div> 
+                <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
                 <span className="text-gray-600 dark:text-gray-400">Available</span>
             </div>
             <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div> 
+                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
                 <span className="text-gray-600 dark:text-gray-400">Allocated</span>
             </div>
             <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-red-500 rounded-sm"></div> 
+                <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
                 <span className="text-gray-600 dark:text-gray-400">Admin Down</span>
             </div>
         </div>
@@ -48042,8 +49148,8 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
             type="button"
             // THE FIX: Changed from fixed w-10 to variable width with min-width and padding
             className={`
-              h-9 w-auto min-w-[2.5rem] px-2 flex items-center justify-center rounded-md border 
-              text-[11px] font-bold text-white transition-all duration-200 
+              h-9 w-auto min-w-10 px-2 flex items-center justify-center rounded-md border
+              text-[11px] font-bold text-white transition-all duration-200
               hover:scale-105 hover:shadow-md focus:ring-2 focus:ring-offset-1 focus:outline-none
               ${getPortStatusColor(port)}
             `}
@@ -48078,21 +49184,21 @@ export function useMaintenanceAreasMutations(
   supabase: ReturnType<typeof createClient>,
   onSuccess: () => void
 ) {
-  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", { 
+  const createAreaMutation = useTableInsert(supabase, "maintenance_areas", {
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to create area: ${error.message}`);
     }
   });
 
-  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", { 
+  const updateAreaMutation = useTableUpdate(supabase, "maintenance_areas", {
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to update area: ${error.message}`);
     }
   });
 
-  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", { 
+  const toggleStatusMutation = useToggleStatus(supabase, "maintenance_areas", {
     onSuccess,
     onError: (error) => {
       toast.error(`Failed to toggle status: ${error.message}`);
@@ -48106,10 +49212,10 @@ export function useMaintenanceAreasMutations(
     if (editingArea?.id) {
       const { id: _omitId, ...updateData } = data;
       void _omitId;
-      
-      updateAreaMutation.mutate({ 
-        id: editingArea.id, 
-        data: updateData as Maintenance_areasUpdateSchema 
+
+      updateAreaMutation.mutate({
+        id: editingArea.id,
+        data: updateData as Maintenance_areasUpdateSchema
       });
     } else {
       createAreaMutation.mutate(data);
@@ -48426,23 +49532,23 @@ export const NetworkTopologyDiagram: React.FC<NetworkTopologyDiagramProps> = ({ 
 
     nodes.forEach(node => {
         // Simple grid layout to start
-        let x = Math.round((Math.random() * 5)); 
+        let x = Math.round((Math.random() * 5));
         let y = Math.round((Math.random() * 5));
         let cellKey = `${x},${y}`;
-        
+
         while (occupiedCells.has(cellKey)) {
             x++;
-            if (x > 10) { 
+            if (x > 10) {
                 x = 0;
                 y++;
             }
             cellKey = `${x},${y}`;
         }
-        
+
         occupiedCells.add(cellKey);
         positions.set(node.id!, { x: 50 + x * gridCellSize, y: 50 + y * gridCellSize });
     });
-    
+
     const maxX = Math.max(...Array.from(positions.values()).map(p => p.x)) + 50;
     const maxY = Math.max(...Array.from(positions.values()).map(p => p.y)) + 50;
 
@@ -49089,7 +50195,7 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
       .split(',')
       .map((t: string) => t.trim())
       .filter((t: string) => t.length > 0);
-    
+
     // Construct the payload for the API
     onSubmit({
       note_date: data.note_date,
@@ -49110,13 +50216,13 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
       >
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormDateInput 
-                    name="note_date" 
-                    label="Note Date" 
-                    control={control} 
-                    error={errors.note_date} 
-                    required 
-                    pickerProps={{ readOnly: !editingNote }} 
+                <FormDateInput
+                    name="note_date"
+                    label="Note Date"
+                    control={control}
+                    error={errors.note_date}
+                    required
+                    pickerProps={{ readOnly: !editingNote }}
                 />
                 <FormInput
                     name="tagString"
@@ -49168,7 +50274,7 @@ export const DiaryCalendar = ({ selectedDate, onDateChange, onMonthChange, highl
         }}
         // THE FIX: capture month navigation
         onMonthChange={(date: Date) => onMonthChange(date)}
-        onYearChange={(date: Date) => onMonthChange(date)} 
+        onYearChange={(date: Date) => onMonthChange(date)}
         inline
         highlightDates={highlightedDates}
         className="react-datepicker-custom"
@@ -49201,7 +50307,7 @@ interface DiaryEntryCardProps {
 export const DiaryEntryCard = ({ entry, onEdit, onDelete, canEdit, canDelete }: DiaryEntryCardProps) => {
   const { isSuperAdmin, role: currentUserRole } = useUser();
   const dateObj = new Date(entry.note_date!);
-  
+
   const formattedDate = dateObj.toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -49233,7 +50339,7 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canEdit, canDelete }: 
                  )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
             {canEdit && (
               <Button size="xs" variant="ghost" onClick={() => onEdit(entry)}>
@@ -49241,10 +50347,10 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canEdit, canDelete }: 
               </Button>
             )}
             {canDelete && (
-              <Button 
-                size="xs" 
-                variant="ghost" 
-                onClick={() => onDelete({ id: entry.id!, name: `Note from ${formattedDate}` })} 
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => onDelete({ id: entry.id!, name: `Note from ${formattedDate}` })}
                 className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50"
               >
                 <FiTrash2 className="w-4 h-4" />
@@ -49281,10 +50387,10 @@ export const DiaryEntryCard = ({ entry, onEdit, onDelete, canEdit, canDelete }: 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WorkflowSection } from "@/components/doc/types/workflowTypes";
-import { FeatureItem } from "@/components/doc/types/featureTypes"; // New Import
+import { FeatureItem } from "@/components/doc/types/featureTypes";
 import * as LucideIcons from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import AuthButton from "@/components/auth/authButton";
 import ThemeToggle from "@/components/common/ui/theme/ThemeToggle";
 import Image from "next/image";
@@ -49302,27 +50408,53 @@ const iconMap = {
   Route: LucideIcons.Route,
   GitBranch: LucideIcons.GitBranch,
   GitCommit: LucideIcons.GitCommit,
-  WifiOff: LucideIcons.WifiOff, 
-  Map: LucideIcons.Map,         
-  QrCode: LucideIcons.QrCode,   
+  WifiOff: LucideIcons.WifiOff,
+  Map: LucideIcons.Map,
+  QrCode: LucideIcons.QrCode,
   Database: LucideIcons.Database,
   MapPin: LucideIcons.MapPin,
   FileSpreadsheet: LucideIcons.FileSpreadsheet,
   Globe: LucideIcons.Globe,
   FileClock: LucideIcons.FileClock,
+  TfiLayoutMediaOverlayAlt: LucideIcons.LayoutTemplate,
+  GiLinkedRings: LucideIcons.Link,
+  GoServer: LucideIcons.Server,
+  AiFillMerge: LucideIcons.Merge,
+  FaRoute: LucideIcons.Route,
+  FileText: LucideIcons.FileText,
 } as const;
 
 interface DocSidebarProps {
   sections: WorkflowSection[];
-  features: FeatureItem[]; // New Prop
+  features: FeatureItem[];
 }
 
 export default function DocSidebar({ sections, features }: DocSidebarProps) {
   const pathname = usePathname();
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const user = useAuthStore((state) => state.user);
+
+  // Auto-expand section if we are on its page
+  useEffect(() => {
+    const activeSection = sections.find(s => `/doc/${s.value}` === pathname);
+    if (activeSection) {
+      setExpandedSections(prev => new Set(prev).add(activeSection.value));
+    }
+  }, [pathname, sections]);
+
+  const toggleSection = (value: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
+  };
 
   // Combined filter logic
   const filteredContent = useMemo(() => {
@@ -49331,9 +50463,20 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
 
     return {
       features: features.filter(f => f.title.toLowerCase().includes(query)),
-      sections: sections.filter(s => s.title.toLowerCase().includes(query))
+      sections: sections.filter(s =>
+        s.title.toLowerCase().includes(query) ||
+        s.workflows.some(w => w.title.toLowerCase().includes(query))
+      )
     };
   }, [sections, features, searchQuery]);
+
+  // Auto-expand if search matches inner workflows
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const matchedIDs = filteredContent.sections.map(s => s.value);
+      setExpandedSections(new Set(matchedIDs));
+    }
+  }, [searchQuery, filteredContent.sections]);
 
   const toggleUserMenu = useCallback(() => {
     setIsUserMenuOpen(prev => !prev);
@@ -49346,9 +50489,17 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
     return user?.user_metadata?.first_name?.[0]?.toUpperCase() || "U";
   }, [user]);
 
-  // Helper to render a link item
-  const renderLinkItem = (id: string, title: string, iconName: string, href: string, colorClass: string) => {
+  // Updated Item Renderer with support for Children (Workflows)
+  const renderSidebarItem = (
+    id: string,
+    title: string,
+    iconName: string,
+    href: string,
+    colorClass: string,
+    children?: { title: string, hash: string }[]
+  ) => {
     const isActive = pathname === href;
+    const isExpanded = expandedSections.has(id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Icon = (iconMap as any)[iconName] || LucideIcons.FileText;
 
@@ -49359,54 +50510,93 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
         initial={{ x: -10, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.2 }}
-        onHoverStart={() => setHoveredItem(id)}
-        onHoverEnd={() => setHoveredItem(null)}
-        className="relative"
+        className="relative group mb-1"
       >
-        <Link
-          href={href}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden group ${
-            isActive
-              ? "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20"
-              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-          }`}
-        >
-          {/* Hover Background */}
-          {!isActive && hoveredItem === id && (
+        <div className="flex items-center">
+          <Link
+            href={href}
+            onClick={(e) => {
+              if (children && children.length > 0) {
+                 // If clicking the parent link while already active, just toggle expand
+                 if (isActive) {
+                    e.preventDefault();
+                    toggleSection(id);
+                 } else {
+                    // If navigating to it, ensure it expands
+                    if (!isExpanded) toggleSection(id);
+                 }
+              }
+            }}
+            className={`
+              flex flex-1 items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative overflow-hidden
+              ${isActive
+                ? "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 shadow-sm"
+                : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }
+            `}
+          >
+            {/* Icon */}
+            <div className={`relative z-10 shrink-0 ${isActive ? colorClass : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300'}`}>
+              <Icon className="w-4 h-4" />
+            </div>
+
+            {/* Title */}
+            <span className="relative z-10 flex-1 truncate">{title}</span>
+
+            {/* Active Indicator */}
+            {isActive && (
+              <motion.div layoutId="activeDot" className="w-1.5 h-1.5 rounded-full bg-blue-500 relative z-10" />
+            )}
+          </Link>
+
+          {/* Chevron for expansion if children exist */}
+          {children && children.length > 0 && (
+             <button
+                onClick={(e) => { e.preventDefault(); toggleSection(id); }}
+                className={`p-1.5 mr-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors ${isExpanded ? 'text-gray-800 dark:text-gray-200' : 'text-gray-400'}`}
+             >
+                <LucideIcons.ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+             </button>
+          )}
+        </div>
+
+        {/* Children (Workflows) Tree */}
+        <AnimatePresence>
+          {children && children.length > 0 && isExpanded && (
             <motion.div
-              layoutId="hoverBg"
-              className="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-lg"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-5 mt-1 pl-3 border-l-2 border-gray-100 dark:border-gray-800 space-y-1 pb-2">
+                {children.map((child, idx) => (
+                  <Link
+                    key={idx}
+                    href={`${href}${child.hash}`}
+                    className="block px-2 py-1.5 text-xs text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded hover:bg-gray-50 dark:hover:bg-gray-800/50 truncate"
+                  >
+                    {child.title}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Icon */}
-          <div className={`relative z-10 ${isActive ? colorClass : 'text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300'}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-
-          {/* Title */}
-          <span className="relative z-10 flex-1 truncate">{title}</span>
-
-          {/* Active Indicator */}
-          {isActive && (
-            <motion.div layoutId="activeDot" className="w-1.5 h-1.5 rounded-full bg-blue-500 relative z-10" />
-          )}
-        </Link>
       </motion.div>
     );
   };
 
   return (
-    <motion.aside 
+    <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="w-72 border-r border-gray-200 bg-white/50 dark:bg-gray-950/50 dark:border-gray-800 hidden md:flex flex-col sticky top-0 h-screen backdrop-blur-xl"
     >
-      {/* --- User Header (Same as before) --- */}
+      {/* --- User Header --- */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-20">
         <div className="flex items-center justify-between gap-2">
           {user ? (
@@ -49499,7 +50689,7 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
 
       {/* --- Scrollable Nav --- */}
       <div className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
-        
+
         {/* FEATURES SECTION */}
         {filteredContent.features.length > 0 && (
           <div>
@@ -49507,8 +50697,8 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
               <LucideIcons.Sparkles className="w-3 h-3" /> Core Features
             </h3>
             <div className="space-y-0.5">
-              {filteredContent.features.map(feature => 
-                renderLinkItem(feature.id, feature.title, feature.icon, `/doc/${feature.id}`, `text-${feature.color}-500`)
+              {filteredContent.features.map(feature =>
+                renderSidebarItem(feature.id, feature.title, feature.icon, `/doc/${feature.id}`, `text-${feature.color}-500`)
               )}
             </div>
           </div>
@@ -49521,9 +50711,22 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
                <LucideIcons.Workflow className="w-3 h-3" /> Workflows
             </h3>
              <div className="space-y-0.5">
-              {filteredContent.sections.map(section => 
-                 renderLinkItem(section.value, section.title, section.icon, `/doc/${section.value}`, section.iconColor.replace('text-', 'text-').split(' ')[0])
-              )}
+              {filteredContent.sections.map(section => {
+                 // Prepare children data
+                 const workflowChildren = section.workflows.map((w, idx) => ({
+                    title: w.title,
+                    hash: `#workflow-${idx}`
+                 }));
+
+                 return renderSidebarItem(
+                    section.value,
+                    section.title,
+                    section.icon,
+                    `/doc/${section.value}`,
+                    section.iconColor.replace('text-', 'text-').split(' ')[0],
+                    workflowChildren
+                 );
+              })}
             </div>
           </div>
         )}
@@ -49728,18 +50931,18 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
             {/* Back button */}
             <motion.div variants={itemVariants}>
               <Link
-                href='/dashboard'
+                href='/doc'
                 className={`
-                  inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
+                  inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
                   bg-gray-100 dark:bg-gray-800/50
                   border border-gray-200 dark:border-gray-700
                   text-gray-600 dark:text-gray-300
                   hover:bg-gray-200 dark:hover:bg-gray-700
-                  hover:text-gray-900 dark:hover:text-white 
+                  hover:text-gray-900 dark:hover:text-white
                   transition-all duration-200 text-sm font-medium group
                 `}>
                 <ArrowLeft className='w-4 h-4 group-hover:-translate-x-0.5 transition-transform' />
-                Dashboard
+                Docs Home
               </Link>
             </motion.div>
 
@@ -49808,6 +51011,7 @@ export default function WorkflowCard({ section }: WorkflowCardProps) {
                       ease: "easeOut" as const,
                     }}>
                     <WorkflowSectionComponent
+                      id={`workflow-${index}`} // PASSING THE ID HERE
                       workflow={workflow}
                       index={index}
                       colors={colors}
@@ -49883,20 +51087,20 @@ const colorStyles = {
 export default function FeatureCard({ feature }: FeatureCardProps) {
   // Dynamic Icon Mapping with Fallback
   const Icon = (LucideIcons[feature.icon as keyof typeof LucideIcons] || LucideIcons.Star) as LucideIcons.LucideIcon;
-  
+
   // Extract theme styles
   const fullStyle = colorStyles[feature.color] || colorStyles.blue;
-  
+
   // Extract just the header background classes (first 3 classes: solid bg + gradient from/to)
-  const headerBgClasses = fullStyle.split(" ").slice(0, 3).join(" "); 
-  
+  const headerBgClasses = fullStyle.split(" ").slice(0, 3).join(" ");
+
   // Extract border color for the card accent
   const borderColorVar = `var(--color-${feature.color}-500)`;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="max-w-5xl mx-auto"
     >
@@ -49904,12 +51108,12 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
          <Link
             href='/dashboard'
             className={`
-              inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
+              inline-flex items-center gap-2 px-3 py-1.5 rounded-lg
               bg-gray-100 dark:bg-gray-800/50
               border border-gray-200 dark:border-gray-700
               text-gray-600 dark:text-gray-300
               hover:bg-gray-200 dark:hover:bg-gray-700
-              hover:text-gray-900 dark:hover:text-white 
+              hover:text-gray-900 dark:hover:text-white
               transition-all duration-200 text-sm font-medium group
             `}>
             <ArrowLeft className='w-4 h-4 group-hover:-translate-x-0.5 transition-transform' />
@@ -49928,7 +51132,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
             <p className="text-blue-50 text-lg md:text-xl font-medium opacity-90">{feature.subtitle}</p>
           </div>
         </div>
-        
+
         {/* Decorative background elements */}
         <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
         <div className="absolute left-0 bottom-0 w-full h-32 bg-linear-to-t from-black/10 to-transparent"></div>
@@ -49936,7 +51140,7 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-        
+
         {/* Description & Benefits */}
         <div className="lg:col-span-2 space-y-8">
           <Card className="p-8 border-t-4" style={{ borderColor: borderColorVar }}>
@@ -49948,12 +51152,12 @@ export default function FeatureCard({ feature }: FeatureCardProps) {
 
           <div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <SparklesIcon className={`w-5 h-5 text-${feature.color}-500`} /> 
+              <SparklesIcon className={`w-5 h-5 text-${feature.color}-500`} />
               Key Benefits
             </h3>
             <div className="grid gap-4">
               {feature.benefits.map((benefit, idx) => (
-                <motion.div 
+                <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -50015,17 +51219,17 @@ const SparklesIcon = ({ className }: { className?: string }) => (
 // path: components/doc/HeaderSection.tsx
 "use client";
 
-import { 
-  Workflow, 
-  Sparkles, 
-  BookOpen, 
-  Zap, 
-  UserPlus, 
-  Settings, 
-  MapPin, 
-  Cable, 
-  Server, 
-  CircleDot, 
+import {
+  Workflow,
+  Sparkles,
+  BookOpen,
+  Zap,
+  UserPlus,
+  Settings,
+  MapPin,
+  Cable,
+  Server,
+  CircleDot,
   GitBranch,
   CheckCircle2,
   ArrowDown
@@ -50164,7 +51368,7 @@ export default function HeaderSection() {
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ 
+            animate={{
               opacity: [0.3, 0.5, 0.3],
               scale: [0.8, 1.2, 0.8],
             }}
@@ -50257,8 +51461,8 @@ export default function HeaderSection() {
             >
               {/* Icon Bubble */}
               <div className={`
-                relative z-10 shrink-0 flex items-center justify-center w-16 h-16 rounded-full 
-                border-4 border-white dark:border-gray-950 shadow-lg 
+                relative z-10 shrink-0 flex items-center justify-center w-16 h-16 rounded-full
+                border-4 border-white dark:border-gray-950 shadow-lg
                 ${step.color} text-white transition-transform duration-300 group-hover:scale-110
               `}>
                 <step.icon className="w-7 h-7" />
@@ -50285,7 +51489,7 @@ export default function HeaderSection() {
         </div>
 
         {/* Completion Message */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -51164,12 +52368,132 @@ export const workflowSections: WorkflowSection[] = [
   // ============================================================================
   // MODULE 12: RINGS MANAGEMENT
   // ============================================================================
+{
+    value: 'ring_manager',
+    icon: 'GiLinkedRings',
+    title: 'Ring Manager',
+    subtitle: 'Ring Association & Order',
+    gradient: 'from-pink-600 to-rose-600',
+    iconColor: 'text-pink-500',
+    bgGlow: 'bg-pink-500/10',
+    color: 'orange', // Reusing orange palette or create pink
+    purpose:
+      'To manage the logical membership of systems within rings, defining their sequence and hub/spur relationships.',
+    workflows: [
+      {
+        title: '1. Ring Definition',
+        userSteps: [
+          'Navigate to `/dashboard/ring-manager`.',
+          "Click 'Add New Ring' to create a named ring entity.",
+          "Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.",
+        ],
+        uiSteps: [
+          'The list shows all rings with their active system counts.',
+          'Expand a ring row to see the list of associated systems in order.',
+        ],
+        techSteps: [
+          '**Table:** `rings` stores the parent entity.',
+          '**Hook:** `useRingManagerData` fetches rings with stats.',
+        ],
+      },
+      {
+        title: '2. Adding Systems to Ring',
+        userSteps: [
+          "Click 'Add Systems to Ring'.",
+          "**Step 1:** Select the target Ring.",
+          "**Step 2:** Select the System to add (Search by Name/IP).",
+          "Set 'Order in Ring' (e.g., 1.0, 2.0). Decimals (1.1) indicate spurs.",
+          "Toggle 'Is Hub' if this system connects spurs to the backbone.",
+          "Click 'Save' (You can queue multiple adds before saving).",
+        ],
+        uiSteps: [
+          'Queued systems appear in a list below the form.',
+          'Clicking Save performs a batch update.',
+        ],
+        techSteps: [
+          '**RPC:** `upsert_system_with_details` handles the `ring_based_systems` association.',
+        ],
+      },
+      {
+        title: '3. Editing Associations',
+        userSteps: [
+          'Expand a ring row in the list.',
+          "Click the 'Edit' (Pencil) icon next to a system.",
+          'Update the Sequence Number or Hub Status.',
+          "Click 'Remove' (Trash icon) to disassociate the system from the ring.",
+        ],
+        techSteps: [
+          '**RPC:** `disassociate_system_from_ring` safely removes the link without deleting the system.',
+        ],
+      },
+    ],
+  },
 
-
+// ============================================================================
+  // MODULE 13: DIAGRAMS & FILES
   // ============================================================================
-  // MODULE 13: SERVICE PROVISIONING
-  // ============================================================================
-
+  {
+    value: 'diagrams_files',
+    icon: 'TfiLayoutMediaOverlayAlt',
+    title: 'Diagrams & Documents',
+    subtitle: 'File Storage & Management',
+    gradient: 'from-slate-500 to-gray-600',
+    iconColor: 'text-slate-500',
+    bgGlow: 'bg-slate-500/10',
+    color: 'teal',
+    purpose: 'To securely store network diagrams, manuals, and site photos with folder organization.',
+    workflows: [
+      {
+        title: '1. Folder Management',
+        userSteps: [
+          'Navigate to `/dashboard/diagrams`.',
+          "Click 'Show Upload' to reveal the control panel.",
+          "**Create:** Enter a new folder name and click 'Create'.",
+          "**Delete:** Select a folder and click the trash icon (Admin only).",
+        ],
+        uiSteps: [
+          'The file list filters automatically when a folder is selected.',
+        ],
+        techSteps: [
+          '**Hook:** `useFolders` manages folder state via React Query.',
+          '**Validation:** Prevents deleting non-empty folders (handled by DB constraint/UI check).',
+        ],
+      },
+      {
+        title: '2. Uploading Files',
+        userSteps: [
+          "Select a destination folder.",
+          "**Simple Upload:** Drag & drop files or click to browse.",
+          "**Advanced (Camera):** Switch to 'Advanced Upload' to use the webcam/camera directly.",
+          "Click 'Start Upload'.",
+        ],
+        uiSteps: [
+          'Image optimization (WebP conversion + resizing) happens client-side before upload.',
+          'Progress bars show upload status.',
+        ],
+        techSteps: [
+          '**Library:** `Uppy` handles chunked uploads.',
+          '**Storage:** Files are stored in Supabase Storage/Cloudinary via `/api/upload`.',
+          '**Optimization:** `smartCompress` reduces image size without quality loss.',
+        ],
+      },
+      {
+        title: '3. Viewing & Managing Files',
+        userSteps: [
+          'Switch between Grid and List view.',
+          '**Search:** Filter files by name within the selected folder.',
+          "**Action:** Click the eye icon to preview, download icon to save.",
+        ],
+        uiSteps: [
+          'PDFs open in a new tab.',
+          'Images show a thumbnail preview.',
+        ],
+        techSteps: [
+          '**Table:** `files` linked to `folders` and `users`.',
+        ],
+      },
+    ],
+  },
 
   // ============================================================================
   // MODULE 14: UTILITIES & MAINTENANCE
@@ -51403,10 +52727,17 @@ import { WorkflowSectionProps } from '@/components/doc/types/workflowTypes';
 import { useUser } from '@/providers/UserProvider';
 import { User, Monitor, Zap } from 'lucide-react';
 
-export default function WorkflowSection({ workflow, index, colors, isLast }: WorkflowSectionProps) {
+// Added 'id' to props interface
+interface ExtendedProps extends WorkflowSectionProps {
+  id?: string;
+}
+
+export default function WorkflowSection({ workflow, index, colors, isLast, id }: ExtendedProps) {
   const { isSuperAdmin } = useUser();
+
   return (
-    <div className="space-y-4">
+    // Added id attribute here for anchor scrolling
+    <div id={id} className="space-y-4 scroll-mt-24">
       <div className="flex items-center gap-3">
         <div className={`px-3 py-1 rounded-full text-xs font-medium border ${colors.badge}`}>
           Workflow {String.fromCharCode(65 + index)}
@@ -51454,7 +52785,6 @@ export default function WorkflowSection({ workflow, index, colors, isLast }: Wor
     </div>
   );
 }
-
 ```
 
 <!-- path: components/doc/StepList.tsx -->
@@ -51470,13 +52800,13 @@ interface StepListProps {
   isTechnical?: boolean;
 }
 
-export default function StepList({ 
-  icon: Icon, 
-  iconColor, 
-  title, 
-  steps, 
+export default function StepList({
+  icon: Icon,
+  iconColor,
+  title,
+  steps,
   stepColor,
-  isTechnical = false 
+  isTechnical = false
 }: StepListProps) {
   return (
     <div className="space-y-2">
@@ -51489,11 +52819,11 @@ export default function StepList({
           <li key={index} className="text-gray-700 dark:text-gray-400 flex items-start gap-2">
             <span className={`${stepColor} mt-1`}>•</span>
             {isTechnical ? (
-              <span dangerouslySetInnerHTML={{ 
+              <span dangerouslySetInnerHTML={{
                 __html: step.replace(
-                  /`([^`]+)`/g, 
+                  /`([^`]+)`/g,
                   '<code class="bg-gray-800/80 text-amber-300 px-1.5 py-0.5 rounded text-xs font-mono border border-gray-700/50">$1</code>'
-                ) 
+                )
               }} />
             ) : (
               <span>{step}</span>
@@ -51514,7 +52844,7 @@ export default function StepList({
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
-import * as toGeoJSON from '@mapbox/togeojson'; 
+import * as toGeoJSON from '@mapbox/togeojson';
 import JSZip from 'jszip';
 import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
@@ -51532,10 +52862,10 @@ const iconDefault = L.icon({
   iconAnchor: [6, 20],
   // Original: [1, -34] -> New: [0, -20] (Above the icon)
   popupAnchor: [0, -20],
-  // Shadow needs to scale too, or it looks weird. 
+  // Shadow needs to scale too, or it looks weird.
   // Original shadow: [41, 41]. New: [20, 20]
   shadowSize: [20, 20],
-  shadowAnchor: [6, 20] 
+  shadowAnchor: [6, 20]
 });
 
 L.Marker.prototype.options.icon = iconDefault;
@@ -51547,7 +52877,7 @@ interface KmlMapProps {
 // Helper to extract KML Styles
 const extractKmlStyles = (doc: Document): Record<string, string> => {
   const styleMap: Record<string, string> = {};
-  
+
   const styles = doc.getElementsByTagName('Style');
   for (let i = 0; i < styles.length; i++) {
     const style = styles[i];
@@ -51581,19 +52911,19 @@ const extractKmlStyles = (doc: Document): Record<string, string> => {
       styleMap[`#${id}`] = styleMap[normalStyleUrl];
     }
   }
-  
+
   return styleMap;
 };
 
-const MapController = ({ 
-  data, 
-  isFullScreen 
-}: { 
-  data: GeoJSON.FeatureCollection | null, 
-  isFullScreen: boolean 
+const MapController = ({
+  data,
+  isFullScreen
+}: {
+  data: GeoJSON.FeatureCollection | null,
+  isFullScreen: boolean
 }) => {
   const map = useMap();
-  
+
   useEffect(() => {
     if (data && map) {
       try {
@@ -51667,18 +52997,18 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         try {
           const zip = await JSZip.loadAsync(arrayBuffer);
           const kmlFileName = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
-          
+
           if (kmlFileName) {
             kmlText = await zip.file(kmlFileName)!.async("string");
           } else {
-            throw new Error("No KML in zip"); 
+            throw new Error("No KML in zip");
           }
         } catch (e) {
           void e;
           const decoder = new TextDecoder("utf-8");
           kmlText = decoder.decode(arrayBuffer);
         }
-        
+
         const cleanText = kmlText.trim();
         if (!cleanText.startsWith('<')) {
              throw new Error("File content is not valid XML/KML.");
@@ -51690,12 +53020,12 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         if (kmlDom.querySelector("parsererror")) {
             throw new Error("XML Parsing Error: Invalid syntax.");
         }
-        
+
         const styles = extractKmlStyles(kmlDom);
         setKmlStyles(styles);
 
         const converted = toGeoJSON.kml(kmlDom);
-        
+
         if (converted && converted.features && converted.features.length > 0) {
             setGeoJsonData(converted);
         } else {
@@ -51734,7 +53064,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   const onEachFeature = (feature: any, layer: L.Layer) => {
     if (feature.properties) {
       const { name, description } = feature.properties;
-      
+
       let coordsHtml = "";
       if (feature.geometry.type === "Point") {
         const [lng, lat] = feature.geometry.coordinates;
@@ -51747,11 +53077,11 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         if (description) popupContent += `<div class="text-xs text-gray-600 max-h-32 overflow-y-auto mb-1">${description}</div>`;
         popupContent += coordsHtml;
         popupContent += `</div>`;
-        
+
         layer.bindPopup(popupContent, {
-          autoClose: false,    
-          closeOnClick: false, 
-          closeButton: true    
+          autoClose: false,
+          closeOnClick: false,
+          closeButton: true
         });
 
         layer.on({
@@ -51761,7 +53091,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
                const letters = '0123456789ABCDEF';
                let color = '#';
                for (let i = 0; i < 6; i++) { color += letters[Math.floor(Math.random() * 16)]; }
-               
+
                l.setStyle({ color: color, weight: isMobile ? 10 : 7, opacity: 1 });
              }
           },
@@ -51776,8 +53106,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     }
   };
 
-  const containerClass = isFullScreen 
-    ? "fixed inset-0 z-[9999] bg-gray-100 dark:bg-gray-900" 
+  const containerClass = isFullScreen
+    ? "fixed inset-0 z-[9999] bg-gray-100 dark:bg-gray-900"
     : "h-full w-full relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700";
 
   return (
@@ -51803,9 +53133,9 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
       >
         {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
       </button>
-      
+
       <MapContainer
-        center={[22.57, 88.36]} 
+        center={[22.57, 88.36]}
         zoom={10}
         style={{ height: '100%', width: '100%' }}
         className="z-0 bg-gray-100 dark:bg-gray-800"
@@ -51818,7 +53148,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
               attribution='&copy; OpenStreetMap contributors'
             />
           </LayersControl.BaseLayer>
-          
+
           <LayersControl.BaseLayer name="Satellite View">
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -51826,18 +53156,18 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
             />
           </LayersControl.BaseLayer>
         </LayersControl>
-        
+
         {geoJsonData && (
           <>
-            <GeoJSON 
-              key={kmlUrl} 
-              data={geoJsonData} 
+            <GeoJSON
+              key={kmlUrl}
+              data={geoJsonData}
               onEachFeature={onEachFeature}
               pointToLayer={pointToLayer}
-              style={() => ({ 
-                  color: "#3b82f6", 
+              style={() => ({
+                  color: "#3b82f6",
                   weight: isMobile ? 8 : 4,
-                  opacity: 0.8 
+                  opacity: 0.8
               })}
             />
             <MapController data={geoJsonData} isFullScreen={isFullScreen} />
@@ -52038,7 +53368,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Use state for dropdown positioning to ensure it re-renders
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
@@ -52719,12 +54049,12 @@ export function EntityListItem<T extends BaseEntity>({
   // Function to get parent name using the configured parent field
   const getParentName = (entity: T): string | null => {
     if (!config.isHierarchical || !config.parentField) return null;
-    
+
     const parentObject = entity[config.parentField] as HierarchicalEntity;
     if (parentObject?.name) {
       return parentObject.name;
     }
-    
+
     return null;
   };
 
@@ -52754,7 +54084,7 @@ export function EntityListItem<T extends BaseEntity>({
         <button
           onClick={(e) => {
             // IMPROVEMENT: Stop the click from bubbling up to the parent div.
-            e.stopPropagation(); 
+            e.stopPropagation();
             onToggleStatus(e, entity);
           }}
           disabled={isLoading}
@@ -52792,7 +54122,7 @@ export function EntityTreeItem<T extends BaseEntity>({
     const hasChildren = entity.children.length > 0;
     const isSelected = entity.id === selectedEntityId;
     const isExpanded = expandedEntities.has(entity.id ?? '');
-  
+
     return (
       <div className="border-b border-gray-100 dark:border-gray-700 last:border-b-0">
         <div
@@ -52860,7 +54190,7 @@ export function EntityTreeItem<T extends BaseEntity>({
       </div>
     );
   }
-  
+
 ```
 
 <!-- path: components/common/entity-management/EntityDetailsPanel.tsx -->
@@ -52899,6 +54229,39 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
   return (
     <div className="p-4 space-y-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="flex gap-2">
+          {onViewDetails && (
+            <button
+              onClick={onViewDetails}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+            >
+              <FiEye className="h-4 w-4" /> Open Ring
+            </button>
+          )}
+
+          {/* THE FIX: Conditionally render Edit button */}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Edit"
+            >
+              <FiEdit3 className="h-4 w-4" />
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}
+              className="flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+              title="Delete"
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
       <div className="mb-2 flex items-start justify-between">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">{entity.name}</h3>
         <span
@@ -52923,39 +54286,6 @@ export function EntityDetailsPanel<T extends BaseEntity>({
         />
       ))}
 
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <div className="flex gap-2">
-          {onViewDetails && (
-            <button
-              onClick={onViewDetails}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-            >
-              <FiEye className="h-4 w-4" /> View Details
-            </button>
-          )}
-          
-          {/* THE FIX: Conditionally render Edit button */}
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              title="Edit"
-            >
-              <FiEdit3 className="h-4 w-4" />
-            </button>
-          )}
-          
-          {onDelete && (
-            <button
-              onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}
-              className="flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
-              title="Delete"
-            >
-              <FiTrash2 className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -53028,7 +54358,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
   // --- RESIZING LOGIC START ---
-  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000); 
+  const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -53056,8 +54386,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
     if (isResizing) {
       window.addEventListener('mousemove', resize);
       window.addEventListener('mouseup', stopResizing);
-      document.body.style.cursor = 'col-resize'; 
-      document.body.style.userSelect = 'none'; 
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
     } else {
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
@@ -53154,16 +54484,16 @@ export function EntityManagementComponent<T extends BaseEntity>({
     setShowDetailsPanel(false);
     onSelect(null);
   }, [onSelect]);
-  
+
   const handleItemSelect = (id: string) => {
     onSelect(id);
     setShowDetailsPanel(true);
   };
-  
+
   const handleOpenEditForm = useCallback(() => {
     if (selectedEntity && onEdit) onEdit(selectedEntity);
   }, [selectedEntity, onEdit]);
-  
+
   const toggleExpanded = (id: string) => {
     setExpandedEntities((prev) => {
       const newSet = new Set(prev);
@@ -53339,7 +54669,7 @@ interface ViewModeToggleProps {
     viewMode: "tree" | "list";
     onChange: (mode: "tree" | "list") => void;
   }
-  
+
   export function ViewModeToggle({ viewMode, onChange }: ViewModeToggleProps) {
     return (
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -53394,17 +54724,17 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   renderAsHtml = false,
 }) => {
   const displayText = text ?? '';
-  
+
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isLocked, setIsLocked] = useState(false); // New state for "Click to Lock"
   const [justCopied, setJustCopied] = useState(false);
-  
+
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  
+
   const textRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  
+
   const tooltipId = `tt-${id ?? Math.random().toString(36).slice(2)}`;
 
   // --- Overflow Detection ---
@@ -53425,11 +54755,11 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const updatePosition = useCallback(() => {
     if (textRef.current) {
       const rect = textRef.current.getBoundingClientRect();
-      
+
       // Calculate available space
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       // Default: Bottom Left aligned
       let top = rect.bottom + 8;
       let left = rect.left;
@@ -53437,9 +54767,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       // Flip to top if not enough space below
       if (top + 100 > viewportHeight) {
         top = rect.top - 8; // We'll handle the 'bottom-0' class logic via CSS or calculation if needed, but simple fixed top works usually
-        // Actually, for fixed positioning, we might need to render *above*. 
-        // For simplicity in this snippet, we stick to bottom unless strictly needed, 
-        // or we can use a library like floating-ui for perfection. 
+        // Actually, for fixed positioning, we might need to render *above*.
+        // For simplicity in this snippet, we stick to bottom unless strictly needed,
+        // or we can use a library like floating-ui for perfection.
         // Let's keep it simple: ensure it doesn't go off right edge.
       }
 
@@ -53447,7 +54777,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       if (left + maxWidth > viewportWidth) {
         left = viewportWidth - maxWidth - 16;
       }
-      
+
       // Prevent going off left edge
       if (left < 16) {
         left = 16;
@@ -53492,10 +54822,10 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     e.stopPropagation();
     try {
       // Strip HTML tags if copying from HTML content
-      const textToCopy = renderAsHtml 
-        ? displayText.replace(/<[^>]*>?/gm, '') 
+      const textToCopy = renderAsHtml
+        ? displayText.replace(/<[^>]*>?/gm, '')
         : displayText;
-        
+
       await navigator.clipboard.writeText(textToCopy);
       setJustCopied(true);
       toast.success("Copied to clipboard");
@@ -53512,9 +54842,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        tooltipRef.current && 
-        !tooltipRef.current.contains(e.target as Node) && 
-        textRef.current && 
+        tooltipRef.current &&
+        !tooltipRef.current.contains(e.target as Node) &&
+        textRef.current &&
         !textRef.current.contains(e.target as Node)
       ) {
         setIsLocked(false);
@@ -53527,9 +54857,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    
+
     // Handle scrolling parents closing the tooltip
-    document.addEventListener('scroll', updatePosition, true); 
+    document.addEventListener('scroll', updatePosition, true);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -53570,14 +54900,14 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
               fixed z-9999 flex flex-col gap-2 rounded-lg shadow-xl border
               text-sm wrap-wrap-break-word whitespace-normal
               transition-all duration-200 ease-in-out
-              ${isLocked 
-                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto' 
+              ${isLocked
+                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto'
                 : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-transparent pointer-events-none px-3 py-2'
               }
             `}
-            style={{ 
-              top: coords.top, 
-              left: coords.left, 
+            style={{
+              top: coords.top,
+              left: coords.left,
               maxWidth: maxWidth,
               minWidth: '200px'
             }}
@@ -53679,7 +55009,7 @@ export function BulkActions({
 
   const getButtonClasses = (variant: 'primary' | 'secondary' | 'danger' = 'primary') => {
     const baseClasses = "px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
-    
+
     switch (variant) {
       case 'danger':
         return `${baseClasses} bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800`;
@@ -53699,7 +55029,7 @@ export function BulkActions({
             {selectedCount} {entityName}{selectedCount !== 1 ? 's' : ''} selected
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2 flex-wrap">
           {/* Status Update Dropdown */}
           {showStatusUpdate && (
@@ -53730,7 +55060,7 @@ export function BulkActions({
               {action.label}
             </button>
           ))}
-          
+
           {/* Delete Button */}
           <button
             onClick={onBulkDelete}
@@ -53741,12 +55071,12 @@ export function BulkActions({
             <FiTrash2 className="w-4 h-4" />
             Delete {selectedCount > 1 && `(${selectedCount})`}
           </button>
-          
+
           {/* Clear Selection Button */}
           <button
             onClick={onClearSelection}
             disabled={isOperationLoading}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300
                       text-sm px-2 py-1 rounded transition-colors flex items-center gap-1"
             title="Clear selection"
           >
@@ -53799,12 +55129,25 @@ export function CommandMenu() {
   const [loading, setLoading] = React.useState(false);
   const supabase = createClient();
 
-  // Toggle with Cmd+K
+  // Toggle with Cmd+K OR "/"
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Cmd+K or Ctrl+K
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
+      }
+
+      // "/" key (Global Search)
+      // Check if not typing in an input/textarea
+      if (e.key === "/") {
+        const target = e.target as HTMLElement;
+        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+        if (!isInput) {
+          e.preventDefault();
+          setOpen((open) => !open);
+        }
       }
     };
     document.addEventListener("keydown", down);
@@ -53819,7 +55162,7 @@ export function CommandMenu() {
         return;
       }
       setLoading(true);
-      
+
       const searchTerm = `%${debouncedQuery}%`;
 
       // Parallel queries for speed
@@ -53831,13 +55174,15 @@ export function CommandMenu() {
 
       const newResults: SearchResult[] = [];
 
-      // Static Pages
+      // Static Pages matches
       if ("dashboard".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
       if ("inventory".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'inv', title: 'Inventory', type: 'page', url: '/dashboard/inventory' });
+      if ("systems".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'sys', title: 'Systems Manager', type: 'page', url: '/dashboard/systems' });
+      if ("rings".includes(debouncedQuery.toLowerCase())) newResults.push({ id: 'rng', title: 'Ring Manager', type: 'page', url: '/dashboard/rings' });
 
       // DB Results
       systems.data?.forEach(s => newResults.push({ id: s.id, title: s.system_name || 'System', type: 'system', url: `/dashboard/systems/${s.id}` }));
-      nodes.data?.forEach(n => newResults.push({ id: n.id, title: n.name, type: 'node', url: `/dashboard/nodes?search=${n.name}` })); // Nodes might not have details page, linking to table filter
+      nodes.data?.forEach(n => newResults.push({ id: n.id, title: n.name, type: 'node', url: `/dashboard/nodes?search=${n.name}` }));
       cables.data?.forEach(c => newResults.push({ id: c.id, title: c.route_name, type: 'cable', url: `/dashboard/ofc/${c.id}` }));
 
       setResults(newResults);
@@ -53856,38 +55201,37 @@ export function CommandMenu() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[20vh] px-4">
-      <div className="w-full max-w-lg bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4">
+      <div className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
         <Command label="Global Search" shouldFilter={false} className="w-full">
-          
+
           {/* Search Input */}
           <div className="flex items-center border-b border-gray-200 dark:border-gray-700 px-4">
             <FiSearch className="w-5 h-5 text-gray-400 mr-3" />
-            <Command.Input 
+            <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder="Search systems, nodes, cables..." 
-              className="w-full py-4 text-base bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              placeholder="Search for systems, routes, or pages..."
+              className="w-full py-4 text-lg bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
               autoFocus
             />
             {loading && <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>}
           </div>
 
           {/* Results List */}
-          <Command.List className="max-h-[300px] overflow-y-auto p-2 scroll-py-2">
-            
+          <Command.List className="max-h-[60vh] overflow-y-auto p-2 scroll-py-2 custom-scrollbar">
+
             {query && results.length === 0 && !loading && (
-              <div className="py-6 text-center text-sm text-gray-500">No results found.</div>
+              <div className="py-10 text-center text-sm text-gray-500">No results found.</div>
             )}
 
             {!query && (
                <div className="px-4 py-2">
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Quick Navigation</p>
-                  {/* Default suggestions if query is empty */}
-                  <Command.Item onSelect={() => handleSelect('/dashboard/systems')} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
+                  <Command.Item onSelect={() => handleSelect('/dashboard/systems')} className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
                      <FiServer className="w-4 h-4" /> Systems Manager
                   </Command.Item>
-                  <Command.Item onSelect={() => handleSelect('/dashboard/rings')} className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
+                  <Command.Item onSelect={() => handleSelect('/dashboard/rings')} className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors">
                      <FiActivity className="w-4 h-4" /> Ring Manager
                   </Command.Item>
                </div>
@@ -53899,13 +55243,13 @@ export function CommandMenu() {
                   <Command.Item
                     key={`${item.type}-${item.id}`}
                     onSelect={() => handleSelect(item.url)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
                   >
-                    <div className="flex items-center justify-center w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
-                        {item.type === 'system' && <FiServer size={14} />}
-                        {item.type === 'node' && <FiMapPin size={14} />}
-                        {item.type === 'cable' && <FiActivity size={14} />}
-                        {item.type === 'page' && <FiFileText size={14} />}
+                    <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
+                        {item.type === 'system' && <FiServer size={16} />}
+                        {item.type === 'node' && <FiMapPin size={16} />}
+                        {item.type === 'cable' && <FiActivity size={16} />}
+                        {item.type === 'page' && <FiFileText size={16} />}
                     </div>
                     <div className="flex flex-col">
                         <span className="font-medium">{item.title}</span>
@@ -53917,14 +55261,15 @@ export function CommandMenu() {
             )}
 
           </Command.List>
-          
+
           <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center text-xs text-gray-400">
-            <span>Use arrows to navigate</span>
-            <span>ESC to close</span>
+            <span>Use <strong>↑↓</strong> to navigate</span>
+            <span><strong>Enter</strong> to select</span>
+            <span><strong>Esc</strong> to close</span>
           </div>
         </Command>
       </div>
-      
+
       {/* Click outside to close */}
       <div className="absolute inset-0 -z-10" onClick={() => setOpen(false)} />
     </div>
@@ -55031,11 +56376,11 @@ interface FancyEmptyStateProps {
   action?: React.ReactNode;
 }
 
-export function FancyEmptyState({ 
-  icon: Icon = FolderOpen, 
-  title = "No records found", 
+export function FancyEmptyState({
+  icon: Icon = FolderOpen,
+  title = "No records found",
   description = "Get started by adding a new record.",
-  action 
+  action
 }: FancyEmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center bg-white dark:bg-gray-800">
@@ -55045,7 +56390,7 @@ export function FancyEmptyState({
           <Icon className="w-10 h-10 text-gray-400 dark:text-gray-500" />
         </div>
       </div>
-      
+
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
         {title}
       </h3>
@@ -55075,7 +56420,7 @@ export function SearchEmptyState({ query, onClear }: { query: string, onClear?: 
             Try checking for typos or using different keywords.
         </p>
         {onClear && (
-            <button 
+            <button
                 onClick={onClear}
                 className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline"
             >
@@ -55199,7 +56544,7 @@ export const Textarea: React.FC<TextareaProps> = ({
           rows={rows}
           maxLength={maxLength}
           className={`
-            ${fullWidth ? "w-full" : "w-fit"} 
+            ${fullWidth ? "w-full" : "w-fit"}
             px-3 py-2 rounded-lg transition-all duration-200
             ${resizeClasses[resize]}
             ${variantClasses[variant]}
@@ -55275,23 +56620,23 @@ interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   tooltip?: string;
 }
 
-// Label Component  
-export const Label: React.FC<LabelProps> = ({ 
-  children, 
-  htmlFor, 
-  required = false, 
+// Label Component
+export const Label: React.FC<LabelProps> = ({
+  children,
+  htmlFor,
+  required = false,
   disabled = false,
   size = "md",
   weight = "medium",
   className = "",
   showRequiredSymbol = true,
   tooltip,
-  ...props 
+  ...props
 }) => {
   const sizeClasses: Record<LabelSize, string> = {
     xs: "text-xs",
     sm: "text-sm",
-    md: "text-base", 
+    md: "text-base",
     lg: "text-lg",
     xl: "text-xl"
   };
@@ -55307,8 +56652,8 @@ export const Label: React.FC<LabelProps> = ({
     <label
       htmlFor={htmlFor}
       className={`
-        ${sizeClasses[size]} 
-        ${weightClasses[weight]} 
+        ${sizeClasses[size]}
+        ${weightClasses[weight]}
         block text-gray-900 dark:text-gray-100
         ${disabled ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
@@ -55324,18 +56669,18 @@ export const Label: React.FC<LabelProps> = ({
       )}
       {tooltip && (
         <span className="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-4 w-4 inline" 
-            fill="none" 
-            viewBox="0 0 24 24" 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4 inline"
+            fill="none"
+            viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
         </span>
@@ -55647,18 +56992,18 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         target: { value: '' },
         currentTarget: { value: '' },
       } as React.ChangeEvent<HTMLInputElement>;
-      
+
       // If an onChange is passed from register, call it with an empty value
       props.onChange?.(syntheticEvent);
-      
+
       onClear?.();
-      
+
       // Focus the input
       if (ref && 'current' in ref && ref.current) {
         ref.current.focus();
       }
     };
-    
+
     const shouldShowClear = clearable && !disabled && !isLoading && (String((value) || '').length > 0 || liveHasValue);
     const defaultValue = (props as { defaultValue?: string | number })?.defaultValue;
     const rawVal = value ?? defaultValue ?? '';
@@ -55683,7 +57028,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       // Text colors
       !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100'
     );
-    
+
     return (
       <div className={clsx('relative', fullWidth && 'w-full')}>
         {leftIcon && <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">{leftIcon}</div>}
@@ -55725,72 +57070,72 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
   const getRoleConfig = (role: UserRole) => {
     switch (role) {
       case UserRole.ADMIN:
-        return { 
-          bg: "bg-red-50 dark:bg-red-900/50 bg-linear-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30", 
+        return {
+          bg: "bg-red-50 dark:bg-red-900/50 bg-linear-to-r from-red-500/20 to-pink-500/20 dark:from-red-500/30 dark:to-pink-500/30",
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
           shadow: "shadow-red-500/20 dark:shadow-red-500/30",
           icon: "👑"
         };
       case UserRole.MAANADMIN:
-        return { 
-          bg: "bg-indigo-50 dark:bg-indigo-900/50 bg-linear-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30", 
+        return {
+          bg: "bg-indigo-50 dark:bg-indigo-900/50 bg-linear-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30",
           text: "text-indigo-700 dark:text-indigo-300",
           border: "border-indigo-200/60 dark:border-indigo-500/40",
           shadow: "shadow-indigo-500/20 dark:shadow-indigo-500/30",
           icon: "⭐"
         };
       case UserRole.SDHADMIN:
-        return { 
-          bg: "bg-emerald-50 dark:bg-emerald-900/50 bg-linear-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30", 
+        return {
+          bg: "bg-emerald-50 dark:bg-emerald-900/50 bg-linear-to-r from-emerald-500/20 to-teal-500/20 dark:from-emerald-500/30 dark:to-teal-500/30",
           text: "text-emerald-700 dark:text-emerald-300",
           border: "border-emerald-200/60 dark:border-emerald-500/40",
           shadow: "shadow-emerald-500/20 dark:shadow-emerald-500/30",
           icon: "🚀"
         };
       case UserRole.ASSETADMIN:
-        return { 
-          bg: "bg-slate-50 dark:bg-slate-900/50 bg-linear-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30", 
+        return {
+          bg: "bg-slate-50 dark:bg-slate-900/50 bg-linear-to-r from-slate-500/20 to-gray-500/20 dark:from-slate-500/30 dark:to-gray-500/30",
           text: "text-slate-700 dark:text-slate-300",
           border: "border-slate-200/60 dark:border-slate-500/40",
           shadow: "shadow-slate-500/20 dark:shadow-slate-500/30",
           icon: "⚙️"
         };
       case UserRole.MNGADMIN:
-        return { 
-          bg: "bg-amber-50 dark:bg-amber-900/50 bg-linear-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30", 
+        return {
+          bg: "bg-amber-50 dark:bg-amber-900/50 bg-linear-to-r from-amber-500/20 to-orange-500/20 dark:from-amber-500/30 dark:to-orange-500/30",
           text: "text-amber-700 dark:text-amber-300",
           border: "border-amber-200/60 dark:border-amber-500/40",
           shadow: "shadow-amber-500/20 dark:shadow-amber-500/30",
           icon: "📊"
         };
       case UserRole.VIEWER:
-        return { 
-          bg: "bg-gray-50 dark:bg-gray-900/50 bg-linear-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25", 
+        return {
+          bg: "bg-gray-50 dark:bg-gray-900/50 bg-linear-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
           shadow: "shadow-gray-500/10 dark:shadow-gray-500/20",
           icon: "👁️"
         };
       case UserRole.AUTHENTICATED:
-        return { 
-          bg: "bg-sky-50 dark:bg-sky-900/50 bg-linear-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30", 
+        return {
+          bg: "bg-sky-50 dark:bg-sky-900/50 bg-linear-to-r from-sky-500/20 to-blue-500/20 dark:from-sky-500/30 dark:to-blue-500/30",
           text: "text-sky-700 dark:text-sky-300",
           border: "border-sky-200/60 dark:border-sky-500/40",
           shadow: "shadow-sky-500/20 dark:shadow-sky-500/30",
           icon: "✅"
         };
       case UserRole.ANON:
-        return { 
-          bg: "bg-zinc-50 dark:bg-zinc-900/50 bg-linear-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25", 
+        return {
+          bg: "bg-zinc-50 dark:bg-zinc-900/50 bg-linear-to-r from-zinc-400/15 to-stone-400/15 dark:from-zinc-500/25 dark:to-stone-500/25",
           text: "text-zinc-600 dark:text-zinc-400",
           border: "border-zinc-200/50 dark:border-zinc-600/40",
           shadow: "shadow-zinc-500/10 dark:shadow-zinc-500/20",
           icon: "❓"
         };
       default:
-        return { 
-          bg: "bg-neutral-50 dark:bg-neutral-900/50 bg-linear-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25", 
+        return {
+          bg: "bg-neutral-50 dark:bg-neutral-900/50 bg-linear-to-r from-neutral-400/15 to-gray-400/15 dark:from-neutral-500/25 dark:to-gray-500/25",
           text: "text-neutral-600 dark:text-neutral-400",
           border: "border-neutral-200/50 dark:border-neutral-600/40",
           shadow: "shadow-neutral-500/10 dark:shadow-neutral-500/20",
@@ -55805,7 +57150,7 @@ export const RoleBadge = ({ role }: { role: UserRole }) => {
   return (
     <span
       className={`
-        inline-flex items-center gap-1.5 px-3 py-1.5 
+        inline-flex items-center gap-1.5 px-3 py-1.5
         rounded-full text-xs font-semibold tracking-wide
         border backdrop-blur-sm
         transition-all duration-300 ease-out
@@ -55834,7 +57179,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
   const getStatusConfig = (status: string | boolean | null) => {
     // Handle null/undefined cases first
     if (status === null || status === undefined) {
-      return { 
+      return {
         bg: "bg-gray-50 dark:bg-gray-900/50 bg-linear-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
         text: "text-gray-600 dark:text-gray-400",
         border: "border-gray-200/50 dark:border-gray-600/40",
@@ -55885,7 +57230,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: true
         };
       case "inactive":
-        return { 
+        return {
           bg: "bg-gray-50 dark:bg-gray-900/50 bg-linear-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
@@ -55896,7 +57241,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: false
         };
       case "suspended":
-        return { 
+        return {
           bg: "bg-red-50 dark:bg-red-900/50 bg-linear-to-r from-red-500/20 to-orange-500/20 dark:from-red-500/30 dark:to-orange-500/30",
           text: "text-red-700 dark:text-red-300",
           border: "border-red-200/60 dark:border-red-500/40",
@@ -55962,7 +57307,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
           pulse: false
         };
       default:
-        return { 
+        return {
           bg: "bg-gray-50 dark:bg-gray-900/50 bg-linear-to-r from-gray-400/15 to-slate-400/15 dark:from-gray-500/25 dark:to-slate-500/25",
           text: "text-gray-600 dark:text-gray-400",
           border: "border-gray-200/50 dark:border-gray-600/40",
@@ -55990,7 +57335,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         dark:shadow-lg
       `}
     >
-      <span 
+      <span
         className={`
           relative w-2 h-2 rounded-full shadow-sm
           ${config.dot} ${config.dotShadow}
@@ -55998,7 +57343,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null }) => 
         `}
       >
         {config.pulse && (
-          <span 
+          <span
             className={`
               absolute inset-0 w-2 h-2 rounded-full opacity-75
               animate-ping
@@ -56035,7 +57380,7 @@ export function Breadcrumbs() {
     // If it looks like a UUID, show "Details" instead of the ugly ID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(segment)) return "Details";
-    
+
     // Replace hyphens/underscores with spaces and Title Case
     return segment
       .replace(/[-_]/g, " ")
@@ -56048,15 +57393,15 @@ export function Breadcrumbs() {
     <nav aria-label="Breadcrumb" className="mb-2 hidden sm:block">
       <ol className="flex items-center space-x-2">
         <li>
-          <Link 
-            href="/dashboard" 
+          <Link
+            href="/dashboard"
             className="text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
           >
             <Home className="h-4 w-4" />
             <span className="sr-only">Home</span>
           </Link>
         </li>
-        
+
         {segments.map((segment, index) => {
           // Don't show "Dashboard" text again since we have the Home icon
           if (segment === "dashboard") return null;
@@ -56327,8 +57672,8 @@ export const Modal = ({
   // This prevents closing when selecting text and dragging mouse out of the box
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (
-      closeOnOverlayClick && 
-      e.target === e.currentTarget && 
+      closeOnOverlayClick &&
+      e.target === e.currentTarget &&
       mouseDownTarget.current === e.currentTarget
     ) {
       onClose();
@@ -56925,14 +58270,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
-  
+
 
   // Handle modal opening/closing
   useEffect(() => {
     if (isOpen) {
       // Store previously focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
-      
+
       setIsVisible(true);
       // Use requestAnimationFrame for smoother animations
       requestAnimationFrame(() => {
@@ -56949,7 +58294,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         // Restore body scroll
         document.body.style.overflow = '';
         document.body.style.paddingRight = '';
-        
+
         // Restore focus to previously active element
         if (previousActiveElement.current) {
           previousActiveElement.current.focus();
@@ -57022,7 +58367,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const handleConfirm = async () => {
     if (loading) return;
-    
+
     try {
       await onConfirm();
     } catch (error) {
@@ -57032,7 +58377,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   const getIcon = () => {
     const className = `w-6 h-6 ${getIconColor()}`;
-    
+
     switch (type) {
       case 'danger':
         return <icons.Error className={className} />;
@@ -57137,8 +58482,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   {getIcon()}
                 </div>
               )}
-              <h3 
-                id="modal-title" 
+              <h3
+                id="modal-title"
                 className="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-6"
               >
                 {title}
@@ -57286,7 +58631,7 @@ export const ConfirmModalDemo: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
           Improved ConfirmModal Demo
         </h1>
-        
+
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4 dark:text-gray-200">Modal Types</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -57660,7 +59005,7 @@ export const Switch: React.FC<SwitchProps> = ({
           className={`
             ${
               sizeClasses[size].container
-            } relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent 
+            } relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent
             transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
             ${
               checked
@@ -57674,7 +59019,7 @@ export const Switch: React.FC<SwitchProps> = ({
         >
           <span
             className={`
-              ${sizeClasses[size].thumb} ${translateClasses[size]} pointer-events-none 
+              ${sizeClasses[size].thumb} ${translateClasses[size]} pointer-events-none
               rounded-full bg-white shadow-lg transform ring-0 transition duration-200 ease-in-out
               flex items-center justify-center
             `}
@@ -57730,11 +59075,11 @@ export const Switch: React.FC<SwitchProps> = ({
 // <Switch checked={isActive} onChange={setIsActive} />
 
 // // With label on left
-// <Switch 
-//   label="Dark Mode" 
-//   labelPosition="left" 
-//   checked={darkMode} 
-//   onChange={setDarkMode} 
+// <Switch
+//   label="Dark Mode"
+//   labelPosition="left"
+//   checked={darkMode}
+//   onChange={setDarkMode}
 // />
 
 // // With color and status text
@@ -57893,7 +59238,7 @@ export default function ThemeToggle() {
   const [hasMounted, setHasMounted] = useState(false); // **THE FIX**
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // ** Only render the real UI after the component has mounted on the client.**
   useEffect(() => {
     setHasMounted(true);
@@ -58298,7 +59643,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       return () => clearTimeout(handler);
     }
   }, [searchTerm, serverSide, onSearch]);
-  
+
   useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -58479,8 +59824,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 
-            11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 
+            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0
+            11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0
             102 0V6a1 1 0 00-1-1z"
             clipRule="evenodd"
           />
@@ -58493,11 +59838,11 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M8.257 3.099c.765-1.36 2.722-1.36 
-            3.486 0l5.58 9.92c.75 1.334-.213 
-            2.98-1.742 2.98H4.42c-1.53 
-            0-2.493-1.646-1.743-2.98l5.58-9.92zM11 
-            13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 
+            d="M8.257 3.099c.765-1.36 2.722-1.36
+            3.486 0l5.58 9.92c.75 1.334-.213
+            2.98-1.742 2.98H4.42c-1.53
+            0-2.493-1.646-1.743-2.98l5.58-9.92zM11
+            13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0
             00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
             clipRule="evenodd"
           />
@@ -58510,10 +59855,10 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path
             fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 
-            0116 0zm-7-4a1 1 0 11-2 0 1 1 
-            0 012 0zM9 9a1 1 0 000 2v3a1 1 
-            0 001 1h1a1 1 0 100-2v-3a1 1 0 
+            d="M18 10a8 8 0 11-16 0 8 8 0
+            0116 0zm-7-4a1 1 0 11-2 0 1 1
+            0 012 0zM9 9a1 1 0 000 2v3a1 1
+            0 001 1h1a1 1 0 100-2v-3a1 1 0
             00-1-1H9z"
             clipRule="evenodd"
           />
@@ -58698,12 +60043,12 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path
                 fillRule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 
-                8.586l4.293-4.293a1 1 0 
-                111.414 1.414L11.414 10l4.293 
-                4.293a1 1 0 01-1.414 1.414L10 
-                11.414l-4.293 4.293a1 1 0 
-                01-1.414-1.414L8.586 10 4.293 
+                d="M4.293 4.293a1 1 0 011.414 0L10
+                8.586l4.293-4.293a1 1 0
+                111.414 1.414L11.414 10l4.293
+                4.293a1 1 0 01-1.414 1.414L10
+                11.414l-4.293 4.293a1 1 0
+                01-1.414-1.414L8.586 10 4.293
                 5.707a1 1 0 010-1.414z"
                 clipRule="evenodd"
               />
@@ -58715,6 +60060,89 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   );
 };
 
+```
+
+<!-- path: components/common/KeyboardShortcutsModal.tsx -->
+```typescript
+// components/common/KeyboardShortcutsModal.tsx
+"use client";
+
+import {  useState } from "react";
+import { Modal } from "@/components/common/ui";
+import { Command, Search, X, Save, Filter } from "lucide-react";
+import { useHotkeys } from "@/hooks/useHotkeys";
+
+interface ShortcutGroup {
+  category: string;
+  shortcuts: { keys: string[]; description: string; icon?: React.ElementType }[];
+}
+
+const SHORTCUTS: ShortcutGroup[] = [
+  {
+    category: "Navigation",
+    shortcuts: [
+      { keys: ["⌘", "K"], description: "Open Command Menu / Global Search", icon: Command },
+      { keys: ["Esc"], description: "Close Modals / Clear Selection", icon: X },
+      { keys: ["?"], description: "Show Keyboard Shortcuts (this window)" },
+    ]
+  },
+  {
+    category: "Data Tables",
+    shortcuts: [
+      { keys: ["/"], description: "Focus Search Bar", icon: Search },
+      { keys: ["Shift", "F"], description: "Toggle Filters Panel", icon: Filter },
+      { keys: ["Shift", "R"], description: "Refresh Data" },
+    ]
+  },
+  {
+    category: "Forms & Actions",
+    shortcuts: [
+      { keys: ["Ctrl", "Enter"], description: "Submit Form", icon: Save },
+    ]
+  }
+];
+
+export function KeyboardShortcutsModal() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Toggle with '?' (Shift + /) or Ctrl+/
+  useHotkeys('shift+?', () => setIsOpen(prev => !prev));
+  useHotkeys('ctrl+/', () => setIsOpen(prev => !prev));
+
+  return (
+    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Keyboard Shortcuts" size="lg">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-2">
+        {SHORTCUTS.map((group) => (
+          <div key={group.category} className="space-y-3">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 pb-1">
+              {group.category}
+            </h4>
+            <div className="space-y-2">
+              {group.shortcuts.map((shortcut, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    {shortcut.icon && <shortcut.icon className="w-3.5 h-3.5 text-gray-400" />}
+                    <span>{shortcut.description}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {shortcut.keys.map((key, kIdx) => (
+                      <kbd
+                        key={kIdx}
+                        className="min-w-6 text-center px-1.5 py-0.5 text-xs font-sans font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-md dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
+                      >
+                        {key}
+                      </kbd>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
 ```
 
 <!-- path: components/common/page-header/index.ts -->
@@ -58797,17 +60225,17 @@ export function PageHeader({
             <div className='hidden lg:flex items-center gap-2 shrink-0 ml-4'>
               {actions.map((action, index) => {
                 // THE FIX: Destructure these to REMOVE them from btnProps
-                const { 
+                const {
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  hideTextOnMobile, 
+                  hideTextOnMobile,
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  hideOnMobile, 
+                  hideOnMobile,
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  priority, 
-                  'data-dropdown': isDropdown, 
+                  priority,
+                  'data-dropdown': isDropdown,
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  dropdownoptions, 
-                  ...btnProps 
+                  dropdownoptions,
+                  ...btnProps
                 } = action;
 
                 return isDropdown ? (
@@ -58840,15 +60268,15 @@ export function PageHeader({
             <div className='flex lg:hidden items-center gap-2 w-full sm:w-auto sm:shrink-0'>
               {actions.map((action, index) => {
                  // THE FIX: Destructure here too
-                 const { 
-                  hideTextOnMobile, 
-                  hideOnMobile, 
+                 const {
+                  hideTextOnMobile,
+                  hideOnMobile,
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  priority, 
-                  'data-dropdown': isDropdown, 
+                  priority,
+                  'data-dropdown': isDropdown,
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  dropdownoptions, 
-                  ...btnProps 
+                  dropdownoptions,
+                  ...btnProps
                 } = action;
 
                 return isDropdown ? (
@@ -59325,14 +60753,14 @@ export const FormCard: React.FC<FormCardProps> = ({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div 
+      <div
         className="shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
         style={{
           animation: "slideDown 0.5s ease-out 0.1s both"
         }}
       >
         <div>
-          <h2 
+          <h2
             className="text-2xl font-bold text-gray-900 dark:text-white"
             style={{
               animation: "fadeInUp 0.6s ease-out 0.2s both"
@@ -59341,7 +60769,7 @@ export const FormCard: React.FC<FormCardProps> = ({
             {title}
           </h2>
           {subtitle && (
-            <p 
+            <p
               className="text-gray-600 dark:text-gray-400 text-sm mt-1"
               style={{
                 animation: "fadeInUp 0.6s ease-out 0.3s both"
@@ -59368,33 +60796,33 @@ export const FormCard: React.FC<FormCardProps> = ({
       {/* Form Body + Footer */}
       <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0">
         {/* Body */}
-        <div 
+        <div
           className="flex-1 overflow-y-auto relative min-h-0"
           style={{
             animation: "fadeInUp 0.6s ease-out 0.3s both"
           }}
         >
           {isLoading && (
-            <div 
+            <div
               className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10"
               style={{
                 animation: "fadeIn 0.3s ease-out"
               }}
             >
               <div className="flex items-center space-x-2">
-                <div 
+                <div
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out infinite both"
                   }}
                 ></div>
-                <div 
+                <div
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out 0.16s infinite both"
                   }}
                 ></div>
-                <div 
+                <div
                   className="w-4 h-4 bg-blue-600 rounded-full"
                   style={{
                     animation: "bounce 1.4s ease-in-out 0.32s infinite both"
@@ -59408,7 +60836,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         </div>
 
         {/* Footer */}
-        <div 
+        <div
           className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
           style={{
             animation: "slideUp 0.5s ease-out 0.4s both"
@@ -59493,7 +60921,7 @@ export const FormCard: React.FC<FormCardProps> = ({
 
   if (standalone) {
     return (
-      <div 
+      <div
         className="fixed inset-0 z-9999 flex items-center justify-center p-4"
         style={{
           background: "rgba(0, 0, 0, 0.6)",
@@ -59556,16 +60984,16 @@ const COLOR_OPTIONS = [
 // Helper moved outside component to avoid recreation
 const parseHtmlToItems = (html: string | null): StatusItem[] => {
   if (!html) return [];
-  
+
   const lines = html.split(/<br\s*\/?>/i).map(l => l.trim()).filter(Boolean);
-  
+
   return lines.map(line => {
     const match = line.match(/<strong\s+class="([^"]+)">\s*([^:]+):<\/strong>\s*(.*)/i);
-    
+
     if (match) {
       return {
         id: uuidv4(),
-        color: match[1], 
+        color: match[1],
         label: match[2].trim(),
         value: match[3].trim()
       };
@@ -59607,17 +61035,17 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
 
   const handleAddItem = () => {
     if (!newLabel.trim() || !newValue.trim()) return;
-    
+
     const newItem: StatusItem = {
       id: uuidv4(),
       label: newLabel.trim(),
       value: newValue.trim(),
       color: newColor
     };
-    
+
     const updatedItems = [...items, newItem];
     onChange(generateHtml(updatedItems));
-    
+
     setNewLabel("");
     setNewValue("");
   };
@@ -59637,7 +61065,7 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
   return (
     <div className="space-y-3">
       {label && <Label>{label}</Label>}
-      
+
       {/* List of Existing Items */}
       <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
         {items.length === 0 && (
@@ -59646,15 +61074,15 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
           </p>
         )}
         {items.map((item) => {
-          const colorObj = COLOR_OPTIONS.find(c => c.class === item.color) || COLOR_OPTIONS[5]; 
+          const colorObj = COLOR_OPTIONS.find(c => c.class === item.color) || COLOR_OPTIONS[5];
           return (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               className={`flex items-start justify-between p-3 rounded-lg border ${colorObj.border} bg-opacity-50 dark:bg-opacity-10 transition-all`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm break-all">
                 <span className={`font-bold ${item.color} whitespace-nowrap`}>{item.label}:</span>
-                <span 
+                <span
                   className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm"
                   dangerouslySetInnerHTML={{ __html: item.value }}
                 />
@@ -59699,7 +61127,7 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
               </select>
             </div>
         </div>
-        
+
         <div>
           <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Value</label>
           <div className="flex gap-2">
@@ -59721,7 +61149,7 @@ export const DynamicStatusBuilder = ({ control, name, label, error }: DynamicSta
           </div>
         </div>
       </div>
-      
+
       {error && <p className="text-xs text-red-500 mt-1">{error.message}</p>}
     </div>
   );
@@ -60360,7 +61788,7 @@ const IPAddressInput: React.FC<IPAddressInputProps> = ({
   const isValidIPv6Basic = useCallback((ip: string): boolean => {
     // Remove potential CIDR suffix for validation
     const [addressPart, cidrPart] = ip.split('/');
-    
+
     if (cidrPart) {
       const cidrNum = parseInt(cidrPart, 10);
       if (isNaN(cidrNum) || cidrNum < 0 || cidrNum > 128) return false;
@@ -60548,14 +61976,14 @@ import LinkExtension from "@tiptap/extension-link";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Undo, 
-  Redo, 
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+  Undo,
+  Redo,
   Code,
   Heading1,
   Heading2,
@@ -60608,7 +62036,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       >
         <Italic size={16} />
       </button>
-      
+
       <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
 
       {/* Headings */}
@@ -60685,7 +62113,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       {editor.isActive('table') && (
         <>
            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-           
+
            <button
             type="button"
             onClick={() => editor.chain().focus().addColumnAfter().run()}
@@ -60702,7 +62130,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           >
             <MinusSquare size={16} className="rotate-90" />
           </button>
-          
+
           <button
             type="button"
             onClick={() => editor.chain().focus().addRowAfter().run()}
@@ -60736,7 +62164,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           >
             <Split size={16} />
           </button>
-          
+
           <button
             type="button"
             onClick={() => editor.chain().focus().deleteTable().run()}
@@ -60838,8 +62266,8 @@ export const RichTextEditor = ({ value, onChange, label, error, disabled, placeh
       {label && <Label className="mb-2">{label}</Label>}
       <div className={`
         border rounded-lg bg-white dark:bg-gray-900 transition-colors
-        ${error 
-          ? "border-red-500 dark:border-red-500" 
+        ${error
+          ? "border-red-500 dark:border-red-500"
           : "border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
         }
         ${disabled ? "opacity-60 cursor-not-allowed" : ""}
@@ -60876,9 +62304,9 @@ interface OfcCableCardProps {
 export const OfcCableCard: React.FC<OfcCableCardProps> = ({
   cable, onView, onEdit, onDelete, canEdit, canDelete
 }) => {
-  
+
   return (
-    <div 
+    <div
         onClick={() => onView(cable)}
         className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group cursor-pointer relative"
     >
@@ -60902,7 +62330,7 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
 
       {/* Body */}
       <div className="p-4 space-y-3 flex-1 text-sm">
-         
+
          {/* Route Visual */}
          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between gap-2">
@@ -60956,7 +62384,7 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
                 <FiEdit2 className="w-4 h-4" />
             </Button>
          )}
-         
+
          {canDelete && (
             <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(cable)} title="Delete Cable">
                 <FiTrash2 className="w-4 h-4" />
@@ -61314,9 +62742,9 @@ export const useRouteGeneration = <T extends FieldValues>({
   isEdit,
   setValue,
 }: UseRouteGenerationProps<T>) => {
-  
+
   // ** Removed the unnecessary generic type argument.**
-  const { data: existingRoutes, isLoading: existingRoutesLoading } = 
+  const { data: existingRoutes, isLoading: existingRoutesLoading } =
     useExistingRoutesQuery(startingNodeId, endingNodeId);
 
   const routeData = useMemo(() => {
@@ -61340,7 +62768,7 @@ export const useRouteGeneration = <T extends FieldValues>({
       setValue('route_name' as Path<T>, '' as PathValue<T, Path<T>>);
       return;
     }
-    
+
     if (existingRoutesLoading) {
       return;
     }
@@ -61897,8 +63325,8 @@ interface LoadingOverlayProps {
   message?: string;
 }
 
-const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
-  message = "Loading form data..." 
+const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
+  message = "Loading form data..."
 }) => (
   <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
     <div className="flex items-center space-x-3 bg-white dark:bg-gray-800 rounded-lg px-6 py-4 shadow-lg border dark:border-gray-700">
@@ -62047,18 +63475,18 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
         isLoading={isLoadingRoutesData}
         actions={actions}
       />
-      
+
       <div className='bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border dark:border-gray-700'>
         <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
           Select an OFC Route to Manage
         </label>
-        <SearchableSelect 
-          options={routeOptions} 
-          value={selectedRouteId || ""} 
-          onChange={handleRouteChange} 
-          placeholder={isLoadingRoutesData ? "Loading routes..." : "Select a route"} 
-          disabled={isLoadingRoutesData || isLoadingRouteDetails} 
-          clearable 
+        <SearchableSelect
+          options={routeOptions}
+          value={selectedRouteId || ""}
+          onChange={handleRouteChange}
+          placeholder={isLoadingRoutesData ? "Loading routes..." : "Select a route"}
+          disabled={isLoadingRoutesData || isLoadingRouteDetails}
+          clearable
         />
       </div>
     </>
@@ -62087,38 +63515,38 @@ interface RouteVisualizationProps {
     canDelete: boolean;
 }
 
-export default function RouteVisualization({ 
-  routeDetails, 
-  onJcClick, 
-  onEditJc, 
+export default function RouteVisualization({
+  routeDetails,
+  onJcClick,
+  onEditJc,
   onDeleteJc,
   canEdit,
   canDelete
 }: RouteVisualizationProps) {
   const { route, jointBoxes, segments } = routeDetails;
-  
+
   const allPoints = [
-    { 
-      id: route.sn_id, 
-      name: route.sn_name || route.start_site?.name || 'Start Node', 
-      type: 'site' as const, 
-      position: 0, 
-      raw: {} 
+    {
+      id: route.sn_id,
+      name: route.sn_name || route.start_site?.name || 'Start Node',
+      type: 'site' as const,
+      position: 0,
+      raw: {}
     },
-    ...jointBoxes.map(e => ({ 
+    ...jointBoxes.map(e => ({
         id: e.node_id,
-        name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`, 
-        type: 'jointBox' as const, 
-        position: e.attributes?.position_on_route || 0, 
+        name: e.attributes?.name || e.node?.name || `JC-${e.id?.slice(-4)}`,
+        type: 'jointBox' as const,
+        position: e.attributes?.position_on_route || 0,
         status: e.status,
-        raw: e 
+        raw: e
     })),
-    { 
-      id: route.en_id, 
-      name: route.en_name || route.end_site?.name || 'End Node', 
-      type: 'site' as const, 
-      position: 100, 
-      raw: {} 
+    {
+      id: route.en_id,
+      name: route.en_name || route.end_site?.name || 'End Node',
+      type: 'site' as const,
+      position: 100,
+      raw: {}
     }
   ].sort((a, b) => a.position - b.position);
 
@@ -62137,32 +63565,32 @@ export default function RouteVisualization({
           </div>
         </div>
       </div>
-      
+
       <div className="mb-8">
         <div className="overflow-x-auto pb-4">
           <div className="relative min-w-[800px] h-64 py-8">
-            <div 
-              className="absolute top-1/2 h-2 bg-linear-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg" 
-              style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }} 
+            <div
+              className="absolute top-1/2 h-2 bg-linear-to-r from-blue-400 via-blue-500 to-blue-600 rounded-full shadow-lg"
+              style={{ transform: 'translateY(-50%)', left: '4.8%', width: '92%' }}
             />
-            
+
             <div className="absolute top-0 left-0 right-0 h-full">
               {allPoints.map((point, index) => {
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
                 const isFirst = index === 0;
-                
+
                 return (
-                  <motion.div 
-                    key={point.id} 
-                    className="absolute top-1/2 flex flex-col items-center group" 
-                    style={{ 
-                      left: `calc(4% + ${point.position}% * 0.92)`, 
+                  <motion.div
+                    key={point.id}
+                    className="absolute top-1/2 flex flex-col items-center group"
+                    style={{
+                      left: `calc(4% + ${point.position}% * 0.92)`,
                       transform: 'translateX(-50%) translateY(-50%)'
                     }}
                     initial={{ opacity: 0, scale: 0.5, y: -20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ 
-                      duration: 0.6, 
+                    transition={{
+                      duration: 0.6,
                       delay: index * 0.1,
                       ease: "easeOut"
                     }}
@@ -62173,14 +63601,14 @@ export default function RouteVisualization({
                       </p>
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white dark:border-t-gray-700"></div>
                     </div>
-                    
-                    <div 
+
+                    <div
                       onClick={() => point.type === 'jointBox' && onJcClick(point.raw as JointBox)}
                       className={`relative w-6 h-6 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-lg ${
-                        point.type === 'site' 
-                          ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300' 
-                          : point.status === 'existing' 
-                            ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300' 
+                        point.type === 'site'
+                          ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300'
+                          : point.status === 'existing'
+                            ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300'
                             : 'bg-yellow-500 border-yellow-200 hover:bg-yellow-600 hover:border-yellow-300'
                       } ${point.type === 'jointBox' ? 'cursor-pointer hover:scale-125 hover:shadow-xl' : 'hover:scale-110'}`}
                       title={`${point.name} at ${km} km`}
@@ -62189,34 +63617,34 @@ export default function RouteVisualization({
                         {point.type === 'site' ? (isFirst ? 'S' : 'E') : 'J'}
                       </span>
                     </div>
-                    
+
                     <div className="absolute top-10 text-center min-w-max">
                       <p className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md border dark:border-gray-600 shadow-sm">
                         {km} km
                       </p>
                     </div>
-                    
+
                     {point.type === 'jointBox' && (
                       <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
                         {canEdit && (
-                            <button 
+                            <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onEditJc(point.raw as JointBox);
-                            }} 
-                            className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                            }}
+                            className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                             title="Edit JC"
                             >
                             <Edit size={14} />
                             </button>
                         )}
                         {canDelete && (
-                            <button 
+                            <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onDeleteJc((point.raw as JointBox).id!);
-                            }} 
-                            className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                            }}
+                            className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                             title="Delete JC"
                             >
                             <Trash2 size={14} />
@@ -62231,7 +63659,7 @@ export default function RouteVisualization({
           </div>
         </div>
       </div>
-      
+
       <div className="border-t dark:border-gray-600 pt-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center">
@@ -62244,15 +63672,15 @@ export default function RouteVisualization({
             </div>
           )}
         </div>
-        
+
         {segments.length > 0 ? (
           <div className="space-y-3">
             {segments.map((seg, index) => {
               const start = allPoints.find(p => p.id === seg.start_node_id);
               const end = allPoints.find(p => p.id === seg.end_node_id);
               return (
-                <motion.div 
-                  key={seg.id} 
+                <motion.div
+                  key={seg.id}
                   className="bg-linear-to-r from-gray-50 to-gray-100 dark:from-gray-700/30 dark:to-gray-700/50 p-4 rounded-xl border dark:border-gray-600/50 hover:from-blue-50 hover:to-blue-100 dark:hover:from-gray-700/50 dark:hover:to-gray-700/70 transition-all duration-300 hover:shadow-md"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -62284,7 +63712,7 @@ export default function RouteVisualization({
             })}
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             className='text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600'
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -62405,7 +63833,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
           <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
             Active Splice Connections ({spliceConnections.length})
           </h4>
-          
+
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
@@ -62469,10 +63897,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
                     <div className="text-sm font-medium text-gray-900 dark:text-gray-100 wrap-break-word">{splice.loss_db}</div>
                   </div>
                 </div>
-                <Button 
-                  variant="danger" 
-                  size="sm" 
-                  onClick={() => setSpliceToDelete(splice)} 
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setSpliceToDelete(splice)}
                   leftIcon={<FiTrash2 />}
                   className="w-full"
                 >
@@ -62495,7 +63923,7 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
           <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
             Available Segments ({availableFibers.length})
           </h4>
-          
+
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -62546,10 +63974,10 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
 
   return (
     <>
-      <Modal 
-        isOpen={isOpen} 
-        onClose={onClose} 
-        title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`} 
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`}
         size="full"
       >
         <div className="p-4 md:p-6">
@@ -62742,7 +64170,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       onClose();
     } catch (error) {
       console.error('Error in handleValidSubmit:', error);
-    
+
       if (error instanceof Error) {
         toast.error(
           `Failed to ${isEditMode ? 'update' : 'create'} JC: ${error.message}`
@@ -62843,11 +64271,11 @@ interface AutoSplicePair {
     lossDb: string;
 }
 
-const useNormalizedSplicingDetails = (junctionClosureId: string | null): { 
-  normalizedData: JcSplicingDetails | null; 
-  isLoading: boolean; 
-  isError: boolean; 
-  error: Error | null 
+const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
+  normalizedData: JcSplicingDetails | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null
 } => {
     const { data: rawData, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
 
@@ -62864,7 +64292,7 @@ const useNormalizedSplicingDetails = (junctionClosureId: string | null): {
 export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junctionClosureId, canEdit }) => {
 
     const { normalizedData: spliceDetails, isLoading, isError, error } = useNormalizedSplicingDetails(junctionClosureId);
-    
+
     const manageSpliceMutation = useManageSplice();
     const autoSpliceMutation = useAutoSplice();
     const syncPathUpdatesMutation = useSyncPathUpdates();
@@ -62886,10 +64314,10 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             if (segment1 && segment2) {
                 const availableFibers1 = segment1.fibers.filter(f => f.status === 'available').map(f => f.fiber_no);
                 const availableFibers2 = segment2.fibers.filter(f => f.status === 'available').map(f => f.fiber_no);
-                
+
                 const pairs: AutoSplicePair[] = [];
                 const maxPairs = Math.min(availableFibers1.length, availableFibers2.length);
-                
+
                 for (let i = 0; i < maxPairs; i++) {
                     pairs.push({
                         fiber1No: availableFibers1[i],
@@ -62897,7 +64325,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         lossDb: '0.3'
                     });
                 }
-                
+
                 setAutoSplicePairs(pairs);
             }
         }
@@ -62915,7 +64343,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     const handleTargetFiberClick = (targetSegmentId: string, targetFiberNo: number) => {
         if (!canEdit || !selectedFiber || !junctionClosureId) return;
-        
+
         setPendingSpliceAction({
             type: 'manual',
             manualData: {
@@ -62930,10 +64358,10 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
 
     const handleAutoSplice = (segment1Id: string, segment2Id: string) => {
         if (!canEdit || !junctionClosureId || !spliceDetails) return;
-        
+
         const segment1 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment1Id);
         const segment2 = spliceDetails.segments_at_jc.find(s => s.segment_id === segment2Id);
-        
+
         setPendingSpliceAction({
             type: 'auto',
             autoData: {
@@ -62970,7 +64398,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             resetModal();
         } else if (pendingSpliceAction.type === 'auto' && pendingSpliceAction.autoData) {
             const { segment1Id, segment2Id } = pendingSpliceAction.autoData;
-            
+
             if (autoSpliceMode === 'uniform') {
                 const lossDb = parseFloat(lossDbValue) || 0;
                 autoSpliceMutation.mutate({
@@ -63039,8 +64467,8 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
             terminated: 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
         };
 
-        const titleText = fiber.connected_to_segment 
-          ? `-> F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}` 
+        const titleText = fiber.connected_to_segment
+          ? `-> F${fiber.connected_to_fiber ?? ''} on ${fiber.connected_to_segment}`
           : fiber.status.replace(/_/g, ' ');
 
         return (
@@ -63050,7 +64478,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 className={`flex items-center justify-between p-2 rounded-md transition-all duration-200 ${
                     isSelected ? 'ring-2 ring-yellow-500 bg-yellow-100 dark:bg-yellow-900/40' :
                     isTargetable ? 'cursor-pointer hover:bg-green-200 dark:hover:bg-green-800/50' :
-                    fiber.status === 'used_as_outgoing' ? 'cursor-not-allowed opacity-60' : 
+                    fiber.status === 'used_as_outgoing' ? 'cursor-not-allowed opacity-60' :
                     canEdit ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-default'
                 } ${statusClasses[fiber.status] || ''}`}
             >
@@ -63080,9 +64508,9 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 </Button>
                 {/* Ensure Apply Path Updates is also guarded */}
                 {canEdit && (
-                    <Button 
-                        size="sm" 
-                        variant="primary" 
+                    <Button
+                        size="sm"
+                        variant="primary"
                         onClick={() => syncPathUpdatesMutation.mutate({ jcId: junctionClosureId! })}
                         disabled={syncPathUpdatesMutation.isPending}
                         leftIcon={syncPathUpdatesMutation.isPending ? <Loader2 className="animate-spin" /> : <FiRefreshCw />}
@@ -63092,7 +64520,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                 )}
               </div>
             </div>
-            
+
             {selectedFiber && (
                 <div className="p-3 mb-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg text-center">
                     <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -63100,13 +64528,13 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                     </p>
                 </div>
             )}
-            
+
             <div className="grid gap-4" style={{ gridTemplateColumns }}>
                 {segments_at_jc.map((segment, index) => (
                     <div key={segment.segment_id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border dark:border-gray-700">
                         <h4 className="font-bold text-sm mb-2 truncate"><TruncateTooltip text={segment.segment_name} /></h4>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Fibers: {segment.fiber_count}</p>
-                        
+
                         {index < segments_at_jc.length - 1 && canEdit && (
                              <Button size="xs" onClick={() => handleAutoSplice(segment.segment_id, segments_at_jc[index + 1].segment_id)} className="w-full mb-3" variant="outline">
                                 <FiZap className="w-3 h-3 mr-1"/> Auto-Splice
@@ -63131,7 +64559,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                         <h3 className="text-lg font-semibold mb-4">
                             {pendingSpliceAction?.type === 'auto' ? 'Auto-Splice Configuration' : 'Configure Splice Loss'}
                         </h3>
-                        
+
                         {pendingSpliceAction?.type === 'auto' ? (
                             <>
                                 <div className="mb-4">
@@ -63158,7 +64586,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                             <div className="text-xs text-gray-600 dark:text-gray-400">Apply same loss to all splices</div>
                                         </div>
                                     </label>
-                                    
+
                                     <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                         <input
                                             type="radio"
@@ -63212,7 +64640,7 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                                 Apply to All
                                             </Button>
                                         </div>
-                                        
+
                                         <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                                             <div className="bg-gray-100 dark:bg-gray-900 px-3 py-2 grid grid-cols-3 gap-2 text-xs font-semibold">
                                                 <div>Fiber 1</div>
@@ -63270,15 +64698,15 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({ junction
                                 </div>
                             </>
                         )}
-                        
+
                         <div className="flex gap-3 justify-end">
                             <Button variant="outline" onClick={resetModal}>
                                 Cancel
                             </Button>
                             <Button onClick={confirmSplice} disabled={manageSpliceMutation.isPending || autoSpliceMutation.isPending}>
-                                {manageSpliceMutation.isPending || autoSpliceMutation.isPending ? 'Creating...' : 
-                                    pendingSpliceAction?.type === 'auto' 
-                                        ? `Create ${autoSplicePairs.length} Splice${autoSplicePairs.length !== 1 ? 's' : ''}` 
+                                {manageSpliceMutation.isPending || autoSpliceMutation.isPending ? 'Creating...' :
+                                    pendingSpliceAction?.type === 'auto'
+                                        ? `Create ${autoSplicePairs.length} Splice${autoSplicePairs.length !== 1 ? 's' : ''}`
                                         : 'Confirm Splice'}
                             </Button>
                         </div>
@@ -63305,16 +64733,16 @@ const SystemFiberTraceModal: React.FC<{
 }> = ({ isOpen, onClose, traceData, isLoading = false }) => {
   if (!isOpen) return null;
 
-  const RouteDisplay = ({ 
-    title, 
+  const RouteDisplay = ({
+    title,
     route,
-    icon: Icon, 
-    color 
-  }: { 
-    title: string; 
-    route: string; 
+    icon: Icon,
+    color
+  }: {
+    title: string;
+    route: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon: any; 
+    icon: any;
     color: string;
   }) => {
     const segments = route.split(" → ");
@@ -63326,7 +64754,7 @@ const SystemFiberTraceModal: React.FC<{
           <Icon className={`w-5 h-5 ${color}`} />
           <h3 className="font-semibold text-gray-800 dark:text-white">{title}</h3>
         </div>
-        
+
         {hasRoute ? (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
             <div className="flex flex-wrap items-center gap-2">
@@ -63759,7 +65187,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <PageSpinner text="Loading Circuit Details..." />
       ) : connection ? (
         <div className="space-y-8 pb-10">
-          
+
           {/* SECTION 1: CIRCUIT INFO */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
@@ -63970,7 +65398,7 @@ interface FiberAllocationModalProps {
 // Fetches fiber details (specifically ofc_id) given a list of fiber IDs
 const useReconstructPath = (fiberIds: string[] | null | undefined) => {
   const supabase = createClient();
-  
+
   return useTableQuery(supabase, 'v_ofc_connections_complete', {
       columns: 'id, ofc_id',
       filters: {
@@ -63997,8 +65425,8 @@ const PathCascadeRow: FC<{
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(createClient(), 'ofc_connections', {
       columns: 'id, fiber_no_sn',
       // Show fibers that are NOT assigned to a system, OR the fiber currently selected in this row
-      filters: { 
-        ofc_id: cableIdForThisRow || '', 
+      filters: {
+        ofc_id: cableIdForThisRow || '',
         // We rely on client-side filtering for the "available" logic mixed with "current selection" logic
         // to handle the re-edit case gracefully
       },
@@ -64006,15 +65434,15 @@ const PathCascadeRow: FC<{
       limit: 1000
   });
 
-  const fiberOptions = useMemo(() => 
+  const fiberOptions = useMemo(() =>
     (availableFibersResult?.data || [])
-      .filter(f => 
+      .filter(f =>
         // Show if fiber has no system_id (is free) AND is not picked elsewhere in current form
         // OR if it is the fiber currently selected in this specific dropdown
         ((!f.system_id) && !allAllocatedFiberIds.has(f.id)) || f.id === currentFiberId
       )
       .map(f => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` }))
-      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })), 
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
     [availableFibersResult, allAllocatedFiberIds, currentFiberId]
   );
 
@@ -64064,10 +65492,10 @@ const PathBuilder: FC<{
         currentSteps.forEach((step) => {
             if (!currentNode) return;
             const cableId = (step as PathStep).cable_id;
-            
+
             const cable = cables.find(c => c.id === cableId);
             if (!cable) return;
-            
+
             // Traverse: If start matches current, go to end. If end matches current, go to start.
             const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
             const nextNode = nodes.find(n => n.id === nextNodeId);
@@ -64097,7 +65525,7 @@ const PathBuilder: FC<{
             {fields.map((field, index) => {
                 let currentStartNode = startNode;
                 const currentSteps = pathValues || fields;
-                
+
                 // Re-calculate position for this specific row
                 for (let i = 0; i < index; i++) {
                     const prevCableId = (currentSteps[i] as PathStep).cable_id;
@@ -64108,7 +65536,7 @@ const PathBuilder: FC<{
                         currentStartNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
                     }
                 }
-                
+
                 const currentStepValue = currentSteps[index] as PathStep;
                 const cableId = currentStepValue?.cable_id;
                 const liveFiberId = currentStepValue?.fiber_id;
@@ -64135,7 +65563,7 @@ const PathBuilder: FC<{
                     />
                 );
             })}
-            
+
             <div className="space-y-2 pt-3 mt-3 border-t dark:border-gray-600">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Add Cascade from: {lastNode?.name || startNode?.name}</p>
                 <div className="flex items-center gap-2">
@@ -64180,7 +65608,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     // 2. Fetch Network Context
     const { data: allCablesResult, isLoading: isLoadingCables } = useTableQuery(createClient(), 'v_ofc_cables_complete');
     const { data: allNodesResult, isLoading: isLoadingNodes } = useTableQuery(createClient(), 'v_nodes_complete');
-    
+
     // 3. Fetch Existing Allocation Data (for Hydration)
     const { data: workingInFibers, isLoading: load1 } = useReconstructPath(connection?.working_fiber_in_ids);
     const { data: workingOutFibers, isLoading: load2 } = useReconstructPath(connection?.working_fiber_out_ids);
@@ -64192,18 +65620,18 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
     // 4. Re-hydrate form when data is loaded
     useEffect(() => {
         if (isOpen && connection && !isHydrating) {
-            
+
             const mapToSteps = (
                 // THE FIX: Updated type to allow nullable ID to match the view schema
                 fibersData: { data: { id: string | null, ofc_id: string | null }[] } | undefined,
                 originalIds: string[] | null | undefined
             ): PathStep[] => {
                 if (!fibersData?.data || !originalIds || originalIds.length === 0) return [];
-                
+
                 // Filter out null IDs just in case, although view shouldn't have them for this use case
                 const validFibers = fibersData.data.filter(f => f.id !== null);
                 const fiberMap = new Map(validFibers.map(f => [f.id!, f]));
-                
+
                 // Map using originalIds to preserve sequence order
                 return originalIds
                    .map(id => fiberMap.get(id!))
@@ -64228,7 +65656,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
         const node = allNodesResult.data.find(n => n.id === parentSystem.node_id);
         return node ? { id: node.id!, name: node.name! } : null;
     }, [parentSystem, allNodesResult]);
-    
+
     const endNode = useMemo(() => {
         if (!connection || !allNodesResult?.data) return null;
         // The end node ID is usually stored on the connection row from the View
@@ -64239,7 +65667,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
 
     const onValidSubmit = (data: FiberAllocationForm) => {
         if (!connection?.id) return;
-        
+
         const workingPathInIsDefined = data.working_path_in.length > 0 && data.working_path_in.every(s => s.fiber_id);
         const workingPathOutIsDefined = data.working_path_out.length > 0 && data.working_path_out.every(s => s.fiber_id);
 
@@ -64247,11 +65675,11 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
             toast.error("Both Working Path In (Tx) and Out (Rx) must be fully defined with fibers selected for each cascade.");
             return;
         }
-        
+
         provisionMutation.mutate({
             p_system_connection_id: connection.id,
             p_path_name: connection.service_name || `Path for ${connection.system_name}`,
-            p_working_tx_fiber_ids: data.working_path_in.map(s => s.fiber_id!), 
+            p_working_tx_fiber_ids: data.working_path_in.map(s => s.fiber_id!),
             p_working_rx_fiber_ids: data.working_path_out.map(s => s.fiber_id!),
             p_protection_tx_fiber_ids: data.protection_path_in.filter(s => s.fiber_id).map(s => s.fiber_id!),
             p_protection_rx_fiber_ids: data.protection_path_out.filter(s => s.fiber_id).map(s => s.fiber_id!),
@@ -64262,7 +65690,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({ isOpen, on
             }
         });
     };
-    
+
     if (!connection) return null;
 
     return (
@@ -64644,7 +66072,7 @@ const BandwidthInput = ({
       const current = currentValue || '';
       // Remove existing units to avoid duplication (e.g., "100 Mbps Gbps")
       const clean = current.replace(/\s*(Kbps|Mbps|Gbps|G|M|K)$/i, '').trim();
-      
+
       if (clean) {
            setValue(name, `${clean} ${unit}`, { shouldValidate: true, shouldDirty: true });
       } else {
@@ -64836,7 +66264,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
     return filteredServices.map((s) => ({
       value: s.id!,
-      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})` : ''}`,
+      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})${s.node_name ? '('+s.node_name+')' : ''}${s.vlan ? '('+s.vlan+')' : ''}${s.unique_id ? '('+s.unique_id+')' : ''}` : ''}`,
     }));
   }, [servicesData, watchLinkTypeId]);
 
@@ -65150,7 +66578,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                 </div>
 
                 <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
-                
+
                 {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
                   name="bandwidth_allocated"
@@ -65180,7 +66608,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   error={errors.media_type_id}
                   required
                 />
-                
+
                 {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
                   name="bandwidth"
@@ -65509,11 +66937,11 @@ export const SyncStatusModal = ({ isOpen, onClose }: SyncStatusModalProps) => {
           </div>
         ) : (
           tasks.map((task) => (
-            <div 
-              key={task.id} 
+            <div
+              key={task.id}
               className={`p-4 rounded-lg border ${
-                task.status === 'failed' 
-                  ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
+                task.status === 'failed'
+                  ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
                   : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'
               }`}
             >
@@ -65527,7 +66955,7 @@ export const SyncStatusModal = ({ isOpen, onClose }: SyncStatusModalProps) => {
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Created: {formatDate(task.timestamp, { format: 'medium' })}
                     </p>
-                    
+
                     {task.error && (
                       <div className="mt-2 text-sm text-red-600 dark:text-red-400 bg-white/50 dark:bg-black/20 p-2 rounded flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -65539,18 +66967,18 @@ export const SyncStatusModal = ({ isOpen, onClose }: SyncStatusModalProps) => {
 
                 <div className="flex flex-col gap-2">
                   {task.status === 'failed' && (
-                    <Button 
-                      size="xs" 
-                      variant="primary" 
+                    <Button
+                      size="xs"
+                      variant="primary"
                       onClick={() => retryTask(task.id!)}
                       leftIcon={<RefreshCw size={12} />}
                     >
                       Retry
                     </Button>
                   )}
-                  <Button 
-                    size="xs" 
-                    variant="danger" 
+                  <Button
+                    size="xs"
+                    variant="danger"
                     onClick={() => removeTask(task.id!)}
                     leftIcon={<Trash2 size={12} />}
                   >
@@ -65561,13 +66989,13 @@ export const SyncStatusModal = ({ isOpen, onClose }: SyncStatusModalProps) => {
 
               {/* Payload Viewer Toggle */}
               <div className="mt-3 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
-                <button 
+                <button
                   onClick={() => setViewingPayload(viewingPayload === task.id ? null : task.id!)}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   {viewingPayload === task.id ? "Hide Data" : "View Data Payload"}
                 </button>
-                
+
                 {viewingPayload === task.id && (
                   <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-[10px] font-mono overflow-x-auto text-gray-700 dark:text-gray-300">
                     {JSON.stringify(task.payload, null, 2)}
@@ -65578,7 +67006,7 @@ export const SyncStatusModal = ({ isOpen, onClose }: SyncStatusModalProps) => {
           ))
         )}
       </div>
-      
+
       <div className="mt-6 flex justify-end">
         <Button variant="outline" onClick={onClose}>Close</Button>
       </div>
@@ -65712,7 +67140,11 @@ export default function DashboardHeader({
             {/* Left side - Only Menu Button (no title) */}
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
+              <Link href="/">
+                <Image src="/logo.png" alt="Logo" width={60} height={60} className="ml-2" style={{"height":"auto"}}/>
+              </Link>
             </div>
+            {/* Logo */}
 
             {/* Right side - Actions and User Menu */}
             <div className="relative flex items-center space-x-2 sm:space-x-4">
@@ -65816,7 +67248,7 @@ import { useEffect } from "react";
 export default function PolyfillLoader() {
   // We use a layout effect or immediate execution pattern where possible
   // to ensure these exist before children mount.
-  
+
   if (typeof window !== "undefined") {
     // 1. ResizeObserver (Critical for Tooltips & Charts)
     if (!("ResizeObserver" in window)) {
@@ -65902,7 +67334,7 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 }) => {
   // This component doesn't render UI directly, it triggers side effects (toasts)
   // when errors change.
-  
+
   useEffect(() => {
     if (error) {
       toast.error(error);
@@ -65963,10 +67395,10 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const sortedFolders = [...folders].sort((a, b) => 
+  const sortedFolders = [...folders].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   );
-  
+
   const selectedFolderName = folders.find(f => f.id === folderId)?.name || "this folder";
 
   const handleConfirmDelete = () => {
@@ -66043,7 +67475,7 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                Select Destination Folder
             </label>
-            
+
             {canCreate && (
                 <button
                     onClick={handleImportClick}
@@ -66072,7 +67504,7 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
                 ))}
                 </select>
             </div>
-            
+
             {/* Delete Button: Strictly guarded by canDelete */}
             {folderId && canDelete && (
                 <button
@@ -66087,7 +67519,7 @@ const FolderManagement: React.FC<FolderManagementProps> = ({
         </div>
       </div>
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={isDeleteModalOpen}
         onConfirm={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
@@ -66499,7 +67931,7 @@ export interface SupabaseStorageError {
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Eye, Download, Trash2, Search, Grid, List, X, RefreshCw } from "lucide-react";
 import { useFiles, useDeleteFile } from "@/hooks/database/file-queries";
-import "../../app/customuppy.css"; 
+import "../../app/customuppy.css";
 import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "@/components/common/ui";
@@ -66546,7 +67978,7 @@ export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, can
   const loading = isLoading;
   const { mutate: deleteFile } = useDeleteFile();
 
-  const filteredFolders = useMemo(() => 
+  const filteredFolders = useMemo(() =>
     folders
       .filter(folder =>
         folder.name.toLowerCase().includes(folderSearchTerm.toLowerCase())
@@ -66674,7 +68106,7 @@ export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, can
             <h3 className={`text-lg font-medium dark:text-white text-black flex items-center gap-2`}>
               Files <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{filteredAndSortedFiles.length}</span>
             </h3>
-            
+
             <div className="flex items-center gap-2">
                <div className="flex rounded border overflow-hidden dark:border-gray-600 bg-white dark:bg-gray-800">
                     <button
@@ -66693,10 +68125,10 @@ export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, can
                     </button>
                 </div>
 
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => refetch()} 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetch()}
                 disabled={loading}
                 title="Refresh Files"
               >
@@ -66721,7 +68153,7 @@ export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, can
                 </button>
                 )}
             </div>
-            
+
             {/* Filter Pills */}
             {files.length > 0 && (
                 <div className="flex gap-2 flex-wrap">
@@ -66849,14 +68281,14 @@ export function FileTable({ folders, onFileDelete, folderId, onFolderSelect, can
               </div>
             )
           ) : (
-             <FancyEmptyState 
-                title="No files found" 
-                description={fileSearchTerm ? "Try adjusting your search criteria" : "This folder is empty"} 
+             <FancyEmptyState
+                title="No files found"
+                description={fileSearchTerm ? "Try adjusting your search criteria" : "This folder is empty"}
             />
           )}
         </div>
       )}
-      
+
       {/* Folder Grid */}
       {filteredFolders.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -66958,7 +68390,7 @@ export function useUppyUploader({
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const endpoint = `${origin}/api/upload`;
 
-    // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions 
+    // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions
     // which sometimes misses 'getResponseError' in specific versions
     uppy.use(XHRUpload, {
       endpoint: endpoint,
@@ -66980,7 +68412,7 @@ export function useUppyUploader({
             if (json.error) return new Error(json.error);
         } catch (e) {
           console.log(e);
-          
+
             // ignore JSON parse error
         }
         return new Error(response.statusText || "Upload failed due to network or server error");
@@ -67000,7 +68432,7 @@ export function useUppyUploader({
       showVideoSourceDropdown: true,
     });
 
-    // Removed specific webcam 'error' listener here because it was catching 
+    // Removed specific webcam 'error' listener here because it was catching
     // general upload errors and displaying them as "Camera error".
     // General errors are handled by 'upload-error' below.
 
@@ -67010,8 +68442,8 @@ export function useUppyUploader({
         const file = uppy.getFile(fileID);
         if (file?.type?.startsWith("image/") && file.data instanceof Blob) {
           try {
-            const sourceFile = file.data instanceof File 
-              ? file.data 
+            const sourceFile = file.data instanceof File
+              ? file.data
               : new File([file.data], file.name || "image", { type: file.type });
 
             let optimized = await smartCompress(sourceFile);
@@ -67040,9 +68472,9 @@ export function useUppyUploader({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     uppy.on("upload-success", async (file: UppyFile<any, any> | undefined, response: any) => {
       if (!file || processedFiles.has(file.id)) return;
-      
+
       setProcessedFiles(prev => new Set(prev).add(file.id));
-      
+
       const responseBody = response.body;
       if (!responseBody?.public_id) {
           setError("Upload failed: Missing file ID in response");
@@ -67090,7 +68522,7 @@ export function useUppyUploader({
     uppy.on("complete", (result) => {
         setIsUploading(false);
         if (result && result.successful && Array.isArray(result.successful) && result.successful.length > 0) {
-            setError(""); 
+            setError("");
             setSelectedFiles([]);
             setTimeout(() => setProcessedFiles(new Set()), 1000);
         }
@@ -67118,7 +68550,7 @@ export function useUppyUploader({
         uppyRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId, facingMode]); 
+  }, [folderId, facingMode]);
 
   const handleStartUpload = () => {
     if (!folderId) {
@@ -67218,7 +68650,7 @@ export function useFolders({
         onError?.("Failed to load folders");
         return [];
       }
-      
+
       return data || [];
     }
   });
@@ -67370,10 +68802,10 @@ export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(false);
-  
+
   const [showUploadSection, setShowUploadSection] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
-  
+
   const { theme } = useThemeStore();
   const uppyTheme = theme === 'system' ? 'auto' : theme;
 
@@ -67381,7 +68813,7 @@ export default function FileUploader() {
 
   const canCreate = !!isSuperAdmin || role === 'admin';
   const canDelete = !!isSuperAdmin;
-  
+
   // Backup refs
   const backupInputRef = useRef<HTMLInputElement>(null);
   const { mutate: exportBackup, isPending: isBackingUp } = useExportDiagramsBackup();
@@ -67409,7 +68841,7 @@ export default function FileUploader() {
         queryClient.invalidateQueries({ queryKey: ['files'] });
     },
   });
-  
+
   const onDeleteFolderWrapper = (id: string) => {
       handleDeleteFolder(id);
   };
@@ -67447,14 +68879,14 @@ export default function FileUploader() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <Toaster position="top-right" duration={4000} />
-      
+
       {/* Hidden input for backup restore */}
-      <input 
-         type="file" 
-         ref={backupInputRef} 
-         onChange={handleBackupRestore} 
-         className="hidden" 
-         accept=".xlsx" 
+      <input
+         type="file"
+         ref={backupInputRef}
+         onChange={handleBackupRestore}
+         className="hidden"
+         accept=".xlsx"
       />
 
       {/* Header with Backup Actions */}
@@ -67632,11 +69064,11 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
     allKeys.forEach((key) => {
       const oldVal = oldData[key];
       const newVal = newData[key];
-      
+
       // Ignore internal fields that might clutter the view
       if (key === 'updated_at' || key === 'created_at' || key.startsWith('_')) {
           // Optional: uncomment to hide timestamps from diff
-          // return; 
+          // return;
       }
 
       const strOld = JSON.stringify(oldVal);
@@ -67666,15 +69098,15 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Audit Log Details" size="xl">
       <div className="p-6 space-y-6">
-        
+
         {/* Header Summary */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border dark:border-gray-700">
           <div>
              <span className="text-xs text-gray-500 uppercase font-semibold block mb-1">Action</span>
              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase 
-                  ${log.action_type === 'INSERT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
-                    log.action_type === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+                <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase
+                  ${log.action_type === 'INSERT' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                    log.action_type === 'DELETE' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                     'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
                   {log.action_type}
                 </span>
@@ -67703,9 +69135,9 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
 
         {/* Toggle View */}
         <div className="flex justify-end">
-            <Button 
-                size="xs" 
-                variant="outline" 
+            <Button
+                size="xs"
+                variant="outline"
                 onClick={() => setShowRawJson(!showRawJson)}
                 leftIcon={<Code className="w-3 h-3" />}
             >
@@ -67726,7 +69158,7 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
                   )}
                </div>
              </div>
-  
+
              <div>
                <h4 className="text-sm font-bold text-green-600 mb-2">New Data (Raw)</h4>
                <div className="bg-gray-100 dark:bg-gray-950 p-3 rounded-md border dark:border-gray-700 h-96 overflow-auto text-xs font-mono custom-scrollbar">
@@ -67746,7 +69178,7 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
                     {changes.length} field(s)
                 </span>
             </div>
-            
+
             {changes.length === 0 ? (
                 <div className="p-8 text-center text-gray-500 italic">
                     No visible changes detected in this log entry.
@@ -67793,7 +69225,7 @@ export const AuditLogDetailsModal: React.FC<AuditLogDetailsModalProps> = ({
             )}
           </div>
         )}
-        
+
         {/* Footer Actions */}
         <div className="flex justify-end gap-2 pt-2 border-t dark:border-gray-700">
              <Button variant="outline" onClick={onClose}>Close</Button>
@@ -67820,11 +69252,11 @@ import { PageSpinner } from '@/components/common/ui'
 // This gate component remains correct and is essential.
 function HydrationGate({ children }: { children: ReactNode }) {
   const isRestoring = useIsRestoring();
-  
+
   if (isRestoring) {
     return <PageSpinner text="Restoring session..." />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -67947,7 +69379,7 @@ export default function ThemeProvider({
   useEffect(() => {
     const applyTheme = (themeToApply: Theme) => {
       const root = document.documentElement;
-      
+
       const isDark =
         themeToApply === "dark" ||
         (themeToApply === "system" &&
@@ -68243,12 +69675,12 @@ class TypeScriptToZodConverter {
             zodType = `z.enum([${literalValues.join(', ')}])`;
           } else if (type.trim() === 'unknown' || type.trim() === '') {
             // Add a safe fallback for unknown or empty types
-            zodType = 'z.any()'; 
+            zodType = 'z.any()';
           } else {
             zodType = 'z.string()'; // Fallback for complex/unknown types
           }
       }
-  
+
       return isNullable ? `${zodType}.nullable()` : zodType;
   }
 
@@ -69236,7 +70668,7 @@ function detectOutdatedBrowser(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return false;
   }
-  
+
   // **Priority 1: Feature Detection**
   const missingFeatures = [
     () => typeof Promise?.allSettled !== 'function', // ES2020
@@ -69260,7 +70692,7 @@ function detectOutdatedBrowser(): boolean {
   if (isIE) {
     return true;
   }
-  
+
   // Check for very old versions of other browsers
   const legacyEdgeMatch = ua.match(/Edge\/(\d+)/); // Non-Chromium Edge
   if (legacyEdgeMatch && parseInt(legacyEdgeMatch[1]) < 18) {
@@ -69311,7 +70743,7 @@ const useOrderedColumns = <T extends { key: string | number | boolean }>(
 
     // Create a Set of normalized desired keys for efficient lookup
     const desiredOrderSet = new Set(desiredOrder.map(normalizeKey));
-    
+
     // Track keys we've already added to avoid duplicates from desiredOrder
     const addedKeys = new Set<string>();
 
@@ -69319,10 +70751,10 @@ const useOrderedColumns = <T extends { key: string | number | boolean }>(
     const ordered = desiredOrder
       .map(desiredKey => {
         const normalizedDesiredKey = normalizeKey(desiredKey);
-        
+
         // Prevent duplicates if desiredOrder has the same key multiple times
         if (addedKeys.has(normalizedDesiredKey)) return undefined;
-        
+
         const column = columns.find(col => normalizeKey(col.key) === normalizedDesiredKey);
         if (column) {
             addedKeys.add(normalizedDesiredKey);
@@ -69660,22 +71092,22 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
       ? async ({ id, status }) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
-          
+
           // THE FIX: Expect a PagedQueryResult object, not an array.
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: PagedQueryResult<Row<T>> | undefined) => {
             if (!old || !old.data) return old;
-            
+
             // Perform the map on the 'data' property.
-            const updatedData = old.data.map((item) => 
-              ("id" in item && (item as { id: unknown }).id === id 
-                ? { ...item, status, updated_at: new Date().toISOString() } 
+            const updatedData = old.data.map((item) =>
+              ("id" in item && (item as { id: unknown }).id === id
+                ? { ...item, status, updated_at: new Date().toISOString() }
                 : item
             ));
-            
+
             // Return the full object structure.
             return { ...old, data: updatedData };
           });
-          
+
           return { previousData };
         }
       : undefined,
@@ -69976,7 +71408,7 @@ export function createPagedRpcHook<
         console.error(`Error fetching from RPC '${String(functionName)}':`, error);
         throw new Error(error.message);
       }
-      
+
       return (data ?? []) as TResult;
     };
 
@@ -70783,11 +72215,11 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       const ringTypeMap = new Map(ringTypes.map(item => [item.name.toLowerCase().trim(), item.id]));
       const maintenanceAreaMap = new Map(maintenanceAreas.map(item => [item.name.toLowerCase().trim(), item.id]));
-      
+
       // THE FIX: Create two maps for flexible system lookup
       const systemNameMap = new Map(systems.map(item => [item.system_name?.toLowerCase().trim(), item.id]));
       const nodeNameMap = new Map(systems.map(item => [item.node_name?.toLowerCase().trim(), item.id]));
-      
+
       toast.info('Reading and parsing Excel file...');
       const jsonData = await parseExcelFile(file);
 
@@ -70820,7 +72252,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
         const ringTypeName = String(ringTypeNameRaw || '').toLowerCase().trim();
         const maintenanceAreaName = String(maintenanceAreaNameRaw || '').toLowerCase().trim();
-        
+
         const ringTypeId = ringTypeMap.get(ringTypeName);
         const maintenanceTerminalId = maintenanceAreaMap.get(maintenanceAreaName);
 
@@ -70830,13 +72262,13 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         if (!maintenanceTerminalId && maintenanceAreaName) {
             rowValidationErrors.push({ rowIndex: i, column: 'maintenance_area_name', value: maintenanceAreaNameRaw, error: `Maintenance Area "${maintenanceAreaNameRaw}" not found.` });
         }
-        
+
         let associatedSystemsJson: Association[] = [];
         if (associatedSystemsRaw && typeof associatedSystemsRaw === 'string') {
             try {
                 associatedSystemsJson = JSON.parse(associatedSystemsRaw);
                 if (!Array.isArray(associatedSystemsJson)) throw new Error("JSON is not an array.");
-                
+
                 // Validate each system in the JSON array
                 for (const sys of associatedSystemsJson) {
                     const sysName = (sys.system)?.toLowerCase().trim();
@@ -70846,7 +72278,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
                 }
             } catch (e) {
               console.log(e);
-              
+
                 rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
             }
         }
@@ -70867,10 +72299,10 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
             maintenance_terminal_id: maintenanceTerminalId,
             associated_systems_json: associatedSystemsJson,
         };
-        
+
         ringsToUpsert.push(record);
       }
-      
+
       if (ringsToUpsert.length === 0) {
         if (uploadResult.errorCount > 0) {
             toast.error(`${uploadResult.errorCount} rows had validation errors.`);
@@ -70880,11 +72312,11 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         }
         return uploadResult;
       }
-      
+
       toast.info(`Upserting ${ringsToUpsert.length} ring records...`);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
-      
+
       const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
 
       if (upsertError) {
@@ -70906,7 +72338,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
               }
           }
       }
-      
+
       uploadResult.successCount = ringsToUpsert.length - uploadResult.errorCount;
       uploadResult.totalRows = dataRows.length;
       return uploadResult;
@@ -70939,25 +72371,25 @@ import { formatDate } from "@/utils/formatters";
 // --- EXPORT HOOK ---
 export function useExportEFileSystem() {
   const supabase = createClient();
-  
+
   return useMutation({
     mutationFn: async () => {
       const ExcelJS = (await import('exceljs')).default;
-      
+
       // 1. Fetch Data from RPC
       const { data, error } = await supabase.rpc('get_efile_system_backup');
       if (error) throw error;
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const backup = data as any; // { files: [], movements: [] }
-      
+
       if (!backup.files || backup.files.length === 0) {
         throw new Error("No data found to export.");
       }
 
       // 2. Create Workbook
       const workbook = new ExcelJS.Workbook();
-      
+
       // SHEET 1: FILES
       const fileSheet = workbook.addWorksheet('Files');
       fileSheet.columns = [
@@ -71017,7 +72449,7 @@ export function useImportEFileSystem() {
       // 1. Read Files Sheet
       const fileSheet = workbook.getWorksheet('Files');
       if (!fileSheet) throw new Error("Invalid Backup File: Missing 'Files' sheet.");
-      
+
       const files: Record<string, unknown>[] = [];
       fileSheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // Skip header
@@ -71039,7 +72471,7 @@ export function useImportEFileSystem() {
       // 2. Read Movements Sheet
       const moveSheet = workbook.getWorksheet('Movements');
       const movements: Record<string, unknown>[] = [];
-      
+
       if (moveSheet) {
           moveSheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header
@@ -71058,7 +72490,7 @@ export function useImportEFileSystem() {
 
       // 3. Send to RPC
       toast.info(`Restoring ${files.length} files and ${movements.length} history records...`);
-      
+
       const { data, error } = await supabase.rpc('restore_efile_system_backup', {
           p_files: files,
           p_movements: movements
@@ -71443,7 +72875,7 @@ export function useInventoryExcelUpload() {
 
       toast.info('Parsing Excel file...');
       const jsonData = await parseExcelFile(file);
-      
+
       if (jsonData.length < 2) {
           toast.warning('No data found.');
           return uploadResult;
@@ -71451,7 +72883,7 @@ export function useInventoryExcelUpload() {
 
       const headers = (jsonData[0] as string[]).map(h => String(h).trim().toLowerCase());
       const dataRows = jsonData.slice(1);
-      
+
       // Enhanced Column Mapping
       const columnMap: Record<string, string> = {
           // Item Details
@@ -71465,7 +72897,7 @@ export function useInventoryExcelUpload() {
           'location': 'location',
           'store location': 'location',
           'functional location': 'functional_location',
-          
+
           // Transaction Details
           'quantity': 'quantity',
           'qty': 'quantity',
@@ -71473,7 +72905,7 @@ export function useInventoryExcelUpload() {
           'cost': 'cost',
           'unit cost': 'cost',
           'purchase date': 'purchase_date',
-          
+
           // NEW: Action Columns
           'action': 'transaction_type',
           'transaction type': 'transaction_type', // ADD, ISSUE, SET
@@ -71497,8 +72929,8 @@ export function useInventoryExcelUpload() {
               if(row[idx]) isEmpty = false;
               // Clean header
               const cleanHeader = header.replace(/\(read only history\)/g, '').trim();
-              const key = columnMap[cleanHeader] || columnMap[header]; 
-              
+              const key = columnMap[cleanHeader] || columnMap[header];
+
               if (key) {
                   let val = row[idx];
                   // Date formatting
@@ -71517,7 +72949,7 @@ export function useInventoryExcelUpload() {
           // --- VALIDATION LOGIC ---
           const rowErrors: ValidationError[] = [];
           if (!rowData.name) rowErrors.push({ rowIndex: i, column: 'name', value: '', error: 'Item Name is required' });
-          
+
           // Action Validation
           const action = (rowData.transaction_type || 'ADD').toUpperCase();
           if (action === 'ISSUE') {
@@ -71541,19 +72973,19 @@ export function useInventoryExcelUpload() {
 
       if (validPayloads.length > 0) {
           toast.info(`Processing ${validPayloads.length} inventory actions...`);
-          
+
           // Call the SMART RPC
           const { data: result, error } = await supabase.rpc('bulk_import_inventory_smart', {
               p_items: validPayloads
           });
 
           if (error) throw error;
-          
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const res = result as any;
           uploadResult.successCount = res.success_count;
           uploadResult.errorCount += res.error_count;
-          
+
           if (res.errors && res.errors.length > 0) {
                // eslint-disable-next-line @typescript-eslint/no-explicit-any
               res.errors.forEach((err: any) => {
@@ -71594,25 +73026,25 @@ import { formatDate } from "@/utils/formatters";
 // --- EXPORT HOOK ---
 export function useExportDiagramsBackup() {
   const supabase = createClient();
-  
+
   return useMutation({
     mutationFn: async () => {
       const ExcelJS = (await import('exceljs')).default;
-      
+
       // 1. Fetch Data
       const { data, error } = await supabase.rpc('get_diagrams_backup');
       if (error) throw error;
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const backup = data as any; // { folders: [], files: [] }
-      
+
       if ((!backup.folders || backup.folders.length === 0) && (!backup.files || backup.files.length === 0)) {
         throw new Error("No data found to export.");
       }
 
       // 2. Create Workbook
       const workbook = new ExcelJS.Workbook();
-      
+
       // SHEET 1: FOLDERS
       const folderSheet = workbook.addWorksheet('Folders');
       folderSheet.columns = [
@@ -71668,7 +73100,7 @@ export function useImportDiagramsBackup() {
       // 1. Read Folders
       const folderSheet = workbook.getWorksheet('Folders');
       const folders: Record<string, unknown>[] = [];
-      
+
       if (folderSheet) {
         folderSheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
@@ -71684,7 +73116,7 @@ export function useImportDiagramsBackup() {
       // 2. Read Files
       const fileSheet = workbook.getWorksheet('Files');
       const files: Record<string, unknown>[] = [];
-      
+
       if (fileSheet) {
           fileSheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
@@ -71709,7 +73141,7 @@ export function useImportDiagramsBackup() {
 
       // 3. Send to RPC
       toast.info(`Restoring ${folders.length} folders and ${files.length} files...`);
-      
+
       const { data, error } = await supabase.rpc('restore_diagrams_backup', {
           p_folders: folders,
           p_files: files
@@ -71722,12 +73154,12 @@ export function useImportDiagramsBackup() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const res = data as any;
       toast.success(`Restore Complete: ${res.folders_processed} folders, ${res.files_processed} files.`);
-      
+
       if (res.errors && res.errors.length > 0) {
           toast.warning(`${res.errors.length} items failed. Check console.`);
           console.warn("Restore Errors:", res.errors);
       }
-      
+
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ['folders'] });
       queryClient.invalidateQueries({ queryKey: ['files'] });
@@ -71755,13 +73187,13 @@ export interface Column<T> {
   filterable?: boolean;
   editable?: boolean;
   render?: (value: unknown, record: T, index: number) => React.ReactNode;
-  transform?: (value: unknown, record?: T) => unknown; 
+  transform?: (value: unknown, record?: T) => unknown;
   filterOptions?: { label: string; value: unknown }[];
   align?: "left" | "center" | "right";
   hidden?: boolean;
   excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
-  naturalSort?: boolean; 
+  naturalSort?: boolean;
 }
 export interface RPCConfig<TParams = Record<string, unknown>> {
   functionName: string;
@@ -72042,12 +73474,12 @@ export function useExportRouteTopology(supabase: SupabaseClient<Database>) {
       // 1. Fetch all topology data from the RPC
       const { data, error } = await supabase.rpc('get_route_topology_for_export', { p_route_id: routeId });
       if (error) throw new Error(`Failed to fetch topology data: ${error.message}`);
-      
+
       const topology = data as unknown as TopologyData;
 
       // 2. Create a new Excel workbook
       const workbook = new ExcelJS.Workbook();
-      
+
       // 3. Create and populate each sheet
       const jcSheet = workbook.addWorksheet('Junction Closures');
       // THE FIX: Changed header and key from 'jc_id' to 'id'.
@@ -72107,13 +73539,13 @@ export function useImportRouteTopology(supabase: SupabaseClient<Database>) {
     mutationFn: async ({ routeId, file }) => {
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-      
+
       const getSheetData = (sheetName: string): Json => {
         const worksheet = workbook.Sheets[sheetName];
         if (!worksheet) throw new Error(`Sheet "${sheetName}" not found in the Excel file.`);
         return XLSX.utils.sheet_to_json(worksheet, { defval: null }) as Json;
       };
-      
+
       const payload = {
         p_route_id: routeId,
         p_junction_closures: getSheetData('Junction Closures'),
@@ -72467,7 +73899,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
   return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
       const ExcelJS = (await import('exceljs')).default;
-      
+
       try {
         const defaultStyles = getDefaultStyles();
         const mergedOptions = {
@@ -73237,7 +74669,7 @@ export function usePortsExcelUpload(
             const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
             let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
             if (typeof finalValue === 'string') finalValue = finalValue.trim();
-          
+
             const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
             if (validationError) {
                 rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
@@ -73250,7 +74682,7 @@ export function usePortsExcelUpload(
             uploadResult.errorCount++;
             continue;
         }
-        
+
         // --- CONSTRUCT RECORD WITH NEW FIELDS ---
         const recordToUpsert = {
           // If the ID from the Excel sheet is valid, use it. Otherwise, generate a new one.
@@ -73266,7 +74698,7 @@ export function usePortsExcelUpload(
           port_admin_status: processedData.port_admin_status !== undefined ? Boolean(processedData.port_admin_status) : false,
           services_count: parseNumber(processedData.services_count),
         };
-        
+
         recordsToUpsert.push(recordToUpsert);
       }
 
@@ -73282,7 +74714,7 @@ export function usePortsExcelUpload(
           toast.error(`Import failed: ${error.message}`);
           throw error;
         }
-        
+
         uploadResult.successCount = recordsToUpsert.length;
       }
 
@@ -73358,7 +74790,7 @@ export function useEFilesExcelUpload() {
 
       toast.info('Parsing Excel file...');
       const jsonData = await parseExcelFile(file);
-      
+
       if (jsonData.length < 2) {
           toast.warning('No data found.');
           return uploadResult;
@@ -73366,7 +74798,7 @@ export function useEFilesExcelUpload() {
 
       const headers = (jsonData[0] as string[]).map(h => String(h).trim().toLowerCase());
       const dataRows = jsonData.slice(1);
-      
+
       // Update Column Mapping to detect Current Holder
       const columnMap: Record<string, string> = {
           'file number': 'file_number',
@@ -73378,12 +74810,12 @@ export function useEFilesExcelUpload() {
           'category': 'category',
           'priority': 'priority',
           'remarks': 'remarks',
-          
+
           // Initiator mappings
           'initiator': 'initiator_name',
           'initiator name': 'initiator_name',
           'started by': 'initiator_name',
-          
+
           // Current Holder mappings
           'current holder': 'current_holder_name',
           'currently with': 'current_holder_name',
@@ -73403,7 +74835,7 @@ export function useEFilesExcelUpload() {
 
           headers.forEach((header, idx) => {
               if(row[idx]) isEmpty = false;
-              const key = columnMap[header] || header; 
+              const key = columnMap[header] || header;
               if (['file_number', 'subject', 'description', 'category', 'priority', 'remarks', 'initiator_name', 'current_holder_name'].includes(key)) {
                   rowData[key] = row[idx];
               }
@@ -73434,18 +74866,18 @@ export function useEFilesExcelUpload() {
 
       if (validPayloads.length > 0) {
           toast.info(`Uploading ${validPayloads.length} files...`);
-          
+
           const { data: result, error } = await supabase.rpc('bulk_initiate_e_files', {
               p_files: validPayloads
           });
 
           if (error) throw error;
-          
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const res = result as any;
           uploadResult.successCount = res.success_count;
           uploadResult.errorCount += res.error_count;
-          
+
           if (res.errors && res.errors.length > 0) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               res.errors.forEach((err: any) => {
@@ -73559,7 +74991,7 @@ export function useSystemConnectionExcelUpload(
       const dataRows = jsonData.slice(1);
       const recordsToProcess: RpcPayload[] = [];
       const allValidationErrors: ValidationError[] = [];
-      
+
       // 1. Fetch Link Types for resolution
       const linkTypesResp = await supabase.from('lookup_types').select('id, name').eq('category', 'LINK_TYPES');
       const linkTypeNameToId = new Map<string, string>();
@@ -73578,7 +75010,7 @@ export function useSystemConnectionExcelUpload(
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
-        
+
         if (row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')) {
             uploadResult.skippedRows++;
             continue;
@@ -73600,10 +75032,10 @@ export function useSystemConnectionExcelUpload(
              const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
              if (validationError) { rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData }); }
           }
-          
+
           processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
-        
+
         // Resolve Link Type
         let resolvedLinkTypeId: string | undefined = undefined;
         const linkTypeNameRaw = processedData.connected_link_type_name as unknown;
@@ -73638,15 +75070,15 @@ export function useSystemConnectionExcelUpload(
           p_system_id: parentSystemId,
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
-          
+
           p_service_name: toUndefined(processedData.service_name) || toUndefined(processedData.customer_name),
           p_link_type_id: resolvedLinkTypeId || toUndefined(processedData.link_type_id),
           p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
           p_vlan: toUndefined(processedData.vlan),
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
-          p_service_node_id: toUndefined(processedData.service_node_id), 
-          
+          p_service_node_id: toUndefined(processedData.service_node_id),
+
           // THE FIX: Explicitly map the service_id from the excel import
           p_service_id: toUndefined(processedData.service_id),
 
@@ -73659,15 +75091,15 @@ export function useSystemConnectionExcelUpload(
           p_bandwidth: (processedData.bandwidth as string) || undefined,
           p_commissioned_on: toUndefined(processedData.commissioned_on),
           p_remark: toUndefined(processedData.remark),
-          
+
           p_working_fiber_in_ids: toUuidArray(processedData.working_fiber_in_ids),
           p_working_fiber_out_ids: toUuidArray(processedData.working_fiber_out_ids),
           p_protection_fiber_in_ids: toUuidArray(processedData.protection_fiber_in_ids),
           p_protection_fiber_out_ids: toUuidArray(processedData.protection_fiber_out_ids),
-          
+
           p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
-          
+
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
           p_a_slot: toUndefined(processedData.sdh_a_slot),
@@ -73713,7 +75145,7 @@ export function useSystemConnectionExcelUpload(
     },
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
-        queryClient.invalidateQueries({ queryKey: ['system_connections-data'] }); 
+        queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
         queryClient.invalidateQueries({ queryKey: ['ports_management-data'] });
       }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
@@ -73797,7 +75229,7 @@ export function useDiaryExcelUpload(
       excelHeaders.forEach((header, index) => {
         headerMap[header.toLowerCase()] = index;
       });
-      
+
       const hasUserIdColumn = 'user_id' in headerMap;
 
       const dataRows = jsonData.slice(1);
@@ -73826,14 +75258,14 @@ export function useDiaryExcelUpload(
             const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
             let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
             if (typeof finalValue === 'string') finalValue = finalValue.trim();
-          
+
             const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
             if (validationError) {
                 rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
             }
             processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
-        
+
         if (isAdmin) {
             if (hasUserIdColumn) {
                 const userIdFromCell = row[headerMap['user_id']];
@@ -73858,7 +75290,7 @@ export function useDiaryExcelUpload(
             });
             continue;
         }
-        
+
         notesToUpsert.push(processedData as Diary_notesInsertSchema);
       }
 
@@ -73873,7 +75305,7 @@ export function useDiaryExcelUpload(
           uploadResult.errorCount = notesToUpsert.length;
           throw error;
         }
-        
+
         uploadResult.successCount = notesToUpsert.length;
       }
 
@@ -73918,7 +75350,7 @@ export type PathDisplayData = z.infer<typeof pathDisplaySchema>;
 export function useUpsertSystemConnection() {
   const supabase = createClient();
   const queryClient = useQueryClient(); // Need access to queryClient here
-  
+
   return useRpcMutation(supabase, 'upsert_system_connection_with_details', {
     onSuccess: (_, variables) => {
       const action = variables.p_id ? 'updated' : 'created';
@@ -73936,7 +75368,7 @@ export function useUpsertSystemConnection() {
         queryClient.invalidateQueries({ queryKey: ['system_connections-data', variables.p_en_id] });
         queryClient.invalidateQueries({ queryKey: ['ports_management-data', variables.p_en_id] });
       }
-      
+
       // 3. General invalidation to be safe (e.g. for global views)
       queryClient.invalidateQueries({ queryKey: ['table', 'system_connections'] });
       queryClient.invalidateQueries({ queryKey: ['table', 'v_system_connections_complete'] });
@@ -74005,7 +75437,7 @@ export function useServicePathDisplay(systemConnectionId: string | null) {
         p_system_connection_id: systemConnectionId
       });
       if (error) throw error;
-      
+
       const parsed = pathDisplaySchema.safeParse(data);
       if (!parsed.success) {
         console.error("Zod validation error for path display:", parsed.error);
@@ -74343,9 +75775,9 @@ export function useSyncPathFromTrace() {
 export function useAutoSplice() {
   const queryClient = useQueryClient();
   return useMutation({
-      mutationFn: async (variables: { 
-          jcId: string; 
-          segment1Id: string; 
+      mutationFn: async (variables: {
+          jcId: string;
+          segment1Id: string;
           segment2Id: string;
           lossDb?: number;
       }): Promise<AutoSpliceResult> => {
@@ -74356,7 +75788,7 @@ export function useAutoSplice() {
               p_loss_db: variables.lossDb || 0,
           });
           if (error) throw error;
-    
+
           const parsed = autoSpliceResultSchema.safeParse(data);
           if (!parsed.success) {
               console.error("Zod validation error for AutoSpliceResult:", parsed.error);
@@ -74376,7 +75808,7 @@ export function useAutoSplice() {
 /** NEW HOOK for the manual "Apply Path Updates" button */
 export function useSyncPathUpdates() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ jcId }: { jcId: string }) => {
        void jcId;
@@ -74478,7 +75910,7 @@ export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout
 export type RowWithCount<T> = T & { total_count?: number };
 
 // --- HOOK OPTIONS INTERFACES (Unchanged) ---
-export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
+export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>>
   extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
   columns?: string;
   filters?: Filters;
@@ -75052,7 +76484,7 @@ export function useUpdateLogicalPathDetails() {
         toast.success("Path configuration saved.");
         queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
         // Also invalidate the ring map data so the map updates immediately
-        queryClient.invalidateQueries({ queryKey: ['ring-path-config'] }); 
+        queryClient.invalidateQueries({ queryKey: ['ring-path-config'] });
       },
       onError: (err) => {
         toast.error(`Failed to save configuration: ${err.message}`);
@@ -75074,24 +76506,24 @@ type FileUpdate = Database["public"]["Tables"]["files"]["Update"];
 
 export function useFiles(folderId?: string | null) {
   const supabase = createClient();
-  
+
   return useQuery({
     queryKey: ["files", folderId],
     queryFn: async () => {
       let query = supabase
         .from("files")
         .select("*");
-      
+
       if (folderId) {
         query = query.eq("folder_id", folderId);
       }
-      
+
       const { data, error } = await query.order("uploaded_at", { ascending: false });
-      
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return data || [];
     },
     enabled: true,
@@ -75101,7 +76533,7 @@ export function useFiles(folderId?: string | null) {
 export function useUploadFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (fileData: FileInsert) => {
       const { data, error } = await supabase
@@ -75109,16 +76541,16 @@ export function useUploadFile() {
         .insert(fileData)
         .select()
         .single();
-        
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ["files", variables.folder_id] 
+      queryClient.invalidateQueries({
+        queryKey: ["files", variables.folder_id]
       });
     },
   });
@@ -75127,7 +76559,7 @@ export function useUploadFile() {
 export function useDeleteFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -75140,16 +76572,16 @@ export function useDeleteFile() {
         .from("files")
         .delete()
         .eq("id", id);
-        
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return { id };
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ["files", variables.folderId] 
+      queryClient.invalidateQueries({
+        queryKey: ["files", variables.folderId]
       });
     },
   });
@@ -75158,7 +76590,7 @@ export function useDeleteFile() {
 export function useUpdateFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -75173,16 +76605,16 @@ export function useUpdateFile() {
         .eq("id", id)
         .select()
         .single();
-        
+
       if (error) {
         throw new Error(error.message);
       }
-      
+
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ["files", data.folder_id] 
+      queryClient.invalidateQueries({
+        queryKey: ["files", data.folder_id]
       });
     },
   });
@@ -75509,7 +76941,7 @@ export const useCreateOfcConnection = ({
       console.log('Connection creation already in progress, skipping.');
       return;
     }
-    
+
     const cableData = cable?.data?.[0];
     if (!cableData || !cableData.capacity || cableData.capacity <= 0) {
         console.log('Skipping connection check: Cable data or capacity is missing.');
@@ -75615,18 +77047,18 @@ export function useDuplicateFinder<T>(
   // 1. Pure Calculation (No Side Effects here)
   const { duplicateSet, duplicateCount } = useMemo(() => {
     const emptyResult = { duplicateSet: new Set<string>(), duplicateCount: 0 };
-    
+
     // Optimization: Don't calculate if feature is off or no data
     if (!showDuplicates || !data || data.length === 0) {
       return emptyResult;
     }
 
     const counts = new Map<string, number>();
-    
+
     // Count occurrences
     data.forEach((item) => {
       let key = "";
-      
+
       // Determine the key based on the identity prop type
       if (typeof identity === 'function') {
         key = identity(item);
@@ -75806,14 +77238,14 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   }, [debouncedSearch, filters, setCurrentPage]);
 
   // THE FIX: Destructure known properties and capture the rest to pass through
-  const { 
-    data, 
-    totalCount, 
-    activeCount, 
-    inactiveCount, 
-    isLoading, 
-    isFetching, 
-    error, 
+  const {
+    data,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
     refetch,
     ...restHookData // Capture extra props like 'stats'
   } = dataQueryHook({
@@ -75840,16 +77272,16 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const handleLocalCleanup = useCallback(async (deletedIds: string[]) => {
     if (!deletedIds.length) return;
-    
+
     const targetTable = localTableName || tableName;
-    
+
     try {
         const table = getTable(targetTable);
         // Cast IDs based on configured type before deletion
-        const idsToDelete = idType === 'number' 
-          ? deletedIds.map(Number).filter(n => !isNaN(n)) 
+        const idsToDelete = idType === 'number'
+          ? deletedIds.map(Number).filter(n => !isNaN(n))
           : deletedIds;
-          
+
         await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
         console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
     } catch (e) {
@@ -75857,13 +77289,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     }
   }, [tableName, localTableName, idType]);
 
-  const deleteManager = useDeleteManager({ 
-      tableName, 
-      onSuccess: async (deletedIds) => { 
+  const deleteManager = useDeleteManager({
+      tableName,
+      onSuccess: async (deletedIds) => {
           await handleLocalCleanup(deletedIds);
-          refetch(); 
-          handleClearSelection(); 
-      } 
+          refetch();
+          handleClearSelection();
+      }
   });
 
   const { bulkUpdate } = useTableBulkOperations(supabase, tableName);
@@ -75883,7 +77315,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       } else {
         insertItem(processedData as TableInsert<T>);
       }
-    } else { 
+    } else {
       try {
         const table = getTable(tableName);
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
@@ -75905,7 +77337,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: newRecord,
           });
         }
-        refetch(); 
+        refetch();
         closeModal();
       } catch (err) {
         toast.error(`Offline operation failed: ${(err as Error).message}`);
@@ -75935,13 +77367,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
     if (isOnline) {
       deleteManager.deleteSingle({ id: idToDelete, name: displayName });
-    } else { 
+    } else {
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
           const table = getTable(tableName);
           const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
           await table.delete(idKey);
-          
+
           await addMutationToQueue({
             tableName,
             type: 'delete',
@@ -75959,10 +77391,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     if (!record.id) { toast.error("Cannot update status: Invalid ID"); return; }
     const idToUpdate = String(record.id);
     const newStatus = !(record.status ?? false);
-    
+
     if (isOnline) {
       toggleStatus({ id: idToUpdate, status: newStatus });
-    } else { 
+    } else {
       try {
         const table = getTable(tableName);
         const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
@@ -75983,10 +77415,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const handleCellEdit = useCallback(
     async (record: V, column: Column<V>, newValue: string) => {
       if (!record.id) return;
-      
+
       const id = String(record.id);
       const key = column.dataIndex;
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData = { [key]: newValue } as any;
 
@@ -76011,7 +77443,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     },
     [isOnline, updateItem, tableName, idType, refetch]
   );
-  
+
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
     const validIds = rows.map(r => r.id).filter((id): id is NonNullable<typeof id> => id != null).map(String);
     setSelectedRowIds(validIds);
@@ -76021,13 +77453,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) { toast.error("No records selected"); return; }
-    
+
     if (isOnline) {
       const selectedRecords = data.filter(record => selectedRowIds.includes(String(record.id))).map(record => ({
         id: String(record.id), name: getDisplayName(record as RecordWithId),
       }));
       deleteManager.deleteMultiple(selectedRecords);
-    } else { 
+    } else {
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
           const table = getTable(tableName);
@@ -76061,7 +77493,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         },
         onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
-    } else { 
+    } else {
       try {
         const table = getTable(tableName);
         const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
@@ -76101,7 +77533,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
-    isLoading, isFetching, error, isMutating, 
+    isLoading, isFetching, error, isMutating,
     refetch,
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
@@ -76114,7 +77546,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, onConfirm: deleteManager.handleConfirm, onCancel: deleteManager.handleCancel, loading: deleteManager.isPending },
     utils: { getDisplayName },
     // THE FIX: Spread remaining hook data (e.g. stats)
-    ...restHookData, 
+    ...restHookData,
   };
 }
 ```
@@ -76141,7 +77573,7 @@ const requestDelay = 1600; // 1.6 seconds delay to stay well below 40 requests/m
  */
 const rateLimitedFetch = (url: string, options: RequestInit) => {
   // THE FIX: This is a simpler, type-safe way to create a sequential promise queue.
-  
+
   // 1. Create the function that will perform the actual fetch.
   const makeRequest = async () => {
     const response = await fetch(url, options);
@@ -76155,7 +77587,7 @@ const rateLimitedFetch = (url: string, options: RequestInit) => {
   // 2. Chain the request to the existing fetchChain.
   // `resultPromise` will hold the promise for the JSON data.
   const resultPromise = fetchChain.then(makeRequest);
-  
+
   // 3. Update the global fetchChain for the *next* caller.
   // This new chain waits for the current request to settle (succeed or fail)
   // and then adds the delay. Since this `.then()` returns nothing,
@@ -76256,7 +77688,7 @@ export const useMaintenanceAreasData = (
   const { filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_maintenance_areasRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -76495,7 +77927,7 @@ export const useNodesData = (
     if (filters.node_type_id) {
         filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
-    
+
     if (filters.maintenance_terminal_id) {
         filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
@@ -76556,7 +77988,7 @@ export function useInventoryHistory(itemId: string | null) {
     });
 
     if (error) throw error;
-    
+
     // Parse the JSONB response structure from get_paged_data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any)?.data || [];
@@ -76569,7 +78001,7 @@ export function useInventoryHistory(itemId: string | null) {
     return localDb.v_inventory_transactions_extended
       .where('inventory_item_id')
       .equals(itemId)
-      .reverse() 
+      .reverse()
       .sortBy('created_at');
   }, [itemId]);
 
@@ -76605,7 +78037,7 @@ export const useOfcData = (
 
   // 1. Online Fetcher (RPC)
   const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -76624,7 +78056,7 @@ export const useOfcData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc("get_paged_data", {
       p_view_name: "v_ofc_cables_complete",
       p_limit: 5000, // Fetch large batch for client-side fluidity
@@ -76678,7 +78110,7 @@ export const useOfcData = (
           cable.ofc_owner_name?.toLowerCase().includes(lowerQuery)
       );
     }
-    
+
     // Dropdown Filters
     if (filters.ofc_type_id)
       filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
@@ -76691,7 +78123,7 @@ export const useOfcData = (
       );
 
     // THE FIX: Explicit client-side sort to ensure order persists after filtering
-    filtered.sort((a, b) => 
+    filtered.sort((a, b) =>
       (a.route_name || '').localeCompare(b.route_name || '', undefined, { sensitivity: 'base' })
     );
 
@@ -76732,7 +78164,7 @@ export const useAuditLogsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_audit_logsRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -76749,7 +78181,7 @@ export const useAuditLogsData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_audit_logs',
       p_limit: 5000,
@@ -76834,7 +78266,7 @@ export const useRingsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax for search
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -76916,7 +78348,7 @@ export const useRingsData = (
     if (filters.maintenance_terminal_id) {
         filtered = filtered.filter(r => r.maintenance_terminal_id === filters.maintenance_terminal_id);
     }
-    
+
     // 3. New Status Filters
     if (filters.ofc_status) {
         filtered = filtered.filter(r => r.ofc_status === filters.ofc_status);
@@ -76969,13 +78401,13 @@ export const useSystemsData = (
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_systems_completeRowSchema[]> => {
-    
+
     // FIX: Construct proper SQL string for search
     let searchString: string | undefined;
 
     if (searchQuery && searchQuery.trim() !== '') {
       const term = searchQuery.trim().replace(/'/g, "''");
-      
+
       searchString = `(` +
         `system_name ILIKE '%${term}%' OR ` +
         `system_type_name ILIKE '%${term}%' OR ` +
@@ -76990,10 +78422,10 @@ export const useSystemsData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_systems_complete',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       // THE FIX: Explicit ascending sort
@@ -77149,8 +78581,8 @@ export function useOfflineQuery<TData>(
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { 
-  InitiateFilePayload, 
+import {
+  InitiateFilePayload,
   ForwardFilePayload,
   v_e_files_extendedRowSchema,
   v_file_movements_extendedRowSchema
@@ -77187,10 +78619,10 @@ export function useEFiles(filters?: { status?: string; }) {
       });
 
       if (error) throw error;
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows = (data as any)?.data || [];
-      
+
       const safeParse = z.array(v_e_files_extendedRowSchema).safeParse(rows);
       if (!safeParse.success) {
           console.error("E-File schema mismatch", safeParse.error);
@@ -77247,7 +78679,7 @@ export function useEFileDetails(fileId: string) {
 
 export function useInitiateFile() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (payload: InitiateFilePayload) => {
       const { data, error } = await supabase.rpc('initiate_e_file', {
@@ -77295,7 +78727,7 @@ export function useUpdateFileDetails() {
 
 export function useForwardFile() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (payload: ForwardFilePayload) => {
       const { error } = await supabase.rpc('forward_e_file', {
@@ -77398,7 +78830,7 @@ export const useUsersData = (
   const localQueryFn = useCallback(() => {
     return localDb.v_user_profiles_extended.toArray();
   }, []);
-  
+
   const {
     data: allUsers = [],
     isLoading,
@@ -77407,7 +78839,7 @@ export const useUsersData = (
     refetch,
   } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
     queryKey: ['user_profiles-data', searchQuery, filters],
-    onlineQueryFn, 
+    onlineQueryFn,
     localQueryFn,
     // THE FIX: Point to the new, correctly typed Dexie table.
     dexieTable: localDb.v_user_profiles_extended,
@@ -77417,13 +78849,13 @@ export const useUsersData = (
     if (!allUsers) {
       return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
     }
-    
+
     // THE FIX: Remove the manual data reconstruction. The view data is already complete.
     let filtered = allUsers as V_user_profiles_extendedRowSchema[];
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(user => 
+      filtered = filtered.filter(user =>
         user.full_name?.toLowerCase().includes(lowerQuery) ||
         user.email?.toLowerCase().includes(lowerQuery)
       );
@@ -77434,7 +78866,7 @@ export const useUsersData = (
     if (filters.status) {
       filtered = filtered.filter(user => user.status === filters.status);
     }
-    
+
     const totalCount = filtered.length;
     const activeCount = filtered.filter((u) => u.status === 'active').length;
     const start = (currentPage - 1) * pageLimit;
@@ -77466,13 +78898,12 @@ import { useLocalFirstQuery } from './useLocalFirstQuery';
 
 export interface DynamicStats {
   total: number;
+  totalNodes: number; // Added: Total nodes across all filtered rings
   spec: { issued: number; pending: number };
   ofc: { ready: number; partial: number; pending: number };
   bts: { onAir: number; pending: number; nodesOnAir: number; configuredCount: number };
 }
 
-// Extend V_ringsRowSchema to include the calculated stats in the return type if needed, 
-// but for the hook we return them separately.
 interface RingManagerDataReturn extends DataQueryHookReturn<V_ringsRowSchema> {
   stats: DynamicStats;
 }
@@ -77484,8 +78915,7 @@ export const useRingManagerData = (
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax
+
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
       const term = searchQuery.trim().replace(/'/g, "''");
@@ -77537,6 +78967,7 @@ export const useRingManagerData = (
   const processedData = useMemo(() => {
     const emptyStats: DynamicStats = {
         total: 0,
+        totalNodes: 0,
         spec: { issued: 0, pending: 0 },
         ofc: { ready: 0, partial: 0, pending: 0 },
         bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 }
@@ -77574,6 +79005,9 @@ export const useRingManagerData = (
     stats.total = filtered.length;
 
     filtered.forEach(r => {
+        // Accumulate total nodes for all visible rings
+        stats.totalNodes += (r.total_nodes ?? 0);
+
         if (r.spec_status === 'Issued') stats.spec.issued++;
         else stats.spec.pending++;
 
@@ -77634,14 +79068,14 @@ export const useAllSystemConnectionsData = (
 
   // 1. Online Fetcher using Generic Pagination RPC
   const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
-    
+
     // Construct robust search string for SQL OR condition
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
       const term = searchQuery.trim().replace(/'/g, "''");
       searchString = `(` +
         `service_name ILIKE '%${term}%' OR ` +
-        `system_name ILIKE '%${term}%' OR ` + 
+        `system_name ILIKE '%${term}%' OR ` +
         `connected_system_name ILIKE '%${term}%' OR ` +
         `bandwidth_allocated ILIKE '%${term}%' OR ` +
         `unique_id ILIKE '%${term}%' OR ` +
@@ -77780,7 +79214,7 @@ export const useDesignationsData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employee_designations',
       p_limit: 5000,
@@ -77899,7 +79333,7 @@ export const useInventoryData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_inventory_itemsRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -77915,7 +79349,7 @@ export const useInventoryData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_inventory_items',
       p_limit: DEFAULTS.PAGE_SIZE,
@@ -77969,7 +79403,7 @@ export const useInventoryData = (
     if (filters.location_id) {
         filtered = filtered.filter(item => item.location_id === filters.location_id);
     }
-    
+
     // Explicit Client-Side Sort to ensure consistency
     filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
@@ -78011,7 +79445,7 @@ export const useServicesData = (
 
   // 1. Online Fetcher (RPC)
   const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax for the OR clause
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -78032,7 +79466,7 @@ export const useServicesData = (
 
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       // THE FIX: Explicitly sort by name ascending
@@ -78319,7 +79753,7 @@ export const useEmployeesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_employeesRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -78336,10 +79770,10 @@ export const useEmployeesData = (
       ...filters,
       or: searchString,
     });
-    
+
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
-      p_limit: 5000, 
+      p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'employee_name', // Ensure DB sort matches client sort intent
@@ -78395,7 +79829,7 @@ export const useEmployeesData = (
     }
 
     // THE FIX: Explicit ascending sort by employee_name
-    filtered.sort((a, b) => 
+    filtered.sort((a, b) =>
         (a.employee_name || '').localeCompare(b.employee_name || '', undefined, { sensitivity: 'base' })
     );
 
@@ -78474,7 +79908,7 @@ export function useLocalFirstQuery<
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: onlineQueryFn,
-    enabled: enabled, 
+    enabled: enabled,
     refetchOnWindowFocus: false,
     refetchOnMount: true, // Attempt to fetch on mount to keep data fresh
     refetchOnReconnect: true,
@@ -78499,10 +79933,10 @@ export function useLocalFirstQuery<
   }, [networkData, dexieTable]);
 
   // 4. Determine "Effective" State (Offline-First Logic)
-  
+
   // Check if we actually have local data
   const hasLocalData = Array.isArray(localData) ? localData.length > 0 : !!localData;
-  
+
   // LOGIC FIX:
   // If we have local data, we are NOT loading (even if network is fetching).
   // We only show loading state if we have NO data at all and are waiting for network.
@@ -78702,10 +80136,10 @@ export const useAdminUserOperations = (): UserOperations => {
     deleteUsers,
     updateUserRoles,
     updateUserStatus,
-    isLoading: createUser.isPending || 
-               updateUser.isPending || 
-               deleteUsers.isPending || 
-               updateUserRoles.isPending || 
+    isLoading: createUser.isPending ||
+               updateUser.isPending ||
+               deleteUsers.isPending ||
+               updateUserRoles.isPending ||
                updateUserStatus.isPending
   };
 };
@@ -78732,7 +80166,7 @@ export const useDiaryData = (currentDate: Date) => {
   // Create dates in local timezone
   const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-  
+
   // Format dates as YYYY-MM-DD in local timezone
   const startOfMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
   const endOfMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
@@ -78774,7 +80208,7 @@ export const useDiaryData = (currentDate: Date) => {
 
   const entriesWithUsers = useMemo(() => {
     if (!notes || !userProfiles) return [];
-    
+
     const profileMap = new Map(userProfiles.map(p => [p.id, `${p.first_name} ${p.last_name}`]));
 
     return notes.map(note => ({
@@ -78814,15 +80248,17 @@ export const useOfcConnectionsData = (
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
       if (!cableId) return [];
 
-      // FIX: Use standard SQL syntax
       let searchString: string | undefined;
       if (searchQuery && searchQuery.trim() !== '') {
           const term = searchQuery.trim().replace(/'/g, "''");
+          // THE FIX: Added fiber_no_sn and fiber_no_en casting to text for numeric search
           searchString = `(` +
             `system_name ILIKE '%${term}%' OR ` +
             `connection_type ILIKE '%${term}%' OR ` +
             `updated_sn_name ILIKE '%${term}%' OR ` +
-            `updated_en_name ILIKE '%${term}%'` +
+            `updated_en_name ILIKE '%${term}%' OR ` +
+            `fiber_no_sn::text ILIKE '%${term}%' OR ` +
+            `fiber_no_en::text ILIKE '%${term}%'` +
           `)`;
       }
 
@@ -78837,7 +80273,6 @@ export const useOfcConnectionsData = (
         p_limit: 5000,
         p_offset: 0,
         p_filters: rpcFilters,
-        // THE FIX: Sort by Fiber Number (Start Node)
         p_order_by: 'fiber_no_sn',
         p_order_dir: 'asc',
       });
@@ -78851,7 +80286,6 @@ export const useOfcConnectionsData = (
       if (!cableId) {
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
-      // Sort locally by fiber number
       return localDb.v_ofc_connections_complete
         .where('ofc_id').equals(cableId)
         .sortBy('fiber_no_sn');
@@ -78879,14 +80313,24 @@ export const useOfcConnectionsData = (
 
       let filtered = allConnections;
 
+      // 1. Search Filtering
       if (searchQuery) {
         const lowerQuery = searchQuery.toLowerCase();
         filtered = filtered.filter((conn) =>
           conn.system_name?.toLowerCase().includes(lowerQuery) ||
           conn.connection_type?.toLowerCase().includes(lowerQuery) ||
           conn.updated_sn_name?.toLowerCase().includes(lowerQuery) ||
-          conn.updated_en_name?.toLowerCase().includes(lowerQuery)
+          conn.updated_en_name?.toLowerCase().includes(lowerQuery) ||
+          // THE FIX: Added numeric checks for client-side filtering
+          String(conn.fiber_no_sn).includes(lowerQuery) ||
+          String(conn.fiber_no_en).includes(lowerQuery)
         );
+      }
+
+      // 2. Status Filtering
+      if (filters.status) {
+         const statusBool = filters.status === 'true';
+         filtered = filtered.filter(c => c.status === statusBool);
       }
 
       // Explicit Sort (Safety fallback)
@@ -78907,7 +80351,7 @@ export const useOfcConnectionsData = (
         inactiveCount,
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allConnections, searchQuery, currentPage, pageLimit, cableId]);
+    }, [allConnections, searchQuery, filters, currentPage, pageLimit, cableId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };
@@ -78931,7 +80375,7 @@ import {
   Junction_closuresRowSchema as Junction_closuresRow,
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
-  User_profilesRowSchema as BaseUserProfilesRow,
+  // User_profilesRowSchema as BaseUserProfilesRow,
   Inventory_itemsRowSchema,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
@@ -78943,7 +80387,7 @@ import {
   V_ring_nodesRowSchema,
 
   V_employee_designationsRowSchema,
-  V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
+  // V_user_profiles_extendedRowSchema as BaseVUserProfilesExtended,
   V_inventory_itemsRowSchema,
   Ring_based_systemsRowSchema,
   V_ofc_connections_completeRowSchema,
@@ -78956,18 +80400,53 @@ import {
   V_end_to_end_pathsRowSchema,
   V_audit_logsRowSchema,
   V_inventory_transactions_extendedRowSchema,
+  Diary_notesRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
-import { Diary_notesRowSchema } from '@/schemas/zod-schemas';
 
-export type StoredUserProfiles = Omit<BaseUserProfilesRow, 'address' | 'preferences'> & {
+
+export type StoredUserProfiles = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email?: string | null;
+  status?: string | null;
+  avatar_url?: string | null;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
-export type StoredVUserProfilesExtended = Omit<BaseVUserProfilesExtended, 'address' | 'preferences' | 'raw_app_meta_data' | 'raw_user_meta_data'> & {
+export type StoredVUserProfilesExtended = {
+  id: string | null;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
+  status: string | null;
+  is_super_admin: boolean | null;
+  last_sign_in_at: string | null;
+  is_email_verified: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  account_age_days: number | null;
   address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  auth_updated_at: string | null;
+  avatar_url: string | null;
+  computed_status: string | null;
+  date_of_birth: string | null;
+  designation: string | null;
+  email_confirmed_at: string | null;
+  first_name: string | null;
+  is_phone_verified: boolean | null;
+  last_activity_period: string | null;
+  last_name: string | null;
+  phone_confirmed_at: string | null;
+  phone_number: string | null;
   preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
   raw_app_meta_data: Json | null;
   raw_user_meta_data: Json | null;
@@ -79040,8 +80519,8 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // Incremented version to 22 and added service_name to v_system_connections_complete
-    this.version(22).stores({
+    // VERSION 24: Fix v_ring_nodes composite key
+    this.version(24).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -79070,12 +80549,14 @@ export class HNVTMDatabase extends Dexie {
       v_employees: '&id, employee_name',
       v_maintenance_areas: '&id, name',
       v_cable_utilization: 'cable_id',
-      v_ring_nodes: '&id, ring_id',
+
+      // THE CRITICAL FIX: Composite key [id+ring_id] allows a system (id) to exist in multiple rings (ring_id)
+      v_ring_nodes: '&[id+ring_id], ring_id',
+
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       v_ofc_connections_complete: '&id, ofc_id, system_id',
-      // THE FIX: Added service_name to index
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at',
@@ -79131,26 +80612,26 @@ const transformConnectionPerspective = (
       system_id: conn.en_id,
       system_name: conn.en_name,
       system_type_name: conn.en_system_type_name,
-      
+
       // Flip Interfaces
       system_working_interface: conn.en_interface,
       system_protection_interface: conn.en_protection_interface, // Assumes symmetrical protection field usage if exists
-      
+
       en_id: conn.system_id,
       en_name: conn.system_name,
       en_system_type_name: conn.system_type_name,
       en_interface: conn.system_working_interface,
-      
+
       // Flip Connected System Display
       connected_system_name: conn.system_name,
       connected_system_type_name: conn.system_type_name,
-      
+
       // Flip Nodes
       sn_id: conn.en_node_id,
       sn_name: conn.en_node_name,
       en_node_id: conn.sn_node_id,
       en_node_name: conn.sn_node_name,
-      
+
       // Flip IPs
       sn_ip: conn.en_ip,
       en_ip: conn.sn_ip
@@ -79261,7 +80742,7 @@ export const useSystemConnectionsData = (
       filtered.sort((a, b) => {
         const nameA = a.service_name || a.connected_system_name || '';
         const nameB = b.service_name || b.connected_system_name || '';
-        
+
         const nameComparison = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
         if (nameComparison !== 0) return nameComparison;
 
@@ -79307,7 +80788,7 @@ export const useLookupTypesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
-    
+
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
@@ -79330,7 +80811,7 @@ export const useLookupTypesData = (
       p_offset: 0,
       p_filters: rpcFilters,
       // Default DB sort
-      p_order_by: 'sort_order', 
+      p_order_by: 'sort_order',
       p_order_dir: 'asc',
     });
     if (error) throw error;
@@ -79422,7 +80903,7 @@ export function useMutationQueue() {
   const isProcessing = useRef(false);
 
   // Fetch all tasks for the UI list
-  const allTasks = useLiveQuery(() => 
+  const allTasks = useLiveQuery(() =>
     localDb.mutation_queue.orderBy('timestamp').reverse().toArray(),
     []
   );
@@ -79460,7 +80941,7 @@ export function useMutationQueue() {
         }
 
         if (error) throw error;
-        
+
         // Success
         await localDb.mutation_queue.delete(task.id!);
         console.log(`✅ [Queue] Processed task #${task.id}`);
@@ -79474,16 +80955,16 @@ export function useMutationQueue() {
         });
       }
     }
-    
+
     // Check if any failed remaining to update toast state
     const remainingFailed = await localDb.mutation_queue.where('status').equals('failed').count();
-    
+
     if (remainingFailed > 0) {
       toast.error(`${remainingFailed} changes failed to sync. Click the indicator to view details.`, { id: 'mutation-sync' });
     } else {
       toast.success("All changes synced successfully!", { id: 'mutation-sync' });
     }
-    
+
     isProcessing.current = false;
     await queryClient.invalidateQueries();
   }, [isOnline, supabase, queryClient]);
@@ -79619,13 +81100,13 @@ export const usePortsData = (
       }
 
       // 2. Explicit Field Filtering
-      
+
       // NEW: Handle Multi-Select for Port Type Code
       if (filters.port_type_code) {
-          const codes = Array.isArray(filters.port_type_code) 
+          const codes = Array.isArray(filters.port_type_code)
               ? (filters.port_type_code as string[])
               : [filters.port_type_code as string];
-              
+
           if (codes.length > 0) {
               filtered = filtered.filter(p => p.port_type_code && codes.includes(p.port_type_code));
           }
@@ -79645,7 +81126,7 @@ export const usePortsData = (
       filtered.sort((a, b) => collator.compare(a.port || '', b.port || ''));
 
       const totalCount = filtered.length;
-      const activeCount = filtered.filter(p => p.port_admin_status).length; 
+      const activeCount = filtered.filter(p => p.port_admin_status).length;
 
       const start = (currentPage - 1) * pageLimit;
       const end = start + pageLimit;
@@ -79752,7 +81233,7 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
   // 1. Filtered Data Sets
   const filteredSystems = vSystems.filter(filterSystem);
   const filteredNodes = nodes.filter(filterNode);
-  
+
   const utilMap = new Map(cableUtils.map(u => [u.cable_id, u]));
   const filteredCables = vCables.filter(c => {
       if (statusBool !== null && c.status !== statusBool) return false;
@@ -79774,7 +81255,7 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
       const u = utilMap.get(c.id);
       return (u?.utilization_percent || 0) > 80;
   }).length;
-  
+
   const totalUtilPercent = filteredCables.reduce((acc, c) => {
       const u = utilMap.get(c.id);
       return acc + (u?.utilization_percent || 0);
@@ -79784,7 +81265,7 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
   // Port Stats (Filtered by System Filters)
   const systemIds = new Set(filteredSystems.map(s => s.id));
   const filteredPorts = ports.filter(p => systemIds.has(p.system_id));
-  
+
   const portStatsMap = new Map<string, { total: number, active: number, used: number }>();
   filteredPorts.forEach(p => {
     const code = p.port_type_code || 'Unknown';
@@ -79855,7 +81336,7 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: true 
+    refetchOnReconnect: true
   });
 }
 ```
@@ -80012,14 +81493,14 @@ export const useUserPermissionsExtended = () => {
   // 1. Online Query Function
   const onlineQueryFn = React.useCallback(async (): Promise<V_user_profiles_extendedRowSchema[]> => {
     if (!user?.id) return [];
-    
+
     const { data, error } = await supabase.rpc('get_my_user_details');
-    
+
     if (error) throw error;
     if (!data || data.length === 0) return [];
 
     const profileData = data[0];
-    
+
     // Transform RPC result to match Schema
     const transformedData = {
         ...profileData,
@@ -80043,7 +81524,7 @@ export const useUserPermissionsExtended = () => {
         raw_user_meta_data: null,
         full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
     };
-    
+
     return [transformedData as V_user_profiles_extendedRowSchema];
   }, [user?.id, supabase]);
 
@@ -80062,7 +81543,7 @@ export const useUserPermissionsExtended = () => {
     localQueryFn,
     dexieTable: localDb.v_user_profiles_extended,
     enabled: authState === 'authenticated' && !!user?.id,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
   });
 
   const profile = profiles[0] || null;
@@ -80270,7 +81751,7 @@ export const useAuth = () => {
       }
     });
   }, [executeWithLoading, supabase.auth, setAuthState]);
-  
+
   const resetPassword = useCallback(async (newPassword: string): Promise<AuthActionResult> => {
     return executeWithLoading(async () => {
       try {
@@ -80394,15 +81875,15 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       },
       onError: (err: Error) => {
         const pgError = err as unknown as PostgrestError;
-        
+
         // --- IMPROVED ERROR PARSING ---
-        if (pgError.code === '23503') { 
+        if (pgError.code === '23503') {
           // Regex to find 'table "table_name"' pattern
           // PostgreSQL message format: update or delete on table "nodes" violates... on table "systems"
           const matches = pgError.message.match(/on table "([^"]+)"/g);
-          
+
           let referencingTable = 'another table';
-          
+
           if (matches && matches.length >= 2) {
              // The LAST match is usually the referencing (child) table
              const lastMatch = matches[matches.length - 1];
@@ -80506,7 +81987,7 @@ type SortableValue = string | number | Date | boolean | null | undefined;
 function getNestedValue(obj: Record<string, unknown>, path: string): SortableValue {
   const keys = path.split('.');
   let current: unknown = obj;
-  
+
   for (const key of keys) {
     if (current === null || current === undefined) {
       return undefined;
@@ -80517,7 +81998,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
       return undefined;
     }
   }
-  
+
   // Type guard to ensure we return only sortable values
   if (
     typeof current === 'string' ||
@@ -80529,20 +82010,20 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
   ) {
     return current as SortableValue;
   }
-  
+
   // Convert other types to string for comparison
   return String(current);
 }
 
 // Helper function to compare values
 function compareValues(
-  a: SortableValue, 
-  b: SortableValue, 
-  direction: SortDirection, 
+  a: SortableValue,
+  b: SortableValue,
+  direction: SortDirection,
   options: SortOptions = {}
 ): number {
   const { caseSensitive = false, numericSort = true, locale = 'en' } = options;
-  
+
   // Handle null/undefined values
   if (a == null && b == null) return 0;
   if (a == null) return direction === 'asc' ? -1 : 1;
@@ -80552,13 +82033,13 @@ function compareValues(
   if (typeof a === 'string' && typeof b === 'string') {
     const valueA = caseSensitive ? a : a.toLowerCase();
     const valueB = caseSensitive ? b : b.toLowerCase();
-    
+
     // Use localeCompare for proper string sorting
     const result = valueA.localeCompare(valueB, locale, {
       numeric: numericSort,
       sensitivity: caseSensitive ? 'case' : 'base'
     });
-    
+
     return direction === 'asc' ? result : -result;
   }
 
@@ -80587,7 +82068,7 @@ function compareValues(
     numeric: numericSort,
     sensitivity: caseSensitive ? 'case' : 'base'
   });
-  
+
   return direction === 'asc' ? result : -result;
 }
 
@@ -80598,7 +82079,7 @@ export function useSorting<T extends Record<string, unknown>>({
   defaultDirection = 'asc',
   options = {}
 }: UseSortingProps<T>): UseSortingReturn<T> {
-  
+
   const [sortConfig, setSortConfig] = useState<SortConfig<T>>({
     key: defaultSortKey || '',
     direction: defaultSortKey ? defaultDirection : null
@@ -80613,7 +82094,7 @@ export function useSorting<T extends Record<string, unknown>>({
     return [...data].sort((a, b) => {
       const valueA = getNestedValue(a, String(sortConfig.key));
       const valueB = getNestedValue(b, String(sortConfig.key));
-      
+
       return compareValues(valueA, valueB, sortConfig.direction, options);
     });
   }, [data, sortConfig, options]);
@@ -80672,7 +82153,7 @@ export interface MultiSortConfig<T> {
 }
 
 export function useMultiSorting<T extends Record<string, unknown>>(
-  data: T[], 
+  data: T[],
   options: SortOptions = {}
 ) {
   const [sortConfigs, setSortConfigs] = useState<MultiSortConfig<T>[]>([]);
@@ -80683,10 +82164,10 @@ export function useMultiSorting<T extends Record<string, unknown>>(
     return [...data].sort((a, b) => {
       for (const config of sortConfigs.sort((x, y) => x.priority - y.priority)) {
         if (!config.direction) continue;
-        
+
         const valueA = getNestedValue(a, String(config.key));
         const valueB = getNestedValue(b, String(config.key));
-        
+
         const result = compareValues(valueA, valueB, config.direction, options);
         if (result !== 0) return result;
       }
@@ -80696,12 +82177,12 @@ export function useMultiSorting<T extends Record<string, unknown>>(
 
   const addSort = useCallback((key: keyof T | string, direction: SortDirection) => {
     if (!direction) return;
-    
+
     setSortConfigs(prev => {
       const existing = prev.find(config => config.key === key);
       if (existing) {
-        return prev.map(config => 
-          config.key === key 
+        return prev.map(config =>
+          config.key === key
             ? { ...config, direction }
             : config
         );
@@ -80734,12 +82215,12 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
   sortOptions: SortOptions = {}
 ) {
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return data;
-    
-    return data.filter(item => 
+
+    return data.filter(item =>
       searchKeys.some(key => {
         const value = getNestedValue(item, String(key));
         return String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -80866,7 +82347,7 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
       //   return "files";
       // THE FIX: Added kml-manager mapping
       case "kml-manager":
-        return "files"; 
+        return "files";
       case "services":
         return "services";
       default:
@@ -81080,7 +82561,7 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         const columnOverride =
           (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
           {};
-        
+
         const defaultConfig: Column<Row<T>> = {
           title: toTitleCase(key),
           dataIndex: key,
@@ -81116,23 +82597,23 @@ const useIsMobile = (breakpoint = 768) => {
     const checkDevice = () => {
       // Check screen width
       const isSmallScreen = window.innerWidth < breakpoint;
-      
+
       // Check user agent for mobile indicators
       const userAgent = navigator.userAgent.toLowerCase();
       const mobileKeywords = [
-        'mobile', 'android', 'iphone', 'ipad', 'ipod', 
+        'mobile', 'android', 'iphone', 'ipad', 'ipod',
         'blackberry', 'windows phone', 'opera mini'
       ];
-      const isMobileAgent = mobileKeywords.some(keyword => 
+      const isMobileAgent = mobileKeywords.some(keyword =>
         userAgent.includes(keyword)
       );
-      
+
       // Check for touch capability
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
+
       // Combine all checks - prioritize screen size but consider other factors
       const mobile = isSmallScreen || (isMobileAgent && hasTouch);
-      
+
       setIsMobile(mobile);
     };
 
@@ -81141,7 +82622,7 @@ const useIsMobile = (breakpoint = 768) => {
 
     // Listen for resize events
     window.addEventListener('resize', checkDevice);
-    
+
     // Listen for orientation changes (mobile specific)
     window.addEventListener('orientationchange', checkDevice);
 
@@ -81709,7 +83190,7 @@ export function renderKeyValueCell(value: unknown): JSX.Element {
     // 2. Safe parsing logic for strings
     if (typeof value === "string") {
       const trimmed = value.trim();
-      
+
       // Check for the specific "bad" string that causes the SyntaxError
       if (trimmed === "[object Object]") {
         return (
@@ -81718,7 +83199,7 @@ export function renderKeyValueCell(value: unknown): JSX.Element {
           </div>
         );
       }
-      
+
       // Only attempt JSON.parse if it actually looks like a JSON object or array
       // This prevents parsing normal strings like "123 Main St" which might technically be valid JSON numbers but shouldn't be treated as objects
       if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -81756,9 +83237,9 @@ export function renderKeyValueCell(value: unknown): JSX.Element {
               <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 {key.replace(/_/g, ' ')}
               </span>
-              <TruncateTooltip 
-                text={typeof val === 'object' ? JSON.stringify(val) : String(val)} 
-                className="text-gray-900 dark:text-gray-100 font-medium" 
+              <TruncateTooltip
+                text={typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                className="text-gray-900 dark:text-gray-100 font-medium"
               />
             </div>
           ))}
@@ -81955,16 +83436,16 @@ export const getNodeIcon = (
 
   // 1. Priority: System Type specific equipment (MAAN, CPAN)
   if (
-    sType.includes('maan') || 
-    sType.includes('metro access') || 
+    sType.includes('maan') ||
+    sType.includes('metro access') ||
     sType.includes('multi-access')
   ) {
     return MaanIcon; // Using PNG for MAAN as per previous preference, or swich to IconMAAN
   }
 
   if (
-    sType.includes('cpan') || 
-    sType.includes('compact passive') || 
+    sType.includes('cpan') ||
+    sType.includes('compact passive') ||
     sType.includes('converged packet')
   ) {
     return IconMAAN; // Using the Gray/Green SVG
@@ -81972,8 +83453,8 @@ export const getNodeIcon = (
 
   // 2. Priority: Radio/Microwave (checked in both system and node types)
   if (
-    sType.includes('radiolink') || 
-    sType.includes('microwave') || 
+    sType.includes('radiolink') ||
+    sType.includes('microwave') ||
     nType.includes('radiolink') ||
     nType.includes('microwave')
   ) {
@@ -81982,10 +83463,10 @@ export const getNodeIcon = (
 
   // 3. Priority: BTS / Towers (checked in both)
   if (
-    sType.includes('bts') || 
-    sType.includes('base transceiver') || 
+    sType.includes('bts') ||
+    sType.includes('base transceiver') ||
     sType.includes('baseband') ||
-    nType.includes('bts') || 
+    nType.includes('bts') ||
     nType.includes('base transceiver') ||
     nType.includes('tower')
   ) {
@@ -82003,7 +83484,7 @@ export const getNodeIcon = (
   ) {
     return IconDefault; // Using the Purple Compass SVG
   }
-  
+
   // 5. Priority: OLTs
   if (sType.includes('olt') || nType.includes('olt')) {
       return IconNetwork; // Using the Green Network Node SVG
@@ -82028,14 +83509,14 @@ export function haversineDistance(
     const R = 6371; // Radius of the Earth in km
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-  
+
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * (Math.PI / 180)) *
         Math.cos(lat2 * (Math.PI / 180)) *
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
-  
+
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
@@ -82755,20 +84236,20 @@ export interface PasswordOptions {
 // Enhanced email validation with more comprehensive regex
 export const isValidEmail = (email: string): boolean => {
   if (!email || typeof email !== 'string') return false;
-  
+
   // More comprehensive email regex following RFC 5322 guidelines
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  
+
   // Additional checks
   if (email.length > 254) return false; // RFC 5321 limit
   if (email.includes('..')) return false; // Consecutive dots not allowed
-  
+
   return emailRegex.test(email.trim().toLowerCase());
 };
 
 // Enhanced password validation with configurable options
 export const validatePassword = (
-  password: string, 
+  password: string,
   options: PasswordOptions = {}
 ): ValidationResult => {
   const {
@@ -82781,7 +84262,7 @@ export const validatePassword = (
   } = options;
 
   const errors: string[] = [];
-  
+
   if (!password || typeof password !== 'string') {
     errors.push('Password is required');
     return { isValid: false, errors };
@@ -82794,19 +84275,19 @@ export const validatePassword = (
   if (password.length > maxLength) {
     errors.push(`Password must be no more than ${maxLength} characters long`);
   }
-  
+
   if (requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('Password must contain at least one uppercase letter');
   }
-  
+
   if (requireLowercase && !/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
   }
-  
+
   if (requireNumbers && !/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
-  
+
   if (requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>_+=\-\[\]\\;'\/~`]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
@@ -82829,22 +84310,22 @@ export const validatePassword = (
 // Enhanced phone number validation with country code support
 export const isValidPhoneNumber = (phone: string, countryCode?: string): boolean => {
   if (!phone || typeof phone !== 'string') return false;
-  
+
   // Remove all non-digit characters except +
   const cleanPhone = phone.replace(/[^\d+]/g, '');
-  
+
   // Basic international format validation
   if (countryCode === 'US') {
     // US phone number: 10 digits
     const usPhoneRegex = /^(\+1)?[2-9]\d{2}[2-9]\d{2}\d{4}$/;
     return usPhoneRegex.test(cleanPhone);
   }
-  
+
   // International format: + followed by 1-15 digits
   const intlPhoneRegex = /^\+[1-9]\d{1,14}$/;
   // National format: 7-15 digits
   const nationalPhoneRegex = /^[1-9]\d{6,14}$/;
-  
+
   return intlPhoneRegex.test(cleanPhone) || nationalPhoneRegex.test(cleanPhone);
 };
 
@@ -82859,11 +84340,11 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
   }
 
   const trimmedName = name.trim();
-  
+
   if (trimmedName.length < minLength) {
     errors.push(`Name must be at least ${minLength} characters long`);
   }
-  
+
   if (trimmedName.length > maxLength) {
     errors.push(`Name must be no more than ${maxLength} characters long`);
   }
@@ -82887,21 +84368,21 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
 // Enhanced URL validation
 export const isValidUrl = (url: string, options: { allowedProtocols?: string[] } = {}): boolean => {
   if (!url || typeof url !== 'string') return false;
-  
+
   const { allowedProtocols = ['http:', 'https:'] } = options;
-  
+
   try {
     const parsedUrl = new URL(url.trim());
-    
+
     // Check if protocol is allowed
     if (!allowedProtocols.includes(parsedUrl.protocol)) {
       return false;
     }
-    
+
     // Additional security checks
     if (parsedUrl.hostname === '') return false;
     if (parsedUrl.hostname.includes('..')) return false;
-    
+
     return true;
   } catch {
     return false;
@@ -82922,7 +84403,7 @@ export const isRequired = (value: unknown): boolean => {
 // Enhanced numeric validation
 export const isValidNumber = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-  
+
   let num: number;
   if (typeof value === 'string') {
     num = parseFloat(value.trim());
@@ -82932,16 +84413,16 @@ export const isValidNumber = (value: unknown, min?: number, max?: number): Valid
     errors.push('Value must be a number');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(num) || !isFinite(num)) {
     errors.push('Value must be a valid number');
     return { isValid: false, errors };
   }
-  
+
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-  
+
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
@@ -82955,7 +84436,7 @@ export const isValidNumber = (value: unknown, min?: number, max?: number): Valid
 // Enhanced integer validation
 export const isValidInteger = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-  
+
   let num: number;
   if (typeof value === 'string') {
     num = parseInt(value.trim(), 10);
@@ -82965,16 +84446,16 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
     errors.push('Value must be an integer');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(num) || !Number.isInteger(num)) {
     errors.push('Value must be a valid integer');
     return { isValid: false, errors };
   }
-  
+
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-  
+
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
@@ -82988,9 +84469,9 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
 // Enhanced date validation
 export const isValidDate = (date: string | Date): ValidationResult => {
   const errors: string[] = [];
-  
+
   let parsedDate: Date;
-  
+
   if (date instanceof Date) {
     parsedDate = date;
   } else if (typeof date === 'string') {
@@ -83003,7 +84484,7 @@ export const isValidDate = (date: string | Date): ValidationResult => {
     errors.push('Date must be a string or Date object');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(parsedDate.getTime())) {
     errors.push('Invalid date format');
   }
@@ -83024,13 +84505,13 @@ export const isValidDate = (date: string | Date): ValidationResult => {
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   if (bytes < 0) return 'Invalid size';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   if (i >= sizes.length) return 'File too large';
-  
+
   const size = bytes / Math.pow(k, i);
   return `${size.toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`;
 };
@@ -83598,15 +85079,15 @@ export const getOptimalImageSettings = (file: File) => {
 
 <!-- path: utils/supabase/middleware.ts -->
 ```typescript
- 
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
- 
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
- 
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -83629,10 +85110,10 @@ export async function updateSession(request: NextRequest) {
       },
     }
   )
- 
+
   // refreshing the auth token
   await supabase.auth.getUser()
- 
+
   return supabaseResponse
 }
 ```
@@ -83671,13 +85152,13 @@ export function createAdmin() {
 
 <!-- path: utils/supabase/server.ts -->
 ```typescript
- 
+
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
- 
+
 export async function createClient() {
   const cookieStore = await cookies()
- 
+
   // Create a server's supabase client with newly configured cookie,
   // which could be used to maintain user's session
   return createServerClient(

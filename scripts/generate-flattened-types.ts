@@ -1,6 +1,12 @@
+// scripts/generate-flattened-types.ts
 import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// --- CONFIGURATION ---
+const ALLOWED_AUTH_TABLES = new Set(['users']); // Only generate types for auth.users
+const ALLOWED_SCHEMAS = new Set(['public', 'auth']);
+// ---------------------
 
 interface TableInfo {
   name: string;
@@ -59,6 +65,10 @@ class SupabaseTypeExtractor {
     for (const member of node.type.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const schemaName = member.name.text;
+        
+        // Filter Schemas
+        if (!ALLOWED_SCHEMAS.has(schemaName)) continue;
+
         if (member.type && ts.isTypeLiteralNode(member.type)) {
           this.extractFromSchema(member.type, schemaName, tables, views, enums);
         }
@@ -108,6 +118,12 @@ class SupabaseTypeExtractor {
     for (const member of tablesNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const tableName = member.name.text;
+
+        // FILTER: For Auth schema, only allow specific tables
+        if (schemaName === 'auth' && !ALLOWED_AUTH_TABLES.has(tableName)) {
+          continue;
+        }
+
         const tableInfo: TableInfo = { name: tableName, schema: schemaName };
 
         if (member.type && ts.isTypeLiteralNode(member.type)) {
@@ -172,7 +188,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-   private extractEnums(
+  private extractEnums(
     enumsNode: ts.TypeLiteralNode,
     schemaName: string,
     enums: EnumInfo[]
@@ -186,7 +202,6 @@ class SupabaseTypeExtractor {
           values: [],
         };
 
-        // THE FIX: Handle both single literal types and union types for enums.
         if (member.type) {
           if (ts.isUnionTypeNode(member.type)) {
             enumInfo.values = this.extractUnionValues(member.type);
@@ -227,10 +242,8 @@ function generateFlattenedTypes(
 ): string {
   let output = '// Auto-generated from types/supabase-types.ts\n\n';
 
-  // Import the Json type
-  output += 'import type { Json, Database } from "@/types/supabase-types";\n\n';
+  output += 'import type { Json } from "@/types/supabase-types";\n\n';
 
-  // Generate table types
   output += '// ============= TABLES =============\n\n';
 
   for (const table of tables) {
@@ -252,7 +265,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate view types
   if (views.length > 0) {
     output += '// ============= VIEWS =============\n\n';
 
@@ -268,7 +280,6 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate enum types
   if (enums.length > 0) {
     output += '// ============= ENUMS =============\n\n';
 
@@ -285,13 +296,19 @@ function generateFlattenedTypes(
     }
   }
 
-  // Generate lists of table and view names for runtime checks
   output += '// ============= HELPERS =============\n\n';
 
-  const tableNamesArray = tables.map(t => `"${t.name}"`).join(',\n  ');
+  // Only export public tables as list for generic helpers, skipping auth tables for the helper array
+  const tableNamesArray = tables
+    .filter(t => t.schema === 'public')
+    .map(t => `"${t.name}"`)
+    .join(',\n  ');
   output += `export const tableNames = [\n  ${tableNamesArray}\n] as const;\n\n`;
 
-  const viewNamesArray = views.map(v => `"${v.name}"`).join(',\n  ');
+  const viewNamesArray = views
+    .filter(v => v.schema === 'public')
+    .map(v => `"${v.name}"`)
+    .join(',\n  ');
   output += `export const viewNames = [\n  ${viewNamesArray}\n] as const;\n\n`;
 
   return output;
@@ -301,7 +318,6 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Main execution
 async function main() {
   try {
     const supabaseTypesPath = path.join(
@@ -332,32 +348,10 @@ async function main() {
 
     console.log(`🎉 Generated flattened types: ${outputPath}`);
 
-    // Log summary
     console.log('\n📊 Summary:');
     tables.forEach((table) => {
-      const types = [
-        table.row && 'Row',
-        table.insert && 'Insert',
-        table.update && 'Update',
-      ]
-        .filter(Boolean)
-        .join(', ');
-      console.log(`  📋 ${table.schema}.${table.name}: ${types}`);
+      console.log(`  📋 ${table.schema}.${table.name}`);
     });
-
-    if (views.length > 0) {
-      views.forEach((view) => {
-        console.log(`  👁️  ${view.schema}.${view.name}: Row`);
-      });
-    }
-
-    if (enums.length > 0) {
-      enums.forEach((enumInfo) => {
-        console.log(
-          `  🔤 ${enumInfo.schema}.${enumInfo.name}: ${enumInfo.values.length} values`
-        );
-      });
-    }
   } catch (error) {
     console.error('❌ Error generating flattened types:', error);
     process.exit(1);

@@ -67,7 +67,12 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
             </div>
           )}
           <div className="flex items-center justify-center gap-2 text-xs pt-2 border-t border-gray-100 dark:border-gray-700 mt-2">
-             <FiMapPin className="w-3 h-3" /> {employee.maintenance_area_name || 'Unassigned'}
+             {employee.maintenance_area_name ? (
+               <>
+                 <FiMapPin className="w-3 h-3" />
+                 {employee.maintenance_area_name}
+               </>
+             ) : null}
           </div>
         </div>
 
@@ -117,8 +122,8 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
       </div>
       
       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 px-1">
-         <FiMapPin className="w-3 h-3" />
-         <span className="truncate">{employee.maintenance_area_name}</span>
+         {employee.maintenance_area_name ? <FiMapPin className="w-3 h-3" /> : null}
+         {employee.maintenance_area_name ? <span className="truncate">{employee.maintenance_area_name}</span> : null}
       </div>
 
       {canEdit && (
