@@ -7,11 +7,11 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
-import { 
-  buildServerSearchString, 
-  performClientSearch, 
-  performClientSort, 
-  performClientPagination 
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
 } from '@/hooks/database/search-utils';
 
 export const useNodesData = (
@@ -20,10 +20,18 @@ export const useNodesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   // Search Config
-  const searchFields = ['name', 'node_type_code', 'remark'] as (keyof V_nodes_completeRowSchema)[];
+  // THE FIX: Added latitude and longitude
+  const searchFields = useMemo(() => [
+      'name', 
+      'node_type_code', 
+      'remark', 
+      'latitude', 
+      'longitude'
+  ] as (keyof V_nodes_completeRowSchema)[], []);
+
   const serverSearchFields = useMemo(() => [
-    'name', 
-    'node_type_code', 
+    'name',
+    'node_type_code',
     'remark',
     'latitude::text',
     'longitude::text'

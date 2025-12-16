@@ -6,11 +6,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { 
-  buildServerSearchString, 
-  performClientSearch, 
-  performClientSort, 
-  performClientPagination 
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination
 } from '@/hooks/database/search-utils';
 
 export const useSystemsData = (
@@ -19,12 +19,14 @@ export const useSystemsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   // Configuration for Search
+  // THE FIX: Added 'ip_address' to client-side search fields
   const searchFields = [
     'system_name',
     'system_type_name',
     'node_name',
     'make',
-    's_no'
+    's_no',
+    'ip_address' 
   ] as (keyof V_systems_completeRowSchema)[];
 
   // For server-side, we need to handle specific casts manually or pass strings
@@ -82,18 +84,9 @@ export const useSystemsData = (
     let filtered = allSystems || [];
 
     // Search
-    // Special handling for IP Address which isn't a simple string match on the object sometimes
     if (searchQuery) {
-        // First standard search
+        // THE FIX: Simplified search. performClientSearch now handles ip_address string matching automatically.
         filtered = performClientSearch(filtered, searchQuery, searchFields);
-        
-        // Additional manual check for IP address formatting if needed
-        const lowerQ = searchQuery.toLowerCase();
-        // Re-filter to include IP matches if standard search missed them (though performClientSearch handles basic string props)
-        // This ensures complex IP string logic matches server behavior
-        if (!filtered.length && lowerQ.includes('.')) {
-             filtered = (allSystems || []).filter(s => String(s.ip_address).includes(lowerQ));
-        }
     }
 
     // Explicit Filters

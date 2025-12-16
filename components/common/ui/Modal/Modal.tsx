@@ -1,3 +1,4 @@
+// components/common/ui/Modal/Modal.tsx
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode, useEffect, useRef } from "react";
 import { IoClose } from "react-icons/io5";
@@ -28,7 +29,6 @@ export const Modal = ({
   className,
   visible = true,
 }: ModalProps) => {
-  // Use a ref to track where the click started
   const mouseDownTarget = useRef<EventTarget | null>(null);
 
   // Handle escape key
@@ -45,16 +45,29 @@ export const Modal = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
-  // Prevent body scroll when modal is open
+  // THE FIX: Handle Body Scroll Locking with Layout Shift Prevention
   useEffect(() => {
     if (isOpen) {
+      // Calculate scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      
+      // Apply styles
       document.body.style.overflow = "hidden";
+      // Add padding to body to prevent content shift
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
     } else {
-      document.body.style.overflow = "unset";
+      // Cleanup with a small delay to match animation if needed, 
+      // but immediate cleanup is safer for state consistency
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     }
 
     return () => {
-      document.body.style.overflow = "unset";
+      // Ensure cleanup happens on unmount
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [isOpen]);
 
@@ -67,22 +80,18 @@ export const Modal = ({
     full: "max-w-[98vw] max-h-[95vh]",
   };
 
-  // 1. Track where the mouse was pressed down
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseDownTarget.current = e.target;
   };
 
-  // 2. Only close if mouse was pressed AND released on the overlay
-  // This prevents closing when selecting text and dragging mouse out of the box
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (
-      closeOnOverlayClick && 
-      e.target === e.currentTarget && 
+      closeOnOverlayClick &&
+      e.target === e.currentTarget &&
       mouseDownTarget.current === e.currentTarget
     ) {
       onClose();
     }
-    // Reset tracker
     mouseDownTarget.current = null;
   };
 
@@ -115,7 +124,7 @@ export const Modal = ({
           >
             {/* Header */}
             {(title || showCloseButton) && visible && (
-              <div className="flex items-center justify-between border-b border-gray-200 p-6">
+              <div className="flex items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
                 {title && (
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {title}
@@ -124,7 +133,7 @@ export const Modal = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
                     aria-label="Close modal"
                   >
                     <IoClose size={20} />

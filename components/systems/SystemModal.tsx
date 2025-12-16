@@ -1,4 +1,4 @@
-// path: components/systems/SystemModal.tsx
+// components/systems/SystemModal.tsx
 
 "use client";
 
@@ -23,8 +23,9 @@ import { systemFormValidationSchema, SystemFormData } from "@/schemas/system-sch
 import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
+import { Stepper } from "@/components/common/ui/Stepper"; // THE FIX: Import Stepper
 
-// Local schema override: ensure fields accept empty string from the UI component
+// ... (Schema and Default Values definitions remain same) ...
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
   system_capacity_id: z.union([z.string().uuid(), z.literal('')]).optional().nullable(),
@@ -34,7 +35,7 @@ type SystemFormValues = z.infer<typeof systemModalFormSchema>;
 const createDefaultFormValues = (): SystemFormValues => ({
   system_name: "",
   system_type_id: "",
-  system_capacity_id: "", // Added
+  system_capacity_id: "",
   node_id: "",
   maan_node_id: null,
   maintenance_terminal_id: null,
@@ -68,6 +69,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
+  // ... (Data Fetching Logic remains same) ...
   const { data: systemTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name, is_ring_based, code",
     filters: { category: "SYSTEM_TYPES" },
@@ -75,7 +77,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   });
   const systemTypes = systemTypesResult.data;
 
-  // NEW: Fetch Capacity Options
   const { data: capacitiesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", {
     columns: "id, name",
     filters: { category: "SYSTEM_CAPACITY" },
@@ -93,13 +94,14 @@ export const SystemModal: FC<SystemModalProps> = ({
     { columns: "id, name" }
   );
   const maintenanceTerminals = maintenanceTerminalsResult.data;
-  
+
   const { data: ringsResult = { data: [] } } = useTableQuery(supabase, "rings", {
     columns: "id, name",
     filters: { status: true },
   });
   const rings = ringsResult.data;
 
+  // ... (Memoized Options logic remains same) ...
   const systemTypeOptions = useMemo(
     () =>
       systemTypes
@@ -107,15 +109,10 @@ export const SystemModal: FC<SystemModalProps> = ({
         .map((st) => ({ value: st.id, label: st.code ?? st.name ?? "" })),
     [systemTypes]
   );
-
   const capacityOptions = useMemo(
-    () =>
-      capacities
-        .filter((c) => c.name !== "DEFAULT")
-        .map((c) => ({ value: c.id, label: c.name })),
+    () => capacities.filter(c => c.name !== "DEFAULT").map(c => ({ value: c.id, label: c.name })),
     [capacities]
   );
-
   const nodeOptions = useMemo(() => nodes.map((n) => ({ value: n.id, label: n.name })), [nodes]);
   const maintenanceTerminalOptions = useMemo(
     () => maintenanceTerminals.map((mt) => ({ value: mt.id, label: mt.name })),
@@ -123,10 +120,11 @@ export const SystemModal: FC<SystemModalProps> = ({
   );
   const ringOptions = useMemo(() => rings.map((r) => ({ value: r.id, label: r.name })), [rings]);
 
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty }, // Added isDirty
+    formState: { errors, isDirty },
     reset,
     control,
     watch,
@@ -152,16 +150,14 @@ export const SystemModal: FC<SystemModalProps> = ({
     const name = selectedSystemType?.name?.toLowerCase() || "";
     return name.includes("synchronous") || name.includes("sdh");
   }, [selectedSystemType]);
-  
+
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
-  // SAFE CLOSE HANDLER
   const handleClose = useCallback(() => {
     if (isDirty) {
       const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
       if (!confirmClose) return;
     }
-    
     onClose();
     setTimeout(() => {
       reset(createDefaultFormValues());
@@ -175,7 +171,7 @@ export const SystemModal: FC<SystemModalProps> = ({
         reset({
           system_name: rowData.system_name || "",
           system_type_id: rowData.system_type_id || "",
-          system_capacity_id: rowData.system_capacity_id || "", // Added
+          system_capacity_id: rowData.system_capacity_id || "",
           node_id: rowData.node_id || "",
           maan_node_id: rowData.maan_node_id || null,
           maintenance_terminal_id: rowData.maintenance_terminal_id,
@@ -235,6 +231,10 @@ export const SystemModal: FC<SystemModalProps> = ({
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
       if (needsStep2) setStep(2);
+      else {
+          // If step 2 not needed, submit
+          handleSubmit(onValidSubmit, onInvalidSubmit)();
+      }
     } else {
       toast.error("Please fill in all required fields to continue.");
     }
@@ -253,23 +253,18 @@ export const SystemModal: FC<SystemModalProps> = ({
         </div>
       );
     }
-    if (step === 2) {
-      return (
-        <div className='flex justify-end gap-2 w-full'>
-          <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading}>
-            Back
-          </Button>
-          <Button type='submit' disabled={isLoading}>
-            {isEditMode ? "Update System" : "Create System"}
-          </Button>
-        </div>
-      );
-    }
     return (
       <div className='flex justify-end gap-2 w-full'>
-        <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading}>
-          Cancel
-        </Button>
+        {needsStep2 && (
+            <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading}>
+                Back
+            </Button>
+        )}
+        {!needsStep2 && (
+             <Button type='button' variant='secondary' onClick={handleClose} disabled={isLoading}>
+                Cancel
+            </Button>
+        )}
         <Button type='submit' disabled={isLoading}>
           {isEditMode ? "Update System" : "Create System"}
         </Button>
@@ -302,8 +297,6 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.system_type_id}
           required
         />{" "}
-        
-        {/* Added System Capacity Field */}
         <FormSearchableSelect
           name='system_capacity_id'
           label='Capacity'
@@ -312,7 +305,6 @@ export const SystemModal: FC<SystemModalProps> = ({
           error={errors.system_capacity_id}
           placeholder="Select capacity"
         />
-
         <FormSearchableSelect
           name='node_id'
           label='Node / Location'
@@ -377,7 +369,7 @@ export const SystemModal: FC<SystemModalProps> = ({
                step="0.1"
                register={register}
                error={errors.order_in_ring}
-               placeholder="e.g. 1, 2, 3"
+               placeholder="e.g. 1, 2, 2.1, 3..."
              />
              <FormSwitch name="is_hub" label="Is Hub System" control={control} />
           </>
@@ -399,7 +391,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       </div>
     </motion.div>
   );
-  
+
   const modalTitle = isEditMode
     ? "Edit System"
     : `Add System ${needsStep2 ? `(Step ${step} of 2)` : ""}`;
@@ -410,8 +402,8 @@ export const SystemModal: FC<SystemModalProps> = ({
       onClose={handleClose}
       title={modalTitle}
       className='h-0 w-0 bg-transparent'
-      closeOnOverlayClick={false} // PREVENT ACCIDENTAL CLOSING
-      closeOnEscape={!isDirty}    // ALLOW ESCAPE ONLY IF FORM IS CLEAN
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}
     >
       <FormCard
         standalone
@@ -422,6 +414,25 @@ export const SystemModal: FC<SystemModalProps> = ({
         widthClass="w-full"
         heightClass="h-full"
         footerContent={renderFooter()}>
+
+        {/* THE FIX: Add Stepper only if multiple steps are needed */}
+        {needsStep2 && (
+            <div className="mb-6 px-4">
+                <Stepper
+                    currentStep={step}
+                    steps={[
+                        { id: 1, label: 'Basic Info', description: 'Type & Location' },
+                        { id: 2, label: 'Configuration', description: 'Topology & Details' }
+                    ]}
+                    onStepClick={(s) => {
+                        // Allow going back, but validate before going forward
+                        if (s < step) setStep(s);
+                        else if (s > step) handleNext();
+                    }}
+                />
+            </div>
+        )}
+
         <AnimatePresence mode='wait'>{step === 1 ? step1Fields : step2Fields}</AnimatePresence>
       </FormCard>
     </Modal>

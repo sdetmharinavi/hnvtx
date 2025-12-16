@@ -4,13 +4,14 @@ import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientPagination
+} from '@/hooks/database/search-utils';
 
-/**
- * Helper to flip the connection perspective.
- * If the current system is the "End Node" (Destination), we swap SN/EN fields
- * so the UI always shows "Remote System" correctly relative to the current page.
- */
 const transformConnectionPerspective = (
   conn: V_system_connections_completeRowSchema,
   currentSystemId: string | null
@@ -19,35 +20,24 @@ const transformConnectionPerspective = (
     return conn;
   }
 
-  // If the current system is the Destination (en_id), flip the record.
   if (conn.en_id === currentSystemId) {
     return {
       ...conn,
-      // Flip IDs and Names
       system_id: conn.en_id,
       system_name: conn.en_name,
       system_type_name: conn.en_system_type_name,
-      
-      // Flip Interfaces
       system_working_interface: conn.en_interface,
-      system_protection_interface: conn.en_protection_interface, // Assumes symmetrical protection field usage if exists
-      
+      system_protection_interface: conn.en_protection_interface,
       en_id: conn.system_id,
       en_name: conn.system_name,
       en_system_type_name: conn.system_type_name,
       en_interface: conn.system_working_interface,
-      
-      // Flip Connected System Display
       connected_system_name: conn.system_name,
       connected_system_type_name: conn.system_type_name,
-      
-      // Flip Nodes
       sn_id: conn.en_node_id,
       sn_name: conn.en_node_name,
       en_node_id: conn.sn_node_id,
       en_node_name: conn.sn_node_name,
-      
-      // Flip IPs
       sn_ip: conn.en_ip,
       en_ip: conn.sn_ip
     };
@@ -62,16 +52,48 @@ export const useSystemConnectionsData = (
   return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_system_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
-    // 1. Online Fetcher (RPC)
-    // The RPC 'get_paged_system_connections' fetches both incoming and outgoing connections
+    // Search Config
+    // THE FIX: Added IP fields
+    const searchFields = useMemo(
+      () => [
+      'service_name',
+      'system_name',
+      'connected_system_name',
+      'bandwidth_allocated',
+      'unique_id',
+      'lc_id',
+      'sn_ip',
+      'en_ip',
+      'services_ip'
+    ] as (keyof V_system_connections_completeRowSchema)[],
+    []);
+
+    // THE FIX: Added IP fields with explicit text cast for server search
+    const serverSearchFields = useMemo(() => [
+      'service_name',
+      'system_name',
+      'connected_system_name',
+      'bandwidth_allocated',
+      'unique_id',
+      'lc_id',
+      'sn_ip::text',
+      'en_ip::text',
+      'services_ip::text'
+    ], []);
+
     const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
       if (!systemId) return [];
 
-      const { data, error } = await createClient().rpc('get_paged_system_connections', {
-        p_system_id: systemId,
-        p_limit: 5000, // Fetch all related to this system to allow client filtering
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+      const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
+      const { data, error } = await createClient().rpc('get_paged_data', {
+        p_view_name: 'v_system_connections_complete',
+        p_limit: 5000,
         p_offset: 0,
-        p_search_query: null // We'll search on client to be consistent with filters
+        p_filters: rpcFilters,
+        p_order_by: 'service_name',
+        p_order_dir: 'asc',
       });
 
       if (error) throw error;
@@ -82,9 +104,8 @@ export const useSystemConnectionsData = (
         transformConnectionPerspective(row, systemId)
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [systemId]);
+    }, [searchQuery, filters, serverSearchFields, systemId]);
 
-    // 2. Offline Fetcher
     const localQueryFn = useCallback(() => {
       if (!systemId) {
         return localDb.v_system_connections_complete.limit(0).toArray();
@@ -94,14 +115,12 @@ export const useSystemConnectionsData = (
           localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray()
       ]).then(([source, dest]) => {
           const combined = [...source, ...dest];
-          // Dedup by ID
           const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
           return unique.map(row => transformConnectionPerspective(row, systemId));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [systemId]);
 
-    // 3. Local First Query
     const {
       data: allConnections = [],
       isLoading,
@@ -109,14 +128,13 @@ export const useSystemConnectionsData = (
       error,
       refetch,
     } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>({
-      queryKey: ['system_connections-data', systemId], // specific key for this system
+      queryKey: ['system_connections-data', systemId, searchQuery, filters],
       onlineQueryFn,
       localQueryFn,
       dexieTable: localDb.v_system_connections_complete,
       localQueryDeps: [systemId],
     });
 
-    // 4. Client-Side Processing
     const processedData = useMemo(() => {
       if (!allConnections || !systemId) {
         return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
@@ -124,20 +142,12 @@ export const useSystemConnectionsData = (
 
       let filtered = allConnections;
 
-      // 1. Text Search
+      // 1. Search
       if (searchQuery) {
-        const lowerQuery = searchQuery.toLowerCase();
-        filtered = filtered.filter((conn) =>
-          conn.service_name?.toLowerCase().includes(lowerQuery) ||
-          conn.system_name?.toLowerCase().includes(lowerQuery) ||
-          conn.connected_system_name?.toLowerCase().includes(lowerQuery) ||
-          conn.bandwidth_allocated?.toLowerCase().includes(lowerQuery) ||
-          conn.unique_id?.toLowerCase().includes(lowerQuery) ||
-          conn.lc_id?.toLowerCase().includes(lowerQuery)
-        );
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
       }
 
-      // 2. Filter Logic
+      // 2. Filters
       if (filters.media_type_id) {
         filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
       }
@@ -152,12 +162,11 @@ export const useSystemConnectionsData = (
         filtered = filtered.filter(c => c.status === statusBool);
       }
 
-      // THE FIX: Explicit Alphabetical Sort (Ascending)
-      // Priority: Service Name -> Remote System Name -> Created Date
+      // 3. Sort
       filtered.sort((a, b) => {
         const nameA = a.service_name || a.connected_system_name || '';
         const nameB = b.service_name || b.connected_system_name || '';
-        
+
         const nameComparison = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
         if (nameComparison !== 0) return nameComparison;
 
@@ -168,9 +177,8 @@ export const useSystemConnectionsData = (
       const activeCount = filtered.filter((c) => !!c.status).length;
       const inactiveCount = totalCount - activeCount;
 
-      const start = (currentPage - 1) * pageLimit;
-      const end = start + pageLimit;
-      const paginatedData = filtered.slice(start, end);
+      // 4. Paginate
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,

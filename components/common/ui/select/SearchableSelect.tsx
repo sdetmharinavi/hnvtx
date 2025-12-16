@@ -34,7 +34,7 @@ interface SearchableSelectProps {
   isLoading?: boolean;
 }
 
-const RENDER_LIMIT = 100; // Performance: Only render top 100 matches
+const RENDER_LIMIT = 100;
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
@@ -68,27 +68,23 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const filteredOptions = useMemo(() => {
     if (serverSide) return options;
     const processedOptions = [...options];
-    
-    // Sort logic
+
     if (sortOptions) {
       processedOptions.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
     }
-    
-    // Filter logic
+
     if (!searchTerm.trim()) return processedOptions;
-    
+
     return processedOptions.filter(option =>
       option.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [options, searchTerm, sortOptions, serverSide]);
 
-  // Performance: Slice the options for rendering
   const visibleOptions = useMemo(() => {
     return filteredOptions.slice(0, RENDER_LIMIT);
   }, [filteredOptions]);
 
   const hasMoreOptions = filteredOptions.length > RENDER_LIMIT;
-
   const selectedOption = useMemo(() => options.find(option => option.value === value), [options, value]);
   const selectedLabel = selectedOption?.label || "";
   const hasValue = !!value;
@@ -107,22 +103,23 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - rect.bottom;
-      
-      // Determine if we should flip upwards
       const shouldFlip = spaceBelow < maxHeight && rect.top > maxHeight;
-      
+
       setDropdownStyle({
         position: 'fixed',
         top: shouldFlip ? 'auto' : `${rect.bottom + 4}px`,
         bottom: shouldFlip ? `${viewportHeight - rect.top + 4}px` : 'auto',
         left: `${rect.left}px`,
         width: `${rect.width}px`,
-        zIndex: 99999, // Ensure it sits on top of modals
+        zIndex: 99999,
       });
     }
   }, [isOpen, maxHeight]);
 
+  // THE FIX: Enhanced Event Listeners for Scrolling
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (
         triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
@@ -131,15 +128,32 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    // Close on any scroll event (window or containers) to prevent detachment
+    const handleScroll = (event: Event) => {
+       // Ignore scroll events coming from inside the dropdown itself
+       if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
+         return;
+       }
+       setIsOpen(false);
+    };
+
+    // Use 'true' for capture phase to catch scroll events from any child container
+    window.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true); 
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 0);
     } else {
-        // Reset search when closed, unless it's server side (might want to keep state)
         if(!serverSide) setSearchTerm("");
         setFocusedIndex(-1);
     }
@@ -195,25 +209,25 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!disabled) setIsOpen(!isOpen);
   };
 
-  const baseClasses = `relative w-full rounded-md border px-3 py-2 transition-all duration-200 cursor-pointer 
-    ${error ? "border-red-300 dark:border-red-600 focus-within:ring-red-500" : "border-gray-300 dark:border-gray-600 focus-within:ring-blue-500"} 
+  const baseClasses = `relative w-full rounded-md border px-3 py-2 transition-all duration-200 cursor-pointer
+    ${error ? "border-red-300 dark:border-red-600 focus-within:ring-red-500" : "border-gray-300 dark:border-gray-600 focus-within:ring-blue-500"}
     ${disabled ? "bg-gray-100 cursor-not-allowed dark:bg-gray-700 text-gray-500" : `${hasValue ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-900"} hover:border-gray-400 dark:hover:border-gray-500 text-gray-900 dark:text-white`}
     focus-within:ring-2 focus-within:outline-none`;
 
   const DropdownContent = (
-    <div 
-        ref={dropdownRef} 
-        style={dropdownStyle} 
+    <div
+        ref={dropdownRef}
+        style={dropdownStyle}
         className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
     >
       <div className="p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
         <div className="relative">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
-            ref={searchInputRef} 
-            type="text" 
+            ref={searchInputRef}
+            type="text"
             placeholder={searchPlaceholder}
-            value={searchTerm} 
+            value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
             className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400"
@@ -222,7 +236,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           {isLoading && <div className="absolute right-3 top-1/2 transform -translate-y-1/2"><ButtonSpinner size="sm" /></div>}
         </div>
       </div>
-      
+
       <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: `${maxHeight}px` }} role="listbox" id={listboxId}>
         {visibleOptions.length === 0 && !isLoading ? (
           <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center italic">{noOptionsMessage}</div>
@@ -230,23 +244,21 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           <>
             {visibleOptions.map((option, index) => (
                 <div
-                key={option.value} 
+                key={option.value}
                 ref={(el) => { optionRefs.current[index] = el; }}
                 className={`
                     px-3 py-2 text-sm cursor-pointer transition-colors border-b border-transparent
-                    ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white"} 
-                    ${index === focusedIndex ? "bg-blue-50 dark:bg-blue-900/40" : "hover:bg-gray-100 dark:hover:bg-gray-700"} 
+                    ${option.disabled ? "text-gray-400 dark:text-gray-500 cursor-not-allowed" : "text-gray-900 dark:text-white"}
+                    ${index === focusedIndex ? "bg-blue-50 dark:bg-blue-900/40" : "hover:bg-gray-100 dark:hover:bg-gray-700"}
                     ${option.value === value ? "bg-blue-100 dark:bg-blue-900/60 font-semibold text-blue-700 dark:text-blue-300" : ""}
                 `}
                 onClick={() => !option.disabled && handleOptionSelect(option.value)}
-                role="option" 
+                role="option"
                 aria-selected={option.value === value}
                 >
                 {option.label}
                 </div>
             ))}
-            
-            {/* Performance Indicator */}
             {hasMoreOptions && (
                 <div className="px-3 py-2 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 italic">
                     Showing first {RENDER_LIMIT} options. Type to refine...
@@ -261,16 +273,16 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div className={className}>
       {label && <Label className="mb-1.5 block">{label}</Label>}
-      
-      <div 
-        ref={triggerRef} 
-        className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600 border-blue-500" : ""}`} 
-        onClick={toggleDropdown} 
-        onKeyDown={handleKeyDown} 
-        tabIndex={disabled ? -1 : 0} 
-        role="combobox" 
-        aria-expanded={isOpen} 
-        aria-haspopup="listbox" 
+
+      <div
+        ref={triggerRef}
+        className={`${baseClasses.trim()} ${isOpen ? "ring-2 ring-blue-500 dark:ring-blue-600 border-blue-500" : ""}`}
+        onClick={toggleDropdown}
+        onKeyDown={handleKeyDown}
+        tabIndex={disabled ? -1 : 0}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
         aria-controls={listboxId}
       >
         <div className="flex items-center justify-between">
@@ -279,10 +291,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           </span>
           <div className="flex items-center gap-1.5 text-gray-400">
             {clearable && value && !disabled && (
-                <button 
-                    type="button" 
-                    onClick={handleClear} 
-                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors hover:text-gray-600 dark:hover:text-gray-200" 
+                <button
+                    type="button"
+                    onClick={handleClear}
+                    className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors hover:text-gray-600 dark:hover:text-gray-200"
                     tabIndex={-1}
                     aria-label="Clear selection"
                 >
@@ -293,7 +305,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           </div>
         </div>
       </div>
-      
+
       {isOpen && typeof document !== 'undefined' && createPortal(DropdownContent, document.body)}
     </div>
   );
