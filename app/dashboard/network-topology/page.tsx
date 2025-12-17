@@ -55,7 +55,7 @@ export default function NetworkTopologyPage() {
 
       <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
         {isLoading && <PageSpinner text="Loading network data..." />}
-        {isError && <ErrorDisplay error={error.message} />}
+        {isError && <ErrorDisplay error={error?.message} />}
         {!isLoading && !isError && (
           <NetworkTopologyDiagram nodes={nodes} connections={cables} />
         )}

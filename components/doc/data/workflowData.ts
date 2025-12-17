@@ -45,54 +45,68 @@ export const workflowSections: WorkflowSection[] = [
   {
     value: 'offline_sync',
     icon: 'WifiOff',
-    title: 'Offline & Sync',
+    title: 'Offline & Realtime',
     subtitle: 'Data Availability',
     gradient: 'from-slate-500 to-gray-600',
     iconColor: 'text-slate-400',
     bgGlow: 'bg-slate-500/10',
     color: 'teal',
     purpose:
-      'To explain how the application behaves without internet connection and how data synchronization works.',
+      'To explain how the application handles data consistency, offline storage, and live updates from the server.',
     workflows: [
       {
-        title: '1. Offline Mode',
+        title: '1. Realtime Updates (Online)',
         userSteps: [
-          'The app automatically detects network status.',
-          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams while offline.',
-          '**Write Access:** You can Create/Edit records (except Routes). Changes are queued locally.',
-          '**Route Manager:** Splicing and topology editing are **disabled** offline to prevent conflicts.',
+          'When connected to the internet, the app listens for changes live.',
+          'If another user updates a record (e.g., changes a Ticket Status or Inventory Count), your screen updates automatically.',
+          'No manual refresh is required for collaborative tasks.',
         ],
         uiSteps: [
-          'A "You\'re offline" banner appears at the top.',
-          'The Sync Cloud icon in the header turns grey/crossed out.',
+          'The Sync Cloud icon in the header stays Green to indicate a live connection.',
+          'Tables and lists refresh silently in the background.',
         ],
         techSteps: [
-          '**Storage:** `Dexie.js` (IndexedDB) stores a local replica of all critical tables.',
-          '**Hooks:** `useLocalFirstQuery` serves local data instantly, bypassing network calls by default.',
+          '**Hook:** `useRealtimeSubscription` connects to Supabase Realtime (WebSockets).',
+          '**Logic:** Listens for `POSTGRES_CHANGES` events and invalidates specific React Query keys to trigger a refetch.',
         ],
       },
       {
-        title: '2. Data Synchronization',
+        title: '2. Offline Mode',
         userSteps: [
-          'Data is **Manual Sync** by default to save bandwidth and improve speed.',
-          "**To Update:** Click the **'Refresh'** button on any table or the **Sync Cloud** icon in the header.",
-          '**Uploads:** Offline changes (mutations) are stored in a queue.',
-          'When internet is restored, the app automatically processes the queue.',
+          'The app automatically detects network loss.',
+          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams using locally cached data.',
+          '**Write Access:** You can Create/Edit records. Changes are queued locally.',
+          '**Restrictions:** Complex operations like Route Splicing are disabled to prevent data corruption.',
         ],
         uiSteps: [
-          "The Cloud icon animates (Blue/Bouncing) while syncing.",
-          "Green Checkmark indicates 'All Synced'.",
-          "Red Warning indicates sync errors (click to view details).",
+          'A "You\'re offline" banner appears.',
+          'The Sync Cloud icon turns Grey/Crossed out.',
         ],
         techSteps: [
-          '**Queue:** `useMutationQueue` stores requests in `mutation_queue` table.',
-          '**Sync Logic:** `useDataSync` pulls fresh data from Supabase RPCs and updates IndexedDB.',
+          '**Storage:** `Dexie.js` (IndexedDB) acts as the source of truth.',
+          '**Service Worker:** API calls use `NetworkOnly` strategy to prevent stale HTTP caching conflicts.',
+        ],
+      },
+      {
+        title: '3. Synchronization Queue',
+        userSteps: [
+          'Changes made while offline are stored in a "Pending Queue".',
+          'When internet restores, the app automatically processes this queue in the background.',
+          'Click the Cloud Icon to view pending or failed sync tasks.',
+        ],
+        uiSteps: [
+          'The Cloud icon animates (Blue) while processing the queue.',
+          'Red Warning indicates sync conflicts (click to resolve).',
+        ],
+        techSteps: [
+          '**Queue:** `mutation_queue` table in Dexie stores the payloads.',
+          '**Process:** `useMutationQueue` replays requests sequentially when `useOnlineStatus` becomes true.',
         ],
       },
     ],
   },
 
-    // ============================================================================
+  // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
   {
@@ -447,9 +461,7 @@ export const workflowSections: WorkflowSection[] = [
           "Set 'Sort Order' to control dropdown position (Lower numbers appear first).",
           "Click 'Create'.",
         ],
-        uiSteps: [
-          "System Default options (marked 'Yes') and have disabled Edit/Delete buttons.",
-        ],
+        uiSteps: ["System Default options (marked 'Yes') and have disabled Edit/Delete buttons."],
         techSteps: [
           '**Validation:** Prevent editing if `is_system_default` is true to avoid breaking application logic.',
         ],
@@ -739,63 +751,58 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-// ============================================================================
+  // ============================================================================
   // MODULE 9: SYSTEMS MANAGEMENT
   // ============================================================================
   {
-    value: "systems_management",
-    icon: "GoServer",
-    title: "Systems",
-    subtitle: "Active Network Elements",
-    gradient: "from-blue-600 to-cyan-600",
-    iconColor: "text-blue-500",
-    bgGlow: "bg-blue-500/10",
-    color: "blue",
-    purpose: "To manage the active network elements (CPAN, SDH, MAAN, OLT) that light up the fiber network.",
+    value: 'systems_management',
+    icon: 'GoServer',
+    title: 'Systems',
+    subtitle: 'Active Network Elements',
+    gradient: 'from-blue-600 to-cyan-600',
+    iconColor: 'text-blue-500',
+    bgGlow: 'bg-blue-500/10',
+    color: 'blue',
+    purpose:
+      'To manage the active network elements (CPAN, SDH, MAAN, OLT) that light up the fiber network.',
     workflows: [
       {
-        title: "1. Adding Systems",
+        title: '1. Adding Systems',
         userSteps: [
-          "Navigate to `/dashboard/systems`.",
+          'Navigate to `/dashboard/systems`.',
           "Click 'Add New' (Restricted to specific Admins).",
           "Enter 'System Name', select 'Type' (e.g., CPAN) and 'Location' (Node).",
           "If it's a Ring-Based system, assign the Ring immediately.",
-          "Add IP Address (automatically formats without subnet) and other details.",
+          'Add IP Address (automatically formats without subnet) and other details.',
         ],
-        uiSteps: [
-          "Multi-step modal guides through basic info and topology configuration.",
-        ],
+        uiSteps: ['Multi-step modal guides through basic info and topology configuration.'],
         techSteps: [
-          "**RPC:** `upsert_system_with_details` transactionally handles system creation and ring association.",
+          '**RPC:** `upsert_system_with_details` transactionally handles system creation and ring association.',
         ],
       },
       {
-        title: "2. Port Management",
+        title: '2. Port Management',
         userSteps: [
           "Click the 'Manage Ports' (Server icon) on a system card.",
           "**Templates:** Click 'Apply Template' to auto-generate standard port configs (e.g., 'A1 Config').",
-          "**Heatmap:** View port status (Up/Down/Used) visually.",
-          "Click a port to manually edit its status or capacity.",
+          '**Heatmap:** View port status (Up/Down/Used) visually.',
+          'Click a port to manually edit its status or capacity.',
         ],
-        uiSteps: [
-          "Heatmap uses color coding: Green (Free), Blue (Used), Red (Admin Down).",
-        ],
+        uiSteps: ['Heatmap uses color coding: Green (Free), Blue (Used), Red (Admin Down).'],
         techSteps: [
-          "**Bulk Upsert:** Uses `useTableBulkOperations` to efficiently create/update hundreds of ports.",
-          "**View:** `v_ports_management_complete` aggregates status.",
+          '**Bulk Upsert:** Uses `useTableBulkOperations` to efficiently create/update hundreds of ports.',
+          '**View:** `v_ports_management_complete` aggregates status.',
         ],
       },
       {
-        title: "3. System Connections",
+        title: '3. System Connections',
         userSteps: [
           "Click 'View Details' to see connections originating from or terminating at this system.",
-          "Navigate to `/dashboard/connections` for a global view of all logical links.",
+          'Navigate to `/dashboard/connections` for a global view of all logical links.',
         ],
-        uiSteps: [
-          "Bi-directional view logic ensures connections are visible from both ends.",
-        ],
+        uiSteps: ['Bi-directional view logic ensures connections are visible from both ends.'],
         techSteps: [
-          "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective.",
+          '**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective.',
         ],
       },
     ],
@@ -804,57 +811,53 @@ export const workflowSections: WorkflowSection[] = [
   // MODULE 10: SYSTEM CONNECTION DETAILS
   // ============================================================================
   {
-    value: "system_connection_details",
-    icon: "FiGitBranch",
-    title: "System Connections",
-    subtitle: "Bi-Directional Links & Ports",
-    gradient: "from-blue-500 to-indigo-600",
-    iconColor: "text-indigo-400",
-    bgGlow: "bg-indigo-500/10",
-    color: "blue",
-    purpose: "To manage individual physical and logical links from a specific system perspective.",
+    value: 'system_connection_details',
+    icon: 'FiGitBranch',
+    title: 'System Connections',
+    subtitle: 'Bi-Directional Links & Ports',
+    gradient: 'from-blue-500 to-indigo-600',
+    iconColor: 'text-indigo-400',
+    bgGlow: 'bg-indigo-500/10',
+    color: 'blue',
+    purpose: 'To manage individual physical and logical links from a specific system perspective.',
     workflows: [
       {
-        title: "1. Connection Management",
+        title: '1. Connection Management',
         userSteps: [
-          "Navigate to `/dashboard/systems/[id]`.",
-          "**List View:** Shows all connections where this system is either the *Source* or *Destination*.",
-          "**Edit:** Update bandwidth, VLANs, or physical ports (Admin).",
-          "**Stats:** Header shows port utilization specific to this system.",
+          'Navigate to `/dashboard/systems/[id]`.',
+          '**List View:** Shows all connections where this system is either the *Source* or *Destination*.',
+          '**Edit:** Update bandwidth, VLANs, or physical ports (Admin).',
+          '**Stats:** Header shows port utilization specific to this system.',
         ],
         uiSteps: [
           "The 'End Node' column dynamically shows the *other* end of the link.",
-          "Port heatmap shows visual status of all slots/ports.",
+          'Port heatmap shows visual status of all slots/ports.',
         ],
         techSteps: [
           "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective so the current system is always 'local'.",
         ],
       },
       {
-        title: "2. Fiber Provisioning",
+        title: '2. Fiber Provisioning',
         userSteps: [
           "Click 'Allocate Fibers' on a connection.",
-          "Select the outgoing cable and specific fiber strand.",
-          "If the route is multi-hop, select subsequent cables/fibers until the destination is reached.",
+          'Select the outgoing cable and specific fiber strand.',
+          'If the route is multi-hop, select subsequent cables/fibers until the destination is reached.',
           "Click 'Confirm'.",
         ],
-        uiSteps: [
-          "Dropdowns filter out already-occupied fibers.",
-        ],
+        uiSteps: ['Dropdowns filter out already-occupied fibers.'],
         techSteps: [
-          "**RPC:** `provision_service_path` atomically updates `logical_fiber_paths` and marks `ofc_connections` as used.",
+          '**RPC:** `provision_service_path` atomically updates `logical_fiber_paths` and marks `ofc_connections` as used.',
         ],
       },
       {
-        title: "3. Path Tracing",
+        title: '3. Path Tracing',
         userSteps: [
           "Click the 'Eye' icon on a provisioned connection.",
-          "View the complete physical path: System A -> Cable -> JC -> Cable -> System B.",
-          "Shows total distance and loss budget.",
+          'View the complete physical path: System A -> Cable -> JC -> Cable -> System B.',
+          'Shows total distance and loss budget.',
         ],
-        techSteps: [
-          "**RPC:** `trace_fiber_path`.",
-        ],
+        techSteps: ['**RPC:** `trace_fiber_path`.'],
       },
     ],
   },
@@ -863,45 +866,44 @@ export const workflowSections: WorkflowSection[] = [
   // MODULE 11: GLOBAL CONNECTIONS EXPLORER
   // ============================================================================
   {
-    value: "global_connections",
-    icon: "FiGitBranch",
-    title: "Global Connections",
-    subtitle: "Network-Wide Circuit View",
-    gradient: "from-indigo-600 to-violet-600",
-    iconColor: "text-indigo-500",
-    bgGlow: "bg-indigo-500/10",
-    color: "violet",
-    purpose: "To provide a searchable, unified view of every logical service connection across the entire network.",
+    value: 'global_connections',
+    icon: 'FiGitBranch',
+    title: 'Global Connections',
+    subtitle: 'Network-Wide Circuit View',
+    gradient: 'from-indigo-600 to-violet-600',
+    iconColor: 'text-indigo-500',
+    bgGlow: 'bg-indigo-500/10',
+    color: 'violet',
+    purpose:
+      'To provide a searchable, unified view of every logical service connection across the entire network.',
     workflows: [
       {
-        title: "1. Finding Circuits",
+        title: '1. Finding Circuits',
         userSteps: [
-          "Navigate to `/dashboard/connections`.",
+          'Navigate to `/dashboard/connections`.',
           "**Sorting:** Connections are sorted alphabetically by 'Service Name'.",
-          "**Search:** Enter a customer name, service ID, or any system name in the route to find a specific link.",
+          '**Search:** Enter a customer name, service ID, or any system name in the route to find a specific link.',
           "**Filtering:** Use dropdowns to isolate 'MPLS' links or specific Media Types.",
         ],
         uiSteps: [
-          "Grid View shows cards with Start/End points and status.",
-          "Table View provides detailed columns for bandwidth and interface data.",
+          'Grid View shows cards with Start/End points and status.',
+          'Table View provides detailed columns for bandwidth and interface data.',
         ],
         techSteps: [
-          "**Hook:** `useAllSystemConnectionsData` fetches `v_system_connections_complete`.",
+          '**Hook:** `useAllSystemConnectionsData` fetches `v_system_connections_complete`.',
         ],
       },
       {
-        title: "2. Deep Diving",
+        title: '2. Deep Diving',
         userSteps: [
           "Click 'Full Details' to open the connection inspector modal.",
           "Click 'View Path' to see the physical fiber trace.",
           "Click 'Go to System' to jump to the parent system's management page for editing.",
         ],
         uiSteps: [
-          "This page is read-only by design to prevent accidental modification of complex routes without context.",
+          'This page is read-only by design to prevent accidental modification of complex routes without context.',
         ],
-        techSteps: [
-          "**Navigation:** Uses Next.js router to switch contexts.",
-        ],
+        techSteps: ['**Navigation:** Uses Next.js router to switch contexts.'],
       },
     ],
   },
@@ -909,7 +911,7 @@ export const workflowSections: WorkflowSection[] = [
   // ============================================================================
   // MODULE 12: RINGS MANAGEMENT
   // ============================================================================
-{
+  {
     value: 'ring_manager',
     icon: 'GiLinkedRings',
     title: 'Ring Manager',
@@ -926,7 +928,7 @@ export const workflowSections: WorkflowSection[] = [
         userSteps: [
           'Navigate to `/dashboard/ring-manager`.',
           "Click 'Add New Ring' to create a named ring entity.",
-          "Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.",
+          'Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.',
         ],
         uiSteps: [
           'The list shows all rings with their active system counts.',
@@ -941,8 +943,8 @@ export const workflowSections: WorkflowSection[] = [
         title: '2. Adding Systems to Ring',
         userSteps: [
           "Click 'Add Systems to Ring'.",
-          "**Step 1:** Select the target Ring.",
-          "**Step 2:** Select the System to add (Search by Name/IP).",
+          '**Step 1:** Select the target Ring.',
+          '**Step 2:** Select the System to add (Search by Name/IP).',
           "Set 'Order in Ring' (e.g., 1.0, 2.0). Decimals (1.1) indicate spurs.",
           "Toggle 'Is Hub' if this system connects spurs to the backbone.",
           "Click 'Save' (You can queue multiple adds before saving).",
@@ -970,7 +972,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
-// ============================================================================
+  // ============================================================================
   // MODULE 13: DIAGRAMS & FILES
   // ============================================================================
   {
@@ -982,7 +984,8 @@ export const workflowSections: WorkflowSection[] = [
     iconColor: 'text-slate-500',
     bgGlow: 'bg-slate-500/10',
     color: 'teal',
-    purpose: 'To securely store network diagrams, manuals, and site photos with folder organization.',
+    purpose:
+      'To securely store network diagrams, manuals, and site photos with folder organization.',
     workflows: [
       {
         title: '1. Folder Management',
@@ -990,11 +993,9 @@ export const workflowSections: WorkflowSection[] = [
           'Navigate to `/dashboard/diagrams`.',
           "Click 'Show Upload' to reveal the control panel.",
           "**Create:** Enter a new folder name and click 'Create'.",
-          "**Delete:** Select a folder and click the trash icon (Admin only).",
+          '**Delete:** Select a folder and click the trash icon (Admin only).',
         ],
-        uiSteps: [
-          'The file list filters automatically when a folder is selected.',
-        ],
+        uiSteps: ['The file list filters automatically when a folder is selected.'],
         techSteps: [
           '**Hook:** `useFolders` manages folder state via React Query.',
           '**Validation:** Prevents deleting non-empty folders (handled by DB constraint/UI check).',
@@ -1003,8 +1004,8 @@ export const workflowSections: WorkflowSection[] = [
       {
         title: '2. Uploading Files',
         userSteps: [
-          "Select a destination folder.",
-          "**Simple Upload:** Drag & drop files or click to browse.",
+          'Select a destination folder.',
+          '**Simple Upload:** Drag & drop files or click to browse.',
           "**Advanced (Camera):** Switch to 'Advanced Upload' to use the webcam/camera directly.",
           "Click 'Start Upload'.",
         ],
@@ -1023,19 +1024,14 @@ export const workflowSections: WorkflowSection[] = [
         userSteps: [
           'Switch between Grid and List view.',
           '**Search:** Filter files by name within the selected folder.',
-          "**Action:** Click the eye icon to preview, download icon to save.",
+          '**Action:** Click the eye icon to preview, download icon to save.',
         ],
-        uiSteps: [
-          'PDFs open in a new tab.',
-          'Images show a thumbnail preview.',
-        ],
-        techSteps: [
-          '**Table:** `files` linked to `folders` and `users`.',
-        ],
+        uiSteps: ['PDFs open in a new tab.', 'Images show a thumbnail preview.'],
+        techSteps: ['**Table:** `files` linked to `folders` and `users`.'],
       },
     ],
   },
-  
+
   // ============================================================================
   // MODULE 14: UTILITIES & MAINTENANCE
   // ============================================================================
