@@ -129,6 +129,7 @@ export const DiaryFormModal = ({
             control={control}
             error={errors.content}
             placeholder='Write your daily notes here...'
+            className="w-full h-full"
           />
         </div>
       </FormCard>
