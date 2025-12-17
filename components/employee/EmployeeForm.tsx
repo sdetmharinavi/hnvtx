@@ -124,9 +124,8 @@ const EmployeeForm = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={employee ? 'Edit Employee' : 'Add New Employee'}
-      size="full"
       visible={false}
-      className="transparent h-0 w-0"
+      className="bg-transparent h-0 w-0"
       closeOnOverlayClick={false}
       closeOnEscape={!isDirty}
     >
@@ -137,6 +136,8 @@ const EmployeeForm = ({
         isLoading={isLoading}
         disableSubmit={isLoading}
         standalone
+        widthClass='full'
+        heightClass='full'
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

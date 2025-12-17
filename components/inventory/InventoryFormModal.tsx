@@ -82,13 +82,15 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Inventory Item' : 'Add Inventory Item'} size="full">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Inventory Item' : 'Add Inventory Item'} className="w-0 h-0 bg-transparent">
       <FormCard
         onSubmit={handleSubmit(handleFormSubmit)}
         onCancel={onClose}
         isLoading={isLoading}
         title={isEditMode ? 'Edit Item' : 'Add New Item'}
-        standalone={false}
+        standalone
+        widthClass='full'
+        heightClass='full'
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput name="asset_no" label="Asset No" register={register} error={errors.asset_no} placeholder="e.g., CHR-001"/>

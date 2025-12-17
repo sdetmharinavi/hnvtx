@@ -87,6 +87,7 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
         standalone
         widthClass="full"
+        heightClass='full'
       >
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
