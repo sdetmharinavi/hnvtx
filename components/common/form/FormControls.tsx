@@ -161,10 +161,9 @@ interface FormSearchableSelectProps<T extends FieldValues>
   searchPlaceholder?: string;
   disabled?: boolean;
   clearable?: boolean;
-  // **NEW PROPS FOR SERVER-SIDE SEARCH**
-  serverSide?: boolean; // When true, options are not filtered client-side
-  onSearch?: (term: string) => void; // Function to trigger a search
-  isLoading?: boolean; // To show a loading indicator
+  serverSide?: boolean;
+  onSearch?: (term: string) => void;
+  isLoading?: boolean;
 }
 
 export function FormSearchableSelect<T extends FieldValues>({
@@ -276,7 +275,6 @@ export function FormSelect<T extends FieldValues>({
 
 // --- FORM DATE INPUT COMPONENT ---
 
-// Keep your original prop intent; allow passing datepicker props safely
 export interface FormDateInputProps<T extends FieldValues>
   extends BaseProps<T>,
     Omit<
@@ -284,11 +282,9 @@ export interface FormDateInputProps<T extends FieldValues>
       'name' | 'type' | 'size'
     > {
   control: Control<T, any, any>;
-  // Optional passthrough for DatePicker props (minDate, maxDate, showTimeSelect, etc.)
   pickerProps?: Partial<
     Omit<
       DatePickerProps,
-      // Keep single-date mode: exclude props that change `onChange` signature
       | 'selected'
       | 'onChange'
       | 'customInput'
@@ -302,7 +298,6 @@ export interface FormDateInputProps<T extends FieldValues>
   >;
 }
 
-/** A styled input used as ReactDatePicker's customInput to control theme + icon */
 const DateTextInput = forwardRef<
   HTMLInputElement,
   React.InputHTMLAttributes<HTMLInputElement> & { errorText?: string }
@@ -322,9 +317,8 @@ const DateTextInput = forwardRef<
             : 'border-gray-300',
           className ?? '',
         ].join(' ')}
-        readOnly // recommended with customInput to avoid parsing issues
+        readOnly
       />
-      {/* Calendar icon (theme-aware via currentColor) */}
       <svg
         className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-300"
         viewBox="0 0 24 24"
@@ -372,7 +366,6 @@ export function FormDateInput<T extends FieldValues>({
         name={name}
         control={control}
         render={({ field }) => {
-          // Normalize value to Date | null
           const raw = field.value as unknown;
           const selected: Date | null =
             raw == null || (raw as any) === ''
@@ -384,35 +377,25 @@ export function FormDateInput<T extends FieldValues>({
               : new Date(raw as any);
 
           return (
-            // @ts-expect-error react-datepicker's prop union sometimes misinfers to multi-select variant.
-            // We intentionally use single-date mode: `selected: Date | null` and `onChange(date | null)`.
+            // @ts-expect-error - React Datepicker typing
             <DatePicker
               id={name}
-              // --- recommended defaults for date-only fields ---
               selected={selected}
               onChange={(d: Date | null) => {
                 if (!d) return field.onChange(null);
-                // Format as local date (YYYY-MM-DD) to avoid UTC shifting
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 field.onChange(`${y}-${m}-${day}`);
               }}
               onBlur={field.onBlur}
-              // Keep keyboard nav and accessibility
-              // Use a date-only format; adjust as you like
               dateFormat={(pickerProps as any)?.dateFormat ?? 'yyyy-MM-dd'}
-              // Show clear button by default; optional
               isClearable
-              // Enable year and month dropdowns
               showMonthDropdown
               showYearDropdown
-              dropdownMode="select" // Makes dropdowns selectable instead of scrollable
-              // You can also set year range if needed
-              yearDropdownItemNumber={15} // Shows 15 years in dropdown
-              // Render portal into Next.js root so it appears above modals/overflows
+              dropdownMode="select"
+              yearDropdownItemNumber={15}
               portalId="__next"
-              // Custom input so we fully control theme + icon
               customInput={
                 <DateTextInput
                   errorText={
@@ -423,7 +406,6 @@ export function FormDateInput<T extends FieldValues>({
                   placeholder={inputProps.placeholder ?? 'Select date'}
                 />
               }
-              // Pass through any extra ReactDatePicker props (minDate, maxDate, showTimeSelect, etc.)
               {...pickerProps}
             />
           );
@@ -510,9 +492,9 @@ export function FormIPAddressInput<T extends FieldValues>({
         control={control}
         render={({ field }) => (
           <IPAddressInput
-            {...props} // Pass through placeholder, allowIPv4, etc.
-            value={field.value || ''} // Get value from react-hook-form
-            onChange={field.onChange} // Use react-hook-form's onChange
+            {...props}
+            value={field.value || ''}
+            onChange={field.onChange}
           />
         )}
       />
@@ -524,6 +506,8 @@ export function FormIPAddressInput<T extends FieldValues>({
     </div>
   );
 }
+
+// --- FORM RICH TEXT EDITOR COMPONENT ---
 
 interface FormRichTextEditorProps<T extends FieldValues> extends BaseProps<T> {
   control: Control<T, any, any>;

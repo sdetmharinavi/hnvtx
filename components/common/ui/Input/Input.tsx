@@ -68,6 +68,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     };
     
     // THE FIX: Ensure value is never undefined to prevent "uncontrolled to controlled" warning
+    // If 'value' prop is passed (controlled), strictly use it (defaulting to '' if null/undefined).
+    // If 'value' prop is NOT passed (uncontrolled), leave it undefined so DOM handles it.
     const safeValue = value === undefined ? undefined : (value ?? '');
 
     const shouldShowClear = clearable && !disabled && !isLoading && liveHasValue;
