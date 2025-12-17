@@ -16,26 +16,25 @@ import {
   UseTableQueryOptions,
   UseTableInfiniteQueryOptions,
   UseTableRecordOptions,
-  UseUniqueValuesOptions,
   PagedQueryResult,
+  UseUniqueValuesOptions,
 } from './queries-type-helpers';
 import {
   applyFilters,
   applyOrdering,
   buildDeduplicationQuery,
   createQueryKey,
-  createUniqueValuesKey,
 } from './utility-functions';
+import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // THE FIX: Import online status
 
 // Generic table query hook with enhanced features
 export function useTableQuery<
   T extends TableOrViewName,
-  // UPDATED: The default data type is now the new PagedQueryResult
   TData = PagedQueryResult<Row<T>>
 >(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  // UPDATED: The options type now reflects the new return shape
   options?: Omit<UseTableQueryOptions<T, TData>, 'select'> & { select?: (data: PagedQueryResult<Row<T>>) => TData }
 ) {
   const {
@@ -63,10 +62,8 @@ export function useTableQuery<
       limit,
       offset
     ),
-    // UPDATED: The query function now returns the PagedQueryResult shape
     queryFn: async (): Promise<PagedQueryResult<Row<T>>> => {
-      // Deduplication and aggregation logic remains the same but would need adjustment if they also need counts.
-      // For now, we assume they return a simple array.
+      // Deduplication and aggregation logic remains the same (Server-side only for now)
       if (deduplication) {
         const sql = buildDeduplicationQuery(tableName as string, deduplication, filters, orderBy);
         const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', { sql_query: sql });
@@ -99,7 +96,6 @@ export function useTableQuery<
       const { data, error, count } = await query;
       if (error) throw error;
 
-      // UPDATED: Return the new structured object instead of attaching count to each row.
       return {
         data: (data as unknown as Row<T>[]) || [],
         count: includeCount ? (count ?? 0) : (data?.length ?? 0),
@@ -183,28 +179,42 @@ export function useRpcRecord<
   options?: Omit<UseTableRecordOptions<T, TData>, 'columns'> // RPC returns all columns
 ) {
   const { ...queryOptions } = options || {};
+  const isOnline = useOnlineStatus();
 
   return useQuery({
     queryKey: ['rpc-record', viewName, id],
     queryFn: async (): Promise<Row<T> | null> => {
       if (!id) return null;
 
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: viewName,
-        p_limit: 1,
-        p_offset: 0,
-        p_filters: { id: id },
-        p_order_by: 'id' // Default sort, irrelevant for single ID fetch
-      });
-
-      if (error) {
-        console.error(`Error fetching record via RPC for ${viewName}:`, error);
-        throw error;
+      // 1. Try Local First
+      try {
+        const table = localDb.table(viewName);
+        if (table) {
+           const localData = await table.get(id);
+           if (localData) return localData as Row<T>;
+        }
+      } catch (e) {
+        console.warn(`[useRpcRecord] Local fetch failed for ${viewName}:`, e);
       }
 
-      // get_paged_data returns { data: [...], ... }
-      const rows = (data as any)?.data as Row<T>[];
-      return rows?.[0] || null;
+      // 2. If no local or online needed, try Network
+      if (isOnline) {
+          const { data, error } = await supabase.rpc('get_paged_data', {
+            p_view_name: viewName,
+            p_limit: 1,
+            p_offset: 0,
+            p_filters: { id: id },
+            p_order_by: 'id' // Default sort
+          });
+
+          if (error) throw error;
+
+          // get_paged_data returns { data: [...], ... }
+          const rows = (data as any)?.data as Row<T>[];
+          return rows?.[0] || null;
+      }
+      
+      return null;
     },
     enabled: !!id && (queryOptions?.enabled ?? true),
     staleTime: 5 * 60 * 1000,
@@ -212,7 +222,7 @@ export function useRpcRecord<
   });
 }
 
-// Generic single record query hook (optimized)
+// Generic single record query hook (optimized & offline-capable)
 export function useTableRecord<
   T extends TableOrViewName,
   TData = Row<T> | null
@@ -223,35 +233,60 @@ export function useTableRecord<
   options?: UseTableRecordOptions<T, TData>
 ) {
   const { columns = '*', performance, ...queryOptions } = options || {};
+  const isOnline = useOnlineStatus();
 
   return useQuery({
     queryKey: createQueryKey(tableName, { id: id as any }, columns),
     queryFn: async (): Promise<Row<T> | null> => {
       if (!id) return null;
 
-      let query = supabase
-        .from(tableName as any)
-        .select(columns)
-        .eq('id', id);
-
-      if (performance?.timeout)
-        query = query.abortSignal(AbortSignal.timeout(performance.timeout));
-
-      const { data, error } = await query.maybeSingle();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null; // Not found, which is a valid null result
-        throw error;
+      // 1. Try Local First
+      try {
+        // Dynamically access the table in Dexie
+        const table = localDb.table(tableName);
+        if (table) {
+          const localData = await table.get(id);
+          // If found locally, return it immediately.
+          // Note: This relies on the table being synced. If it's not in the sync list,
+          // this might return undefined, triggering the online fallback.
+          if (localData) {
+             return localData as Row<T>;
+          }
+        }
+      } catch (e) {
+         console.warn(`[useTableRecord] Local lookup failed for ${tableName}:`, e);
       }
-      return (data as unknown as Row<T>) || null;
+
+      // 2. Fallback to Online Fetch
+      if (isOnline) {
+          let query = supabase
+            .from(tableName as any)
+            .select(columns)
+            .eq('id', id);
+
+          if (performance?.timeout)
+            query = query.abortSignal(AbortSignal.timeout(performance.timeout));
+
+          const { data, error } = await query.maybeSingle();
+
+          if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
+          }
+          return (data as unknown as Row<T>) || null;
+      }
+      
+      // 3. Offline and not found locally
+      return null;
     },
     enabled: !!id && (queryOptions?.enabled ?? true),
-    staleTime: 5 * 60 * 1000,
+    // Increase stale time so we don't hammer the DB for the same record
+    staleTime: Infinity, 
     ...queryOptions,
   });
 }
 
-// Get unique values for a specific column
+// Get unique values for a specific column (Server-side mainly, could optimize for local)
 export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -261,8 +296,9 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
   const { filters, orderBy, limit, ...queryOptions } = options || {};
 
   return useQuery({
-    queryKey: createUniqueValuesKey(tableName, column, filters, orderBy),
+    queryKey: ['unique', tableName, column, { filters, orderBy }],
     queryFn: async (): Promise<unknown[]> => {
+      // Basic implementation for server-side unique values
       const { data, error } = await supabase.rpc('get_unique_values', {
         p_table_name: tableName,
         p_column_name: column,
@@ -270,26 +306,11 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
         p_order_by: (orderBy || []) as unknown as Json,
         p_limit_count: limit,
       });
+      
       if (error) {
-        console.error(
-          'RPC unique values failed, falling back to direct query',
-          error
-        );
-        // Fallback implementation
-        let fallbackQuery = supabase.from(tableName as any).select(column);
-        if (filters) fallbackQuery = applyFilters(fallbackQuery, filters);
-        if (orderBy?.length)
-          fallbackQuery = applyOrdering(fallbackQuery, orderBy);
-        if (limit) fallbackQuery = fallbackQuery.limit(limit);
-
-        const { data: fallbackData, error: fallbackError } =
-          await fallbackQuery;
-        if (fallbackError) throw fallbackError;
-        return [
-          ...new Set(
-            (fallbackData as any[])?.map((item) => item[column]) || []
-          ),
-        ];
+         // Fallback to simple select if RPC fails
+         const { data: fbData } = await supabase.from(tableName as any).select(column);
+         return Array.from(new Set(fbData?.map(item => (item as any)[column])));
       }
       return (data as any)?.map((item: any) => item.value) || [];
     },

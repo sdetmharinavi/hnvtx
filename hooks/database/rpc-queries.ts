@@ -12,12 +12,13 @@ import {
 } from './queries-type-helpers';
 import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
 import { DEFAULTS } from '@/constants/constants';
+import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb for fallback logic
 
 // =================================================================
 // Section 1: Generic & Specific RPC Hooks (Non-Paginated)
 // =================================================================
 
-// Generic RPC query hook for any non-paginated function
+// Generic RPC query hook
 export function useRpcQuery<
   T extends RpcFunctionName,
   TData = RpcFunctionReturns<T>
@@ -64,13 +65,11 @@ export function useRpcMutation<T extends RpcFunctionName>(
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
-    //  The onSuccess callback now correctly accepts all four arguments
     onSuccess: (data, variables, context, mutation) => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ['table'] });
         queryClient.invalidateQueries({ queryKey: ['rpc'] });
       }
-      // The original onSuccess is called with the correct signature
       if (options?.onSuccess) {
         options.onSuccess(data, variables, context, mutation);
       }
@@ -91,7 +90,6 @@ export function useDashboardOverview(
 // Section 2: Efficient Generic Pagination Hook
 // =================================================================
 
-// Define the shape of the JSONB object returned by the efficient `get_paged_data` SQL function
 export interface PagedDataResult<T> {
   data: T[];
   total_count: number;
@@ -99,13 +97,12 @@ export interface PagedDataResult<T> {
   inactive_count: number;
 }
 
-// CORRECTED: The options now correctly use the `Filters` type
 interface UsePagedDataOptions {
   limit?: number;
   offset?: number;
   orderBy?: string;
   orderDir?: 'asc' | 'desc';
-  filters?: Filters; // <-- This now uses the correct, complex Filters type
+  filters?: Filters;
 }
 
 function isPagedDataResult<T>(obj: unknown): obj is PagedDataResult<T> {
@@ -133,21 +130,15 @@ export function usePagedData<T>(
     filters = {},
   } = hookOptions;
 
-  // The hook internally converts the complex Filters object to the simple JSON the RPC expects
   const rpcFilters = buildRpcFilters(filters);
   const queryKey = ['paged-data', viewName, { limit, offset, orderBy, orderDir, filters: rpcFilters }];
 
   const queryFn = async (): Promise<PagedDataResult<T>> => {
     const defaultValue: PagedDataResult<T> = {
-      data: [],
-      total_count: 0,
-      active_count: 0,
-      inactive_count: 0,
+      data: [], total_count: 0, active_count: 0, inactive_count: 0,
     };
 
-    if (!viewName) {
-      return defaultValue;
-    }
+    if (!viewName) return defaultValue;
 
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: viewName,
@@ -166,7 +157,7 @@ export function usePagedData<T>(
     if (isPagedDataResult<T>(data)) {
       return data;
     } else {
-      console.warn(`Unexpected response structure for 'get_paged_data' on view '${viewName}'.`, data);
+      console.warn(`Unexpected response structure for 'get_paged_data'.`, data);
       return defaultValue;
     }
   };
@@ -180,6 +171,7 @@ export function usePagedData<T>(
   });
 }
 
+// THE FIX: Define the stats interface
 export interface RingManagerStats {
     total_rings: number;
     spec_issued: number;
@@ -191,13 +183,57 @@ export interface RingManagerStats {
     configured_in_maan: number;
 }
 
+// THE FIX: Offline-Capable Stats Hook
 export function useRingManagerStats(supabase: SupabaseClient<Database>) {
     return useQuery({
         queryKey: ['ring-manager-stats'],
-        queryFn: async () => {
-            const { data, error } = await supabase.rpc('get_ring_manager_stats');
-            if (error) throw error;
-            return data as unknown as RingManagerStats;
+        queryFn: async (): Promise<RingManagerStats> => {
+            // 1. Try Online RPC
+            try {
+              const { data, error } = await supabase.rpc('get_ring_manager_stats');
+              if (error) throw error;
+              if (data) return data as unknown as RingManagerStats;
+            } catch (e) {
+              console.warn("Online stats fetch failed, falling back to local:", e);
+            }
+
+            // 2. Offline Fallback Calculation
+            try {
+                const rings = await localDb.rings.toArray();
+                
+                const stats: RingManagerStats = {
+                    total_rings: 0, spec_issued: 0, spec_pending: 0,
+                    ofc_ready: 0, ofc_partial_ready: 0, ofc_pending: 0,
+                    on_air_nodes: 0, configured_in_maan: 0
+                };
+
+                stats.total_rings = rings.filter(r => r.status).length;
+                
+                rings.forEach(r => {
+                    if (!r.status) return;
+                    
+                    if (r.spec_status === 'Issued') stats.spec_issued++;
+                    else stats.spec_pending++;
+                    
+                    if (r.ofc_status === 'Ready') stats.ofc_ready++;
+                    else if (r.ofc_status === 'Partial Ready') stats.ofc_partial_ready++;
+                    else stats.ofc_pending++;
+                    
+                    if (r.bts_status === 'Configured') stats.configured_in_maan++;
+                });
+
+                // Note: on_air_nodes is hard to calculate offline without heavy joins across 3 tables.
+                // We default to 0 for offline mode to avoid performance hit.
+                return stats;
+
+            } catch (e) {
+                console.error("Local stats calc failed:", e);
+                return {
+                    total_rings: 0, spec_issued: 0, spec_pending: 0,
+                    ofc_ready: 0, ofc_partial_ready: 0, ofc_pending: 0,
+                    on_air_nodes: 0, configured_in_maan: 0
+                };
+            }
         },
         staleTime: 5 * 60 * 1000 // Cache for 5 minutes
     });
