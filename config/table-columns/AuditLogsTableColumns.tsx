@@ -1,7 +1,6 @@
 // config/table-columns/AuditLogsTableColumns.tsx
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
-import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatDate } from '@/utils/formatters';
 import Image from 'next/image';
 

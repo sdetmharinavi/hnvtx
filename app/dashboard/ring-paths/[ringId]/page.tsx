@@ -11,7 +11,7 @@ import {
   FiZap
 } from 'react-icons/fi';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
 import { PageSpinner, ErrorDisplay, Button } from '@/components/common/ui';
 import { 
@@ -192,11 +192,6 @@ export default function RingPathsPage() {
       disabled: !canEdit
     }
   ], [canEdit]);
-
-  const headerActions = useStandardHeaderActions({
-     data: [], 
-     isLoading: isLoadingPaths,
-  });
 
   const customHeaderActions = [
     {

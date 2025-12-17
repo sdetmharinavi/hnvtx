@@ -69,7 +69,7 @@ export function useToggleStatus<T extends PublicTableName>(
           context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -128,10 +128,6 @@ export function useTableInsert<T extends PublicTableName>(
 
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
             if (!old) {
-                // If cache is empty, we must guess the structure. 
-                // Defaulting to array is safer for 'getQueriesData' unless we know it's a paged query key.
-                // However, returning just the array might break components expecting { data, count }.
-                // Safe bet: if it's undefined, let the query refetch. But for optimistic, return array.
                 return optimisticItems; 
             }
 
@@ -155,7 +151,7 @@ export function useTableInsert<T extends PublicTableName>(
           context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -217,7 +213,7 @@ export function useTableUpdate<T extends PublicTableName>(
           context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -291,7 +287,7 @@ export function useTableDelete<T extends PublicTableName>(
           context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });

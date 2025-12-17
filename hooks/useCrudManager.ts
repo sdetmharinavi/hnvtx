@@ -15,9 +15,8 @@ import {
   TableInsert,
   TableUpdate,
   TableInsertWithDates,
-  Row,
-  PagedQueryResult,
   PublicTableOrViewName,
+  PagedQueryResult,
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
@@ -142,9 +141,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   // Fetches a single record (using the View if available) and updates Dexie
   const syncSingleRecord = useCallback(async (id: string | number) => {
     const targetTable = localTableName || tableName;
-    
-    // If we have a view (localTableName), fetch from there to get joined fields.
-    // If not, fetch from the base table.
     const viewName = localTableName || tableName;
     
     try {
@@ -167,20 +163,16 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     } catch (err) {
       console.error("[useCrudManager] Failed to sync single record:", err);
-      // Fallback to full refetch if partial sync fails
       refetch();
     }
   }, [supabase, localTableName, tableName, refetch]);
 
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
-    // Disable generic optimistic updates as they don't match our specific View/Dexie structure
     optimisticUpdate: false, 
     onSuccess: async (data) => { 
       toast.success("Record created successfully.");
       closeModal();
-      // data is an array of inserted rows (usually 1)
       if (data && data.length > 0) {
-        // Use the ID from the server response to fetch the full View record
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newId = (data[0] as any).id;
         await syncSingleRecord(newId);
@@ -211,8 +203,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     optimisticUpdate: false,
     onSuccess: async (data) => { 
       toast.success("Status updated successfully.");
-      // For toggle, we can likely just use the returned data if the view isn't too complex,
-      // but syncing from view ensures consistency.
       if (data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = (data as any).id;
@@ -247,8 +237,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       tableName, 
       onSuccess: async (deletedIds) => { 
           await handleLocalCleanup(deletedIds);
-          // We don't necessarily need to refetch from server if we successfully cleaned up locally
-          // But refetch ensures total counts are accurate from server perspective
           refetch(); 
           handleClearSelection(); 
       } 
@@ -273,14 +261,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     } else { 
       try {
-        const table = getTable(tableName); // Write to the BASE table in offline mode?
-        // Note: Writing to base table in Dexie doesn't help if UI reads from View table in Dexie.
-        // We should write to the VIEW table in Dexie for immediate UI feedback.
         const targetTable = getTable(localTableName || tableName);
         
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
           const idToUpdate = String(editingRecord.id);
-          // Optimistic local update (merging new data into existing view record)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (targetTable.update as any)(idType === 'number' ? Number(idToUpdate) : idToUpdate, processedData);
           
@@ -291,8 +275,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           });
         } else {
           const tempId = `offline_${uuidv4()}`;
-          // For insert, we might be missing view fields (like joined names).
-          // We persist what we have. UI components must handle missing joined fields gracefully.
           const newRecord = { ...processedData, id: tempId };
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await targetTable.add(newRecord as any);
@@ -303,7 +285,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: newRecord,
           });
         }
-        // Force re-render of local data
         refetch(); 
         closeModal();
         toast.info("Saved offline. Will sync when online.");
@@ -338,7 +319,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
-          // Optimistic delete
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
           
@@ -464,8 +444,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       bulkUpdate.mutate({ updates }, {
         onSuccess: async () => {
           toast.success(`Updated ${updates.length} records to ${status}`);
-          // For bulk updates, iterating single syncs might be slow, so we fallback to full refetch (which is standard behavior)
-          // or we could iterate if count is small. Let's just refetch for bulk.
           refetch();
           handleClearSelection();
         },

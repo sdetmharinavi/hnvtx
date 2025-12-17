@@ -17,7 +17,6 @@ export const PortsManagementTableColumns = (
   // 1. Generate base columns from the hook
   const columns = useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    // THE FIX: Added 'port_type_name' and 'port_capacity' to the omit array
     omit: [
       'id', 
       'system_id', 
@@ -26,8 +25,8 @@ export const PortsManagementTableColumns = (
       'created_at', 
       'updated_at', 
       'system_name',
-      'port_type_name', // Hiding Port Type
-      'port_capacity'   // Hiding Capacity
+      'port_type_name', 
+      'port_capacity'
     ], 
     overrides: {
       port: {
@@ -82,7 +81,7 @@ export const PortsManagementTableColumns = (
     title: 'Allocated Services',
     dataIndex: 'port', 
     width: 350,
-    render: (value, _record) => {
+    render: (value) => { // Removed unused _record parameter
         const portName = value as string; 
         if (!portName || !portServicesMap) return <span className="text-gray-400 italic text-xs">No info</span>;
         
