@@ -96,12 +96,15 @@ export const DiaryFormModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={editingNote ? "Edit Diary Note" : "Add New Note"}
-      className='w-0 h-0'>
+      className='w-0 h-0 bg-transparent'
+      closeOnOverlayClick={false}
+      >
       <FormCard
         onSubmit={handleSubmit(onFormSubmit)}
         onCancel={onClose}
         isLoading={isLoading}
         title={editingNote ? "Edit Diary Note" : "Add New Note"}
+        
         standalone>
         <div className='space-y-4'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -129,7 +132,6 @@ export const DiaryFormModal = ({
             control={control}
             error={errors.content}
             placeholder='Write your daily notes here...'
-            className="w-full h-full"
           />
         </div>
       </FormCard>
