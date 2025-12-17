@@ -207,7 +207,7 @@ function NavItems() {
         label: 'Route Survey',
         icon: <FiAirplay className="h-5 w-5" />,
         href: 'https://route-survey.vercel.app/',
-        roles: ROLES.SYSTEM_ADMINS,
+        roles: ROLES.ADMINS,
         external: true,
         preferNative: true,
       },
@@ -216,7 +216,7 @@ function NavItems() {
         label: 'BTS Map',
         icon: <FiMap className="h-5 w-5" />,
         href: 'https://www.google.com/maps/d/u/0/embed?mid=1dpO2c3Qt2EmLFxovZ14rcqkjrN6uqlvP&ehbc=2E312F&ll=22.485295672038035%2C88.3701163022461&z=14',
-        roles: ROLES.SYSTEM_ADMINS,
+        roles: ROLES.ADMINS,
         external: true,
       },
       {

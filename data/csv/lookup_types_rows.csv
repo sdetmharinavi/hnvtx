@@ -102,6 +102,7 @@ Real-world usable	40–50 Gbps",0,false,false,true,2025-11-23 00:00:00+00,2025-1
 93973b23-e7ea-43cc-bf9b-9eefcf26ffb5,NODE_TYPES,DEFAULT,default,Default entry for NODE_TYPES category,1,true,false,true,2025-08-10 00:00:00+00,2025-12-07 14:45:21.765112+00
 9398a2ae-851f-41b9-8f99-bef52b849ecf,MAINTENANCE_AREA_TYPES,DEFAULT,default,Default entry for MAINTENANCE_AREA_TYPES category,0,true,false,true,2025-08-10 00:00:00+00,2025-12-07 14:45:21.765112+00
 944f170d-da50-41e6-9040-dea5f7bf9dfa,SYSTEM_TYPES,Baseband Unit,BBU,"BBUs are typically part of BSNL’s 4G/5G RAN (Radio Access Network), handling baseband processing for cellular signals. Their integration with CPAN/MAAN would align with BSNL’s shift toward IP-based aggregation",0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+94f314d2-c022-4a67-b3c1-5c1044a3d4dc,RING_TYPES,BBU_RINGS,BBU_RINGS,,0,false,false,true,2025-12-15 17:15:31.166165+00,2025-12-15 17:15:31.166165+00
 95f63633-fd4e-4018-b2f0-dea8ad3a8494,NODE_TYPES,Metro Access Aggregation Node,MAAN,Aggregation node used in metro rings before reaching core/backbone.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 96a1fb7a-2603-483b-8088-2d95755bda08,MEDIA_TYPES,Microwave Link,MW,Wireless line-of-sight telecom link.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 96ff54ab-c96f-470e-92d6-2f5780438e81,NODE_TYPES,Distribution Point / Street Cabinet,DP,Local distribution cabinet connecting feeder to drop cables.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00

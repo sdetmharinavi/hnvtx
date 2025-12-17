@@ -1,7 +1,7 @@
 // path: app/dashboard/ring-manager/page.tsx
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GiLinkedRings } from "react-icons/gi";
@@ -621,7 +621,7 @@ export default function RingManagerPage() {
         },
         {
           key: "bts_status",
-          label: "BTS Status",
+          label: "Working Status",
           type: "select" as const,
           options: [
             { value: "On-Air", label: "On-Air" },

@@ -211,7 +211,7 @@ export function RingModal({
                 <FormSelect 
                     key={`bts-${formKey}`}
                     name="bts_status" 
-                    label="BTS Status" 
+                    label="Working Status" 
                     control={control} 
                     options={STATUS_OPTIONS.BTS} 
                     error={errors.bts_status}

@@ -347,7 +347,7 @@ export default function RingsPage() {
               options={STATUS_OPTIONS.SPEC}
             />
             <SelectFilter
-              label="BTS Status"
+              label="Working Status"
               filterKey="bts_status"
               filters={filters.filters}
               setFilters={filters.setFilters}
