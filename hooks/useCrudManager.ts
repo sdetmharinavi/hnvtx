@@ -55,7 +55,6 @@ export interface DataQueryHookReturn<V> {
   isFetching?: boolean;
   error: Error | null;
   refetch: () => void;
-  // Allow arbitrary extra properties to pass through (like 'stats')
   [key: string]: unknown;
 }
 
@@ -81,7 +80,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   searchColumn,
   displayNameField = 'name',
   processDataForSave,
-  idType = 'string', // Default to string as UUIDs are most common
+  idType = 'string',
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -122,7 +121,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setCurrentPage(1);
   }, [debouncedSearch, filters, setCurrentPage]);
 
-  // THE FIX: Destructure known properties and capture the rest to pass through
   const { 
     data, 
     totalCount, 
@@ -132,7 +130,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isFetching, 
     error, 
     refetch,
-    ...restHookData // Capture extra props like 'stats'
+    ...restHookData 
   } = dataQueryHook({
     currentPage,
     pageLimit,
@@ -140,18 +138,89 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
+  // --- SMART SYNC HELPER ---
+  // Fetches a single record (using the View if available) and updates Dexie
+  const syncSingleRecord = useCallback(async (id: string | number) => {
+    const targetTable = localTableName || tableName;
+    
+    // If we have a view (localTableName), fetch from there to get joined fields.
+    // If not, fetch from the base table.
+    const viewName = localTableName || tableName;
+    
+    try {
+      const { data: result, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: viewName,
+        p_limit: 1,
+        p_offset: 0,
+        p_filters: { id: String(id) },
+      });
+
+      if (error) throw error;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const records = (result as any)?.data || [];
+      if (records.length > 0) {
+        const record = records[0];
+        const table = getTable(targetTable);
+        await table.put(record);
+        console.log(`[useCrudManager] Synced record ${id} to local table ${targetTable}`);
+      }
+    } catch (err) {
+      console.error("[useCrudManager] Failed to sync single record:", err);
+      // Fallback to full refetch if partial sync fails
+      refetch();
+    }
+  }, [supabase, localTableName, tableName, refetch]);
+
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
-    onSuccess: () => { refetch(); closeModal(); toast.success("Record created successfully."); },
+    // Disable generic optimistic updates as they don't match our specific View/Dexie structure
+    optimisticUpdate: false, 
+    onSuccess: async (data) => { 
+      toast.success("Record created successfully.");
+      closeModal();
+      // data is an array of inserted rows (usually 1)
+      if (data && data.length > 0) {
+        // Use the ID from the server response to fetch the full View record
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newId = (data[0] as any).id;
+        await syncSingleRecord(newId);
+      } else {
+        refetch(); 
+      }
+    },
     onError: (error) => toast.error(`Failed to create record: ${error.message}`),
   });
 
   const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(supabase, tableName, {
-    onSuccess: () => { refetch(); closeModal(); toast.success("Record updated successfully."); },
+    optimisticUpdate: false,
+    onSuccess: async (data) => { 
+      toast.success("Record updated successfully.");
+      closeModal();
+      if (data && data.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updatedId = (data[0] as any).id;
+        await syncSingleRecord(updatedId);
+      } else {
+        refetch();
+      }
+    },
     onError: (error) => toast.error(`Failed to update record: ${error.message}`),
   });
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
-    onSuccess: () => { refetch(); toast.success("Status updated successfully."); },
+    optimisticUpdate: false,
+    onSuccess: async (data) => { 
+      toast.success("Status updated successfully.");
+      // For toggle, we can likely just use the returned data if the view isn't too complex,
+      // but syncing from view ensures consistency.
+      if (data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const id = (data as any).id;
+        await syncSingleRecord(id);
+      } else {
+        refetch();
+      }
+    },
     onError: (error) => toast.error(`Failed to update status: ${error.message}`),
   });
 
@@ -162,12 +231,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     
     try {
         const table = getTable(targetTable);
-        // Cast IDs based on configured type before deletion
         const idsToDelete = idType === 'number' 
           ? deletedIds.map(Number).filter(n => !isNaN(n)) 
           : deletedIds;
           
-        await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await table.bulkDelete(idsToDelete as any);
         console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
     } catch (e) {
         console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
@@ -178,6 +247,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       tableName, 
       onSuccess: async (deletedIds) => { 
           await handleLocalCleanup(deletedIds);
+          // We don't necessarily need to refetch from server if we successfully cleaned up locally
+          // But refetch ensures total counts are accurate from server perspective
           refetch(); 
           handleClearSelection(); 
       } 
@@ -202,11 +273,17 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     } else { 
       try {
-        const table = getTable(tableName);
+        const table = getTable(tableName); // Write to the BASE table in offline mode?
+        // Note: Writing to base table in Dexie doesn't help if UI reads from View table in Dexie.
+        // We should write to the VIEW table in Dexie for immediate UI feedback.
+        const targetTable = getTable(localTableName || tableName);
+        
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
           const idToUpdate = String(editingRecord.id);
+          // Optimistic local update (merging new data into existing view record)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (table.update as any)(idToUpdate, processedData);
+          await (targetTable.update as any)(idType === 'number' ? Number(idToUpdate) : idToUpdate, processedData);
+          
           await addMutationToQueue({
             tableName,
             type: 'update',
@@ -214,21 +291,27 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           });
         } else {
           const tempId = `offline_${uuidv4()}`;
+          // For insert, we might be missing view fields (like joined names).
+          // We persist what we have. UI components must handle missing joined fields gracefully.
           const newRecord = { ...processedData, id: tempId };
-          await table.add(newRecord as Row<T>);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.add(newRecord as any);
+          
           await addMutationToQueue({
             tableName,
             type: 'insert',
             payload: newRecord,
           });
         }
+        // Force re-render of local data
         refetch(); 
         closeModal();
+        toast.info("Saved offline. Will sync when online.");
       } catch (err) {
         toast.error(`Offline operation failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, editingRecord, tableName, processDataForSave, updateItem, insertItem, refetch, closeModal]);
+  }, [isOnline, editingRecord, tableName, localTableName, processDataForSave, updateItem, insertItem, refetch, closeModal, idType]);
 
   const getDisplayName = useCallback((record: RecordWithId): string => {
     if (displayNameField) {
@@ -255,9 +338,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
-          const table = getTable(tableName);
+          // Optimistic delete
+          const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
-          await table.delete(idKey);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.delete(idKey as any);
           
           await addMutationToQueue({
             tableName,
@@ -270,7 +356,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, tableName, deleteManager, getDisplayName, refetch, idType]);
+  }, [isOnline, tableName, localTableName, deleteManager, getDisplayName, refetch, idType]);
 
   const handleToggleStatus = useCallback(async (record: RecordWithId & { status?: boolean | null }) => {
     if (!record.id) { toast.error("Cannot update status: Invalid ID"); return; }
@@ -281,10 +367,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       toggleStatus({ id: idToUpdate, status: newStatus });
     } else { 
       try {
-        const table = getTable(tableName);
+        const targetTable = getTable(localTableName || tableName);
         const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (table.update as any)(idKey, { status: newStatus });
+        await (targetTable.update as any)(idKey, { status: newStatus });
+        
         await addMutationToQueue({
           tableName,
           type: 'update',
@@ -295,7 +382,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, tableName, toggleStatus, refetch, idType]);
+  }, [isOnline, tableName, localTableName, toggleStatus, refetch, idType]);
 
   const handleCellEdit = useCallback(
     async (record: V, column: Column<V>, newValue: string) => {
@@ -311,10 +398,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         updateItem({ id, data: updateData });
       } else {
          try {
-          const table = getTable(tableName);
+          const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(id) : id;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (table.update as any)(idKey, updateData);
+          await (targetTable.update as any)(idKey, updateData);
+          
           await addMutationToQueue({
             tableName,
             type: 'update',
@@ -326,7 +414,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     },
-    [isOnline, updateItem, tableName, idType, refetch]
+    [isOnline, updateItem, tableName, localTableName, idType, refetch]
   );
   
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
@@ -347,9 +435,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
-          const table = getTable(tableName);
+          const targetTable = getTable(localTableName || tableName);
           const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
-          await table.bulkDelete(idsKey as (string | number | [string, string])[]);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.bulkDelete(idsKey as any);
+          
           await addMutationToQueue({
             tableName,
             type: 'delete',
@@ -362,7 +453,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, selectedRowIds, data, tableName, deleteManager, getDisplayName, refetch, handleClearSelection, idType]);
+  }, [isOnline, selectedRowIds, data, tableName, localTableName, deleteManager, getDisplayName, refetch, handleClearSelection, idType]);
 
   const handleBulkUpdateStatus = useCallback(async (status: "active" | "inactive") => {
     if (selectedRowIds.length === 0) return;
@@ -371,19 +462,23 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     if (isOnline) {
       const updates = selectedRowIds.map((id) => ({ id, data: { status: newStatus } as unknown as TableUpdate<T> }));
       bulkUpdate.mutate({ updates }, {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success(`Updated ${updates.length} records to ${status}`);
-          handleClearSelection();
+          // For bulk updates, iterating single syncs might be slow, so we fallback to full refetch (which is standard behavior)
+          // or we could iterate if count is small. Let's just refetch for bulk.
           refetch();
+          handleClearSelection();
         },
         onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
     } else { 
       try {
-        const table = getTable(tableName);
+        const targetTable = getTable(localTableName || tableName);
         const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
+        
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await table.where('id').anyOf(idsKey).modify({ status: newStatus } as any);
+        await targetTable.where('id').anyOf(idsKey).modify({ status: newStatus } as any);
+        
         for (const id of selectedRowIds) {
           await addMutationToQueue({
             tableName,
@@ -397,7 +492,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline bulk status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, selectedRowIds, tableName, bulkUpdate, refetch, handleClearSelection, idType]);
+  }, [isOnline, selectedRowIds, tableName, localTableName, bulkUpdate, refetch, handleClearSelection, idType]);
 
   const handleBulkDeleteByFilter = useCallback((column: string, value: string | number | boolean | null, displayName: string) => {
       deleteManager.deleteBulk({ column, value, displayName });
@@ -414,7 +509,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     status: isLoading ? 'pending' : error ? 'error' : 'success',
   }) as UseQueryResult<PagedQueryResult<V>, Error>, [data, totalCount, isLoading, isFetching, error, refetch]);
 
-
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
@@ -430,7 +524,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     bulkActions: { selectedRowIds, selectedCount: selectedRowIds.length, handleBulkDelete, handleBulkDeleteByFilter, handleBulkUpdateStatus, handleClearSelection, handleRowSelect },
     deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, onConfirm: deleteManager.handleConfirm, onCancel: deleteManager.handleCancel, loading: deleteManager.isPending },
     utils: { getDisplayName },
-    // THE FIX: Spread remaining hook data (e.g. stats)
     ...restHookData, 
   };
 }

@@ -4,7 +4,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { NetworkFirst, CacheFirst } from "@serwist/strategies";
+import { NetworkFirst, CacheFirst, NetworkOnly } from "@serwist/strategies";
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -18,21 +18,17 @@ declare const self: ServiceWorkerGlobalScope;
 // --- CUSTOM CACHING STRATEGIES ---
 
 const customCache: RuntimeCaching[] = [
-  // 1. API/RPC Calls: NetworkFirst with Timeout
-  // Try network for 5 seconds (to get fresh data), if slow/offline, use cache.
-  // This ensures "freshness" when online but "speed/availability" when network is spotty.
+  // 1. API/RPC Calls: Network Only
+  // THE FIX: We strictly disable SW caching for API/Supabase calls.
+  // Our 'useLocalFirstQuery' + Dexie architecture handles offline data persistence at the application layer.
+  // Caching here causes stale data issues and conflicts with optimistic UI updates.
   {
-    matcher: ({ url }) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'),
-    handler: new NetworkFirst({
-      cacheName: "api-cache",
-      plugins: [
-        new ExpirationPlugin({
-          maxEntries: 500,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 7)
-        }),
-      ],
-      networkTimeoutSeconds: 5, // Wait 5s for network, then fall back to cache
-    }),
+    matcher: ({ url }) => 
+      url.pathname.startsWith('/api/') || 
+      url.pathname.startsWith('/rest/') || 
+      url.pathname.startsWith('/rpc/') ||
+      url.hostname.includes('supabase.co'), // Match Supabase hosted domains
+    handler: new NetworkOnly(),
   },
   
   // 2. Static Assets (Images, Fonts): CacheFirst
@@ -51,20 +47,18 @@ const customCache: RuntimeCaching[] = [
   },
 
   // 3. Navigation (HTML Pages): NetworkFirst with Short Timeout
-  // CRITICAL FIX: This makes navigation fast. 
-  // It tries network for 3 seconds. If slow, it serves the cached HTML immediately.
-  // The previous setting of 24h expiration caused the "not working after many days" issue.
+  // Keeps the App Shell fresh but loads fast.
   {
     matcher: ({ request }) => request.mode === 'navigate',
     handler: new NetworkFirst({
       cacheName: 'pages-cache',
       plugins: [
         new ExpirationPlugin({
-          maxEntries: 100, // Keep last 100 visited pages
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 24 hours)
+          maxEntries: 50, 
+          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
         }),
       ],
-      networkTimeoutSeconds: 3, // If network takes > 3s, use cache
+      networkTimeoutSeconds: 3, 
     }),
   },
 ];
@@ -74,12 +68,11 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  // Merge custom strategies BEFORE defaultCache to ensure they take precedence
   runtimeCaching: [...customCache, ...defaultCache],
-  disableDevLogs: true, // Cleaner console in production
+  disableDevLogs: true, 
 });
 
-// Push Notification Listeners
+// Push Notification Listeners (Unchanged)
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
