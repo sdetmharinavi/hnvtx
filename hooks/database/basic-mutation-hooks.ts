@@ -2,10 +2,27 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { PublicTableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions, PagedQueryResult, Row } from "./queries-type-helpers";
+import { 
+  PublicTableName, 
+  TableRow, 
+  TableInsert, 
+  TableUpdate, 
+  OptimisticContext, 
+  UseTableMutationOptions, 
+  PagedQueryResult 
+} from "./queries-type-helpers";
+
+// Helper to check if the cache data is in Paged format
+function isPagedResult<T>(data: any): data is PagedQueryResult<T> {
+  return data && typeof data === 'object' && 'data' in data && Array.isArray(data.data) && 'count' in data;
+}
 
 // Generic toggle status hook
-export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
+export function useToggleStatus<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>
+) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
@@ -25,19 +42,23 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
           
-          // THE FIX: Expect a PagedQueryResult object, not an array.
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: PagedQueryResult<Row<T>> | undefined) => {
-            if (!old || !old.data) return old;
-            
-            // Perform the map on the 'data' property.
-            const updatedData = old.data.map((item) => 
-              ("id" in item && (item as { id: unknown }).id === id 
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
+
+            const updateItem = (item: any) => 
+              ("id" in item && item.id === id) 
                 ? { ...item, status, updated_at: new Date().toISOString() } 
-                : item
-            ));
-            
-            // Return the full object structure.
-            return { ...old, data: updatedData };
+                : item;
+
+            if (isPagedResult(old)) {
+               return {
+                 ...old,
+                 data: old.data.map(updateItem)
+               };
+            } else if (Array.isArray(old)) {
+               return old.map(updateItem);
+            }
+            return old;
           });
           
           return { previousData };
@@ -59,15 +80,18 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
 }
 
 // Optimized insert mutation with batching
-export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>) {
+export function useTableInsert<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
 
   return useMutation<TableRow<T>[], Error, TableInsert<T> | TableInsert<T>[], OptimisticContext>({
     mutationFn: async (data: TableInsert<T> | TableInsert<T>[]): Promise<TableRow<T>[]> => {
       const payload = (Array.isArray(data) ? data : [data]) as any;
 
-      // Batch large inserts for better performance
       if (payload.length > batchSize) {
         const batches = [];
         for (let i = 0; i < payload.length; i += batchSize) {
@@ -86,28 +110,41 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
       }
 
       const { data: result, error } = await supabase.from(tableName).insert(payload).select();
-
       if (error) throw error;
       return result as TableRow<T>[];
     },
     onMutate: optimisticUpdate
       ? async (newData) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
+          const newItems = Array.isArray(newData) ? newData : [newData];
+          const optimisticItems = newItems.map((item, index) => ({
+            ...item,
+            id: `temp-${Date.now()}-${index}`, // Temp ID
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            const newItems = Array.isArray(newData) ? newData : [newData];
-            return [
-              ...old,
-              ...newItems.map((item, index) => ({
-                ...item,
-                id: `temp-${Date.now()}-${index}`,
-              })),
-            ] as TableRow<T>[];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) {
+                // If cache is empty, we must guess the structure. 
+                // Defaulting to array is safer for 'getQueriesData' unless we know it's a paged query key.
+                // However, returning just the array might break components expecting { data, count }.
+                // Safe bet: if it's undefined, let the query refetch. But for optimistic, return array.
+                return optimisticItems; 
+            }
+
+            if (isPagedResult(old)) {
+               return {
+                 ...old,
+                 data: [...old.data, ...optimisticItems],
+                 count: (old.count || 0) + optimisticItems.length
+               };
+            } else if (Array.isArray(old)) {
+               return [...old, ...optimisticItems];
+            }
+            return old;
           });
 
           return { previousData };
@@ -115,11 +152,7 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, newData, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
     onSuccess: (data, variables, context) => {
@@ -133,9 +166,13 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
 }
 
 // Enhanced update mutation with optimizations
-export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>) {
+export function useTableUpdate<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
   return useMutation<TableRow<T>[], Error, { id: string; data: TableUpdate<T> }, OptimisticContext>({
     mutationFn: async ({ id, data }: { id: string; data: TableUpdate<T> }): Promise<TableRow<T>[]> => {
@@ -151,14 +188,25 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
     onMutate: optimisticUpdate
       ? async ({ id, data: newData }) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
+          const updateItem = (item: any) => 
+            ("id" in item && item.id === id) 
+              ? { ...item, ...newData, updated_at: new Date().toISOString() } 
+              : item;
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            return old.map((item) => ("id" in item && (item as { id: unknown }).id === id ? { ...item, ...newData } : item)) as TableRow<T>[];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
+            
+            if (isPagedResult(old)) {
+              return {
+                ...old,
+                data: old.data.map(updateItem)
+              };
+            } else if (Array.isArray(old)) {
+              return old.map(updateItem);
+            }
+            return old;
           });
 
           return { previousData };
@@ -166,11 +214,7 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
     onSuccess: (data, variables, context) => {
@@ -184,15 +228,18 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
 }
 
 // Enhanced delete mutation
-export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<void, string | string[], OptimisticContext>) {
+export function useTableDelete<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<void, string | string[], OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
 
   return useMutation<void, Error, string | string[], OptimisticContext>({
     mutationFn: async (id: string | string[]): Promise<void> => {
       const ids = Array.isArray(id) ? id : [id];
 
-      // Batch large deletes for better performance
       if (ids.length > batchSize) {
         const batches = [];
         for (let i = 0; i < ids.length; i += batchSize) {
@@ -201,35 +248,39 @@ export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClie
 
         await Promise.all(
           batches.map(async (batch) => {
-            const { error } = await supabase
-              .from(tableName)
-              .delete()
-              .in("id" as any, batch);
+            const { error } = await supabase.from(tableName).delete().in("id" as any, batch);
             if (error) throw error;
           })
         );
         return;
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .in("id" as any, ids);
-
+      const { error } = await supabase.from(tableName).delete().in("id" as any, ids);
       if (error) throw error;
     },
     onMutate: optimisticUpdate
       ? async (id) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+          
+          const idsToDelete = Array.isArray(id) ? id : [id];
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
-          const ids = Array.isArray(id) ? id : [id];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            return old.filter((item) => !("id" in item) || !ids.includes((item as { id: string }).id)) as TableRow<T>[];
+            const filterItem = (item: any) => !idsToDelete.includes(item.id);
+
+            if (isPagedResult(old)) {
+               const newData = old.data.filter(filterItem);
+               return {
+                 ...old,
+                 data: newData,
+                 count: (old.count || 0) - (old.data.length - newData.length)
+               };
+            } else if (Array.isArray(old)) {
+               return old.filter(filterItem);
+            }
+            return old;
           });
 
           return { previousData };
@@ -237,11 +288,7 @@ export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
     onSuccess: (data, variables, context) => {
