@@ -39,6 +39,59 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
+  // ============================================================================
+  // NEW MODULE: OFFLINE & SYNC
+  // ============================================================================
+  {
+    value: 'offline_sync',
+    icon: 'WifiOff',
+    title: 'Offline & Sync',
+    subtitle: 'Data Availability',
+    gradient: 'from-slate-500 to-gray-600',
+    iconColor: 'text-slate-400',
+    bgGlow: 'bg-slate-500/10',
+    color: 'teal',
+    purpose:
+      'To explain how the application behaves without internet connection and how data synchronization works.',
+    workflows: [
+      {
+        title: '1. Offline Mode',
+        userSteps: [
+          'The app automatically detects network status.',
+          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams while offline.',
+          '**Write Access:** You can Create/Edit records (except Routes). Changes are queued locally.',
+          '**Route Manager:** Splicing and topology editing are **disabled** offline to prevent conflicts.',
+        ],
+        uiSteps: [
+          'A "You\'re offline" banner appears at the top.',
+          'The Sync Cloud icon in the header turns grey/crossed out.',
+        ],
+        techSteps: [
+          '**Storage:** `Dexie.js` (IndexedDB) stores a local replica of all critical tables.',
+          '**Hooks:** `useLocalFirstQuery` serves local data instantly, bypassing network calls by default.',
+        ],
+      },
+      {
+        title: '2. Data Synchronization',
+        userSteps: [
+          'Data is **Manual Sync** by default to save bandwidth and improve speed.',
+          "**To Update:** Click the **'Refresh'** button on any table or the **Sync Cloud** icon in the header.",
+          '**Uploads:** Offline changes (mutations) are stored in a queue.',
+          'When internet is restored, the app automatically processes the queue.',
+        ],
+        uiSteps: [
+          "The Cloud icon animates (Blue/Bouncing) while syncing.",
+          "Green Checkmark indicates 'All Synced'.",
+          "Red Warning indicates sync errors (click to view details).",
+        ],
+        techSteps: [
+          '**Queue:** `useMutationQueue` stores requests in `mutation_queue` table.',
+          '**Sync Logic:** `useDataSync` pulls fresh data from Supabase RPCs and updates IndexedDB.',
+        ],
+      },
+    ],
+  },
+
     // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
@@ -395,7 +448,7 @@ export const workflowSections: WorkflowSection[] = [
           "Click 'Create'.",
         ],
         uiSteps: [
-          "System Default items are marked with a 'Yes' badge and have disabled Edit/Delete buttons.",
+          "System Default options (marked 'Yes') and have disabled Edit/Delete buttons.",
         ],
         techSteps: [
           '**Validation:** Prevent editing if `is_system_default` is true to avoid breaking application logic.',
