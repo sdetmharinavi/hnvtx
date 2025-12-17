@@ -109,13 +109,12 @@ export function NodeFormModal({
       isOpen={isOpen}
       onClose={onClose}
       title={''}
-      size="full"
       visible={false}
-      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
+      className="h-0 w-0 bg-transparent"
     >
       <div className="h-full w-full overflow-y-auto">
         <div className="min-h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
-          <div className="w-full max-w-5xl">
+          <div className="w-full">
             <FormCard
               title={isEdit ? 'Edit Node' : 'Add Node'}
               onSubmit={handleSubmit(onValidSubmit)}
