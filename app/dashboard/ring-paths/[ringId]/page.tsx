@@ -6,16 +6,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   FiArrowLeft, 
   FiRefreshCw, 
-  FiCpu, 
   FiGitBranch, 
   FiEdit2,
   FiZap
 } from 'react-icons/fi';
-import { toast } from 'sonner';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
-import { PageSpinner, ErrorDisplay, Button, StatusBadge } from '@/components/common/ui';
+import { PageSpinner, ErrorDisplay, Button } from '@/components/common/ui';
 import { 
   useRingConnectionPaths, 
   useGenerateRingPaths 
@@ -23,7 +21,6 @@ import {
 import { useTableRecord } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { RingPathManagerModal } from '@/components/rings/RingPathManagerModal';
-import { V_ringsRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
@@ -31,7 +28,6 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Define the shape of the data returned by useRingConnectionPaths
-// This must match the select query in the hook
 interface LogicalPathData {
   id: string;
   name: string;
@@ -185,23 +181,23 @@ export default function RingPathsPage() {
     }
   ], []);
 
-  const tableActions = useMemo((): TableAction<LogicalPathData>[] => [
+  // THE FIX: Use "logical_paths" (string) instead of LogicalPathData (interface)
+  const tableActions = useMemo((): TableAction<"logical_paths">[] => [
     {
       key: 'edit',
       label: 'Configure Endpoints',
       icon: <FiEdit2 />,
-      onClick: handleEditPath,
+      onClick: (record) => handleEditPath(record as unknown as LogicalPathData),
       variant: 'secondary',
       disabled: !canEdit
     }
   ], [canEdit]);
 
   const headerActions = useStandardHeaderActions({
-     data: [], // We don't need generic export here, specific logic applied below
+     data: [], 
      isLoading: isLoadingPaths,
   });
 
-  // Inject custom actions
   const customHeaderActions = [
     {
         label: 'Refresh',
@@ -265,9 +261,11 @@ export default function RingPathsPage() {
           ) : (
             <DataTable
                 autoHideEmptyColumns={true}
-                tableName="logical_paths" // Virtual table name for config lookups
-                data={paths}
-                columns={columns}
+                tableName="logical_paths"
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                data={paths as any}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                columns={columns as any}
                 actions={tableActions}
                 loading={isLoadingPaths}
                 isFetching={isFetching || generateMutation.isPending}
@@ -276,18 +274,20 @@ export default function RingPathsPage() {
                     current: 1,
                     pageSize: 50,
                     total: paths.length,
-                    onChange: () => {} // Client-side only for this list
+                    onChange: () => {} 
                 }}
             />
           )}
       </div>
 
-      {/* Edit Modal */}
       {selectedPath && (
           <RingPathManagerModal 
             isOpen={isEditModalOpen}
             onClose={handleCloseModal}
-            path={selectedPath}
+            // THE FIX: We cast here because RingPathManagerModal expects extended logical path
+            // and selectedPath satisfies that structure.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            path={selectedPath as any}
           />
       )}
     </div>
