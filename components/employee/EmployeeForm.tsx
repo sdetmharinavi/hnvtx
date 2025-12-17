@@ -1,24 +1,24 @@
 // path: components/employee/EmployeeForm.tsx
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
   FormTextarea,
-} from '@/components/common/form/FormControls';
-import { Modal } from '@/components/common/ui';
-import { FormCard } from '@/components/common/form';
-import { useEffect, useCallback } from 'react';
+} from "@/components/common/form/FormControls";
+import { Modal } from "@/components/common/ui";
+import { FormCard } from "@/components/common/form";
+import { useEffect, useCallback } from "react";
 import {
   Employee_designationsRowSchema,
   employeesInsertSchema,
   EmployeesInsertSchema,
   Maintenance_areasRowSchema,
   V_employeesRowSchema,
-} from '@/schemas/zod-schemas';
+} from "@/schemas/zod-schemas";
 
 interface EmployeeFormProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ const EmployeeForm = ({
   } = useForm<EmployeesInsertSchema>({
     resolver: zodResolver(employeesInsertSchema),
     defaultValues: {
-      employee_name: '',
+      employee_name: "",
       employee_pers_no: null,
       employee_designation_id: null,
       employee_contact: null,
@@ -67,7 +67,7 @@ const EmployeeForm = ({
     if (isOpen) {
       if (employee) {
         reset({
-          employee_name: employee.employee_name || '',
+          employee_name: employee.employee_name || "",
           employee_pers_no: employee.employee_pers_no,
           employee_designation_id: employee.employee_designation_id,
           employee_contact: employee.employee_contact,
@@ -81,7 +81,7 @@ const EmployeeForm = ({
         });
       } else {
         reset({
-          employee_name: '',
+          employee_name: "",
           employee_pers_no: null,
           employee_designation_id: null,
           employee_contact: null,
@@ -104,7 +104,7 @@ const EmployeeForm = ({
 
   const maintenanceAreaOptions: Option[] = maintenanceAreas.map((area) => ({
     value: area.id,
-    label: `${area.name}${area.code ? ` (${area.code})` : ''}`,
+    label: `${area.name}${area.code ? ` (${area.code})` : ""}`,
   }));
 
   const onValidFormSubmit = (data: EmployeesInsertSchema) => {
@@ -114,7 +114,7 @@ const EmployeeForm = ({
   // Safe close
   const handleClose = useCallback(() => {
     if (isDirty) {
-       if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
     }
     onClose();
   }, [isDirty, onClose]);
@@ -123,99 +123,95 @@ const EmployeeForm = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={employee ? 'Edit Employee' : 'Add New Employee'}
+      title={employee ? "Edit Employee" : "Add New Employee"}
       visible={false}
-      className="bg-transparent h-0 w-0"
+      className='bg-transparent h-0 w-0'
       closeOnOverlayClick={false}
-      closeOnEscape={!isDirty}
-    >
+      closeOnEscape={!isDirty}>
       <FormCard
-        title={employee ? 'Edit Employee' : 'Add New Employee'}
+        title={employee ? "Edit Employee" : "Add New Employee"}
         onSubmit={handleSubmit(onValidFormSubmit)}
         onCancel={handleClose}
         isLoading={isLoading}
         disableSubmit={isLoading}
-        standalone
-        widthClass='full'
-        heightClass='full'
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        standalone>
+        <div className='space-y-4'>
+          <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <FormInput
-              name="employee_name"
-              label="Employee Name"
+              name='employee_name'
+              label='Employee Name'
               register={register}
               error={errors.employee_name}
               required
-              placeholder="Enter employee name"
+              placeholder='Enter employee name'
             />
             <FormInput
-              name="employee_pers_no"
-              label="Personnel Number"
+              name='employee_pers_no'
+              label='Personnel Number'
               register={register}
               error={errors.employee_pers_no}
-              placeholder="Enter personnel number"
+              placeholder='Enter personnel number'
             />
             <FormSearchableSelect
-              name="employee_designation_id"
-              label="Designation"
+              name='employee_designation_id'
+              label='Designation'
               control={control}
               options={designationOptions}
               error={errors.employee_designation_id}
-              placeholder="Select designation"
+              placeholder='Select designation'
             />
             <FormInput
-              name="employee_contact"
-              label="Contact Number"
+              name='employee_contact'
+              label='Contact Number'
               register={register}
               error={errors.employee_contact}
-              type="tel"
-              placeholder="Enter contact number"
+              type='tel'
+              placeholder='Enter contact number'
             />
             <FormInput
-              name="employee_email"
-              label="Email Address"
+              name='employee_email'
+              label='Email Address'
               register={register}
               error={errors.employee_email}
-              type="email"
-              placeholder="Enter email address"
+              type='email'
+              placeholder='Enter email address'
             />
             <FormDateInput
-              name="employee_dob"
-              label="Date of Birth"
+              name='employee_dob'
+              label='Date of Birth'
               control={control}
               error={errors.employee_dob}
             />
             <FormDateInput
-              name="employee_doj"
-              label="Date of Joining"
+              name='employee_doj'
+              label='Date of Joining'
               control={control}
               error={errors.employee_doj}
             />
             <FormSearchableSelect
-              name="maintenance_terminal_id"
-              label="Maintenance Area"
+              name='maintenance_terminal_id'
+              label='Maintenance Area'
               control={control}
               options={maintenanceAreaOptions}
               error={errors.maintenance_terminal_id}
-              placeholder="Select maintenance area"
+              placeholder='Select maintenance area'
             />
           </div>
           <FormTextarea
-            name="employee_addr"
-            label="Address"
+            name='employee_addr'
+            label='Address'
             control={control}
             error={errors.employee_addr}
             rows={3}
-            placeholder="Enter address"
+            placeholder='Enter address'
           />
           <FormTextarea
-            name="remark"
-            label="Remarks"
+            name='remark'
+            label='Remarks'
             control={control}
             error={errors.remark}
             rows={2}
-            placeholder="Enter remarks"
+            placeholder='Enter remarks'
           />
         </div>
       </FormCard>

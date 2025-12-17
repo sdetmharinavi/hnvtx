@@ -34934,7 +34934,7 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Initiate New E-File" className="w-0 h-0 bg-transparent">
-      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone widthClass="full">
+      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone >
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput name="file_number" label="File Number *" register={register} error={errors.file_number} placeholder="e.g. FILE/2024/001" required />
@@ -35074,7 +35074,7 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Edit File Details" className="w-0 h-0 bg-transparent">
-            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update" widthClass="full">
+            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update" >
                  <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
                  <div className="grid grid-cols-2 gap-4">
                     <FormInput name="category" label="Category *" register={register} error={errors.category} required />
@@ -48800,7 +48800,7 @@ export const DiaryFormModal = ({ isOpen, onClose, onSubmit, isLoading, editingNo
         isLoading={isLoading}
         title={editingNote ? 'Edit Diary Note' : 'Add New Note'}
         standalone
-        widthClass="full"
+        
       >
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

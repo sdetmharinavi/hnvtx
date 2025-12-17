@@ -5,10 +5,20 @@ import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormSearchableSelect, FormDateInput, FormTextarea } from "@/components/common/form";
+import {
+  FormCard,
+  FormInput,
+  FormSearchableSelect,
+  FormDateInput,
+  FormTextarea,
+} from "@/components/common/form";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { Inventory_itemsInsertSchema, inventory_itemsInsertSchema, V_inventory_itemsRowSchema } from "@/schemas/zod-schemas";
+import {
+  Inventory_itemsInsertSchema,
+  inventory_itemsInsertSchema,
+  V_inventory_itemsRowSchema,
+} from "@/schemas/zod-schemas";
 import { z } from "zod";
 
 interface InventoryFormModalProps {
@@ -27,19 +37,54 @@ const formSchema = inventory_itemsInsertSchema.extend({
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
-export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, onClose, editingItem, onSubmit, isLoading }) => {
+export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
+  isOpen,
+  onClose,
+  editingItem,
+  onSubmit,
+  isLoading,
+}) => {
   const isEditMode = !!editingItem;
   const supabase = createClient();
 
-  const { data: categoriesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_CATEGORY' } });
-  const { data: statusesResult } = useTableQuery(supabase, 'lookup_types', { filters: { category: 'INVENTORY_STATUS' } });
-  const { data: locationsResult } = useTableQuery(supabase, 'v_nodes_complete', { filters: { status: true } });
-  const { data: functionalLocationsResult } = useTableQuery(supabase, 'maintenance_areas', { filters: { status: true } });
-  
-  const categoryOptions = useMemo(() => categoriesResult?.data?.filter(c => c.name !== 'DEFAULT').map(c => ({ value: c.id, label: c.name })) || [], [categoriesResult]);
-  const statusOptions = useMemo(() => statusesResult?.data?.map(s => ({ value: s.id, label: s.name })) || [], [statusesResult]);
-  const locationOptions = useMemo(() => locationsResult?.data?.filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id!, label: l.name! })) || [], [locationsResult]);
-  const functionalLocationOptions = useMemo(() => functionalLocationsResult?.data?.filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id, label: l.name })) || [], [functionalLocationsResult]);
+  const { data: categoriesResult } = useTableQuery(supabase, "lookup_types", {
+    filters: { category: "INVENTORY_CATEGORY" },
+  });
+  const { data: statusesResult } = useTableQuery(supabase, "lookup_types", {
+    filters: { category: "INVENTORY_STATUS" },
+  });
+  const { data: locationsResult } = useTableQuery(supabase, "v_nodes_complete", {
+    filters: { status: true },
+  });
+  const { data: functionalLocationsResult } = useTableQuery(supabase, "maintenance_areas", {
+    filters: { status: true },
+  });
+
+  const categoryOptions = useMemo(
+    () =>
+      categoriesResult?.data
+        ?.filter((c) => c.name !== "DEFAULT")
+        .map((c) => ({ value: c.id, label: c.name })) || [],
+    [categoriesResult]
+  );
+  const statusOptions = useMemo(
+    () => statusesResult?.data?.map((s) => ({ value: s.id, label: s.name })) || [],
+    [statusesResult]
+  );
+  const locationOptions = useMemo(
+    () =>
+      locationsResult?.data
+        ?.filter((l) => l.name !== "DEFAULT")
+        .map((l) => ({ value: l.id!, label: l.name! })) || [],
+    [locationsResult]
+  );
+  const functionalLocationOptions = useMemo(
+    () =>
+      functionalLocationsResult?.data
+        ?.filter((l) => l.name !== "DEFAULT")
+        .map((l) => ({ value: l.id, label: l.name })) || [],
+    [functionalLocationsResult]
+  );
 
   const {
     register,
@@ -56,7 +101,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
       if (editingItem) {
         reset({
           asset_no: editingItem.asset_no,
-          name: editingItem.name ?? '',
+          name: editingItem.name ?? "",
           description: editingItem.description,
           category_id: editingItem.category_id,
           status_id: editingItem.status_id,
@@ -69,7 +114,10 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
         });
       } else {
         reset({
-          asset_no: '', name: '', description: '', quantity: 1
+          asset_no: "",
+          name: "",
+          description: "",
+          quantity: 1,
         });
       }
     }
@@ -82,29 +130,91 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({ isOpen, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Inventory Item' : 'Add Inventory Item'} className="w-0 h-0 bg-transparent">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditMode ? "Edit Inventory Item" : "Add Inventory Item"}
+      className='w-0 h-0 bg-transparent'>
       <FormCard
         onSubmit={handleSubmit(handleFormSubmit)}
         onCancel={onClose}
         isLoading={isLoading}
-        title={isEditMode ? 'Edit Item' : 'Add New Item'}
-        standalone
-        widthClass='full'
-        heightClass='full'
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput name="asset_no" label="Asset No" register={register} error={errors.asset_no} placeholder="e.g., CHR-001"/>
-          <FormInput name="name" label="Item Name" register={register} error={errors.name} required placeholder="e.g., Office Chair"/>
-          <FormSearchableSelect name="category_id" label="Category" control={control} options={categoryOptions} error={errors.category_id} />
-          <FormSearchableSelect name="status_id" label="Status" control={control} options={statusOptions} error={errors.status_id} />
-          <FormSearchableSelect name="location_id" label="Location (Node)" control={control} options={locationOptions} error={errors.location_id} />
-          <FormSearchableSelect name="functional_location_id" label="Functional Location (Area)" control={control} options={functionalLocationOptions} error={errors.functional_location_id} />
-          <FormInput name="quantity" label="Quantity" type="number" register={register} error={errors.quantity} required />
-          <FormDateInput name="purchase_date" label="Purchase Date" control={control} error={errors.purchase_date} />
-          <FormInput name="vendor" label="Vendor" register={register} error={errors.vendor} />
-          <FormInput name="cost" label="Cost" type="number" step="0.01" register={register} error={errors.cost} />
-          <div className="md:col-span-2">
-            <FormTextarea name="description" label="Description" control={control} error={errors.description} />
+        title={isEditMode ? "Edit Item" : "Add New Item"}
+        standalone>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <FormInput
+            name='asset_no'
+            label='Asset No'
+            register={register}
+            error={errors.asset_no}
+            placeholder='e.g., CHR-001'
+          />
+          <FormInput
+            name='name'
+            label='Item Name'
+            register={register}
+            error={errors.name}
+            required
+            placeholder='e.g., Office Chair'
+          />
+          <FormSearchableSelect
+            name='category_id'
+            label='Category'
+            control={control}
+            options={categoryOptions}
+            error={errors.category_id}
+          />
+          <FormSearchableSelect
+            name='status_id'
+            label='Status'
+            control={control}
+            options={statusOptions}
+            error={errors.status_id}
+          />
+          <FormSearchableSelect
+            name='location_id'
+            label='Location (Node)'
+            control={control}
+            options={locationOptions}
+            error={errors.location_id}
+          />
+          <FormSearchableSelect
+            name='functional_location_id'
+            label='Functional Location (Area)'
+            control={control}
+            options={functionalLocationOptions}
+            error={errors.functional_location_id}
+          />
+          <FormInput
+            name='quantity'
+            label='Quantity'
+            type='number'
+            register={register}
+            error={errors.quantity}
+            required
+          />
+          <FormDateInput
+            name='purchase_date'
+            label='Purchase Date'
+            control={control}
+            error={errors.purchase_date}
+          />
+          <FormInput name='vendor' label='Vendor' register={register} error={errors.vendor} />
+          <FormInput
+            name='cost'
+            label='Cost'
+            type='number'
+            step='0.01'
+            register={register}
+            error={errors.cost}
+          />
+          <div className='md:col-span-2'>
+            <FormTextarea
+              name='description'
+              label='Description'
+              control={control}
+              error={errors.description}
+            />
           </div>
         </div>
       </FormCard>
