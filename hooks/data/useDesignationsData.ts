@@ -45,18 +45,19 @@ export const useDesignationsData = (
     isFetching,
     error,
     refetch,
+    networkStatus
   } = useLocalFirstQuery<'v_employee_designations'>({
     queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employee_designations,
+    autoSync: false // Manual sync only
   });
 
   const processedData = useMemo(() => {
     let filtered = (allDesignationsFlat || []).filter(d => d.id != null);
 
-    // 1. Search
-    // We use custom logic here because of the recursive parent/child filtering requirement specific to designations
+    // 1. Search (Recursive Parent/Child Logic)
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
@@ -85,7 +86,7 @@ export const useDesignationsData = (
     // 3. Sort
     filtered = performClientSort(filtered, 'name');
 
-    // 4. Reconstruct Hierarchy (Specific logic for this hook)
+    // 4. Reconstruct Hierarchy
     const designationsWithRelations = filtered.map(d => ({
       ...d,
       id: d.id!,
@@ -110,18 +111,13 @@ export const useDesignationsData = (
     const activeCount = filtered.filter((d) => d.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    // Note: Designations page handles pagination internally in the Tree View, 
-    // but if we use List view, we might need pagination.
-    // For consistency with other hooks, we return all data if it's hierarchical or paginated if list.
-    // The current UI component expects full list for tree building.
-    
     return {
-      data: designationsWithRelations, // Return full list for tree construction
+      data: designationsWithRelations,
       totalCount,
       activeCount,
       inactiveCount,
     };
   }, [allDesignationsFlat, searchQuery, filters]);
 
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };
 };

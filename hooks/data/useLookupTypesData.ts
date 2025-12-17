@@ -6,25 +6,27 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
 
 export const useLookupTypesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<Lookup_typesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
-  const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-        const term = searchQuery.trim().replace(/'/g, "''");
-        searchString = `(` +
-          `name ILIKE '%${term}%' OR ` +
-          `code ILIKE '%${term}%' OR ` +
-          `description ILIKE '%${term}%'` +
-        `)`;
-    }
+  // Search Config
+  const searchFields = useMemo(
+    () => ['name', 'code', 'description'] as (keyof Lookup_typesRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
 
+  const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    
     const rpcFilters = buildRpcFilters({
       ...filters,
       or: searchString,
@@ -35,16 +37,15 @@ export const useLookupTypesData = (
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      // Default DB sort
       p_order_by: 'sort_order', 
       p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: Lookup_typesRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.lookup_types.toArray();
+    return localDb.lookup_types.orderBy('sort_order').toArray();
   }, []);
 
   const {
@@ -53,11 +54,14 @@ export const useLookupTypesData = (
     isFetching,
     error,
     refetch,
+    networkStatus
   } = useLocalFirstQuery<'lookup_types'>({
     queryKey: ['lookup_types-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.lookup_types,
+    // Explicitly disable auto-sync to rely on manual refresh
+    autoSync: false 
   });
 
   const processedData = useMemo(() => {
@@ -67,23 +71,18 @@ export const useLookupTypesData = (
 
     let filtered = allLookups;
 
+    // 1. Search
+    filtered = performClientSearch(filtered, searchQuery, searchFields);
+
+    // 2. Filters
     if (filters.category) {
         filtered = filtered.filter(lookup => lookup.category === filters.category);
     }
 
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(lookup =>
-        lookup.name?.toLowerCase().includes(lowerQuery) ||
-        lookup.code?.toLowerCase().includes(lowerQuery) ||
-        lookup.description?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // Explicitly hide 'DEFAULT' placeholder entries if they exist
+    // Hide DEFAULT placeholder
     filtered = filtered.filter(lookup => lookup.name !== 'DEFAULT');
 
-    // SORTING: Priority 1: Sort Order, Priority 2: Name
+    // 3. Sort (Priority: Sort Order, then Name)
     filtered.sort((a, b) => {
         const orderDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
         if (orderDiff !== 0) return orderDiff;
@@ -92,19 +91,19 @@ export const useLookupTypesData = (
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((l) => l.status === true).length;
+    const inactiveCount = totalCount - activeCount;
 
-    // Pagination
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
       data: paginatedData,
       totalCount,
       activeCount,
-      inactiveCount: totalCount - activeCount,
+      inactiveCount,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allLookups, searchQuery, filters, currentPage, pageLimit]);
 
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };
 };

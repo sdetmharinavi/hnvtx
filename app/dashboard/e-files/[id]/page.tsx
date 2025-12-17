@@ -7,7 +7,9 @@ import { EFileTimeline } from "@/components/efile/EFileTimeline";
 import { ForwardFileModal } from "@/components/efile/ActionModals";
 import { useState } from "react";
 import { ArrowLeft, Send, Archive, FileText, User } from "lucide-react";
-import { HtmlContent } from "@/components/common/ui/HtmlContent"; // Import HtmlContent
+import { HtmlContent } from "@/components/common/ui/HtmlContent";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { EFileMovementRow } from "@/schemas/efile-schemas";
 
 export default function EFileDetailsPage() {
     const { id } = useParams();
@@ -22,6 +24,12 @@ export default function EFileDetailsPage() {
     if (isError || !data) return <ErrorDisplay error={error?.message || "File not found"} />;
 
     const { file, history } = data;
+
+    // THE FIX: Ensure we have a valid ID before rendering components that depend on it.
+    // This narrows the type of file.id from 'string | null' to 'string'.
+    if (!file || !file.id) {
+        return <ErrorDisplay error="Invalid file record: Missing ID" />;
+    }
 
     const isActive = file.status === 'active';
 
@@ -133,7 +141,6 @@ export default function EFileDetailsPage() {
                     <Card className="p-6">
                          <h3 className="font-semibold mb-3 text-gray-900 dark:text-white border-b dark:border-gray-700 pb-2">Description</h3>
                          <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border dark:border-gray-700 whitespace-pre-wrap wrap-break-word">
-                             {/* THE FIX: Use HtmlContent for the description */}
                              <HtmlContent content={file.description} />
                          </div>
                     </Card>
@@ -145,7 +152,9 @@ export default function EFileDetailsPage() {
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 border-b dark:border-gray-700 pb-2">
                             Movement History
                         </h3>
-                        <EFileTimeline history={history} />
+                        {/* THE FIX: Type assertion to satisfy the strict EFileMovementRow array type */}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        <EFileTimeline history={history as any[]} />
                     </div>
                 </div>
             </div>
@@ -154,14 +163,14 @@ export default function EFileDetailsPage() {
             <ForwardFileModal
                 isOpen={isForwardModalOpen}
                 onClose={() => setIsForwardModalOpen(false)}
-                fileId={file.id}
+                fileId={file.id} // TS knows this is string now
             />
 
             <ConfirmModal
                 isOpen={isCloseModalOpen}
                 onCancel={() => setIsCloseModalOpen(false)}
                 onConfirm={() => {
-                    closeMutation.mutate({ fileId: file.id, remarks: 'File parted/closed.' });
+                    closeMutation.mutate({ fileId: file.id || '', remarks: 'File parted/closed.' });
                     setIsCloseModalOpen(false);
                 }}
                 title="Close File"

@@ -9,7 +9,7 @@ import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DEFAULTS } from '@/constants/constants';
 import { 
   buildServerSearchString, 
-  performClientSearch,
+  performClientSearch, 
   performClientPagination 
 } from '@/hooks/database/search-utils';
 
@@ -19,17 +19,31 @@ export const useAllSystemConnectionsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   // Search Config
-  const searchFields =useMemo(
+  const searchFields = useMemo(
     () => [
     'service_name', 
     'system_name', 
     'connected_system_name', 
     'bandwidth_allocated', 
     'unique_id', 
-    'lc_id'
+    'lc_id',
+    'sn_ip',
+    'en_ip',
+    'services_ip'
   ] as (keyof V_system_connections_completeRowSchema)[],
   []);
-  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
+  const serverSearchFields = useMemo(() => [
+    'service_name', 
+    'system_name', 
+    'connected_system_name', 
+    'bandwidth_allocated', 
+    'unique_id', 
+    'lc_id',
+    'sn_ip::text',
+    'en_ip::text',
+    'services_ip::text'
+  ], []);
 
   const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
     const searchString = buildServerSearchString(searchQuery, serverSearchFields);
@@ -59,11 +73,13 @@ export const useAllSystemConnectionsData = (
     isFetching,
     error,
     refetch,
+    networkStatus
   } = useLocalFirstQuery<'v_system_connections_complete'>({
     queryKey: ['all-system-connections', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_system_connections_complete,
+    autoSync: false // Manual sync only
   });
 
   const processedData = useMemo(() => {
@@ -84,7 +100,7 @@ export const useAllSystemConnectionsData = (
         filtered = filtered.filter(c => c.status === statusBool);
     }
 
-    // 3. Sort (Custom Logic kept here as it uses multiple fields)
+    // 3. Sort (Client-side)
     filtered.sort((a, b) => {
       const nameA = a.service_name || a.system_name || '';
       const nameB = b.service_name || b.system_name || '';
@@ -107,5 +123,5 @@ export const useAllSystemConnectionsData = (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allConnections, searchQuery, filters, currentPage, pageLimit]);
 
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };
 };
