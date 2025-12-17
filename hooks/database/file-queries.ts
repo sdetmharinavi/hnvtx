@@ -6,15 +6,15 @@ import { useCallback } from "react";
 import { localDb } from "@/hooks/data/localDb";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
 import { FilesRowSchema, FoldersRowSchema } from "@/schemas/zod-schemas";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
+import { toast } from "sonner";
 
 type FileInsert = Database["public"]["Tables"]["files"]["Insert"];
 type FileUpdate = Database["public"]["Tables"]["files"]["Update"];
 
-// --- 1. REFACTORED: useFiles now uses useLocalFirstQuery ---
 export function useFiles(folderId?: string | null) {
   const supabase = createClient();
   
-  // Online fetcher using RPC for consistency, or direct select if simple
   const onlineQueryFn = useCallback(async (): Promise<FilesRowSchema[]> => {
     let query = supabase.from("files").select("*");
     if (folderId) {
@@ -25,19 +25,14 @@ export function useFiles(folderId?: string | null) {
     return data || [];
   }, [folderId, supabase]);
 
-  // Offline fetcher using Dexie
   const localQueryFn = useCallback(() => {
     if (!folderId) {
-       // Return all files? Or empty? Usually files are viewed per folder.
-       // Let's return empty if no folder selected to avoid massive lists.
-       // Or if 'undefined' means root?
-       // For now, if folderId is undefined, we probably want nothing or root files.
        return localDb.files.toArray(); 
     }
     return localDb.files
       .where("folder_id")
       .equals(folderId)
-      .reverse() // Approximate sort
+      .reverse() 
       .sortBy("uploaded_at");
   }, [folderId]);
 
@@ -46,15 +41,13 @@ export function useFiles(folderId?: string | null) {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.files,
-    enabled: true, // Always enabled so local data shows
+    enabled: true, 
     localQueryDeps: [folderId],
   });
 
   return { data: data || [], isLoading, error, refetch };
 }
 
-// --- 2. REFACTORED: useFolders uses useLocalFirstQuery for consistency too ---
-// (Optional, but good for uniformity)
 export function useFoldersList() {
   const supabase = createClient();
   
@@ -78,7 +71,7 @@ export function useFoldersList() {
   return { folders: data || [], isLoading, refetch };
 }
 
-// ... Mutations remain largely the same, but invalidate properly ...
+// --- MUTATIONS ---
 
 export function useUploadFile() {
   const supabase = createClient();
@@ -86,6 +79,8 @@ export function useUploadFile() {
   
   return useMutation({
     mutationFn: async (fileData: FileInsert) => {
+      // Note: File uploading usually goes through Uppy, which calls /api/upload.
+      // This hook is for manual meta-data inserts if needed.
       const { data, error } = await supabase
         .from("files")
         .insert(fileData)
@@ -96,7 +91,6 @@ export function useUploadFile() {
       return data;
     },
     onSuccess: (data, variables) => {
-      // Invalidate both the specific folder list and the general files cache
       queryClient.invalidateQueries({ queryKey: ["files", variables.folder_id] });
       queryClient.invalidateQueries({ queryKey: ["files"] });
     },
@@ -106,26 +100,34 @@ export function useUploadFile() {
 export function useDeleteFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  
+  const isOnline = useOnlineStatus(); // ADDED
+
   return useMutation({
     mutationFn: async ({ id }: { id: string; folderId?: string | null }) => {
+      if (!isOnline) throw new Error("Deleting files requires an online connection.");
+      
       const { error } = await supabase.from("files").delete().eq("id", id);
       if (error) throw new Error(error.message);
       return { id };
     },
     onSuccess: (_, variables) => {
+      toast.success("File deleted");
       queryClient.invalidateQueries({ queryKey: ["files", variables.folderId] });
       queryClient.invalidateQueries({ queryKey: ["files"] });
     },
+    onError: (err) => toast.error(err.message)
   });
 }
 
 export function useUpdateFile() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
   
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: FileUpdate }) => {
+      if (!isOnline) throw new Error("Updating file metadata requires an online connection.");
+
       const { data, error } = await supabase
         .from("files")
         .update(updates)
@@ -137,17 +139,22 @@ export function useUpdateFile() {
       return data;
     },
     onSuccess: (data) => {
+      toast.success("File updated");
       queryClient.invalidateQueries({ queryKey: ["files", data.folder_id] });
     },
+    onError: (err) => toast.error(err.message)
   });
 }
 
 export function useDeleteFolder() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (folderId: string) => {
+      if (!isOnline) throw new Error("Deleting folders requires an online connection.");
+
       const { error } = await supabase.from("folders").delete().eq("id", folderId);
       if (error) {
         if (error.code === '23503') {
@@ -157,7 +164,9 @@ export function useDeleteFolder() {
       }
     },
     onSuccess: () => {
+      toast.success("Folder deleted");
       queryClient.invalidateQueries({ queryKey: ['folders'] });
-    }
+    },
+    onError: (err) => toast.error(err.message)
   });
 }

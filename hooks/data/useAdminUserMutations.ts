@@ -3,8 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Database } from "@/types/supabase-types";
 import { createClient } from "@/utils/supabase/client";
-
-// --- Type Definitions ---
+import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
 
 export type UserCreateInput = {
   id?: string;
@@ -18,7 +17,6 @@ export type UserCreateInput = {
 
 export type AdminUpdateUserProfile = Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
 
-// Query Keys (centralized for consistency)
 export const adminUserKeys = {
   all: ["admin-users"] as const,
   lists: () => [...adminUserKeys.all, "list"] as const,
@@ -30,9 +28,15 @@ export const adminUserKeys = {
 export const useAdminUpdateUserProfile = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (params: AdminUpdateUserProfile): Promise<boolean> => {
+      // 1. Offline Check
+      if (!isOnline) {
+        throw new Error("User profile updates require an online connection.");
+      }
+
       const { data, error } = await supabase.rpc("admin_update_user_profile", params);
       if (error) throw new Error(error.message);
       return data || false;
@@ -43,6 +47,7 @@ export const useAdminUpdateUserProfile = () => {
       queryClient.invalidateQueries({ queryKey: adminUserKeys.detail(variables.user_id) });
     },
     onError: (error) => {
+      // Toast handled by UI or here
       toast.error(`Failed to update user profile: ${error.message}`);
     },
   });
@@ -50,9 +55,15 @@ export const useAdminUpdateUserProfile = () => {
 
 export const useAdminBulkDeleteUsers = () => {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
+      // 1. Offline Check
+      if (!isOnline) {
+        throw new Error("Deleting users requires an online connection.");
+      }
+
       const response = await fetch('/api/admin/users', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -79,9 +90,13 @@ export const useAdminBulkDeleteUsers = () => {
 export const useAdminBulkUpdateUserRole = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (params: { user_ids: string[], new_role: string }): Promise<boolean> => {
+      if (!isOnline) {
+        throw new Error("Updating roles requires an online connection.");
+      }
       const { data, error } = await supabase.rpc("admin_bulk_update_role", params);
       if (error) throw new Error(error.message);
       return data || false;
@@ -102,9 +117,13 @@ export const useAdminBulkUpdateUserRole = () => {
 export const useAdminBulkUpdateUserStatus = () => {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (params: { user_ids: string[], new_status: string }): Promise<boolean> => {
+      if (!isOnline) {
+        throw new Error("Updating status requires an online connection.");
+      }
       const { data, error } = await supabase.rpc("admin_bulk_update_status", params);
       if (error) throw new Error(error.message);
       return data || false;
@@ -124,9 +143,13 @@ export const useAdminBulkUpdateUserStatus = () => {
 
 export const useAdminCreateUser = () => {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (userData: UserCreateInput) => {
+      if (!isOnline) {
+        throw new Error("Creating users requires an online connection.");
+      }
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,17 +172,7 @@ export const useAdminCreateUser = () => {
   });
 };
 
-// Combined hook for multiple operations
-interface UserOperations {
-  createUser: ReturnType<typeof useAdminCreateUser>;
-  updateUser: ReturnType<typeof useAdminUpdateUserProfile>;
-  deleteUsers: ReturnType<typeof useAdminBulkDeleteUsers>;
-  updateUserRoles: ReturnType<typeof useAdminBulkUpdateUserRole>;
-  updateUserStatus: ReturnType<typeof useAdminBulkUpdateUserStatus>;
-  isLoading: boolean;
-}
-
-export const useAdminUserOperations = (): UserOperations => {
+export const useAdminUserOperations = () => {
   const createUser = useAdminCreateUser();
   const updateUser = useAdminUpdateUserProfile();
   const deleteUsers = useAdminBulkDeleteUsers();

@@ -3,13 +3,14 @@
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries'; // Imported RPC hook
+import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries'; 
 import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
-import { Filters, Row, PublicTableOrViewName, buildRpcFilters } from '@/hooks/database'; // Imported buildRpcFilters
-import { FiDownload, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { Filters, Row, PublicTableOrViewName, buildRpcFilters } from '@/hooks/database'; 
+import { FiDownload, FiPlus, FiRefreshCw, FiWifiOff } from 'react-icons/fi';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
 
 interface ExportFilterOption {
   label: string;
@@ -24,7 +25,7 @@ interface ExportConfig<T extends PublicTableOrViewName> {
   filterOptions?: ExportFilterOption[];
   filters?: Filters;
   fileName?: string;
-  useRpc?: boolean; // NEW: Flag to force RPC usage
+  useRpc?: boolean; 
 }
 
 interface StandardActionsConfig<T extends PublicTableOrViewName> {
@@ -43,11 +44,12 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   data,
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
+  const isOnline = useOnlineStatus(); // ADDED
+
   const columns = useDynamicColumnConfig(exportConfig?.tableName as T, {
     data: data,
   });
 
-  // 1. Setup Direct Table Download
   const tableExcelDownload = useTableExcelDownload(
     supabase,
     exportConfig?.tableName as T,
@@ -56,8 +58,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     }
   );
 
-  // 2. Setup RPC Download (Fallback/Alternative)
-  // We pass the table name generics so types align
   const rpcExcelDownload = useRPCExcelDownload<T>(
     supabase,
     {
@@ -72,9 +72,21 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         return;
       }
 
+      // Check offline status for large RPC/DB exports
+      // Note: We could technically implement client-side export of the `data` prop here,
+      // but the `data` prop often only contains the *current page* of data, not the full dataset
+      // required for a meaningful report.
+      // Ideally, we'd fall back to client-side export if `data` is sufficient.
+      // For now, we block large exports to prevent confusion/errors.
+      if (!isOnline) {
+          toast.error('Export unavailable offline. Please connect to the internet.', {
+              icon: <FiWifiOff />
+          });
+          return;
+      }
+
       const filters = filterOption?.filters || exportConfig.filters;
 
-      // Determine File Name
       let fileName: string;
       let sheetName: string;
 
@@ -100,9 +112,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           : true
       );
 
-      // --- BRANCH LOGIC: RPC VS DIRECT ---
       if (exportConfig.useRpc) {
-        // Use the standard pagination RPC which handles filters and sorts
         rpcExcelDownload.mutate({
           fileName: finalFileName,
           sheetName: sheetName,
@@ -111,17 +121,15 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
             functionName: 'get_paged_data',
             parameters: {
               p_view_name: exportConfig.tableName,
-              p_limit: exportConfig.maxRows || 50000, // Default high limit for export
+              p_limit: exportConfig.maxRows || 50000, 
               p_offset: 0,
-              // Ensure filters are converted to the JSON format expected by the RPC
               p_filters: buildRpcFilters(filters || {}),
-              p_order_by: 'created_at', // Default sort, could be parameterized if needed
+              p_order_by: 'created_at', 
               p_order_dir: 'desc'
             }
           }
         });
       } else {
-        // Use Direct Table/View Select
         tableExcelDownload.mutate({
           fileName: finalFileName,
           sheetName: sheetName,
@@ -131,7 +139,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         });
       }
     },
-    [exportConfig, columns, tableExcelDownload, rpcExcelDownload]
+    [exportConfig, columns, tableExcelDownload, rpcExcelDownload, isOnline]
   );
 
   return useMemo(() => {

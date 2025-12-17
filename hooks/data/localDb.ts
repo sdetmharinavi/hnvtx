@@ -40,7 +40,6 @@ import {
   Diary_notesRowSchema,
   Logical_pathsRowSchema,
   Ofc_connectionsRowSchema,
-  // ADDED: E-File Schemas
   E_filesRowSchema,
   File_movementsRowSchema,
   V_e_files_extendedRowSchema,
@@ -144,12 +143,9 @@ export class HNVTMDatabase extends Dexie {
   services!: Table<ServicesRowSchema , string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
   logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
-  logical_paths!: Table<Logical_pathsRowSchema, string>;
-  ofc_connections!: Table<Ofc_connectionsRowSchema, string>;
   
-  // ADDED: E-File Tables
-  e_files!: Table<E_filesRowSchema, string>;
-  file_movements!: Table<File_movementsRowSchema, string>;
+  logical_paths!: Table<Logical_pathsRowSchema, string>;
+  ofc_connections!: Table<Ofc_connectionsRowSchema, string>; 
 
   files!: Table<FilesRowSchema, string>;
   folders!: Table<FoldersRowSchema, string>;
@@ -173,7 +169,8 @@ export class HNVTMDatabase extends Dexie {
   v_end_to_end_paths!: Table<V_end_to_end_pathsRowSchema, string>;
   v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
   
-  // ADDED: E-File Views
+  e_files!: Table<E_filesRowSchema, string>;
+  file_movements!: Table<File_movementsRowSchema, string>;
   v_e_files_extended!: Table<V_e_files_extendedRowSchema, string>;
   v_file_movements_extended!: Table<V_file_movements_extendedRowSchema, string>;
 
@@ -184,9 +181,10 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 30: Added E-Files Tables & Views
-    this.version(30).stores({
-      lookup_types: '&id, category, name',
+    // VERSION 31: Added 'sort_order' to lookup_types index to support orderBy('sort_order')
+    this.version(31).stores({
+      lookup_types: '&id, category, name, sort_order', // ADDED sort_order
+      
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
       employees: '&id, employee_name, employee_pers_no',
@@ -209,14 +207,12 @@ export class HNVTMDatabase extends Dexie {
       ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn]', 
       inventory_transactions: '&id, inventory_item_id, created_at',
       
-      // E-Files Base Tables
       e_files: '&id, file_number, current_holder_employee_id, status',
       file_movements: '&id, file_id, created_at',
       
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
 
-      // Views
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
       v_systems_complete: '&id, system_name',
@@ -236,8 +232,8 @@ export class HNVTMDatabase extends Dexie {
       v_end_to_end_paths: '&path_id, path_name',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
       
-      // E-Files Views
-      v_e_files_extended: '&id, file_number, status, current_holder_name',
+      // Also updated to ensure sorting performance for E-Files
+      v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at', // Added updated_at
       v_file_movements_extended: '&id, file_id, created_at',
 
       sync_status: 'tableName',

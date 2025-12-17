@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThemeStore } from '@/stores/themeStore';
-import { Database, Download, Upload } from 'lucide-react'; // Added icons
+import { Database, Download, Upload, WifiOff } from 'lucide-react';
 
 import { FileTable } from './FileTable';
 import { useUppyUploader } from './hooks/useUppyUploader';
@@ -19,9 +19,10 @@ import SimpleUpload from "./uploader-components/SimpleUpload";
 import AdvancedUpload from "./uploader-components/AdvancedUpload";
 import RecentlyUploaded from "./uploader-components/RecentlyUploaded";
 import ErrorDisplay from "./uploader-components/ErrorDisplay";
-import { PageHeader } from '@/components/common/page-header'; // Import PageHeader
-import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup'; // Import Hooks
+import { PageHeader } from '@/components/common/page-header';
+import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup';
 import { useUser } from '@/providers/UserProvider';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
@@ -34,7 +35,8 @@ export default function FileUploader() {
   const { theme } = useThemeStore();
   const uppyTheme = theme === 'system' ? 'auto' : theme;
 
-  const {isSuperAdmin, role } = useUser();
+  const { isSuperAdmin, role } = useUser();
+  const isOnline = useOnlineStatus(); // ADDED
 
   const canCreate = !!isSuperAdmin || role === 'admin';
   const canDelete = !!isSuperAdmin;
@@ -86,6 +88,17 @@ export default function FileUploader() {
     setError: (err) => setError(err),
   });
 
+  // WRAPPER for Start Upload to check connectivity
+  const handleSafeStartUpload = () => {
+    if (!isOnline) {
+      toast.error("You are offline. Please connect to the internet to upload files.", {
+        icon: <WifiOff className="w-4 h-4" />
+      });
+      return;
+    }
+    handleStartUpload();
+  };
+
   const {
     fileInputRef,
     handleFileInputChange,
@@ -129,12 +142,18 @@ export default function FileUploader() {
                 dropdownoptions: [
                     {
                         label: isBackingUp ? "Exporting..." : "Export Full Backup (Excel)",
-                        onClick: () => exportBackup(),
+                        onClick: () => {
+                           if (!isOnline) toast.error("Backup export requires online connection.");
+                           else exportBackup();
+                        },
                         disabled: isBackingUp
                     },
                     {
                         label: isRestoring ? "Restoring..." : "Restore from Backup",
-                        onClick: () => backupInputRef.current?.click(),
+                        onClick: () => {
+                           if (!isOnline) toast.error("Backup restore requires online connection.");
+                           else backupInputRef.current?.click();
+                        },
                         disabled: isRestoring
                     }
                 ]
@@ -197,7 +216,7 @@ export default function FileUploader() {
                   selectedFiles={selectedFiles}
                   handleRemoveFile={handleRemoveFile}
                   isUploading={isUploading}
-                  handleStartUpload={handleStartUpload}
+                  handleStartUpload={handleSafeStartUpload} // Updated Handler
                 />
               )}
             </div>
