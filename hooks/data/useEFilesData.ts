@@ -10,6 +10,8 @@ import {
   v_file_movements_extendedRowSchema
 } from "@/schemas/efile-schemas";
 import { z } from "zod";
+import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
+import { localDb } from "@/hooks/data/localDb";
 import { useTableQuery } from "@/hooks/database";
 
 const supabase = createClient();
@@ -25,41 +27,63 @@ export interface UpdateFilePayload {
 
 // List Hook
 export function useEFiles(filters?: { status?: string; }) {
-  return useQuery({
-    queryKey: ['e-files', filters],
-    queryFn: async () => {
-      const rpcFilters: Record<string, unknown> = {};
-      if (filters?.status) rpcFilters.status = filters.status;
+  
+  const onlineQueryFn = async () => {
+    const rpcFilters: Record<string, unknown> = {};
+    if (filters?.status && filters.status !== '') rpcFilters.status = filters.status;
 
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_e_files_extended',
-        p_limit: 2000, // Increased limit for better list view
-        p_offset: 0,
-        p_filters: rpcFilters,
-        p_order_by: 'updated_at',
-        p_order_dir: 'desc'
-      });
+    const { data, error } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_e_files_extended',
+      p_limit: 2000, 
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'updated_at',
+      p_order_dir: 'desc'
+    });
 
-      if (error) throw error;
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows = (data as any)?.data || [];
-      
-      const safeParse = z.array(v_e_files_extendedRowSchema).safeParse(rows);
-      if (!safeParse.success) {
-          console.error("E-File schema mismatch", safeParse.error);
-          return rows as z.infer<typeof v_e_files_extendedRowSchema>[];
-      }
-      return safeParse.data;
+    if (error) throw error;
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = (data as any)?.data || [];
+    
+    // Validate schema
+    const safeParse = z.array(v_e_files_extendedRowSchema).safeParse(rows);
+    if (!safeParse.success) {
+        console.error("E-File schema mismatch", safeParse.error);
+        return rows as z.infer<typeof v_e_files_extendedRowSchema>[];
     }
+    return safeParse.data;
+  };
+
+  const localQueryFn = () => {
+    let collection = localDb.v_e_files_extended.toCollection();
+    
+    if (filters?.status && filters.status !== '') {
+      collection = localDb.v_e_files_extended
+        .where('status')
+        .equals(filters.status);
+    }
+
+    return collection
+      .reverse() // Approximate sorting
+      .sortBy('updated_at'); 
+  };
+
+  const { data, isLoading, error, refetch, isFetching } = useLocalFirstQuery<'v_e_files_extended'>({
+    queryKey: ['e-files', filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_e_files_extended,
+    localQueryDeps: [filters?.status]
   });
+
+  return { data: data || [], isLoading, error, refetch, isFetching };
 }
 
 // Details Hook
 export function useEFileDetails(fileId: string) {
-  return useQuery({
-    queryKey: ['e-file-details', fileId],
-    queryFn: async () => {
+  
+  const onlineQueryFn = async () => {
       const { data: fileResult, error: fileError } = await supabase.rpc('get_paged_data', {
         p_view_name: 'v_e_files_extended',
         p_filters: { id: fileId },
@@ -85,15 +109,39 @@ export function useEFileDetails(fileId: string) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const historyRows = (historyResult as any)?.data || [];
 
-      if (!fileRow) {
-        throw new Error("File not found");
-      }
+      if (!fileRow) throw new Error("File not found");
 
       return {
         file: v_e_files_extendedRowSchema.parse(fileRow),
         history: z.array(v_file_movements_extendedRowSchema).parse(historyRows)
       };
-    }
+  };
+
+  
+  return useQuery({
+    queryKey: ['e-file-details', fileId],
+    queryFn: async () => {
+       // 1. Try Local First
+       const localFile = await localDb.v_e_files_extended.get(fileId);
+       if (localFile) {
+          // THE FIX: Use the view table directly now that it's defined
+          const localHistory = await localDb.v_file_movements_extended
+             .where('file_id').equals(fileId)
+             .reverse().sortBy('created_at'); 
+          
+          return {
+             file: localFile,
+             history: localHistory
+          };
+       }
+
+       // 2. If no local data, force online (or throw if offline)
+       return onlineQueryFn();
+    },
+    // Manual sync only:
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity
   });
 }
 
@@ -189,7 +237,6 @@ export function useCloseFile() {
   });
 }
 
-// THE FIX: Use RPC for deletion to bypass RLS/Table permission issues
 export function useDeleteFile() {
   const queryClient = useQueryClient();
 
@@ -206,7 +253,6 @@ export function useDeleteFile() {
   });
 }
 
-// Helper hook for dropdowns
 export function useEmployeeOptions() {
   const supabase = createClient();
   return useTableQuery(supabase, 'v_employees', {

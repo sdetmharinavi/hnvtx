@@ -87,7 +87,6 @@ export const useUserPermissionsExtended = () => {
   }, [user?.id]);
 
   // 3. Use Local First Hook
-  // THE FIX: Explicitly pass StoredVUserProfilesExtended as the 3rd generic to match localDb type
   const { data: profiles = [], isLoading, error, isError, refetch } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
     queryKey: ['user-full-profile', user?.id],
     onlineQueryFn,
@@ -95,6 +94,9 @@ export const useUserPermissionsExtended = () => {
     dexieTable: localDb.v_user_profiles_extended,
     enabled: authState === 'authenticated' && !!user?.id,
     staleTime: 5 * 60 * 1000, 
+    // THE FIX: Force autoSync to true for permissions. 
+    // We want to check roles in the background on load to ensure security.
+    autoSync: true 
   });
 
   const profile = profiles[0] || null;
@@ -121,7 +123,6 @@ export const useUserPermissionsExtended = () => {
       if (!allowedRoles || allowedRoles.length === 0) return true;
       return hasAnyRole(allowedRoles);
     },
-    // THE FIX: Removed permissions.role from deps as it's not used directly
     [permissions.isSuperAdmin, hasAnyRole]
   );
 

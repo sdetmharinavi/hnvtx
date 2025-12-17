@@ -1,7 +1,7 @@
 // components/kml/KmlMap.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
@@ -10,25 +10,6 @@ import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
 import { Maximize, Minimize } from 'lucide-react';
 import useIsMobile from '@/hooks/useIsMobile';
-
-// Fix for default marker icons - HALVED SIZE
-const iconDefault = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-  // Original: [25, 41] -> New: [12, 20]
-  iconSize: [12, 20],
-  // Original: [12, 41] -> New: [6, 20] (Bottom center-ish of the new size)
-  iconAnchor: [6, 20],
-  // Original: [1, -34] -> New: [0, -20] (Above the icon)
-  popupAnchor: [0, -20],
-  // Shadow needs to scale too, or it looks weird. 
-  // Original shadow: [41, 41]. New: [20, 20]
-  shadowSize: [20, 20],
-  shadowAnchor: [6, 20] 
-});
-
-L.Marker.prototype.options.icon = iconDefault;
 
 interface KmlMapProps {
   kmlUrl: string | null;
@@ -115,8 +96,35 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  
+  // THE FIX: Store default icon in ref or state to ensure 'L' is accessed only on client
+  const defaultIconRef = useRef<L.Icon | null>(null);
 
   useEffect(() => {
+    // Initialize Leaflet globals only on client side
+    if (typeof window !== 'undefined') {
+        // Fix for default marker icons
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+            iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+            shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        });
+
+        defaultIconRef.current = L.icon({
+            iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+            iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+            shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+            iconSize: [12, 20],
+            iconAnchor: [6, 20],
+            popupAnchor: [0, -20],
+            shadowSize: [20, 20],
+            shadowAnchor: [6, 20] 
+        });
+    }
+
     if (isFullScreen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -217,7 +225,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
       });
       return L.marker(latlng, { icon: customIcon });
     }
-    return L.marker(latlng, { icon: iconDefault });
+    // Safe fallback using ref
+    return L.marker(latlng, { icon: defaultIconRef.current || undefined });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -247,6 +256,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
         layer.on({
           popupopen: (e) => {
              const l = e.target;
+             // Only style paths/polygons, not markers
              if (l.setStyle && feature.geometry.type !== 'Point') {
                const letters = '0123456789ABCDEF';
                let color = '#';
@@ -273,22 +283,22 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   return (
     <div className={containerClass}>
       {loading && (
-        <div className="absolute inset-0 z-[1000] bg-white/80 dark:bg-gray-900/80 flex items-center justify-center backdrop-blur-sm">
+        <div className="absolute inset-0 z-1000 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center backdrop-blur-sm">
            <PageSpinner text="Processing File..." />
         </div>
       )}
 
       {errorMsg && !loading && (
-        <div className="absolute inset-0 z-[999] bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center text-red-500 p-4 text-center">
+        <div className="absolute inset-0 z-999 bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center text-red-500 p-4 text-center">
            <p className="font-semibold mb-2">Error Loading Preview</p>
            <p className="text-sm text-gray-500 dark:text-gray-400">{errorMsg}</p>
         </div>
       )}
 
-      {/* Fullscreen Toggle - Moved to Bottom Right to avoid conflict with Layer Control */}
+      {/* Fullscreen Toggle */}
       <button
         onClick={() => setIsFullScreen(!isFullScreen)}
-        className="absolute bottom-6 right-4 z-[1000] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="absolute bottom-6 right-4 z-1000 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         title={isFullScreen ? "Exit Full Screen (Esc)" : "Enter Full Screen"}
       >
         {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}

@@ -43,55 +43,47 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       else if (ref && 'current' in ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
     };
 
-    // Initialize hasValue on mount and when value/defaultValue changes
+    // Initialize hasValue logic
     useEffect(() => {
-      const dv = (props as { defaultValue?: string | number })?.defaultValue;
-      const raw = value ?? dv ?? innerRef.current?.value ?? '';
-      setLiveHasValue(String(raw).length > 0);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [value, (props as { defaultValue?: string | number })?.defaultValue]);
+      // Use the prop value if controlled, otherwise check the ref for uncontrolled value
+      const val = value !== undefined ? value : (innerRef.current?.value ?? '');
+      setLiveHasValue(String(val).length > 0);
+    }, [value]);
 
-    // Handle clear action
     const handleClear = () => {
-      // Create a synthetic event that react-hook-form can understand
+      // Create synthetic event
       const syntheticEvent = {
         target: { value: '' },
         currentTarget: { value: '' },
       } as React.ChangeEvent<HTMLInputElement>;
       
-      // If an onChange is passed from register, call it with an empty value
       props.onChange?.(syntheticEvent);
-      
       onClear?.();
       
-      // Focus the input
-      if (ref && 'current' in ref && ref.current) {
-        ref.current.focus();
+      if (innerRef.current) {
+        innerRef.current.value = ''; // Update uncontrolled
+        innerRef.current.focus();
       }
+      setLiveHasValue(false);
     };
     
-    const shouldShowClear = clearable && !disabled && !isLoading && (String((value) || '').length > 0 || liveHasValue);
-    const defaultValue = (props as { defaultValue?: string | number })?.defaultValue;
-    const rawVal = value ?? defaultValue ?? '';
-    const hasValue = liveHasValue || String(rawVal).length > 0;
+    // THE FIX: Ensure value is never undefined to prevent "uncontrolled to controlled" warning
+    const safeValue = value === undefined ? undefined : (value ?? '');
+
+    const shouldShowClear = clearable && !disabled && !isLoading && liveHasValue;
 
     const inputClasses = clsx(
       'rounded-lg border transition-all duration-200 font-medium w-full',
       'focus:outline-none focus:ring-2 focus:border-transparent',
       'placeholder:text-gray-400 dark:placeholder-gray-500',
-      'px-4 py-2.5 text-base', // Standard size
+      'px-4 py-2.5 text-base',
       leftIcon && 'pl-11',
       shouldShowClear && 'pr-11',
-      // Place external classes earlier so our bg utilities later will override
       className,
       error ? 'border-red-500 focus:ring-red-500 dark:border-red-600' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:ring-blue-500',
-      // Disabled style
       (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed',
-      // Active background: apply bg-gray-100 in normal mode and dark:bg-gray-800 in dark mode when input has value
-      !(disabled || isLoading) && hasValue && 'bg-gray-50 dark:bg-gray-800!',
-      // Default background when no value
-      !(disabled || isLoading) && !hasValue && 'bg-white dark:bg-gray-900',
-      // Text colors
+      !(disabled || isLoading) && liveHasValue && 'bg-gray-50 dark:bg-gray-800!',
+      !(disabled || isLoading) && !liveHasValue && 'bg-white dark:bg-gray-900',
       !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100'
     );
     
@@ -104,7 +96,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           type={type}
           className={inputClasses}
           disabled={disabled || isLoading}
-          value={value}
+          value={safeValue} // Passed safe value
           onChange={(e) => {
             setLiveHasValue(e.currentTarget.value.length > 0);
             props.onChange?.(e);
@@ -113,7 +105,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {shouldShowClear && (
-          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <FiX />
           </button>
         )}

@@ -2,7 +2,7 @@
 import { useQuery, type QueryKey } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect } from 'react';
-// import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { PublicTableOrViewName, Row } from '@/hooks/database';
 import { Table, PromiseExtended } from 'dexie';
 
@@ -19,6 +19,12 @@ interface UseLocalFirstQueryOptions<
   dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
+  /**
+   * If true, attempts to fetch from network on component mount.
+   * If false, relies solely on local data until refetch() is called manually.
+   * Default: false (Offline-first, manual sync)
+   */
+  autoSync?: boolean; 
 }
 
 export function useLocalFirstQuery<
@@ -32,31 +38,44 @@ export function useLocalFirstQuery<
   localQueryDeps = [],
   dexieTable,
   enabled = true,
-  staleTime = 5 * 60 * 1000,
+  staleTime = Infinity, // Default to Infinity to prevent background refetches
+  autoSync = false,     // THE FIX: Default to Manual Sync
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
-  // const isOnline = useOnlineStatus();
-  // const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   // 1. Fetch Local Data (Always available via Dexie)
+  // This is the primary data source for the UI.
   const localData = useLiveQuery(localQueryFn, localQueryDeps, undefined);
 
-  // 2. Fetch Network Data (Standard React Query)
+  // 2. Network Query Configuration
+  const shouldFetchOnMount = enabled && isOnline && autoSync;
+
   const {
     data: networkData,
     isLoading: isNetworkLoading,
-    isFetching,
+    isFetching: isNetworkFetching,
     isError: isNetworkError,
     error: networkError,
     refetch,
+    status: networkQueryStatus,
   } = useQuery<TRow[]>({
     queryKey,
-    queryFn: onlineQueryFn,
-    enabled: enabled, 
+    queryFn: async () => {
+      if (!isOnline) {
+        throw new Error("Offline");
+      }
+      return onlineQueryFn();
+    },
+    // Controls whether the query runs automatically
+    enabled: shouldFetchOnMount, 
+    
+    // Strict Manual Mode Settings
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Attempt to fetch on mount to keep data fresh
-    refetchOnReconnect: true,
+    refetchOnMount: false, // Do not refetch on mount if data exists
+    refetchOnReconnect: false, // Do not auto-refetch on reconnect
+    
     staleTime,
-    retry: 1, // Minimize retries to avoid long waiting times if offline
+    retry: 1, 
   });
 
   // 3. Sync Network Data to Local DB
@@ -64,8 +83,7 @@ export function useLocalFirstQuery<
     if (networkData) {
       const syncToLocal = async () => {
         try {
-          // Transactional bulk put to ensure data consistency
-          // We rely on the caller to ensure TRow matches TLocal structure or is compatible
+          // Bulk put updates existing records and inserts new ones
           await dexieTable.bulkPut(networkData as unknown as TLocal[]);
         } catch (e) {
           console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
@@ -75,29 +93,32 @@ export function useLocalFirstQuery<
     }
   }, [networkData, dexieTable]);
 
-  // 4. Determine "Effective" State (Offline-First Logic)
-  
-  // Check if we actually have local data
+  // 4. Determine Loading State
   const hasLocalData = Array.isArray(localData) ? localData.length > 0 : !!localData;
   
-  // LOGIC FIX:
-  // If we have local data, we are NOT loading (even if network is fetching).
-  // We only show loading state if we have NO data at all and are waiting for network.
-  const isLoading = isNetworkLoading && !hasLocalData;
+  // Only show "Loading" if we have absolutely no data AND we are actively fetching
+  // In manual mode (autoSync=false), isNetworkLoading is false initially, so this returns false,
+  // allowing the empty state or local data to show immediately.
+  const isLoading = (isNetworkLoading && autoSync) && !hasLocalData;
 
-  // LOGIC FIX:
-  // If we have local data, we SUPPRESS the network error.
-  // The user sees the stale data, and we can show a toast or indicator elsewhere if needed.
-  // We only show the error screen if we have NO data and the network failed.
-  const error = hasLocalData ? null : networkError;
-  const isError = hasLocalData ? false : isNetworkError;
+  // 5. Determine Error State
+  // Suppress network errors if we have local data to show
+  const isError = isNetworkError && !hasLocalData;
+  const error = isError ? networkError : null;
+
+  // 6. Indicators
+  const isSyncing = isNetworkFetching;
+  const isStale = isNetworkError && hasLocalData; // We have data, but last sync failed
 
   return {
-    data: localData, // Always return local data as the source of truth for the UI
+    data: localData, // Always return local data
     isLoading,
-    isFetching,
+    isFetching: isSyncing,
     isError,
     error,
-    refetch,
+    refetch, // Passing this allows the "Refresh" buttons to trigger the network call
+    networkStatus: networkQueryStatus,
+    isStale,
+    isSyncing
   };
 }

@@ -14,6 +14,8 @@ import {
   Fiber_splicesRowSchema as Fiber_splicesRow,
   System_connectionsRowSchema as System_connectionsRow,
   Inventory_itemsRowSchema,
+  FilesRowSchema,
+  FoldersRowSchema,
   V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
   V_systems_completeRowSchema,
@@ -36,6 +38,13 @@ import {
   V_audit_logsRowSchema,
   V_inventory_transactions_extendedRowSchema,
   Diary_notesRowSchema,
+  Logical_pathsRowSchema,
+  Ofc_connectionsRowSchema,
+  // ADDED: E-File Schemas
+  E_filesRowSchema,
+  File_movementsRowSchema,
+  V_e_files_extendedRowSchema,
+  V_file_movements_extendedRowSchema
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -107,9 +116,8 @@ export interface MutationTask {
   error?: string;
 }
 
-// NEW: Persistent Cache for Route Distances
 export interface RouteDistanceCache {
-  id: string; // "lat1,lng1-lat2,lng2"
+  id: string; 
   distance_km: number;
   source: string;
   timestamp: number;
@@ -136,6 +144,15 @@ export class HNVTMDatabase extends Dexie {
   services!: Table<ServicesRowSchema , string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
   logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
+  logical_paths!: Table<Logical_pathsRowSchema, string>;
+  ofc_connections!: Table<Ofc_connectionsRowSchema, string>;
+  
+  // ADDED: E-File Tables
+  e_files!: Table<E_filesRowSchema, string>;
+  file_movements!: Table<File_movementsRowSchema, string>;
+
+  files!: Table<FilesRowSchema, string>;
+  folders!: Table<FoldersRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -155,18 +172,20 @@ export class HNVTMDatabase extends Dexie {
   v_services!: Table<V_servicesRowSchema, string>;
   v_end_to_end_paths!: Table<V_end_to_end_pathsRowSchema, string>;
   v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
+  
+  // ADDED: E-File Views
+  v_e_files_extended!: Table<V_e_files_extendedRowSchema, string>;
+  v_file_movements_extended!: Table<V_file_movements_extendedRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
   mutation_queue!: Table<MutationTask, number>;
-  
-  // NEW TABLE
   route_distances!: Table<RouteDistanceCache, string>;
 
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 26: Added route_distances for ORS cache
-    this.version(26).stores({
+    // VERSION 30: Added E-Files Tables & Views
+    this.version(30).stores({
       lookup_types: '&id, category, name',
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -186,8 +205,18 @@ export class HNVTMDatabase extends Dexie {
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
       logical_fiber_paths: '&id, path_name, system_connection_id',
+      logical_paths: '&id, ring_id, start_node_id, end_node_id',
+      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn]', 
       inventory_transactions: '&id, inventory_item_id, created_at',
+      
+      // E-Files Base Tables
+      e_files: '&id, file_number, current_holder_employee_id, status',
+      file_movements: '&id, file_id, created_at',
+      
+      files: '&id, folder_id, user_id, file_name, uploaded_at',
+      folders: '&id, user_id, name',
 
+      // Views
       v_nodes_complete: '&id, name',
       v_ofc_cables_complete: '&id, route_name',
       v_systems_complete: '&id, system_name',
@@ -202,15 +231,17 @@ export class HNVTMDatabase extends Dexie {
       v_ofc_connections_complete: '&id, ofc_id, system_id',
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
-      v_audit_logs: '&id, action_type, table_name, created_at',
+      v_audit_logs: '&id, action_type, table_name, created_at', 
       v_services: '&id, name, node_name',
       v_end_to_end_paths: '&path_id, path_name',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
+      
+      // E-Files Views
+      v_e_files_extended: '&id, file_number, status, current_holder_name',
+      v_file_movements_extended: '&id, file_id, created_at',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status',
-      
-      // Cache Table
       route_distances: 'id, timestamp'
     });
   }
@@ -223,5 +254,6 @@ export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<R
     if (!table) {
         throw new Error(`Table ${tableName} does not exist`);
     }
-    return table as Table<Row<T>, string | number | [string, string]>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return table as Table<Row<T>, any>;
 }

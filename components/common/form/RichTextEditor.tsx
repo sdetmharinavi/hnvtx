@@ -1,20 +1,19 @@
-"use client";
+'use client';
 
-import { useEditor, EditorContent, Editor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import LinkExtension from "@tiptap/extension-link";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Quote, 
-  Undo, 
-  Redo, 
-  Code,
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import LinkExtension from '@tiptap/extension-link';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import { Table } from '@tiptap/extension-table';
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Undo,
+  Redo,
   Heading1,
   Heading2,
   Table as TableIcon,
@@ -22,11 +21,10 @@ import {
   MinusSquare,
   Trash2,
   Merge,
-  Split
-} from "lucide-react";
-import { useEffect } from "react";
-import { Label } from "@/components/common/ui/label/Label";
-import { Table } from "@tiptap/extension-table";
+  Split,
+} from 'lucide-react';
+import { useEffect } from 'react';
+import { Label } from '@/components/common/ui/label/Label';
 
 interface RichTextEditorProps {
   value: string;
@@ -38,21 +36,19 @@ interface RichTextEditorProps {
 }
 
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
-  if (!editor) {
-    return null;
-  }
+  if (!editor) return null;
 
-  const baseBtn = "p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300";
-  const activeBtn = "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+  const baseBtn =
+    'p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300';
+  const activeBtn = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
 
   return (
     <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg items-center">
-      {/* Basic Formatting */}
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
-        className={`${baseBtn} ${editor.isActive("bold") ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('bold') ? activeBtn : ''}`}
         title="Bold"
       >
         <Bold size={16} />
@@ -61,19 +57,16 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         type="button"
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
-        className={`${baseBtn} ${editor.isActive("italic") ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('italic') ? activeBtn : ''}`}
         title="Italic"
       >
         <Italic size={16} />
       </button>
-      
       <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-      {/* Headings */}
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        className={`${baseBtn} ${editor.isActive("heading", { level: 1 }) ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('heading', { level: 1 }) ? activeBtn : ''}`}
         title="Heading 1"
       >
         <Heading1 size={16} />
@@ -81,19 +74,16 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={`${baseBtn} ${editor.isActive("heading", { level: 2 }) ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('heading', { level: 2 }) ? activeBtn : ''}`}
         title="Heading 2"
       >
         <Heading2 size={16} />
       </button>
-
       <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-      {/* Lists */}
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`${baseBtn} ${editor.isActive("bulletList") ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('bulletList') ? activeBtn : ''}`}
         title="Bullet List"
       >
         <List size={16} />
@@ -101,50 +91,27 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={`${baseBtn} ${editor.isActive("orderedList") ? activeBtn : ""}`}
+        className={`${baseBtn} ${editor.isActive('orderedList') ? activeBtn : ''}`}
         title="Ordered List"
       >
         <ListOrdered size={16} />
       </button>
-
       <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-      {/* Blocks */}
       <button
         type="button"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={`${baseBtn} ${editor.isActive("blockquote") ? activeBtn : ""}`}
-        title="Quote"
-      >
-        <Quote size={16} />
-      </button>
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        className={`${baseBtn} ${editor.isActive("codeBlock") ? activeBtn : ""}`}
-        title="Code Block"
-      >
-        <Code size={16} />
-      </button>
-
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-
-      {/* Table Controls */}
-      <button
-        type="button"
-        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        onClick={() =>
+          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+        }
         className={`${baseBtn}`}
         title="Insert Table"
       >
         <TableIcon size={16} />
       </button>
 
-      {/* Conditional Table Controls - Only show when cursor is in a table */}
       {editor.isActive('table') && (
         <>
-           <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
-           
-           <button
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <button
             type="button"
             onClick={() => editor.chain().focus().addColumnAfter().run()}
             className={`${baseBtn}`}
@@ -160,7 +127,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           >
             <MinusSquare size={16} className="rotate-90" />
           </button>
-          
           <button
             type="button"
             onClick={() => editor.chain().focus().addRowAfter().run()}
@@ -177,7 +143,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           >
             <MinusSquare size={16} />
           </button>
-
           <button
             type="button"
             onClick={() => editor.chain().focus().mergeCells().run()}
@@ -194,7 +159,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           >
             <Split size={16} />
           </button>
-          
           <button
             type="button"
             onClick={() => editor.chain().focus().deleteTable().run()}
@@ -207,8 +171,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       )}
 
       <div className="flex-1" />
-
-      {/* History */}
       <button
         type="button"
         onClick={() => editor.chain().focus().undo().run()}
@@ -231,81 +193,82 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   );
 };
 
-export const RichTextEditor = ({ value, onChange, label, error, disabled, placeholder }: RichTextEditorProps) => {
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        // Disable the default link extension from StarterKit to avoid conflicts
-        link: false,
-      }),
-      LinkExtension.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-500 hover:underline cursor-pointer',
+export const RichTextEditor = ({
+  value,
+  onChange,
+  label,
+  error,
+  disabled,
+  placeholder,
+}: RichTextEditorProps) => {
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({ link: false }),
+        LinkExtension.configure({
+          openOnClick: false,
+          HTMLAttributes: { class: 'text-blue-500 hover:underline cursor-pointer' },
+        }),
+        Table.configure({
+          resizable: true,
+          // THE FIX: Allow tables to be wide and scrollable within the editor container
+          HTMLAttributes: {
+            class:
+              'border-collapse table-auto w-full my-4 border border-gray-300 dark:border-gray-600',
+          },
+        }),
+        TableRow,
+        TableHeader.configure({
+          HTMLAttributes: {
+            class:
+              'border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 p-2 font-semibold text-left',
+          },
+        }),
+        TableCell.configure({
+          HTMLAttributes: {
+            class: 'border border-gray-300 dark:border-gray-600 p-2 align-top relative',
+          },
+        }),
+      ],
+      content: value,
+      editable: !disabled,
+      editorProps: {
+        attributes: {
+          // THE FIX: Prose classes adjusted for table support
+          class:
+            'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
         },
-      }),
-      // Table Extensions with Tailwind styling
-      Table.configure({
-        resizable: true,
-        HTMLAttributes: {
-          // THE FIX: Enforce min-width to ensure horizontal scrolling triggers
-          class: 'border-collapse table-auto min-w-full my-4 border border-gray-300 dark:border-gray-600',
-        },
-      }),
-      TableRow,
-      TableHeader.configure({
-        HTMLAttributes: {
-          // THE FIX: Added !px-3 !py-2 to force padding even if typography resets it
-          class: 'border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 !px-3 !py-2 font-semibold text-left',
-        },
-      }),
-      TableCell.configure({
-        HTMLAttributes: {
-          // THE FIX: Added !px-3 !py-2 to force padding
-          class: 'border border-gray-300 dark:border-gray-600 !px-3 !py-2 align-top relative',
-        },
-      }),
-    ],
-    content: value,
-    editable: !disabled,
-    editorProps: {
-      attributes: {
-        class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200',
       },
+      onUpdate: ({ editor }) => {
+        onChange(editor.getHTML());
+      },
+      immediatelyRender: false,
     },
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    immediatelyRender: false,
-  }, []);
+    []
+  );
 
-  // Handle form reset or external updates
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      if (editor.isEmpty && value) {
-         editor.commands.setContent(value);
-      }
-      if (value === "" && !editor.isEmpty) {
-        editor.commands.clearContent();
-      }
+      if (editor.isEmpty && value) editor.commands.setContent(value);
+      if (value === '' && !editor.isEmpty) editor.commands.clearContent();
     }
   }, [value, editor]);
 
   return (
     <div className="w-full">
       {label && <Label className="mb-2">{label}</Label>}
-      <div className={`
-        border rounded-lg bg-white dark:bg-gray-900 transition-colors
-        ${error 
-          ? "border-red-500 dark:border-red-500" 
-          : "border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
-        }
-        ${disabled ? "opacity-60 cursor-not-allowed" : ""}
-        // Overflow handling for tables during edit
-        overflow-x-auto
-      `}>
+      <div
+        className={`border rounded-lg bg-white dark:bg-gray-900 transition-colors flex flex-col ${
+          error
+            ? 'border-red-500 dark:border-red-500'
+            : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent'
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+      >
         <MenuBar editor={editor} />
-        <EditorContent editor={editor} placeholder={placeholder} />
+        {/* THE FIX: Wrap editor content in overflow container for horizontal table scrolling */}
+        <div className="overflow-x-auto w-full">
+          <EditorContent editor={editor} placeholder={placeholder} />
+        </div>
       </div>
       {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
     </div>

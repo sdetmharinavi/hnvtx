@@ -15,7 +15,6 @@ import {
 } from '@/schemas/zod-schemas';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 
-// THE FIX: Added .optional() to all nullable fields to handle 'undefined' responses gracefully
 const dashboardOverviewSchema = z.object({
   system_status_counts: z.object({
     Active: z.number().optional(),
@@ -46,7 +45,7 @@ const dashboardOverviewSchema = z.object({
 
 export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
 
-// Offline Stats Calculation with Filters
+// Local Calculation Function
 const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<DashboardOverviewData> => {
   const [nodes, cableUtils, vSystems, ports, vCables] = await Promise.all([
     localDb.v_nodes_complete.toArray() as Promise<NodesRowSchema[]>,
@@ -154,6 +153,7 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
   };
 };
 
+// Main Hook
 export function useDashboardOverview(filters?: BsnlSearchFilters) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -161,6 +161,24 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
   return useQuery({
     queryKey: ['dashboard-overview', filters],
     queryFn: async (): Promise<DashboardOverviewData | null> => {
+      // 1. Always attempt local calculation first for instant render
+      // But `useQuery` expects a promise resolving to data. 
+      // To strictly follow "Manual Sync", we normally wouldn't fetch online at all here.
+      // However, `useQuery` logic for manual sync is usually handled via `enabled: false`.
+      
+      // Strategy:
+      // We will perform local calculation inside this function.
+      // If we are online AND this query was triggered by a Refetch (user action), we fetch from server.
+      // But `useQuery` doesn't expose "trigger reason" easily.
+      
+      // Better Strategy used in `useLocalFirstQuery`:
+      // We rely on `useLocalFirstQuery` to handle the data source.
+      // Since we can't easily use that hook here due to the complex aggregation,
+      // we will mimic it: Return local data. 
+      // If the user hits "Refresh" (which invalidates queries), React Query refetches.
+      // BUT, to prevent auto-fetch on mount, we rely on the `staleTime: Infinity`.
+      
+      // If online, try to fetch fresh stats
       if (isOnline) {
         try {
           const { data, error } = await supabase.rpc('get_dashboard_overview', {
@@ -174,18 +192,20 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
           if (error) throw error;
           const parsed = dashboardOverviewSchema.safeParse(data);
           if (parsed.success) return parsed.data;
-          console.error("Zod validation error:", parsed.error);
-          return null; // Return null instead of crashing if schema mismatch
         } catch (err) {
            console.warn("Online fetch failed, falling back to local calculation:", err);
         }
       }
 
-      // Fallback
+      // If offline or fetch failed, return local calculation
       return calculateLocalStats(filters);
     },
-    staleTime: 5 * 60 * 1000,
+    // The "Manual Sync" behavior is achieved by:
+    // 1. High staleTime (data is considered fresh forever)
+    // 2. No auto refetch on window focus or mount
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: true 
+    refetchOnMount: false,
+    refetchOnReconnect: false
   });
 }

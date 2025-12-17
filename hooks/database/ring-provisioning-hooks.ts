@@ -1,34 +1,40 @@
 // path: hooks/database/ring-provisioning-hooks.ts
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { ofc_cablesRowSchema } from "@/schemas/zod-schemas";
 import { z } from "zod";
+import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
+import { localDb } from "@/hooks/data/localDb";
 
 const supabase = createClient();
 
 // Hook to fetch all rings for the selection dropdown
 export function useRingsForSelection() {
-  return useQuery({
+  const onlineQueryFn = async () => {
+    // THE FIX: Select * to match localDb schema expectations
+    const { data, error } = await supabase.from('rings').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+  };
+
+  const localQueryFn = () => localDb.rings.orderBy('name').toArray();
+
+  return useLocalFirstQuery<'rings'>({
     queryKey: ['rings-for-selection'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('rings')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      return data || [];
-    }
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.rings,
   });
 }
 
 // Hook to fetch the logical connection paths for a selected ring
 export function useRingConnectionPaths(ringId: string | null) {
-  return useQuery({
-    queryKey: ['ring-connection-paths', ringId],
-    queryFn: async () => {
+  
+  // 1. Online Fetcher: Uses the efficient join query
+  const onlineQueryFn = async () => {
       if (!ringId) return [];
       const { data, error } = await supabase
         .from('logical_paths')
@@ -42,77 +48,114 @@ export function useRingConnectionPaths(ringId: string | null) {
         .eq('ring_id', ringId)
         .order('name');
       if (error) throw error;
-      return data || [];
-    },
+      
+      // Flatten the structure slightly to match our expected interface
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data || []).map((row: any) => ({
+          ...row,
+          start_node: row.start_node,
+          end_node: row.end_node,
+          source_system: row.source_system,
+          destination_system: row.destination_system
+      }));
+  };
+
+  // 2. Local Fetcher
+  const localQueryFn = async () => {
+     if (!ringId) return [];
+     
+     // Note: This relies on manual sync having populated the logical_paths table
+     const paths = await localDb.logical_paths
+        .where('ring_id')
+        .equals(ringId)
+        .toArray();
+        
+     return paths;
+  };
+
+  return useLocalFirstQuery({
+    queryKey: ['ring-connection-paths', ringId],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.logical_paths, 
     enabled: !!ringId
   });
 }
 
-// ** THE DEFINITIVE FIX **
-// Create a local, more lenient schema that accepts the non-ISO date format
-// and transforms it into a valid one for the main schema.
 const lenientCableSchema = ofc_cablesRowSchema.extend({
     created_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
     updated_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
 });
 
-// Hook to fetch available physical cables connected to a node
 export function useAvailableCables(nodeId: string | null) {
-  return useQuery({
-    queryKey: ['available-cables', nodeId],
-    queryFn: async () => {
-      if (!nodeId) return [];
-      const { data, error } = await supabase.rpc('get_available_cables_for_node', { p_node_id: nodeId });
+  const onlineQueryFn = async () => {
+      const { data, error } = await supabase.rpc('get_available_cables_for_node', { p_node_id: nodeId! });
       if (error) throw error;
-
-      // **THE DEFINITIVE FIX: Use the lenient schema for parsing.**
-      // This accepts the database's format and transforms it into the strict format
-      // that the rest of the application expects.
       const parsed = z.array(lenientCableSchema).safeParse(data);
-
-      if (!parsed.success) {
-        console.error("Zod validation error for available cables:", parsed.error);
-        throw new Error("Invalid data for available cables");
-      }
+      if (!parsed.success) throw new Error("Invalid data for available cables");
       return parsed.data;
-    },
+  };
+
+  const localQueryFn = async () => {
+     // Local filtering
+     return localDb.ofc_cables
+        .where('sn_id').equals(nodeId!)
+        .or('en_id').equals(nodeId!)
+        .toArray();
+  };
+
+  return useLocalFirstQuery<'ofc_cables'>({
+    queryKey: ['available-cables', nodeId],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.ofc_cables,
     enabled: !!nodeId
   });
 }
 
-
-// Hook to fetch available fibers on a specific cable
 export function useAvailableFibers(cableId: string | null) {
-  return useQuery({
+  const onlineQueryFn = async () => {
+    const { data, error } = await supabase.rpc('get_available_fibers_for_cable', { p_cable_id: cableId! });
+    if (error) throw error;
+    return data as { fiber_no: number }[];
+  };
+
+  const localQueryFn = async () => {
+     // Local: Find fibers in ofc_connections where system_id is null
+     // THE FIX: Use filter instead of complex chaining if index doesn't exist
+     const fibers = await localDb.ofc_connections
+        .where('ofc_id').equals(cableId!)
+        .filter(f => f.system_id === null && f.status === true)
+        .toArray();
+     return fibers.map(f => ({ fiber_no: f.fiber_no_sn }));
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return useLocalFirstQuery<any, { fiber_no: number }, any>({
     queryKey: ['available-fibers', cableId],
-    queryFn: async () => {
-      if (!cableId) return [];
-      const { data, error } = await supabase.rpc('get_available_fibers_for_cable', { p_cable_id: cableId });
-      if (error) throw error;
-      return data as { fiber_no: number }[] || [];
-    },
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.ofc_connections,
     enabled: !!cableId
   });
 }
 
-// Hook to call the mutation that assigns a system to fibers
+// ... Mutations remain standard (they update via queue) ...
 export function useAssignSystemToFibers() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: { systemId: string; cableId: string; fiberTx: number; fiberRx: number; logicalPathId: string }) => {
-      const { systemId, cableId, fiberTx, fiberRx, logicalPathId } = variables;
       const { error } = await supabase.rpc('assign_system_to_fibers', {
-        p_system_id: systemId,
-        p_cable_id: cableId,
-        p_fiber_tx: fiberTx,
-        p_fiber_rx: fiberRx,
-        p_logical_path_id: logicalPathId
+        p_system_id: variables.systemId,
+        p_cable_id: variables.cableId,
+        p_fiber_tx: variables.fiberTx,
+        p_fiber_rx: variables.fiberRx,
+        p_logical_path_id: variables.logicalPathId
       });
       if (error) throw error;
     },
     onSuccess: (_, variables) => {
-      toast.success(`Fibers ${variables.fiberTx} & ${variables.fiberRx} provisioned successfully!`);
-      // Invalidate related queries to refresh UI
+      toast.success(`Fibers provisioned successfully!`);
       queryClient.invalidateQueries({ queryKey: ['available-fibers', variables.cableId] });
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
     },
@@ -122,7 +165,6 @@ export function useAssignSystemToFibers() {
   });
 }
 
-// Hook to generate the logical paths for a ring
 export function useGenerateRingPaths() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -134,65 +176,46 @@ export function useGenerateRingPaths() {
             toast.success("Logical paths generated successfully!");
             queryClient.invalidateQueries({ queryKey: ['ring-connection-paths', ringId] });
         },
-        onError: (err) => {
-            toast.error(`Failed to generate paths: ${err.message}`);
-        }
+        onError: (err) => toast.error(`Failed: ${err.message}`)
     });
 }
 
-// NEW HOOK: To deprovision a system from a logical path
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: { logicalPathId: string }) => {
-      const { error } = await supabase.rpc('deprovision_logical_path', {
-        p_path_id: variables.logicalPathId,
-      });
+      const { error } = await supabase.rpc('deprovision_logical_path', { p_path_id: variables.logicalPathId });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Path deprovisioned successfully.");
+      toast.success("Path deprovisioned.");
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
-    onError: (err) => {
-      toast.error(`Deprovisioning failed: ${err.message}`);
-    }
+    onError: (err) => toast.error(`Failed: ${err.message}`)
   });
 }
 
-// --- NEW HOOK: Update Logical Path Provisioning Details ---
 export function useUpdateLogicalPathDetails() {
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: async (variables: {
-        pathId: string;
-        sourceSystemId: string;
-        sourcePort: string;
-        destinationSystemId: string;
-        destinationPort: string;
+        pathId: string; sourceSystemId: string; sourcePort: string; destinationSystemId: string; destinationPort: string;
       }) => {
-        const { error } = await supabase
-          .from('logical_paths')
-          .update({
+        const { error } = await supabase.from('logical_paths').update({
             source_system_id: variables.sourceSystemId,
             source_port: variables.sourcePort,
             destination_system_id: variables.destinationSystemId,
             destination_port: variables.destinationPort,
             status: 'configured'
-          })
-          .eq('id', variables.pathId);
+          }).eq('id', variables.pathId);
         if (error) throw error;
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      onSuccess: (_, variables) => {
+      onSuccess: () => {
         toast.success("Path configuration saved.");
         queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
-        // Also invalidate the ring map data so the map updates immediately
         queryClient.invalidateQueries({ queryKey: ['ring-path-config'] }); 
       },
-      onError: (err) => {
-        toast.error(`Failed to save configuration: ${err.message}`);
-      }
+      onError: (err) => toast.error(`Failed: ${err.message}`)
     });
 }

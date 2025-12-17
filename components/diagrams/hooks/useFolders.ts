@@ -3,27 +3,21 @@
 
 import { useState, useCallback } from 'react';
 import { createClient } from "@/utils/supabase/client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useDeleteFolder } from '@/hooks/database/file-queries'; // Import the new hook
-
-interface Folder {
-  id: string;
-  name: string;
-  user_id: string;
-  uploaded_at: string;
-}
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDeleteFolder, useFoldersList } from '@/hooks/database/file-queries'; 
 
 interface UseFoldersReturn {
-  folders: Folder[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  folders: any[];
   folderId: string | null;
   setFolderId: (id: string | null) => void;
   newFolderName: string;
   setNewFolderName: (name: string) => void;
   handleCreateFolder: () => void;
-  handleDeleteFolder: (id: string) => void; // Added
+  handleDeleteFolder: (id: string) => void;
   refreshFolders: () => Promise<void>;
   isCreatingFolder: boolean;
-  isDeletingFolder: boolean; // Added
+  isDeletingFolder: boolean;
   isLoading: boolean;
 }
 
@@ -41,27 +35,8 @@ export function useFolders({
   const [newFolderName, setNewFolderName] = useState("");
   const queryClient = useQueryClient();
 
-  // Fetch folders
-  const { data: folders = [], isLoading } = useQuery<Folder[]>({
-    queryKey: ['folders'],
-    queryFn: async () => {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) return [];
-
-      const { data, error } = await supabase
-        .from("folders")
-        .select("*")
-        .order('name');
-
-      if (error) {
-        console.error("Fetch folders error:", error);
-        onError?.("Failed to load folders");
-        return [];
-      }
-      
-      return data || [];
-    }
-  });
+  // THE FIX: Use the new local-first hook instead of direct useQuery
+  const { folders, isLoading, refetch } = useFoldersList();
 
   // Create folder mutation
   const { mutate: createFolder, isPending: isCreating } = useMutation({
@@ -84,6 +59,7 @@ export function useFolders({
     },
     onSuccess: () => {
       setNewFolderName("");
+      // Invalidate to update local cache
       queryClient.invalidateQueries({ queryKey: ['folders'] });
       onSuccess?.();
     },
@@ -93,7 +69,6 @@ export function useFolders({
     },
   });
 
-  // Added Delete Folder Mutation Wrapper
   const { mutate: deleteFolder, isPending: isDeleting } = useDeleteFolder();
 
   const handleCreateFolder = useCallback(() => {
@@ -106,7 +81,6 @@ export function useFolders({
     deleteFolder(idToDelete, {
         onSuccess: () => {
             onSuccess?.();
-            // If the deleted folder was selected, deselect it
             if (folderId === idToDelete) {
                 setFolderId(null);
             }
@@ -118,8 +92,8 @@ export function useFolders({
   }, [deleteFolder, folderId, onSuccess, onError]);
 
   const refreshFolders = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['folders'] });
-  }, [queryClient]);
+    await refetch(); // Use the refetch from useFoldersList
+  }, [refetch]);
 
   return {
     folders,
@@ -128,10 +102,10 @@ export function useFolders({
     newFolderName,
     setNewFolderName,
     handleCreateFolder,
-    handleDeleteFolder, // Return handler
+    handleDeleteFolder,
     refreshFolders,
     isCreatingFolder: isCreating,
-    isDeletingFolder: isDeleting, // Return state
+    isDeletingFolder: isDeleting,
     isLoading,
   };
 }

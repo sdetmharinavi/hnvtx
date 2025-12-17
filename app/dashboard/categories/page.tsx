@@ -10,23 +10,22 @@ import { formatCategoryName } from '@/components/categories/utils';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal';
-import { Filters, useDeduplicated, useTableQuery, useTableInsert } from '@/hooks/database';
+import { useTableInsert, Filters } from '@/hooks/database'; // Kept generic hooks for mutations
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Lookup_typesInsertSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FiLayers } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { GroupedLookupsByCategory, CategoryInfo } from '@/components/categories/categories-types';
 import { useMutation } from '@tanstack/react-query';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { useCategoriesData } from '@/hooks/data/useCategoriesData'; // NEW HOOK
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryLookupCounts, setCategoryLookupCounts] = useState<Record<string, CategoryInfo>>({});
 
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
@@ -35,39 +34,20 @@ export default function CategoriesPage() {
   const canEdit = isSuperAdmin || role === UserRole.ADMIN;
   const canDelete = !!isSuperAdmin;
 
-  // Fetch unique categories
-  // We pass the 4th argument (options) to sort the result set by category name
-  const { data: categoriesResult, isLoading: dedupLoading, error: dedupError, refetch: refetchCategories } = useDeduplicated(
-    supabase, 
-    'lookup_types', 
-    {
-      columns: ['category'],
-      orderBy: [{ column: 'created_at', ascending: true }], // Determins which row is picked per category
-    },
-    {
-      orderBy: [{ column: 'category', ascending: true }] // Determines the order of the final list
-    }
-  );
-  
-  const categoriesDeduplicated = useMemo(() => categoriesResult?.data || [], [categoriesResult]);
-
-  const { data: groupedLookupsByCategory, isLoading: groupedLookupsByCategoryLoading, error: groupedLookupsByCategoryError, refetch: refetchGroupedLookupsByCategory } = useTableQuery(supabase, 'lookup_types', {
-    select: (result): GroupedLookupsByCategory => {
-      const allLookups = result.data || [];
-      return allLookups.reduce((accumulator, currentLookup) => {
-        const category = currentLookup.category;
-        if (!accumulator[category]) accumulator[category] = [];
-        accumulator[category].push(currentLookup);
-        return accumulator;
-      }, {} as GroupedLookupsByCategory);
-    },
-  });
+  // --- DATA FETCHING (Now Offline-Capable) ---
+  const { 
+    categories: categoriesDeduplicated, 
+    groupedLookups: groupedLookupsByCategory, 
+    categoryCounts: categoryLookupCounts,
+    isLoading,
+    error,
+    refetch: refetchCategories
+  } = useCategoriesData();
 
   const bulkDeleteManager = useDeleteManager({
     tableName: 'lookup_types',
     onSuccess: () => {
       refetchCategories();
-      refetchGroupedLookupsByCategory();
       toast.success('Category and all associated lookups deleted.');
     },
   });
@@ -84,40 +64,13 @@ export default function CategoriesPage() {
     },
     onSuccess: () => {
       toast.success("Category renamed successfully.");
-      handleRefresh();
+      refetchCategories();
       handleModalClose();
     },
     onError: (error: Error) => toast.error(`Failed to rename category: ${error.message}`),
   });
 
-  const isLoading = dedupLoading || groupedLookupsByCategoryLoading || isCreating || isRenaming;
-
-  const refreshCategoryInfo = useCallback(() => {
-    const counts: Record<string, CategoryInfo> = {};
-    for (const category of categoriesDeduplicated) {
-      const categoryLookups = groupedLookupsByCategory?.[category.category] || [];
-      counts[category.category] = {
-        name: category.category,
-        lookupCount: categoryLookups.length,
-        hasSystemDefaults: categoryLookups.some(lookup => lookup.is_system_default),
-      };
-    }
-    setCategoryLookupCounts(counts);
-  }, [categoriesDeduplicated, groupedLookupsByCategory]);
-
-  useEffect(() => {
-    if (!isLoading) refreshCategoryInfo();
-  }, [isLoading, refreshCategoryInfo]);
-
-  const handleRefresh = useCallback(async () => {
-    try {
-      await Promise.all([refetchCategories(), refetchGroupedLookupsByCategory()]);
-      toast.success('Data refreshed successfully');
-    } catch (error) {
-      toast.error('Failed to refresh data.');
-      console.log(error);
-    }
-  }, [refetchCategories, refetchGroupedLookupsByCategory]);
+  const isMutating = isCreating || isRenaming;
 
   const handleEdit = useCallback((categoryName: string) => {
     setEditingCategory(categoryName);
@@ -162,13 +115,13 @@ export default function CategoriesPage() {
       createCategory(createData, {
         onSuccess: () => {
           toast.success("Category created successfully.");
-          handleRefresh();
+          refetchCategories();
           handleModalClose();
         },
         onError: (error: Error) => toast.error(`Failed to create category: ${error.message}`),
       });
     }
-  }, [editingCategory, createCategory, renameCategory, handleRefresh, handleModalClose, categoriesDeduplicated]);
+  }, [editingCategory, createCategory, renameCategory, refetchCategories, handleModalClose, categoriesDeduplicated]);
 
   const filteredCategories = useMemo(() =>
     categoriesDeduplicated.filter(
@@ -178,9 +131,10 @@ export default function CategoriesPage() {
     ), [categoriesDeduplicated, searchTerm]);
 
   const serverFilters = useMemo((): Filters => ({ name: { operator: 'eq', value: 'DEFAULT' } }), []);
+  
   const headerActions = useStandardHeaderActions({
     data: categoriesDeduplicated, 
-    onRefresh: handleRefresh, 
+    onRefresh: async () => { await refetchCategories(); toast.success('Refreshed!'); }, 
     onAddNew: canEdit ? openCreateModal : undefined,
     isLoading: isLoading, 
     exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
@@ -198,10 +152,8 @@ export default function CategoriesPage() {
     ];
   }, [categoriesDeduplicated, categoryLookupCounts, groupedLookupsByCategory]);
 
-  const error = dedupError || groupedLookupsByCategoryError;
-
   if (error) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: () => refetchCategories(), variant: 'primary' }]} />;
   }
 
   return (
@@ -219,7 +171,7 @@ export default function CategoriesPage() {
       
       {isLoading && <LoadingState />}
       
-      {!isLoading && !error && (
+      {!isLoading && (
         <CategoriesTable 
           categories={filteredCategories} 
           categoryLookupCounts={categoryLookupCounts} 
@@ -233,7 +185,7 @@ export default function CategoriesPage() {
         />
       )}
       
-      {categoriesDeduplicated.length === 0 && !isLoading && !error && <EmptyState onCreate={openCreateModal} />}
+      {categoriesDeduplicated.length === 0 && !isLoading && <EmptyState onCreate={openCreateModal} />}
       
       <ConfirmModal 
         isOpen={bulkDeleteManager.isConfirmModalOpen} 
@@ -252,7 +204,7 @@ export default function CategoriesPage() {
         isOpen={isModalOpen} 
         onClose={handleModalClose} 
         onSubmit={handleSaveCategory} 
-        isLoading={isLoading} 
+        isLoading={isMutating} 
         editingCategory={editingCategory} 
         categories={categoriesDeduplicated} 
         lookupsByCategory={groupedLookupsByCategory} 
