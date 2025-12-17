@@ -5,9 +5,10 @@ import { useMemo, useState, useRef, useCallback } from "react";
 import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList, FiClock } from "react-icons/fi";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
+import { v4 as uuidv4 } from 'uuid';
 
-import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { DiaryEntryCard } from "@/components/diary/DiaryEntryCard";
 import { DiaryFormModal } from "@/components/diary/DiaryFormModal";
 import { DiaryCalendar } from "@/components/diary/DiaryCalendar";
@@ -23,6 +24,9 @@ import { useDiaryData } from "@/hooks/data/useDiaryData";
 import { UserRole } from "@/types/user-roles";
 import { Input } from "@/components/common/ui/Input";
 import { Button } from "@/components/common/ui/Button";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
+import { localDb } from "@/hooks/data/localDb"; // ADDED
+import { addMutationToQueue } from "@/hooks/data/useMutationQueue"; // ADDED
 
 type ViewMode = 'day' | 'feed';
 
@@ -40,6 +44,7 @@ export default function DiaryPage() {
   const { user } = useAuthStore();
   const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   const {
     data: allNotesForMonth = [],
@@ -50,20 +55,14 @@ export default function DiaryPage() {
   } = useDiaryData(currentDate);
 
   const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
-  
-  // PERMISSIONS LOGIC
   const canEdit = isSuperAdmin || currentUserRole === UserRole.ADMIN;
-  // Strict Super Admin Check for Deletion
   const canDelete = isSuperAdmin === true;
 
-  // Filter Logic: Role + Search + Date
   const filteredNotes = useMemo(() => {
-    // 1. Role Filter
     let notes = canViewAll 
       ? allNotesForMonth 
       : allNotesForMonth.filter(note => note.user_id === user?.id);
 
-    // 2. Search Filter
     if (debouncedSearch) {
         const query = debouncedSearch.toLowerCase();
         notes = notes.filter(note => 
@@ -72,8 +71,6 @@ export default function DiaryPage() {
         );
     }
 
-    // 3. Date Filter (Only if in Day mode AND no search query)
-    // If user is searching, we show matches from the whole month regardless of selected day
     if (viewMode === 'day' && !debouncedSearch) {
         const selectedDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
         notes = notes.filter(note => note.note_date === selectedDateString);
@@ -104,12 +101,53 @@ export default function DiaryPage() {
   const openEditModal = (note: Diary_notesRowSchema) => { setEditingNote(note); setIsFormOpen(true); };
   const closeFormModal = () => { setIsFormOpen(false); setEditingNote(null); };
 
-  const handleSaveNote = (data: Diary_notesInsertSchema) => {
-    const payload = { ...data, user_id: user?.id };
-    if (editingNote) {
-      updateNote({ id: editingNote.id, data: payload });
+  // --- UPDATED SAVE HANDLER FOR OFFLINE SUPPORT ---
+  const handleSaveNote = async (data: Diary_notesInsertSchema) => {
+    if (!user?.id) {
+      toast.error("User not authenticated");
+      return;
+    }
+    
+    const payload = { ...data, user_id: user.id };
+
+    if (isOnline) {
+      // Online: Use standard mutations
+      if (editingNote) {
+        updateNote({ id: editingNote.id, data: payload });
+      } else {
+        insertNote(payload);
+      }
     } else {
-      insertNote(payload);
+      // Offline: Handle via Dexie + Mutation Queue
+      try {
+        if (editingNote) {
+            // Update
+            await localDb.diary_notes.update(editingNote.id, payload);
+            await addMutationToQueue({
+                tableName: 'diary_notes',
+                type: 'update',
+                payload: { id: editingNote.id, data: payload }
+            });
+            toast.success("Note updated (Offline Mode). Will sync later.");
+        } else {
+            // Create
+            const tempId = uuidv4();
+            const newRecord = { ...payload, id: tempId, created_at: new Date().toISOString() };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await localDb.diary_notes.add(newRecord as any);
+            await addMutationToQueue({
+                tableName: 'diary_notes',
+                type: 'insert',
+                payload: newRecord
+            });
+            toast.success("Note created (Offline Mode). Will sync later.");
+        }
+        setIsFormOpen(false);
+        refetch(); // Refresh list from local DB
+      } catch (e) {
+          console.error("Offline save failed", e);
+          toast.error("Failed to save offline note.");
+      }
     }
   };
 

@@ -12,11 +12,11 @@ import {
 import { z } from "zod";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
 import { localDb } from "@/hooks/data/localDb";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
 import { useTableQuery } from "@/hooks/database";
 
 const supabase = createClient();
 
-// --- TYPES ---
 export interface UpdateFilePayload {
   file_id: string;
   subject: string;
@@ -46,7 +46,6 @@ export function useEFiles(filters?: { status?: string; }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows = (data as any)?.data || [];
     
-    // Validate schema
     const safeParse = z.array(v_e_files_extendedRowSchema).safeParse(rows);
     if (!safeParse.success) {
         console.error("E-File schema mismatch", safeParse.error);
@@ -65,7 +64,7 @@ export function useEFiles(filters?: { status?: string; }) {
     }
 
     return collection
-      .reverse() // Approximate sorting
+      .reverse() 
       .sortBy('updated_at'); 
   };
 
@@ -116,7 +115,6 @@ export function useEFileDetails(fileId: string) {
         history: z.array(v_file_movements_extendedRowSchema).parse(historyRows)
       };
   };
-
   
   return useQuery({
     queryKey: ['e-file-details', fileId],
@@ -124,7 +122,6 @@ export function useEFileDetails(fileId: string) {
        // 1. Try Local First
        const localFile = await localDb.v_e_files_extended.get(fileId);
        if (localFile) {
-          // THE FIX: Use the view table directly now that it's defined
           const localHistory = await localDb.v_file_movements_extended
              .where('file_id').equals(fileId)
              .reverse().sortBy('created_at'); 
@@ -135,10 +132,9 @@ export function useEFileDetails(fileId: string) {
           };
        }
 
-       // 2. If no local data, force online (or throw if offline)
+       // 2. If no local data, force online
        return onlineQueryFn();
     },
-    // Manual sync only:
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: Infinity
@@ -149,9 +145,12 @@ export function useEFileDetails(fileId: string) {
 
 export function useInitiateFile() {
   const queryClient = useQueryClient();
-  
+  const isOnline = useOnlineStatus(); // ADDED
+
   return useMutation({
     mutationFn: async (payload: InitiateFilePayload) => {
+      if (!isOnline) throw new Error("Initiating files requires an online connection.");
+
       const { data, error } = await supabase.rpc('initiate_e_file', {
         p_file_number: payload.file_number,
         p_subject: payload.subject,
@@ -174,9 +173,12 @@ export function useInitiateFile() {
 
 export function useUpdateFileDetails() {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (payload: UpdateFilePayload) => {
+      if (!isOnline) throw new Error("Updating files requires an online connection.");
+
       const { error } = await supabase.rpc('update_e_file_details', {
         p_file_id: payload.file_id,
         p_subject: payload.subject,
@@ -197,9 +199,12 @@ export function useUpdateFileDetails() {
 
 export function useForwardFile() {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
   
   return useMutation({
     mutationFn: async (payload: ForwardFilePayload) => {
+      if (!isOnline) throw new Error("Forwarding files requires an online connection.");
+
       const { error } = await supabase.rpc('forward_e_file', {
         p_file_id: payload.file_id,
         p_to_employee_id: payload.to_employee_id,
@@ -219,9 +224,12 @@ export function useForwardFile() {
 
 export function useCloseFile() {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async ({ fileId, remarks }: { fileId: string; remarks: string }) => {
+      if (!isOnline) throw new Error("Closing files requires an online connection.");
+
       const { error } = await supabase.rpc('close_e_file', {
         p_file_id: fileId,
         p_remarks: remarks
@@ -239,9 +247,12 @@ export function useCloseFile() {
 
 export function useDeleteFile() {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
     mutationFn: async (fileId: string) => {
+      if (!isOnline) throw new Error("Deleting files requires an online connection.");
+
       const { error } = await supabase.rpc('delete_e_file_record', { p_file_id: fileId });
       if (error) throw error;
     },
@@ -255,6 +266,7 @@ export function useDeleteFile() {
 
 export function useEmployeeOptions() {
   const supabase = createClient();
+  // Using table query hook which is already offline-capable
   return useTableQuery(supabase, 'v_employees', {
     columns: 'id, employee_name, employee_designation_name, maintenance_area_name',
     filters: { status: true },

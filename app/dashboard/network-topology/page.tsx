@@ -8,7 +8,7 @@ import { NetworkTopologyDiagram } from "@/components/topology/NetworkTopologyDia
 import { FiShare2 } from "react-icons/fi";
 import { useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
-import { useNetworkTopologyData } from "@/hooks/useNetworkTopologyData";
+import { useNetworkTopologyData } from "@/hooks/data/useNetworkTopologyData";
 
 export default function NetworkTopologyPage() {
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
