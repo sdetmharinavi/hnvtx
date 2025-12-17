@@ -35,7 +35,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   const modalContent = (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-900 dark:border dark:border-gray-700 flex flex-col transform mx-auto",
+        "w-full h-full overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-900 dark:border dark:border-gray-700 flex flex-col transform mx-auto",
         widthClass,
         heightClass
       )}
