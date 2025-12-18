@@ -130,7 +130,7 @@ function NavItems() {
           },
           {
             id: 'services',
-            label: 'Services & Customers',
+            label: 'Services',
             href: '/dashboard/services',
             icon: <FiDatabase className="h-5 w-5" />,
             roles: PERMISSIONS.canManageSystems,
