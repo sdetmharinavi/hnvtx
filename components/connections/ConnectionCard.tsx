@@ -1,7 +1,7 @@
 // components/connections/ConnectionCard.tsx
 import React from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
@@ -10,11 +10,24 @@ interface ConnectionCardProps {
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
   onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
+  // NEW: CRUD Props
+  onEdit?: (conn: V_system_connections_completeRowSchema) => void;
+  onDelete?: (conn: V_system_connections_completeRowSchema) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
   isSystemContext?: boolean;
 }
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
-  connection, onViewDetails, onViewPath, onGoToSystem, isSystemContext = false
+  connection, 
+  onViewDetails, 
+  onViewPath, 
+  onGoToSystem, 
+  onEdit,
+  onDelete,
+  canEdit = false,
+  canDelete = false,
+  isSystemContext = false
 }) => {
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
@@ -118,7 +131,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             {connection.vlan && (
                 <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
                     <span className="text-[10px] text-gray-400 uppercase font-semibold">VLAN</span>
-                    <span className="font-mono font-medium text-gray-700 dark:text-gray-200">{connection.vlan}</span>
+                    <span className="font-mono font-medium text-gray-900 dark:text-gray-200">{connection.vlan}</span>
                 </div>
             )}
             {connection.media_type_name && (
@@ -131,7 +144,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
       </div>
 
       {/* Footer / Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2 pl-5" onClick={(e) => e.stopPropagation()}>
+      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end items-center gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
          {onGoToSystem && !isSystemContext && (
              <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
                 <FiServer className="w-4 h-4" />
@@ -140,13 +153,29 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
          <div className="flex-1"></div>
 
-         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details" className="flex-1 sm:flex-none">
-            <FiMonitor className="w-3.5 h-3.5 mr-1" /> Details
+         {/* Details Button */}
+         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details">
+            <FiMonitor className="w-3.5 h-3.5" />
          </Button>
 
+         {/* Trace Path Button */}
          {hasPath && (
             <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20">
-                <FiEye className="w-3.5 h-3.5 mr-1" /> Trace
+                <FiEye className="w-3.5 h-3.5" />
+            </Button>
+         )}
+
+         {/* NEW: Edit Button */}
+         {canEdit && onEdit && (
+            <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection">
+                <FiEdit2 className="w-3.5 h-3.5" />
+            </Button>
+         )}
+
+         {/* NEW: Delete Button */}
+         {canDelete && onDelete && (
+            <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
+                <FiTrash2 className="w-3.5 h-3.5" />
             </Button>
          )}
       </div>

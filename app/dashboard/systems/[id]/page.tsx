@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Input, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
+import { useRpcMutation, RpcFunctionArgs, Filters, Row, usePagedData, UploadColumnMapping } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
@@ -29,15 +29,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
-// import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import {  FiDatabase, FiGitBranch, FiPieChart, FiUpload, FiGrid, FiList, FiSearch } from 'react-icons/fi';
+import {  FiDatabase, FiPieChart, FiUpload, FiGrid, FiList, FiSearch, FiGitBranch } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { ConnectionCard } from '@/components/connections/ConnectionCard'; // Updated Import
+import { ConnectionCard } from '@/components/connections/ConnectionCard';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -48,7 +47,6 @@ export default function SystemConnectionsPage() {
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
-  // THE FIX: Set default view mode to 'grid'
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,7 +55,6 @@ export default function SystemConnectionsPage() {
 
   // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
-  // const [showFilters, setShowFilters] = useState(false);
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -84,14 +81,7 @@ export default function SystemConnectionsPage() {
   const tracePath = useTracePath(supabase);
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || [
-    UserRole.ADMIN, 
-    UserRole.CPANADMIN, 
-    UserRole.MAANADMIN, 
-    UserRole.SDHADMIN, 
-    UserRole.ASSETADMIN, 
-    UserRole.MNGADMIN
-  ].includes(role as UserRole);
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
 
   const canDelete = !!isSuperAdmin;
 
@@ -112,7 +102,6 @@ export default function SystemConnectionsPage() {
 
   const useData = useSystemConnectionsData(systemId);
 
-  // THE FIX: The sorting logic is now handled largely by the hook, but we can refine it here
   const {
     data: connections,
     totalCount: totalConnections,
@@ -125,16 +114,12 @@ export default function SystemConnectionsPage() {
     filters
   });
 
-  // Client-side Sort Enhancement: Prioritize Port sorting
   const sortedConnections = useMemo(() => {
-    // If user is searching, stick to the hook's relevancy sort.
-    // If browsing, sort by Local Working Interface to mimic physical rack layout.
     if (!searchQuery && connections.length > 0) {
        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
        return [...connections].sort((a, b) => {
           const portA = a.system_working_interface || '';
           const portB = b.system_working_interface || '';
-          // Fallback to service name if ports are identical (unlikely for active links)
           if (portA === portB) {
               return (a.service_name || '').localeCompare(b.service_name || '');
           }
@@ -267,7 +252,8 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-       const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+       // ... (unchanged file handling logic)
+       const columnMapping: UploadColumnMapping<"v_system_connections_complete">[] = [
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
         { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
@@ -301,7 +287,7 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Sdh A Customer', dbKey: 'sdh_a_customer' },
         { excelHeader: 'Sdh B Slot', dbKey: 'sdh_b_slot' },
         { excelHeader: 'Sdh B Customer', dbKey: 'sdh_b_customer' },
-      ];
+      ] as UploadColumnMapping<"v_system_connections_complete">[];
        uploadConnections({ file, columns: columnMapping, parentSystemId: parentSystem.id });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -382,6 +368,7 @@ export default function SystemConnectionsPage() {
                 // No GoTo needed here as we are already on the system page
                 onGoToSystem={() => {}} 
                 isSystemContext={true}
+                // We don't pass Edit/Delete here to avoid duplication in Mobile View (DataTable renders actions below)
              />
              <div className="flex justify-end gap-2 px-2">
                  {actions}
@@ -424,7 +411,7 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
       
-      {/* Sticky Filter Bar - Moved Outside DataTable for better layout control in Grid View */}
+      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
           <div className="w-full lg:w-96">
             <Input 
@@ -501,6 +488,11 @@ export default function SystemConnectionsPage() {
                         onViewPath={handleTracePath}
                         onGoToSystem={() => {}} // No-op in this view
                         isSystemContext={true}
+                        // THE FIX: Added Props for Edit/Delete
+                        onEdit={canEdit ? openEditModal : undefined}
+                        onDelete={canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined}
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                     />
                 </div>
              ))}
