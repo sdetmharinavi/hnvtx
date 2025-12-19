@@ -468,6 +468,12 @@ export default function RingManagerPage() {
         { key: "bts_status", title: "bts_status", dataIndex: "bts_status" },
         { key: "total_nodes", title: "total_nodes", dataIndex: "total_nodes" },
         {
+          key: "topology_config", // ADDED
+          title: "topology_config",
+          dataIndex: "topology_config",
+          excelFormat: "json", // Handles JSON stringification automatically
+        },
+        {
           key: "associated_systems",
           title: "associated_systems",
           dataIndex: "associated_systems",

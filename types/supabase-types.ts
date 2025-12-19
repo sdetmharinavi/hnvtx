@@ -5738,6 +5738,7 @@ export type Database = {
           name: string
           ring_type_name: string
           status: boolean
+          topology_config: Json
           total_nodes: number
         }[]
       }
@@ -5877,6 +5878,8 @@ export type Database = {
         Args: { p_limit?: number; p_offset?: number; p_search_term: string }
         Returns: Json
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       trace_fiber_path: {
         Args: { p_start_fiber_no: number; p_start_segment_id: string }
         Returns: {

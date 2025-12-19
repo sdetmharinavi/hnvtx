@@ -1,5 +1,5 @@
 -- path: data/migrations/06_utilities/08_get_rings_for_export.sql
--- Description: Creates a function to export rings with a JSON array of associated systems including order and hub status.
+-- Description: Creates a function to export rings with a JSON array of associated systems AND topology config.
 
 CREATE OR REPLACE FUNCTION public.get_rings_for_export(
     row_limit INTEGER DEFAULT NULL,
@@ -13,6 +13,7 @@ RETURNS TABLE (
     maintenance_area_name TEXT,
     status BOOLEAN,
     total_nodes BIGINT,
+    topology_config JSONB, -- ADDED THIS
     associated_systems JSONB
 )
 LANGUAGE sql
@@ -28,6 +29,7 @@ SELECT
     r.maintenance_area_name,
     r.status,
     r.total_nodes,
+    r.topology_config, -- ADDED THIS
     (
         SELECT jsonb_agg(
             jsonb_build_object(

@@ -6,7 +6,7 @@ import { Database, Json } from '@/types/supabase-types';
 import { RingsInsertSchema } from '@/schemas/zod-schemas';
 import { toPgBoolean } from '@/config/helper-functions';
 import { EnhancedUploadResult, ValidationError } from './excel-helpers';
-import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
+import { parseExcelFile } from '@/utils/excel-parser';
 
 interface RingUploadOptions {
   file: File;
@@ -52,7 +52,6 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       toast.info('Reading and parsing Excel file...');
       
-      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -80,6 +79,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         const ringTypeNameRaw = row[headerMap.get('ring_type_name') ?? -1];
         const maintenanceAreaNameRaw = row[headerMap.get('maintenance_area_name') ?? -1];
         const associatedSystemsRaw = row[headerMap.get('associated_systems') ?? -1];
+        const topologyConfigRaw = row[headerMap.get('topology_config') ?? -1]; // ADDED
         const statusValue = row[headerMap.get('status') ?? -1];
 
         const ringTypeName = String(ringTypeNameRaw || '').toLowerCase().trim();
@@ -113,6 +113,18 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
             }
         }
 
+        // ADDED: Parse Topology Config
+        let topologyConfigJson: Json | null = null;
+        if (topologyConfigRaw && typeof topologyConfigRaw === 'string' && topologyConfigRaw.trim() !== '') {
+            try {
+                topologyConfigJson = JSON.parse(topologyConfigRaw);
+            } catch (e) {
+                console.error("Topology Config JSON Error:", e);
+                // Non-blocking error, but log it
+                rowValidationErrors.push({ rowIndex: i, column: 'topology_config', value: topologyConfigRaw, error: "Invalid JSON format for topology config." });
+            }
+        }
+
         if (rowValidationErrors.length > 0) {
             allValidationErrors.push(...rowValidationErrors);
             uploadResult.errorCount++;
@@ -128,6 +140,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
             ring_type_id: ringTypeId,
             maintenance_terminal_id: maintenanceTerminalId,
             associated_systems_json: associatedSystemsJson,
+            topology_config: topologyConfigJson, // ADDED
         };
 
         ringsToUpsert.push(record);

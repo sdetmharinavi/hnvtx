@@ -1,5 +1,6 @@
 id,category,name,code,description,sort_order,is_system_default,is_ring_based,status,created_at,updated_at
 006bbcae-b141-416f-9f3a-8ca152190df9,SFP_TYPES,Coarse Wavelength Division Multiplex SFP,CWDMSFP,CWDM optical module.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+00fe1e7b-1636-4a9a-85c3-3bb9aa22c16e,LINK_TYPES,PDH,PDH,,0,false,false,true,2025-12-18 12:37:42.30882+00,2025-12-18 12:38:13.548965+00
 04bb13be-c2c6-47dd-a5f3-013f37c08719,NODE_TYPES,Fiber Distribution Hub (FDH),FDH,Street/field cabinet that distributes fibers to subscribers (PON splitters).,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 0570b1bf-ddf8-4a7a-b125-2e4276120f08,MEDIA_TYPES,Copper pair,E1,Connector: RJ-48C,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 0612aafd-3bac-4855-b408-e29bbbcbd37f,NODE_TYPES,Joint / Splice Point,BJC,Interconnection point between two or more fiber cables,0,false,false,true,2025-08-18 00:00:00+00,2025-11-27 00:00:00+00

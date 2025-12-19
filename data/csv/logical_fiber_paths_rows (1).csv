@@ -1,0 +1,2 @@
+id,path_name,working_path_id,path_role,path_type_id,source_system_id,destination_system_id,operational_status_id,system_connection_id,source_port,destination_port,total_distance_km,total_loss_db,service_type,bandwidth_gbps,wavelength_nm,commissioned_date,remark,created_at,updated_at
+ab4f8a4c-88a2-4334-bff6-07bc58b6864d,1000184559_ONGC-SONARPUR_4050 (Working),,working,,d9e00379-f20b-470d-a83f-be40c8f77d2c,,f9f13567-b5ff-4128-9e8f-8b1ce164413d,fb030f07-86e1-434a-a4b0-89ae4dc75c29,,,,,,,,,,2025-12-18 09:38:20.783565+00,2025-12-18 09:38:20.783565+00
