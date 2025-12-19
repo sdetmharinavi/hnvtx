@@ -56,7 +56,7 @@ export function useExportDiagramsBackup() {
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `Diagrams_Backup_${formatDate(new Date(), { format: 'dd-mm-yyyy' })}.xlsx`;
+      link.download = `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_Diagrams_Backup.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
