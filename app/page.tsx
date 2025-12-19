@@ -43,7 +43,7 @@ export default function Home() {
         - h-[100dvh]: Modern mobile viewport fix
         - overflow-hidden: Disables scrolling
       */}
-      <div className='relative h-screen supports-[height:100dvh]:h-[100dvh] w-full overflow-hidden bg-black/60'>
+      <div className='relative h-screen supports-height:100dvh:h-100dvh w-full overflow-hidden bg-black/60'>
         
         <div className="fixed inset-0 z-0 pointer-events-none">
            <AnimatedBackground />
