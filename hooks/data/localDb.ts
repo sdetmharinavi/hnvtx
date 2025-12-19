@@ -181,22 +181,22 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 32: Added ofc_route_name to v_ofc_connections_complete index
-    this.version(32).stores({
-      lookup_types: '&id, category, name, sort_order', 
+    // VERSION 33: Added Performance Indexes for Offline Filtering
+    this.version(33).stores({
+      lookup_types: '&id, category, name, sort_order, status', 
       
-      maintenance_areas: '&id, name, parent_id, area_type_id',
+      maintenance_areas: '&id, name, parent_id, area_type_id, status',
       employee_designations: '&id, name, parent_id',
-      employees: '&id, employee_name, employee_pers_no',
-      nodes: '&id, name, node_type_id',
-      rings: '&id, name, ring_type_id',
-      ofc_cables: '&id, route_name, sn_id, en_id',
-      systems: '&id, system_name, node_id',
+      employees: '&id, employee_name, employee_pers_no, status',
+      nodes: '&id, name, node_type_id, status',
+      rings: '&id, name, ring_type_id, status',
+      ofc_cables: '&id, route_name, sn_id, en_id, status',
+      systems: '&id, system_name, node_id, status',
       cable_segments: '&id, original_cable_id',
       junction_closures: '&id, node_id',
       fiber_splices: '&id, jc_id',
-      system_connections: '&id, system_id',
-      user_profiles: '&id, first_name, last_name, role',
+      system_connections: '&id, system_id, status',
+      user_profiles: '&id, first_name, last_name, role, status',
       diary_notes: '&id, &[user_id+note_date], note_date',
       inventory_items: '&id, asset_no, name',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
@@ -204,7 +204,7 @@ export class HNVTMDatabase extends Dexie {
       services: '&id, name',
       logical_fiber_paths: '&id, path_name, system_connection_id',
       logical_paths: '&id, ring_id, start_node_id, end_node_id',
-      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn]', 
+      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status', 
       inventory_transactions: '&id, inventory_item_id, created_at',
       
       e_files: '&id, file_number, current_holder_employee_id, status',
@@ -213,23 +213,25 @@ export class HNVTMDatabase extends Dexie {
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
 
-      v_nodes_complete: '&id, name',
-      v_ofc_cables_complete: '&id, route_name',
-      v_systems_complete: '&id, system_name',
-      v_rings: '&id, name',
-      v_employees: '&id, employee_name',
-      v_maintenance_areas: '&id, name',
+      // === Optimized Indexes for Views ===
+      // Added indexes for common filter columns like 'status', 'maintenance_terminal_id', types, etc.
+      v_nodes_complete: '&id, name, node_type_id, maintenance_terminal_id, status',
+      v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
+      v_systems_complete: '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address]',
+      v_rings: '&id, name, ring_type_id, maintenance_terminal_id, status',
+      v_employees: '&id, employee_name, employee_designation_id, maintenance_terminal_id, status',
+      v_maintenance_areas: '&id, name, area_type_id, status',
       v_cable_utilization: 'cable_id',
-      v_ring_nodes: '&[id+ring_id], ring_id',
-      v_employee_designations: '&id, name',
-      v_inventory_items: '&id, asset_no, name',
+      v_ring_nodes: '&[id+ring_id], ring_id, node_id',
+      v_employee_designations: '&id, name, status',
+      v_inventory_items: '&id, asset_no, name, category_id, location_id',
       v_user_profiles_extended: '&id, email, full_name, role, status',
-      // THE FIX: Added ofc_route_name to index
-      v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name', 
-      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
-      v_ports_management_complete: '&id, system_id, port',
+      
+      v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name, status', 
+      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at, status',
+      v_ports_management_complete: '&id, system_id, port, port_admin_status, port_utilization',
       v_audit_logs: '&id, action_type, table_name, created_at', 
-      v_services: '&id, name, node_name',
+      v_services: '&id, name, node_name, link_type_id, status',
       v_end_to_end_paths: '&path_id, path_name',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
       
