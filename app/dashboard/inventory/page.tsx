@@ -9,7 +9,7 @@ import { useCrudManager } from "@/hooks/useCrudManager";
 import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiGrid, FiList, FiSearch } from "react-icons/fi";
 import { toast } from "sonner";
 import { Row } from "@/hooks/database";
-import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema, Lookup_typesRowSchema, V_nodes_completeRowSchema } from "@/schemas/zod-schemas";
+import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from "@/schemas/zod-schemas";
 import { createStandardActions } from "@/components/table/action-helpers";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/providers/UserProvider";
@@ -25,14 +25,11 @@ import { formatCurrency } from "@/utils/formatters";
 import { InventoryItemCard } from "@/components/inventory/InventoryItemCard";
 import { Input, SearchableSelect } from "@/components/common/ui";
 import { BulkActions } from "@/components/common/BulkActions";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { createClient } from "@/utils/supabase/client";
-import { localDb } from "@/hooks/data/localDb";
 import { UserRole } from "@/types/user-roles";
+import { useLookupTypeOptions, useActiveNodeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
 
 export default function InventoryPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { role, isSuperAdmin } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,26 +52,14 @@ export default function InventoryPage() {
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
   const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
 
-  // --- Fetch Filter Options ---
-  const { data: categories } = useOfflineQuery<Lookup_typesRowSchema[]>(
-     ['inventory-categories'],
-     async () => (await supabase.from('lookup_types').select('*').eq('category', 'INVENTORY_CATEGORY')).data ?? [],
-     async () => await localDb.lookup_types.where({ category: 'INVENTORY_CATEGORY' }).toArray()
-  );
-  
-  const { data: locations } = useOfflineQuery<V_nodes_completeRowSchema[]>(
-     ['inventory-locations'],
-     async () => (await supabase.from('v_nodes_complete').select('*').eq('status', true)).data ?? [],
-     async () => await localDb.v_nodes_complete.where({ status: true }).toArray()
-  );
-  const categoryOptions = useMemo(() => (categories || []).filter(c => c.name !== 'DEFAULT').map(c => ({ value: c.id, label: c.name })), [categories]);
-  const locationOptions = useMemo(() => (locations || []).filter(l => l.name !== 'DEFAULT').map(l => ({ value: l.id!, label: l.name! })), [locations]);
+  // --- REFACTORED: Fetch Filter Options ---
+  const { options: categoryOptions } = useLookupTypeOptions('INVENTORY_CATEGORY');
+  const { options: locationOptions } = useActiveNodeOptions();
 
   // Permission Logic
   const canEdit = useMemo(() => !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN, [isSuperAdmin, role]);
   const canDelete = !!isSuperAdmin;
 
-  // Calculate Total Value of visible items
   const totalInventoryValue = useMemo(() => {
     return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);
   }, [inventory]);
@@ -102,7 +87,6 @@ export default function InventoryPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Table Config
   const columns = getInventoryTableColumns();
   const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
     const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
@@ -158,7 +142,6 @@ export default function InventoryPage() {
         isFetching={isFetching}
       />
 
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
             <Input 
@@ -190,7 +173,6 @@ export default function InventoryPage() {
                    clearable
                 />
              </div>
-             {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
                 <button 
                    onClick={() => setViewMode('grid')}
@@ -221,7 +203,6 @@ export default function InventoryPage() {
         canDelete={() => canDelete}
       />
 
-      {/* Content Area */}
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {inventory.map(item => (
@@ -256,7 +237,7 @@ export default function InventoryPage() {
             loading={isLoading}
             isFetching={isFetching || isMutating}
             actions={tableActions}
-            selectable={canDelete} // Only selectable if can delete
+            selectable={canDelete}
             onRowSelect={(rows) => {
                 const validRows = rows.filter((row): row is V_inventory_itemsRowSchema & { id: string } => row.id != null);
                 bulkActions.handleRowSelect(validRows);
@@ -272,7 +253,6 @@ export default function InventoryPage() {
           />
       )}
 
-      {/* Modals */}
       <InventoryFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}

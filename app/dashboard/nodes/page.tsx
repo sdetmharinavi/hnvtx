@@ -12,21 +12,18 @@ import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import { Row } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { NodesRowSchema, V_nodes_completeRowSchema, Lookup_typesRowSchema, Maintenance_areasRowSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
+import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { useCallback, useMemo, useState } from 'react';
 import { FiCpu, FiCopy, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { toast } from 'sonner';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { NodeCard } from '@/components/nodes/NodeCard';
-import { Input } from '@/components/common/ui/Input';
-import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { UserRole } from '@/types/user-roles';
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string } | null;
@@ -36,7 +33,6 @@ export type NodeRowsWithRelations = NodesRowSchema & {
 const NodesPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { isSuperAdmin, role } = useUser();
-  const supabase = createClient();
 
   const {
     data: nodes,
@@ -66,34 +62,12 @@ const NodesPage = () => {
 
   // --- PERMISSIONS ---
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  // THE FIX: Strict delete permission
   const canDelete = !!isSuperAdmin;
 
-  // 1. Fetch Node Types
-  const { data: nodeTypeOptionsData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['node-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'NODE_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'NODE_TYPES' }).toArray()
-  );
-
-  // 2. Fetch Maintenance Areas
-  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-    ['maintenance-areas-for-filter-nodes'],
-    async () => (await supabase.from('maintenance_areas').select('*').eq('status', true)).data ?? [],
-    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
-  );
-
-  // Options Mappers
-  const nodeTypeOptions = useMemo(() => 
-    (nodeTypeOptionsData || [])
-      .filter(t => t.name !== 'DEFAULT')
-      .map(t => ({ value: t.id, label: t.name })), 
-  [nodeTypeOptionsData]);
-
-  const areaOptions = useMemo(() => 
-    (maintenanceAreasData || []).map(m => ({ value: m.id, label: m.name })), 
-  [maintenanceAreasData]);
-
+  // --- REFACTORED: Use Centralized Dropdown Hooks ---
+  const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');
+  const { options: areaOptions } = useMaintenanceAreaOptions();
+  
   const isInitialLoad = isLoading && nodes.length === 0;
 
   const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
@@ -104,7 +78,6 @@ const NodesPage = () => {
       createStandardActions<V_nodes_completeRowSchema>({
         onEdit: canEdit ? editModal.openEdit : undefined,
         onView: viewModal.open,
-        // THE FIX: Conditionally pass delete action
         onDelete: canDelete ? crudActions.handleDelete : undefined,
       }),
     [editModal.openEdit, viewModal.open, crudActions.handleDelete, canEdit, canDelete]
@@ -124,7 +97,7 @@ const NodesPage = () => {
   headerActions.splice(headerActions.length - 1, 0, {
     label: showDuplicates ? "Hide Duplicates" : "Find Duplicates",
     onClick: toggleDuplicates,
-    variant: showDuplicates ? "secondary" : "outline",
+    variant: "outline",
     leftIcon: <FiCopy />,
     hideTextOnMobile: true
   });
@@ -222,7 +195,6 @@ const NodesPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="node"
         showStatusUpdate={true}
-        // THE FIX: Pass delete capability to BulkActions
         canDelete={() => canDelete}
       />
 
@@ -255,7 +227,6 @@ const NodesPage = () => {
             columns={orderedColumns}
             loading={isLoading}
             actions={tableActions}
-            // THE FIX: Selectable only if user can delete (or perform other bulk actions if we add them later)
             selectable={canDelete}
             onRowSelect={(rows) => {
                 const validRows = rows.filter((row): row is V_nodes_completeRowSchema & { id: string } => row.id != null);

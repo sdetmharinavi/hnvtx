@@ -1,5 +1,4 @@
-// path: components/employee/EmployeeForm.tsx
-
+// components/employee/EmployeeForm.tsx
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
@@ -13,10 +12,8 @@ import { Modal } from "@/components/common/ui";
 import { FormCard } from "@/components/common/form";
 import { useEffect, useCallback } from "react";
 import {
-  Employee_designationsRowSchema,
   employeesInsertSchema,
   EmployeesInsertSchema,
-  Maintenance_areasRowSchema,
   V_employeesRowSchema,
 } from "@/schemas/zod-schemas";
 
@@ -25,10 +22,10 @@ interface EmployeeFormProps {
   onClose: () => void;
   employee?: V_employeesRowSchema | null;
   onSubmit: (data: EmployeesInsertSchema) => void;
-  onCancel: () => void;
   isLoading: boolean;
-  designations: Employee_designationsRowSchema[];
-  maintenanceAreas: Maintenance_areasRowSchema[];
+  // REFACTORED: Accept pre-formatted options
+  designationOptions: Option[];
+  maintenanceAreaOptions: Option[];
 }
 
 const EmployeeForm = ({
@@ -37,14 +34,14 @@ const EmployeeForm = ({
   employee,
   onSubmit,
   isLoading,
-  designations,
-  maintenanceAreas,
+  designationOptions,
+  maintenanceAreaOptions,
 }: EmployeeFormProps) => {
   const {
     control,
     handleSubmit,
     register,
-    formState: { errors, isDirty }, // Added isDirty
+    formState: { errors, isDirty },
     reset,
   } = useForm<EmployeesInsertSchema>({
     resolver: zodResolver(employeesInsertSchema),
@@ -97,21 +94,10 @@ const EmployeeForm = ({
     }
   }, [employee, reset, isOpen]);
 
-  const designationOptions: Option[] = designations.map((d) => ({
-    value: d.id,
-    label: d.name,
-  }));
-
-  const maintenanceAreaOptions: Option[] = maintenanceAreas.map((area) => ({
-    value: area.id,
-    label: `${area.name}${area.code ? ` (${area.code})` : ""}`,
-  }));
-
   const onValidFormSubmit = (data: EmployeesInsertSchema) => {
     onSubmit(data);
   };
 
-  // Safe close
   const handleClose = useCallback(() => {
     if (isDirty) {
       if (!window.confirm("You have unsaved changes. Close anyway?")) return;

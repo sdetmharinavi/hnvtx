@@ -11,15 +11,12 @@ import { DataTable } from "@/components/table";
 import { SystemsTableColumns } from "@/config/table-columns/SystemsTableColumns";
 import { useRpcMutation, RpcFunctionArgs, buildRpcFilters, Row, TableOrViewName } from "@/hooks/database";
 import { useCrudManager } from "@/hooks/useCrudManager";
-import { Lookup_typesRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
+import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
 import { createClient } from "@/utils/supabase/client";
 import { SystemModal } from "@/components/systems/SystemModal";
 import { SystemFormData } from "@/schemas/system-schemas";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/hooks/data/localDb";
 import useOrderedColumns from "@/hooks/useOrderedColumns";
-import { buildColumnConfig, TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
-import { buildUploadConfig } from "@/constants/table-column-keys";
+import { buildUploadConfig, buildColumnConfig, TABLE_COLUMN_KEYS } from "@/constants/table-column-keys";
 import { useSystemExcelUpload } from "@/hooks/database/excel-queries/useSystemExcelUpload";
 import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
@@ -32,6 +29,7 @@ import { Input, SearchableSelect } from "@/components/common/ui";
 import { BulkActions } from "@/components/common/BulkActions";
 import { SystemCard } from "@/components/systems/SystemCard";
 import { UserRole } from '@/types/user-roles';
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -91,26 +89,10 @@ export default function SystemsPage() {
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
   });
 
-  // --- FILTERS DATA ---
-  const { data: systemTypesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["system-types-for-filter"],
-    async () => (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_TYPES")).data ?? [],
-    async () => await localDb.lookup_types.where({ category: "SYSTEM_TYPES" }).toArray()
-  );
-  const { data: systemCapacitiesResult } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["system-capacities-for-filter"],
-    async () => (await createClient().from("lookup_types").select("*").eq("category", "SYSTEM_CAPACITY")).data ?? [],
-    async () => await localDb.lookup_types.where({ category: "SYSTEM_CAPACITY" }).toArray()
-  );
+  // --- REFACTORED: Use Centralized Dropdown Hooks ---
+  const { options: systemTypeOptions } = useLookupTypeOptions('SYSTEM_TYPES');
+  const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
   
-  const systemTypeOptions = useMemo(() => 
-    (systemTypesResult || []).filter(s => s.name !== 'DEFAULT').map(t => ({ value: t.name, label: t.code || t.name })),
-  [systemTypesResult]);
-  
-  const capacityOptions = useMemo(() => 
-    (systemCapacitiesResult || []).filter(s => s.name !== 'DEFAULT').map(t => ({ value: t.name, label: t.name })),
-  [systemCapacitiesResult]);
-
   const handleView = useCallback(
     (system: V_systems_completeRowSchema) => {
       if (system.id) router.push(`/dashboard/systems/${system.id}`);
@@ -124,18 +106,14 @@ export default function SystemsPage() {
     setIsPortsModalOpen(true);
   }, []);
 
-  // Table Config
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
   
   const tableActions = useMemo(() => {
     const actions = createStandardActions<V_systems_completeRowSchema>({
-      // Condition: Edit
       onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
-      // Condition: Delete
       onDelete: canDelete ? crudActions.handleDelete : undefined,
-      // Condition: Toggle Status
       onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
     });
     actions.unshift({
@@ -148,7 +126,6 @@ export default function SystemsPage() {
     return actions;
   }, [editModal.openEdit, handleView, crudActions, handleManagePorts, canEdit, canDelete]);
 
-  // Upload/Export Handlers
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -188,20 +165,16 @@ export default function SystemsPage() {
         hideTextOnMobile: true
       }
     ];
-
-    // Conditionally Add "Upload" and "Add New"
     if (canEdit) {
       actions.splice(1, 0, {
         label: isUploading ? "Uploading..." : "Upload", onClick: handleUploadClick,
         variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,
         hideTextOnMobile: true
       });
-      
       actions.push({
         label: "Add New", onClick: editModal.openAdd, variant: "primary", leftIcon: <FiDatabase />, disabled: isLoading,
       });
     }
-
     return actions;
   }, [isLoading, isUploading, isExporting, refetch, handleUploadClick, handleExport, editModal.openAdd, canEdit]);
 
@@ -213,10 +186,6 @@ export default function SystemsPage() {
 
   const handleSave = useCallback(
     (formData: SystemFormData) => {
-      // Find the selected system type object to check is_ring_based flag
-      const selectedType = systemTypesResult?.find(t => t.id === formData.system_type_id);
-      const isRingBased = selectedType?.is_ring_based;
-
       const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
         p_id: editModal.record?.id ?? undefined,
         p_system_name: formData.system_name!,
@@ -232,10 +201,10 @@ export default function SystemsPage() {
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
         p_system_capacity_id: formData.system_capacity_id || undefined,
-        p_ring_associations: isRingBased && formData.ring_id ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }] : null,
+        p_ring_associations: (formData.ring_id && formData.order_in_ring != null) ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }] : null,
       };
       upsertSystemMutation.mutate(payload);
-    }, [editModal.record, upsertSystemMutation, systemTypesResult]
+    }, [editModal.record, upsertSystemMutation]
   );
 
   const renderMobileItem = useCallback((record: Row<'v_systems_complete'>) => {
@@ -269,7 +238,6 @@ export default function SystemsPage() {
 
       <input type='file' ref={fileInputRef} onChange={handleFileChange} className='hidden' accept='.xlsx, .xls, .csv' />
 
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
             <Input 
@@ -316,7 +284,6 @@ export default function SystemsPage() {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="system"
         showStatusUpdate={true}
-        // THE FIX: Delete capability
         canDelete={() => canDelete}
       />
 

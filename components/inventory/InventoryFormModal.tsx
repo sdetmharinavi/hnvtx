@@ -1,7 +1,7 @@
-// path: app/dashboard/inventory/InventoryFormModal.tsx
+// components/inventory/InventoryFormModal.tsx
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "@/components/common/ui";
@@ -12,14 +12,18 @@ import {
   FormDateInput,
   FormTextarea,
 } from "@/components/common/form";
-import { useTableQuery } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
 import {
   Inventory_itemsInsertSchema,
   inventory_itemsInsertSchema,
   V_inventory_itemsRowSchema,
 } from "@/schemas/zod-schemas";
 import { z } from "zod";
+// REFACTORED: Use Centralized Hooks
+import { 
+  useLookupTypeOptions, 
+  useActiveNodeOptions, 
+  useMaintenanceAreaOptions 
+} from "@/hooks/data/useDropdownOptions";
 
 interface InventoryFormModalProps {
   isOpen: boolean;
@@ -29,8 +33,6 @@ interface InventoryFormModalProps {
   isLoading: boolean;
 }
 
-// THE FIX: Locally override the purchase_date validation to allow date strings (YYYY-MM-DD)
-// instead of strictly requiring ISO DateTime format.
 const formSchema = inventory_itemsInsertSchema.extend({
   purchase_date: z.string().nullable().optional(),
 });
@@ -45,46 +47,12 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
   isLoading,
 }) => {
   const isEditMode = !!editingItem;
-  const supabase = createClient();
 
-  const { data: categoriesResult } = useTableQuery(supabase, "lookup_types", {
-    filters: { category: "INVENTORY_CATEGORY" },
-  });
-  const { data: statusesResult } = useTableQuery(supabase, "lookup_types", {
-    filters: { category: "INVENTORY_STATUS" },
-  });
-  const { data: locationsResult } = useTableQuery(supabase, "v_nodes_complete", {
-    filters: { status: true },
-  });
-  const { data: functionalLocationsResult } = useTableQuery(supabase, "maintenance_areas", {
-    filters: { status: true },
-  });
-
-  const categoryOptions = useMemo(
-    () =>
-      categoriesResult?.data
-        ?.filter((c) => c.name !== "DEFAULT")
-        .map((c) => ({ value: c.id, label: c.name })) || [],
-    [categoriesResult]
-  );
-  const statusOptions = useMemo(
-    () => statusesResult?.data?.map((s) => ({ value: s.id, label: s.name })) || [],
-    [statusesResult]
-  );
-  const locationOptions = useMemo(
-    () =>
-      locationsResult?.data
-        ?.filter((l) => l.name !== "DEFAULT")
-        .map((l) => ({ value: l.id!, label: l.name! })) || [],
-    [locationsResult]
-  );
-  const functionalLocationOptions = useMemo(
-    () =>
-      functionalLocationsResult?.data
-        ?.filter((l) => l.name !== "DEFAULT")
-        .map((l) => ({ value: l.id, label: l.name })) || [],
-    [functionalLocationsResult]
-  );
+  // --- REFACTORED: Data Fetching ---
+  const { options: categoryOptions } = useLookupTypeOptions('INVENTORY_CATEGORY');
+  const { options: statusOptions } = useLookupTypeOptions('INVENTORY_STATUS');
+  const { options: locationOptions } = useActiveNodeOptions();
+  const { options: functionalLocationOptions } = useMaintenanceAreaOptions();
 
   const {
     register,
@@ -93,7 +61,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
     control,
     formState: { errors },
   } = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema), // Use the relaxed schema
+    resolver: zodResolver(formSchema),
   });
 
   useEffect(() => {
@@ -124,8 +92,6 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
   }, [isOpen, editingItem, reset]);
 
   const handleFormSubmit = (values: FormSchemaType) => {
-    // The date string (YYYY-MM-DD) is perfectly valid for a DATE column in Postgres.
-    // We don't need to convert it to a full ISO datetime string.
     onSubmit(values as Inventory_itemsInsertSchema);
   };
 

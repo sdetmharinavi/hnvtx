@@ -14,18 +14,16 @@ import { Copy, Database as DatabaseIcon } from "lucide-react";
 import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { V_servicesRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
+import { V_servicesRowSchema } from "@/schemas/zod-schemas";
 import { Row } from "@/hooks/database";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { localDb } from "@/hooks/data/localDb";
 import { useDuplicateFinder } from "@/hooks/useDuplicateFinder";
 import { useUser } from "@/providers/UserProvider";
-import { Input } from "@/components/common/ui/Input";
-import { SearchableSelect } from "@/components/common/ui";
+import { Input, SearchableSelect } from "@/components/common/ui";
 import { BulkActions } from "@/components/common/BulkActions";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { UserRole } from "@/types/user-roles";
 import { FiGrid, FiList, FiSearch } from "react-icons/fi";
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -42,11 +40,9 @@ export default function ServicesPage() {
     displayNameField: 'name',
   });
 
-  // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(role as UserRole);
   const canDelete = !!isSuperAdmin;
 
-  // --- DUPLICATE DETECTION LOGIC ---
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
     const name = item.name?.trim().toLowerCase() || '';
     const linkType = item.link_type_name?.trim().toLowerCase() || '';
@@ -61,23 +57,9 @@ export default function ServicesPage() {
 
   const columns = ServicesTableColumns(data, duplicateSet);
 
-  // --- FETCH LINK TYPES FOR FILTER ---
-  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['link-types-for-filter'],
-    async () =>
-      (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
-    async () =>
-      await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
-  );
+  // --- REFACTORED: Use Centralized Hook ---
+  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
 
-  const linkTypeOptions = useMemo(() => {
-    return (linkTypesData || [])
-      .filter(lt => lt.name !== 'DEFAULT')
-      .map(lt => ({ value: lt.id, label: lt.name }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [linkTypesData]);
-
-  // --- MUTATIONS ---
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
      onSuccess: () => { refetch(); editModal.close(); toast.success("Service created."); }
   });
@@ -108,18 +90,12 @@ export default function ServicesPage() {
 
   const headerActions = useStandardHeaderActions({
       onRefresh: refetch,
-      // THE FIX: Conditionally allow adding new services
       onAddNew: canEdit ? editModal.openAdd : undefined,
       isLoading,
       data: data as Row<'v_services'>[],
-      exportConfig: {
-          tableName: 'v_services',
-          fileName: `All_Services`,
-          filters: filters.filters
-      }
+      exportConfig: { tableName: 'v_services', fileName: `All_Services`, filters: filters.filters }
   });
 
-  // Add "Find Duplicates" button to header actions
   const enhancedHeaderActions: ActionButton[] = [
       ...headerActions,
       {
@@ -131,7 +107,6 @@ export default function ServicesPage() {
       }
   ];
   
-  // Reorder to ensure Add New is last
   const addNewAction = enhancedHeaderActions.pop();
   if (addNewAction) enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction);
 
@@ -143,7 +118,7 @@ export default function ServicesPage() {
             onDelete={crudActions.handleDelete}
             canEdit={canEdit}
             canDelete={canDelete}
-            isDuplicate={duplicateSet?.has(`${record.name?.trim().toLowerCase()}|${record.link_type_name?.trim().toLowerCase()}`)}
+            isDuplicate={duplicateSet.has(`${record.name?.trim().toLowerCase()}|${record.link_type_name?.trim().toLowerCase()}`)}
         />
      )
   }, [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, duplicateSet]);
@@ -166,7 +141,6 @@ export default function ServicesPage() {
         isFetching={isFetching}
       />
 
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
             <Input 
@@ -200,7 +174,6 @@ export default function ServicesPage() {
                     <option value="false">Inactive</option>
                  </select>
              </div>
-             {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
                 <button 
                    onClick={() => setViewMode('grid')}
@@ -231,7 +204,6 @@ export default function ServicesPage() {
         canDelete={() => canDelete}
       />
 
-      {/* Content */}
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {data.map(service => (

@@ -12,26 +12,23 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_employeesRowSchema,
   EmployeesRowSchema,
-  Employee_designationsRowSchema,
-  Maintenance_areasRowSchema,
+  EmployeesInsertSchema,
 } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { FiUsers, FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import { toast } from 'sonner';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
 import { Row } from '@/hooks/database';
-import { EmployeeCard } from '@/components/employee/EmployeeCard'; // NEW IMPORT
+import { EmployeeCard } from '@/components/employee/EmployeeCard';
 import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui';
 import { UserRole } from '@/types/user-roles';
+import { useDropdownOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { FiGrid, FiList, FiSearch, FiUsers } from 'react-icons/fi';
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -61,31 +58,19 @@ export default function EmployeesPage() {
     displayNameField: 'employee_name',
   });
 
-  // Fetch Options
-  const { data: designationsData } = useOfflineQuery<Employee_designationsRowSchema[]>(
-    ['all-designations-filter'],
-    async () => (await createClient().from('employee_designations').select('*')).data ?? [],
-    async () => await localDb.employee_designations.toArray()
-  );
-  const designations = useMemo(() => designationsData || [], [designationsData]);
+  // --- REFACTORED: Use Centralized Hooks ---
+  
+  // 1. Fetch Designations via generic hook
+  const { options: desOptions } = useDropdownOptions({
+    tableName: 'employee_designations',
+    valueField: 'id',
+    labelField: 'name',
+    filters: { status: true },
+    orderBy: 'name'
+  });
 
-  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-    ['all-maintenance-areas-filter'],
-    async () =>
-      (await createClient().from('maintenance_areas').select('*').eq('status', true)).data ?? [],
-    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
-  );
-  const maintenanceAreas = useMemo(() => maintenanceAreasData || [], [maintenanceAreasData]);
-
-  // Options Mappers
-  const desOptions = useMemo(
-    () => designations.map((d) => ({ value: d.id, label: d.name })),
-    [designations]
-  );
-  const areaOptions = useMemo(
-    () => maintenanceAreas.map((a) => ({ value: a.id, label: a.name })),
-    [maintenanceAreas]
-  );
+  // 2. Fetch Areas via specialized hook
+  const { options: areaOptions } = useMaintenanceAreaOptions();
 
   // Table Logic
   const columns = useMemo(() => getEmployeeTableColumns(), []);
@@ -126,7 +111,6 @@ export default function EmployeesPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  // Render Mobile (always List Card)
   const renderMobileItem = useCallback(
     (record: Row<'v_employees'>) => {
       return (
@@ -163,7 +147,6 @@ export default function EmployeesPage() {
         isFetching={isFetching}
       />
 
-      {/* Controls Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
         <div className="w-full lg:w-96">
           <Input
@@ -199,7 +182,6 @@ export default function EmployeesPage() {
               clearable
             />
           </div>
-          {/* View Toggle (Hidden on Mobile) */}
           <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
             <button
               onClick={() => setViewMode('grid')}
@@ -237,7 +219,6 @@ export default function EmployeesPage() {
         showStatusUpdate={true}
       />
 
-      {/* Content Area */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {employees.map((emp) => (
@@ -282,9 +263,7 @@ export default function EmployeesPage() {
               pagination.setPageLimit(pageSize);
             },
           }}
-          // Disable default toolbar since we have a custom one above
           customToolbar={<></>}
-          // Mobile render
           renderMobileItem={renderMobileItem}
         />
       )}
@@ -293,11 +272,11 @@ export default function EmployeesPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         employee={editModal.record}
-        onSubmit={crudActions.handleSave}
-        onCancel={editModal.close}
+        onSubmit={crudActions.handleSave as (data: EmployeesInsertSchema) => void}
         isLoading={isMutating}
-        designations={designations}
-        maintenanceAreas={maintenanceAreas}
+        // Pass options down to modal
+        designationOptions={desOptions}
+        maintenanceAreaOptions={areaOptions}
       />
 
       <EmployeeDetailsModal

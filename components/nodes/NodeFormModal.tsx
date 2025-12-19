@@ -1,8 +1,8 @@
+// components/nodes/NodeFormModal.tsx
 'use client';
 
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Modal } from '@/components/common/ui/Modal';
-import { useTableQuery } from '@/hooks/database';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormCard } from '@/components/common/form/FormCard';
@@ -17,7 +17,8 @@ import {
   nodesInsertSchema,
   NodesRowSchema,
 } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
+// REFACTORED: Import centralized hooks
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 
 interface NodeFormModalProps {
   isOpen: boolean;
@@ -53,24 +54,11 @@ export function NodeFormModal({
     },
   });
 
-  const supabase = createClient();
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
-  const { data: nodeTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
-    filters: {
-      category: { operator: 'eq', value: 'NODE_TYPES' },
-      name: { operator: 'neq', value: 'DEFAULT' },
-    },
-    orderBy: [{ column: 'name', ascending: true }],
-  });
-  const { data: maintenanceAreas = { data: [] } } = useTableQuery(
-    supabase,
-    'maintenance_areas',
-    {
-      filters: { status: { operator: 'eq', value: true } },
-      orderBy: [{ column: 'name', ascending: true }],
-    }
-  );
+  // --- REFACTORED: Use Hooks ---
+  const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');
+  const { options: maintenanceAreaOptions } = useMaintenanceAreaOptions();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -105,13 +93,7 @@ export function NodeFormModal({
   );
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={''}
-      visible={false}
-      className="h-0 w-0 bg-transparent"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={''} visible={false} className="h-0 w-0 bg-transparent">
       <div className="h-full w-full overflow-y-auto">
         <div className="min-h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
           <div className="w-full">
@@ -131,10 +113,9 @@ export function NodeFormModal({
                     <div className="md:col-span-2">
                       <FormInput name="name" label="Node Name" register={register} error={errors.name} disabled={isLoading} placeholder="Enter node name" />
                     </div>
-                    {/* THE FIX: Access the .data property before mapping */}
-                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypes.data.map(type => ({ value: type.id, label: type.name }))} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
-                    {/* THE FIX: Access the .data property before mapping */}
-                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreas.data.map(mt => ({ value: mt.id, label: mt.name }))} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
+                    {/* REFACTORED: Pass pre-fetched options directly */}
+                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypeOptions} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
+                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreaOptions} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
                   </div>
                 </div>
 

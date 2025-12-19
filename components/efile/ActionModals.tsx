@@ -1,29 +1,23 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useEffect } from "react";
 import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect, FormRichTextEditor } from "@/components/common/form"; // Added FormRichTextEditor
+import { FormCard, FormInput, FormTextarea, FormSearchableSelect, FormSelect, FormRichTextEditor } from "@/components/common/form";
 import { useForm, Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { initiateFileSchema, forwardFileSchema, InitiateFilePayload, ForwardFilePayload } from "@/schemas/efile-schemas";
-import { useInitiateFile, useForwardFile, useEmployeeOptions, useUpdateFileDetails } from "@/hooks/data/useEFilesData";
-import { V_employeesRowSchema, V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
+import { useInitiateFile, useForwardFile, useUpdateFileDetails } from "@/hooks/data/useEFilesData";
+import { V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
+import { useEmployeeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
 
-// Helper
-const getEmployeeOptions = (employees: V_employeesRowSchema[] | undefined) => {
-    return (employees || []).map(e => ({
-        value: e.id!,
-        label: `${e.employee_name} ${e.employee_designation_name ? `(${e.employee_designation_name})` : ''} ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ''}`
-    }));
-};
+// Helper is no longer needed here
 
 // --- INITIATE MODAL ---
 export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { mutate, isPending } = useInitiateFile();
-  const { data: employeeData } = useEmployeeOptions();
-
-  const employeeOptions = useMemo(() => getEmployeeOptions(employeeData?.data), [employeeData]);
+  // REFACTORED: Use centralized hook
+  const { options: employeeOptions, isLoading: isLoadingEmployees } = useEmployeeOptions();
 
   const { register, control, handleSubmit, formState: { errors } } = useForm<InitiateFilePayload>({
     resolver: zodResolver(initiateFileSchema),
@@ -36,7 +30,7 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Initiate New E-File" className="w-0 h-0 bg-transparent">
-      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="New File Record" standalone >
+      <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending || isLoadingEmployees} title="New File Record" standalone >
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormInput name="file_number" label="File Number *" register={register} error={errors.file_number} placeholder="e.g. FILE/2024/001" required />
@@ -71,20 +65,18 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
                     error={errors.initiator_employee_id}
                     placeholder="Select employee..."
                     required
+                    isLoading={isLoadingEmployees}
                     searchPlaceholder="Search employees..."
                  />
             </div>
 
             <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
-
-            {/* Replaced Textarea with WYSIWYG */}
             <FormRichTextEditor 
                 name="description" 
                 label="Description" 
                 control={control} 
                 error={errors.description} 
             />
-
             <FormTextarea name="remarks" label="Initial Note" control={control} rows={2} placeholder="e.g. Starting new file..." />
         </div>
       </FormCard>
@@ -92,12 +84,11 @@ export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClos
   );
 };
 
-// --- FORWARD MODAL (Kept text area as it's a short remark usually) ---
+// --- FORWARD MODAL ---
 export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean; onClose: () => void; fileId: string }) => {
     const { mutate, isPending } = useForwardFile();
-    const { data: employeeData } = useEmployeeOptions();
-
-    const employeeOptions = useMemo(() => getEmployeeOptions(employeeData?.data), [employeeData]);
+    // REFACTORED: Use centralized hook
+    const { options: employeeOptions, isLoading: isLoadingEmployees } = useEmployeeOptions();
 
     const { control, handleSubmit, formState: { errors } } = useForm<ForwardFilePayload>({
         resolver: zodResolver(forwardFileSchema) as Resolver<ForwardFilePayload>,
@@ -110,7 +101,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Forward File">
-            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Forwarding Details" standalone submitText="Send">
+            <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending || isLoadingEmployees} title="Forwarding Details" standalone submitText="Send">
                 <FormSearchableSelect
                     name="to_employee_id"
                     label="Forward To (Employee) *"
@@ -119,6 +110,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
                     error={errors.to_employee_id}
                     placeholder="Select recipient..."
                     required
+                    isLoading={isLoadingEmployees}
                     searchPlaceholder="Search employees..."
                 />
                 <FormSelect
@@ -133,9 +125,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
     );
 };
 
-
 // --- EDIT DETAILS MODAL ---
-
 const editSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
     description: z.string().optional(),
@@ -179,7 +169,17 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
             <FormCard onSubmit={handleSubmit(onSubmit)} onCancel={onClose} isLoading={isPending} title="Edit Details" standalone submitText="Update" >
                  <FormInput name="subject" label="Subject *" register={register} error={errors.subject} required />
                  <div className="grid grid-cols-2 gap-4">
-                    <FormInput name="category" label="Category *" register={register} error={errors.category} required />
+                    <FormSelect
+                        name="category"
+                        label="Category *"
+                        control={control}
+                        options={[
+                            { value: 'administrative', label: 'Administrative' },
+                            { value: 'technical', label: 'Technical' },
+                            { value: 'other', label: 'Other' }
+                        ]}
+                        error={errors.category}
+                    />
                     <FormSelect
                         name="priority"
                         label="Priority"
@@ -191,7 +191,6 @@ export const EditFileModal = ({ isOpen, onClose, file }: { isOpen: boolean; onCl
                         ]}
                     />
                  </div>
-                 {/* Replaced Textarea with WYSIWYG */}
                  <FormRichTextEditor 
                     name="description" 
                     label="Description" 
