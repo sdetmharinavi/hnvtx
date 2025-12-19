@@ -3,7 +3,6 @@ import * as ExcelJS from "exceljs";
 import { Filters, UploadResult } from "@/hooks/database";
 import { TableOrViewName, Row } from "@/hooks/database";
 
-// ... (other interfaces remain the same) ...
 export interface Column<T> {
   key: string;
   title: string;
@@ -21,7 +20,10 @@ export interface Column<T> {
   excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
   naturalSort?: boolean; 
+  // THE FIX: Added excelHeader property
+  excelHeader?: string;
 }
+
 export interface RPCConfig<TParams = Record<string, unknown>> {
   functionName: string;
   parameters?: TParams;
@@ -83,7 +85,6 @@ export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   fgColor: { argb: color },
 });
 
-// THE FIX: The default case now correctly stringifies objects and arrays.
 export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, record?: T): unknown => {
 
   if (column.transform) {
@@ -118,7 +119,6 @@ export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, 
     default:
       if (typeof value === 'object') {
         if (value instanceof Date) return value;
-        // This is the key fix: Stringify arrays or objects instead of calling join()
         return JSON.stringify(value);
       }
       return String(value);
@@ -144,7 +144,7 @@ export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Col
       cell.numFmt = "0";
       break;
     case "text":
-    case "json": // Treat JSON as text for formatting
+    case "json":
       cell.numFmt = "@";
       break;
   }

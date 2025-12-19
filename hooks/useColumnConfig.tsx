@@ -41,6 +41,7 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   // ... and any other properties from your master Column<T> type.
   resizable?: boolean;
   editable?: boolean;
+  excelHeader?: string;
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {

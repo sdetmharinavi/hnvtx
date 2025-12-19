@@ -13,16 +13,19 @@ export const OfcDetailsTableColumns = (
       'id', 'ofc_id', 'created_at', 'updated_at', 'sn_id', 'en_id', 'connection_category',
       'destination_port', 'en_name', 'path_segment_order', 'sn_name', 'source_port',
       'system_id', 
-      // REMOVED 'system_name' from here so it shows up
+      // 'system_name', // Removed from omit to ensure it's available for export
       'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
-      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", "connection_type","fiber_role","path_direction"
+      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", 
+      // "connection_type","fiber_role", // Keep these visible for export too
+      "path_direction"
     ],
     overrides: {
       system_name: {
         title: 'Connected Service',
+        excelHeader: 'System Name', // Explicit header for re-upload compatibility
         sortable: true,
         searchable: true,
-        width: 300, // Give it plenty of space
+        width: 300, 
         render: (value) => (
           <div className="flex flex-col justify-center">
              {value ? (
@@ -35,6 +38,16 @@ export const OfcDetailsTableColumns = (
              )}
           </div>
         ),
+      },
+      connection_type: { 
+        title: 'Type', 
+        excelHeader: 'Connection Type',
+        sortable: true 
+      },
+      fiber_role: { 
+        title: 'Role', 
+        excelHeader: 'Fiber Role',
+        sortable: true 
       },
       updated_sn_name: {
         title: 'End A Node',
@@ -96,11 +109,9 @@ export const OfcDetailsTableColumns = (
         searchable: true, 
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
       },
-      // Simplify headers to save space
       sn_power_dbm: { title: 'End A (dBm)', sortable: true },
       en_power_dbm: { title: 'End B (dBm)', sortable: true },
       route_loss_db: { title: 'Loss (dB)', sortable: true },
-      connection_type: { title: 'Type', sortable: true },
     },
   });
 };

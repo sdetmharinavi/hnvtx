@@ -21,7 +21,6 @@ export interface OfcConnectionsUploadOptions {
   columns: UploadColumnMapping<'v_ofc_connections_complete'>[];
 }
 
-// THE FIX: Define payload based on the table structure, not a missing RPC
 type ConnectionPayload = TableInsert<'ofc_connections'>;
 
 export function useOfcConnectionsExcelUpload(
@@ -56,6 +55,15 @@ export function useOfcConnectionsExcelUpload(
       const cableNameToId = new Map<string, string>();
       if (cablesResp.data) {
           cablesResp.data.forEach(c => cableNameToId.set(c.route_name.trim().toLowerCase(), c.id));
+      }
+
+      // 2. Fetch Systems for resolution (System Name -> ID) - ADDED
+      const systemsResp = await supabase.from('systems').select('id, system_name');
+      const systemNameToId = new Map<string, string>();
+      if (systemsResp.data) {
+          systemsResp.data.forEach(s => {
+             if(s.system_name) systemNameToId.set(s.system_name.trim().toLowerCase(), s.id);
+          });
       }
 
       const recordsToUpdate: ConnectionPayload[] = [];
@@ -93,6 +101,12 @@ export function useOfcConnectionsExcelUpload(
             cableId = cableNameToId.get(String(processedData.ofc_route_name).trim().toLowerCase()) || '';
         }
 
+        // Resolve System ID - ADDED
+        let systemId = processedData.system_id as string;
+        if (!systemId && processedData.system_name) {
+            systemId = systemNameToId.get(String(processedData.system_name).trim().toLowerCase()) || '';
+        }
+
         if (!cableId) {
              rowValidationErrors.push({ rowIndex: i, column: 'ofc_route_name', value: processedData.ofc_route_name, error: 'Cable Route not found' });
         }
@@ -110,14 +124,21 @@ export function useOfcConnectionsExcelUpload(
         const record: ConnectionPayload = {
             ofc_id: cableId,
             fiber_no_sn: Number(processedData.fiber_no_sn),
-            // The connection logic assumes fiber_no_en matches sn if not explicitly provided differently in physical context
             fiber_no_en: processedData.fiber_no_en ? Number(processedData.fiber_no_en) : Number(processedData.fiber_no_sn),
             
+            // Physical Props
             otdr_distance_sn_km: processedData.otdr_distance_sn_km ? Number(processedData.otdr_distance_sn_km) : null,
             sn_power_dbm: processedData.sn_power_dbm ? Number(processedData.sn_power_dbm) : null,
             otdr_distance_en_km: processedData.otdr_distance_en_km ? Number(processedData.otdr_distance_en_km) : null,
             en_power_dbm: processedData.en_power_dbm ? Number(processedData.en_power_dbm) : null,
             route_loss_db: processedData.route_loss_db ? Number(processedData.route_loss_db) : null,
+            
+            // Allocation Props - ADDED
+            system_id: systemId || null,
+            connection_type: (processedData.connection_type as string) || 'straight',
+            connection_category: (processedData.connection_category as string) || 'SPLICE_TYPES',
+            fiber_role: (processedData.fiber_role as "working" | "protection") || null,
+            
             remark: processedData.remark as string | null,
             updated_at: new Date().toISOString()
         };
@@ -130,7 +151,6 @@ export function useOfcConnectionsExcelUpload(
       if (recordsToUpdate.length > 0) {
           if (showToasts) toast.info(`Updating ${recordsToUpdate.length} fibers...`);
           
-          // Use Upsert on the table, matching the unique constraint/index
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { error } = await supabase.from('ofc_connections').upsert(recordsToUpdate as any, { 
               onConflict: 'ofc_id, fiber_no_sn', 

@@ -26,7 +26,6 @@ import { toast } from 'sonner';
 import { applyFilters } from '@/hooks/database/utility-functions';
 import { sanitizeSheetFileName } from '@/utils/formatters';
 
-// Extended types for new functionality
 interface OrderByOption {
   column: string;
   ascending?: boolean;
@@ -45,7 +44,6 @@ interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName>
   defaultAutoFitColumns?: boolean;
 }
 
-// Hook for RPC-based downloads with full type safety
 export function useRPCExcelDownload<T extends TableOrViewName>(
   supabase: SupabaseClient<Database>,
   options?: EnhancedUseExcelDownloadOptions<T>
@@ -65,7 +63,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
     EnhancedDownloadOptions<T> & { rpcConfig: RPCConfig }
   >({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
-      // THE FIX: Dynamically import ExcelJS only when the function is called
       const ExcelJS = (await import('exceljs')).default;
       try {
         const defaultStyles = getDefaultStyles();
@@ -121,21 +118,17 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
 
         if (error) throw new Error(`RPC call failed: ${error.message}`);
 
-        // --- THIS IS THE FIX ---
-        // Intelligently extract the array of records from the RPC response.
         let dataArray: unknown[] = [];
         if (data) {
           if (Array.isArray(data)) {
-            dataArray = data; // RPC returned a flat array
+            dataArray = data; 
           } else if (
             typeof data === 'object' &&
             'data' in data &&
             Array.isArray((data as { data: unknown[] }).data)
           ) {
-            // RPC returned a structured object like { data: [...] } from get_paged_data
             dataArray = (data as { data: unknown[] }).data;
           } else if (typeof data === 'object' && data !== null) {
-            // RPC returned a single object
             dataArray = [data];
           }
         }
@@ -148,7 +141,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
             columnCount: exportColumns.length,
           };
         }
-        // --- END FIX ---
 
         if (orderBy && orderBy.length > 0) {
           dataArray = dataArray.sort((a, b) => {
@@ -182,7 +174,8 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           width: typeof col.width === 'number' ? col.width / 8 : 20,
         }));
 
-        const headerTitles = exportColumns.map((col) => col.title);
+        // THE FIX: Use excelHeader if available, otherwise title
+        const headerTitles = exportColumns.map((col) => col.excelHeader || col.title);
         const headerRow = worksheet.addRow(headerTitles);
         headerRow.height = 25;
 
@@ -217,7 +210,6 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
           exportColumns.forEach((col) => {
             const key = String(col.dataIndex);
             const value = obj[key];
-            // UPDATE: Pass the full record as the third argument
             rowData[key] = formatCellValue(value, col, record as Row<T>);
           });
           const excelRow = worksheet.addRow(rowData);
@@ -254,7 +246,9 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
         if (autoFitColumns) {
           exportColumns.forEach((col, index) => {
             const column = worksheet.getColumn(index + 1);
-            let maxLength = col.title.length;
+            
+            // THE FIX: Account for header length too
+            let maxLength = (col.excelHeader || col.title).length;
 
             dataArray.forEach((record) => {
               if (record && typeof record === 'object') {
@@ -312,7 +306,7 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
   });
 }
 
-// Hook for traditional table/view downloads with enhanced features
+// Hook for traditional table/view downloads
 export function useTableExcelDownload<T extends PublicTableOrViewName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -360,11 +354,8 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
         const exportColumns = columns.filter((col) => !col.excludeFromExport);
         if (exportColumns.length === 0) throw new Error('All columns are excluded from export');
 
-        // toast.info('Fetching data for download...');
-
         const selectFields = exportColumns.map((col) => col.dataIndex).join(',');
 
-        // Build the base query and allow TypeScript to infer the correct builder type
         let query = isTableName(tableName)
           ? supabase.from(tableName as PublicTableName).select(selectFields)
           : supabase.from(tableName as ViewName).select(selectFields);
@@ -392,7 +383,8 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
 
         worksheet.columns = exportColumns.map((col) => ({
           key: String(col.dataIndex),
-          header: col.title,
+          // THE FIX: Use excelHeader if available
+          header: col.excelHeader || col.title,
           width: typeof col.width === 'number' ? col.width / 8 : 20,
         }));
 
@@ -442,7 +434,8 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
             const col = exportColumns[index];
             if (!column) return;
 
-            let maxLength = col.title.length;
+            // THE FIX: Header length check
+            let maxLength = (col.excelHeader || col.title).length;
             typedData.forEach((record) => {
               const key = col.dataIndex as keyof Row<T> & string;
               const value = record[key];
