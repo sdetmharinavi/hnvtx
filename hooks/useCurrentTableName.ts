@@ -38,10 +38,12 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "lookup_types";
       // case "inventory":
       //   return "inventory_items";
-      case "ofc":
-        // Check if there's a third segment (ID) after ofc
-        const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
-        return hasId ? "ofc_connections" : "ofc_cables";
+     case "ofc":
+        // Check if there's a third segment
+        const subSegment = segments[dashboardIndex + 2];
+        if (!subSegment) return "ofc_cables"; // /dashboard/ofc
+        if (subSegment === 'connections') return "ofc_connections"; // /dashboard/ofc/connections (NEW)
+        return "ofc_connections"; // /dashboard/ofc/[id] (Existing)
       case "ofc_connections":
         return "ofc_connections";
       case "nodes":

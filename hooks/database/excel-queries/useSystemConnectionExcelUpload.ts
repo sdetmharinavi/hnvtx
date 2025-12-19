@@ -14,38 +14,15 @@ import {
   validateValue,
   ValidationError,
 } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser';
 
 export interface SystemConnectionUploadOptions {
   file: File;
   columns: UploadColumnMapping<'v_system_connections_complete'>[];
-  parentSystemId: string;
+  parentSystemId?: string; // CHANGED: Made optional for global upload
 }
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
-
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  const XLSX = await import('xlsx');
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetName];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useSystemConnectionExcelUpload(
   supabase: SupabaseClient<Database>,
@@ -91,7 +68,7 @@ export function useSystemConnectionExcelUpload(
         for (const lt of linkTypesResp.data) { if (lt.name && lt.id) linkTypeNameToId.set(String(lt.name).trim().toLowerCase(), lt.id); }
       }
 
-      // 2. Fetch Systems for Name -> ID resolution
+      // 2. Fetch Systems for Name -> ID resolution (Optimized: Fetch ID and Name)
       const systemsResp = await supabase.from('systems').select('id, system_name');
       const systemNameToId = new Map<string, string>();
       if (!systemsResp.error && systemsResp.data) {
@@ -119,7 +96,6 @@ export function useSystemConnectionExcelUpload(
           let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
           if (typeof finalValue === 'string') finalValue = finalValue.trim();
 
-          // Don't validate ID fields strictly here as we might resolve them later
           if (!mapping.dbKey.endsWith('_id')) {
              const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
              if (validationError) { rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData }); }
@@ -135,6 +111,17 @@ export function useSystemConnectionExcelUpload(
           const key = linkTypeNameRaw.trim().toLowerCase();
           const foundId = linkTypeNameToId.get(key);
           if (foundId) resolvedLinkTypeId = foundId;
+        }
+
+        // Resolve System ID (Context for the connection)
+        let resolvedSystemId = parentSystemId;
+        if (!resolvedSystemId && processedData.system_name) {
+           const key = String(processedData.system_name).trim().toLowerCase();
+           resolvedSystemId = systemNameToId.get(key);
+        }
+
+        if (!resolvedSystemId) {
+            rowValidationErrors.push({ rowIndex: i, column: 'system_id', value: '', error: 'System ID missing. Ensure "System Name" column exists and matches a valid system.' });
         }
 
         // Resolve Destination System ID (en_id)
@@ -159,7 +146,7 @@ export function useSystemConnectionExcelUpload(
 
         const rpcPayload: RpcPayload = {
           p_id: toUndefined(processedData.id),
-          p_system_id: parentSystemId,
+          p_system_id: resolvedSystemId!, // We validated it exists above
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
           
@@ -170,8 +157,6 @@ export function useSystemConnectionExcelUpload(
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
           p_service_node_id: toUndefined(processedData.service_node_id), 
-          
-          // THE FIX: Explicitly map the service_id from the excel import
           p_service_id: toUndefined(processedData.service_id),
 
           p_sn_id: toUndefined(processedData.sn_id),
@@ -191,6 +176,7 @@ export function useSystemConnectionExcelUpload(
           
           p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
+          p_en_protection_interface: toUndefined(processedData.en_protection_interface),
           
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
@@ -238,6 +224,7 @@ export function useSystemConnectionExcelUpload(
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
         queryClient.invalidateQueries({ queryKey: ['system_connections-data'] }); 
+        queryClient.invalidateQueries({ queryKey: ['all-system-connections'] }); 
         queryClient.invalidateQueries({ queryKey: ['ports_management-data'] });
       }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });

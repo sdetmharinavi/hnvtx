@@ -16,6 +16,7 @@ import {
   FiShield,
   FiAirplay,
   FiDatabase,
+  FiActivity,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -151,6 +152,13 @@ function NavItems() {
             roles: PERMISSIONS.canManageRoutes,
           },
           {
+            id: 'ofc-connections',
+            label: 'Fiber Inventory', // NEW PAGE
+            href: '/dashboard/ofc/connections',
+            icon: <FiActivity className="h-5 w-5" />,
+            roles: PERMISSIONS.canManageRoutes,
+          },
+          {
             id: 'route-manager',
             label: 'RouteManager',
             icon: <FaRoute className="h-5 w-5" />,
@@ -175,7 +183,7 @@ function NavItems() {
           {
             id: 'global-connections',
             label: 'Global Connections',
-            href: '/dashboard/connections',
+            href: '/dashboard/systems/connections',
             icon: <GitBranch className="h-5 w-5" />,
             roles: PERMISSIONS.canManageSystems,
           },

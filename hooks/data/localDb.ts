@@ -181,9 +181,9 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 31: Added 'sort_order' to lookup_types index to support orderBy('sort_order')
-    this.version(31).stores({
-      lookup_types: '&id, category, name, sort_order', // ADDED sort_order
+    // VERSION 32: Added ofc_route_name to v_ofc_connections_complete index
+    this.version(32).stores({
+      lookup_types: '&id, category, name, sort_order', 
       
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -224,7 +224,8 @@ export class HNVTMDatabase extends Dexie {
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
-      v_ofc_connections_complete: '&id, ofc_id, system_id',
+      // THE FIX: Added ofc_route_name to index
+      v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name', 
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at', 
@@ -232,8 +233,7 @@ export class HNVTMDatabase extends Dexie {
       v_end_to_end_paths: '&path_id, path_name',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
       
-      // Also updated to ensure sorting performance for E-Files
-      v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at', // Added updated_at
+      v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at', 
       v_file_movements_extended: '&id, file_id, created_at',
 
       sync_status: 'tableName',
