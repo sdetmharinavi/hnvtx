@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 // --- Validation Schema for the Form ---
 export const issueItemSchema = z.object({
-  item_id: z.string().uuid(),
+  item_id: z.uuid(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   issued_to: z.string().min(1, "Issued To is required"),
   issue_reason: z.string().min(1, "Reason is required"),

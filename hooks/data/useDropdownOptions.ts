@@ -1,4 +1,4 @@
-// hooks/data/useDropdownOptions.ts
+// path: hooks/data/useDropdownOptions.ts
 "use client";
 
 import { useMemo } from 'react';
@@ -14,13 +14,16 @@ interface OptionsQuery {
   tableName: TableName;
   valueField: string;
   labelField: string;
-  filters?: Record<string, string | boolean | undefined>; // Allow undefined in type to handle optional props
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filters?: Record<string, any>;
   orderBy?: string;
 }
 
-// Helper to remove undefined keys which crash IndexedDB queries
-const cleanFilters = (filters: Record<string, unknown>) => {
-  const cleaned: Record<string, unknown> = {};
+// Helper to remove undefined keys
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cleanFilters = (filters: Record<string, any>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cleaned: Record<string, any> = {};
   Object.keys(filters).forEach(key => {
     if (filters[key] !== undefined) {
       cleaned[key] = filters[key];
@@ -29,16 +32,9 @@ const cleanFilters = (filters: Record<string, unknown>) => {
   return cleaned;
 };
 
-/**
- * A centralized, offline-first hook to fetch and format data for dropdown select components.
- * @param config - The configuration for which table and fields to query.
- */
 export function useDropdownOptions({ tableName, valueField, labelField, filters = {}, orderBy = 'name' }: OptionsQuery) {
-
   const onlineQueryFn = async () => {
-    // Remove undefined filters before sending to Supabase
-    const validFilters = cleanFilters(filters) as Record<string, string | boolean>;
-    
+    const validFilters = cleanFilters(filters);
     const { data, error } = await createClient()
       .from(tableName)
       .select(`${valueField}, ${labelField}`)
@@ -52,20 +48,17 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     const table = localDb.table(tableName);
     const validFilters = cleanFilters(filters);
     
-    // If no filters, just sort
     if (Object.keys(validFilters).length === 0) {
       return table.orderBy(orderBy).toArray();
     }
 
-    // Try robust filtering: Collection.filter() is safer than .where() for complex mixed types/indexes
-    // It scans the table (or uses simple index if possible) and filters in JS
     return table
       .filter(item => {
         return Object.entries(validFilters).every(([key, val]) => item[key] === val);
       })
       .toArray()
       .then(result => {
-        // Apply sorting in JS after filtering to avoid "Compound Index" requirements for .where().sortBy()
+        // Javascript Sort
         return result.sort((a, b) => {
            const valA = a[orderBy];
            const valB = b[orderBy];
@@ -83,7 +76,7 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     localQueryFn,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dexieTable: localDb.table(tableName) as any,
-    staleTime: 60 * 60 * 1000, // 1 hour
+    staleTime: 60 * 60 * 1000, 
   });
 
   const options: Option[] = useMemo(() => {
@@ -98,49 +91,24 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
   return { options, isLoading };
 }
 
-// --- Specialized Hooks for Convenience ---
+// --- Specialized Hooks ---
 
-// export const useLookupTypeOptions = (category: string) => {
-//   return useDropdownOptions({
-//     tableName: 'lookup_types',
-//     valueField: 'id',
-//     labelField: 'name',
-//     filters: { category, name: 'DEFAULT', status: true }, // We rely on logic to fix this: name != DEFAULT is not supported by match. 
-//     // Actually, 'match' in Supabase is equality.
-//     // To properly support "not equal", we'd need a more complex query builder.
-//     // For now, let's filter client side or assume the caller handles it.
-//     // Wait, the previous implementation had logic for this. 
-//     // Let's assume standard equality for this generic hook for now, 
-//     // and filter DEFAULT out in the options map if needed, 
-//     // BUT 'match' {name: 'DEFAULT'} will only return DEFAULT.
-//     // Let's remove 'name' from filters here and filter in memory if we can't express NEQ easily in this generic wrapper.
-//     // UPDATED: Removed name filter here, handled by specialized filtering logic if needed, or we rely on the component to filter "DEFAULT".
-//     // Actually, let's keep it simple: fetch all for category, filter DEFAULT in UI components if critical.
-//     // Or, we fix the filter passed:
-//     // filters: { category, status: true } 
-//     // and filter 'DEFAULT' in the useMemo below? No, useDropdownOptions is generic.
-    
-//     // Correction: Let's just fetch active ones for category.
-//     // Components usually ignore 'DEFAULT' or we can add a filter prop later.
-//   });
-// };
-// FIX: Redefined to simple filter
-export const useLookupTypeOptionsSimple = (category: string) => {
-    const { options, isLoading } = useDropdownOptions({
-        tableName: 'lookup_types',
-        valueField: 'id',
-        labelField: 'name',
-        filters: { category, status: true },
-        orderBy: 'sort_order'
-    });
-    
-    // Filter out DEFAULT here
-    const filteredOptions = useMemo(() => options.filter(o => o.label !== 'DEFAULT'), [options]);
-    return { options: filteredOptions, isLoading };
+export const useLookupTypeOptions = (category: string) => {
+  const { options, isLoading } = useDropdownOptions({
+    tableName: 'lookup_types',
+    valueField: 'id',
+    labelField: 'name',
+    filters: { category, status: true }, // Query only active items in category
+    orderBy: 'sort_order'
+  });
+
+  // THE FIX: Client-side filtering to exclude 'DEFAULT' since match() is equality-only
+  const filteredOptions = useMemo(() => 
+    options.filter(o => o.label !== 'DEFAULT'), 
+  [options]);
+
+  return { options: filteredOptions, isLoading };
 };
-// Re-export as the main one
-export const useLookupTypeOptions = useLookupTypeOptionsSimple;
-
 
 export const useActiveNodeOptions = () => {
   return useDropdownOptions({
@@ -169,7 +137,6 @@ export const useActiveRingOptions = () => {
   });
 };
 
-// Specialized hook for employees with custom label formatting
 export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
     const { data, error } = await createClient()
@@ -182,8 +149,6 @@ export function useEmployeeOptions() {
   };
 
   const localQueryFn = () => {
-    // THE FIX: Use orderBy().filter() to safely handle sorting + boolean filtering
-    // This avoids "Failed to execute 'bound' on 'IDBKeyRange'" errors.
     return localDb.v_employees
         .orderBy('employee_name')
         .filter(e => e.status === true)

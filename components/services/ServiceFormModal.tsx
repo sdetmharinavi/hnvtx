@@ -7,18 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "@/components/common/ui";
 import { FormCard, FormInput, FormSearchableSelect, FormSwitch, FormTextarea } from "@/components/common/form";
-import { useTableQuery } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
 import { V_servicesRowSchema } from "@/schemas/zod-schemas";
+import { useActiveNodeOptions, useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
 
-// --- Corrected Schema ---
 const serviceFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   node_id: z.uuid("Start Location is required"), 
-  // NEW: Optional End Node
-  end_node_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
-  
-  link_type_id: z.union([z.string().uuid(), z.literal("")]).nullable().optional(),
+  end_node_id: z.union([z.uuid(), z.literal("")]).nullable().optional(),
+  link_type_id: z.union([z.uuid(), z.literal("")]).nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
   lc_id: z.string().nullable().optional(),
@@ -41,7 +37,6 @@ interface ServiceFormModalProps {
 export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   isOpen, onClose, editingService, onSubmit, isLoading
 }) => {
-  const supabase = createClient();
   const isEdit = !!editingService;
 
   const { register, handleSubmit, control, reset, watch, formState: { errors } } = useForm<ServiceFormValues>({
@@ -51,27 +46,14 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   
   const startNodeId = watch('node_id');
 
-  // --- Data Fetching ---
-  const { data: nodes } = useTableQuery(supabase, "nodes", { 
-    columns: "id, name", 
-    filters: { status: true },
-    orderBy: [{ column: 'name', ascending: true }],
-    limit: 5000 
-  });
-  
-  const { data: linkTypes } = useTableQuery(supabase, "lookup_types", { 
-    filters: { category: "LINK_TYPES" },
-    orderBy: [{ column: 'name', ascending: true }]
-  });
+  // --- REFACTORED: Data Fetching ---
+  const { options: nodeOptions, isLoading: isLoadingNodes } = useActiveNodeOptions();
+  const { options: linkTypeOptions, isLoading: isLoadingLinks } = useLookupTypeOptions("LINK_TYPES");
 
-  const nodeOptions = useMemo(() => nodes?.data.map(n => ({ value: n.id!, label: n.name! })) || [], [nodes]);
-  
   // Filter end node options to prevent selecting same node as start
   const endNodeOptions = useMemo(() => {
      return nodeOptions.filter(n => n.value !== startNodeId);
   }, [nodeOptions, startNodeId]);
-  
-  const linkTypeOptions = useMemo(() => linkTypes?.data.map(l => ({ value: l.id!, label: l.name! })) || [], [linkTypes]);
 
   // --- Reset Logic ---
   useEffect(() => {
@@ -80,7 +62,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
             reset({
                 name: editingService.name || "",
                 node_id: editingService.node_id || "", 
-                end_node_id: editingService.end_node_id || "", // NEW
+                end_node_id: editingService.end_node_id || "",
                 link_type_id: editingService.link_type_id || "",
                 bandwidth_allocated: editingService.bandwidth_allocated || "",
                 vlan: editingService.vlan || "",
@@ -94,7 +76,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
               name: "", 
               status: true,
               node_id: "",
-              end_node_id: "", // NEW
+              end_node_id: "",
               link_type_id: "",
               bandwidth_allocated: "",
               vlan: "",
@@ -111,7 +93,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
 
     const sanitizedData = {
       ...data,
-      end_node_id: toNull(data.end_node_id), // NEW
+      end_node_id: toNull(data.end_node_id),
       link_type_id: toNull(data.link_type_id),
       bandwidth_allocated: toNull(data.bandwidth_allocated),
       vlan: toNull(data.vlan),
@@ -124,7 +106,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Service" : "Add Service"} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit Service" : "Add Service"} size="lg" className="h-0 w-0 bg-transparent">
         <FormCard
             title={isEdit ? "Edit Service" : "Add New Service"}
             subtitle="Define the logical service details."
@@ -153,6 +135,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
                   error={errors.node_id} 
                   required 
                   placeholder="Select location A"
+                  isLoading={isLoadingNodes}
                 />
 
                 <FormSearchableSelect<ServiceFormValues> 
@@ -162,6 +145,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
                   options={endNodeOptions} 
                   error={errors.end_node_id} 
                   placeholder="Select location B"
+                  isLoading={isLoadingNodes}
                 />
 
                 <FormSearchableSelect<ServiceFormValues> 
@@ -171,6 +155,7 @@ export const ServiceFormModal: FC<ServiceFormModalProps> = ({
                   options={linkTypeOptions} 
                   error={errors.link_type_id} 
                   placeholder="e.g. MPLS, ILL"
+                  isLoading={isLoadingLinks}
                 />
                 
                 <FormInput 

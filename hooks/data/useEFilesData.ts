@@ -12,8 +12,7 @@ import {
 import { z } from "zod";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
 import { localDb } from "@/hooks/data/localDb";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
-import { useTableQuery } from "@/hooks/database";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 const supabase = createClient();
 
@@ -145,7 +144,7 @@ export function useEFileDetails(fileId: string) {
 
 export function useInitiateFile() {
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   return useMutation({
     mutationFn: async (payload: InitiateFilePayload) => {
@@ -173,7 +172,7 @@ export function useInitiateFile() {
 
 export function useUpdateFileDetails() {
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   return useMutation({
     mutationFn: async (payload: UpdateFilePayload) => {
@@ -199,7 +198,7 @@ export function useUpdateFileDetails() {
 
 export function useForwardFile() {
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
   
   return useMutation({
     mutationFn: async (payload: ForwardFilePayload) => {
@@ -224,7 +223,7 @@ export function useForwardFile() {
 
 export function useCloseFile() {
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   return useMutation({
     mutationFn: async ({ fileId, remarks }: { fileId: string; remarks: string }) => {
@@ -247,7 +246,7 @@ export function useCloseFile() {
 
 export function useDeleteFile() {
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   return useMutation({
     mutationFn: async (fileId: string) => {
@@ -261,16 +260,5 @@ export function useDeleteFile() {
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
     },
     onError: (err) => toast.error(`Failed to delete file: ${err.message}`)
-  });
-}
-
-export function useEmployeeOptions() {
-  const supabase = createClient();
-  // Using table query hook which is already offline-capable
-  return useTableQuery(supabase, 'v_employees', {
-    columns: 'id, employee_name, employee_designation_name, maintenance_area_name',
-    filters: { status: true },
-    orderBy: [{ column: 'employee_name', ascending: true }],
-    limit: 1000
   });
 }

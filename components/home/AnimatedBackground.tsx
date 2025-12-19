@@ -28,8 +28,8 @@ export default function AnimatedBackground() {
       {/* Dynamic gradient overlay that adjusts for dark mode */}
       <div className={`fixed inset-0 z-0 transition-opacity duration-500 ${
         isDarkMode 
-          ? "bg-blue-500/70 bg-gradient-to-b from-blue-500/70 via-blue-500/40 to-blue-500/70" 
-          : "bg-blue-500/40 bg-gradient-to-b from-blue-500/40 via-transparent to-blue-500/40"
+          ? "bg-slate-700/30 bg-linear-to-b from-slate-500/70 via-slate-500/40 to-slate-500/70" 
+          : "bg-slate-500/40 bg-linear-to-b from-slate-500/40 via-transparent to-slate-500/40"
       }`} />
       
       <motion.div 

@@ -13,7 +13,8 @@
 html {
   font-size: 15px;
   /* Prevent pull-to-refresh on mobile which breaks app-like feel for tables */
-  overscroll-behavior-y: none; 
+  overscroll-behavior-y: none;
+  height: 100%; /* Ensure legacy browser support */
 }
 
 /* Large screens (Full HD) */
@@ -68,9 +69,20 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  height: 100%; /* Ensure legacy browser support */
   /* Prevent bounce effect on macOS/iOS */
   overscroll-behavior-y: none;
+}
+
+/* --- SCROLLBAR HIDING UTILITIES --- */
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* Ensure react-datepicker popper appears above modals/overlays */
@@ -78,7 +90,7 @@ body {
   z-index: 9999 !important;
 }
 
-/* Custom Scrollbar for Webkit */
+/* Custom Scrollbar for visible areas (like tables) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

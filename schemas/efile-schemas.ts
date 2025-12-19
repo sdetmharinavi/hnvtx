@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // Matches v_e_files_extended
 export const v_e_files_extendedRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   file_number: z.string(),
   subject: z.string(),
   description: z.string().nullable(),
@@ -13,38 +13,38 @@ export const v_e_files_extendedRowSchema = z.object({
   updated_at: z.string(),
   
   // Employee fields
-  initiator_employee_id: z.string().uuid().nullable(),
+  initiator_employee_id: z.uuid().nullable(),
   initiator_name: z.string().nullable(),
   initiator_designation: z.string().nullable(),
   
-  current_holder_employee_id: z.string().uuid().nullable(),
+  current_holder_employee_id: z.uuid().nullable(),
   current_holder_name: z.string().nullable(),
   current_holder_designation: z.string().nullable(),
   current_holder_area: z.string().nullable(),
 
   // Operator fields
-  recorded_by_user_id: z.string().uuid().nullable(),
+  recorded_by_user_id: z.uuid().nullable(),
   recorded_by_name: z.string().nullable(),
 });
 export type EFileRow = z.infer<typeof v_e_files_extendedRowSchema>;
 
 // Matches v_file_movements_extended
 export const v_file_movements_extendedRowSchema = z.object({
-  id: z.string().uuid(),
-  file_id: z.string().uuid(),
+  id: z.uuid(),
+  file_id: z.uuid(),
   action_type: z.enum(['initiated', 'forwarded', 'returned', 'closed']),
   remarks: z.string().nullable(),
   created_at: z.string(),
   
-  from_employee_id: z.string().uuid().nullable(),
+  from_employee_id: z.uuid().nullable(),
   from_employee_name: z.string().nullable(),
   from_employee_designation: z.string().nullable(),
   
-  to_employee_id: z.string().uuid().nullable(),
+  to_employee_id: z.uuid().nullable(),
   to_employee_name: z.string().nullable(),
   to_employee_designation: z.string().nullable(),
   
-  performed_by_user_id: z.string().uuid().nullable(),
+  performed_by_user_id: z.uuid().nullable(),
   performed_by_name: z.string().nullable(),
 });
 export type EFileMovementRow = z.infer<typeof v_file_movements_extendedRowSchema>;
@@ -62,7 +62,7 @@ export const initiateFileSchema = z.object({
 export type InitiateFilePayload = z.infer<typeof initiateFileSchema>;
 
 export const forwardFileSchema = z.object({
-  file_id: z.string().uuid(),
+  file_id: z.uuid(),
   to_employee_id: z.string().uuid("Recipient employee is required"),
   remarks: z.string().min(1, "Remarks are required"),
   action_type: z.enum(['forwarded', 'returned']).default('forwarded'),

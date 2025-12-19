@@ -11,12 +11,11 @@ import { useInitiateFile, useForwardFile, useUpdateFileDetails } from "@/hooks/d
 import { V_e_files_extendedRowSchema } from "@/schemas/zod-schemas";
 import { useEmployeeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
 
-// Helper is no longer needed here
-
 // --- INITIATE MODAL ---
 export const InitiateFileModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { mutate, isPending } = useInitiateFile();
-  // REFACTORED: Use centralized hook
+  
+  // REFACTORED: Use the centralized hook. It handles data fetching, formatting, and caching.
   const { options: employeeOptions, isLoading: isLoadingEmployees } = useEmployeeOptions();
 
   const { register, control, handleSubmit, formState: { errors } } = useForm<InitiateFilePayload>({
@@ -124,6 +123,7 @@ export const ForwardFileModal = ({ isOpen, onClose, fileId }: { isOpen: boolean;
         </Modal>
     );
 };
+
 
 // --- EDIT DETAILS MODAL ---
 const editSchema = z.object({

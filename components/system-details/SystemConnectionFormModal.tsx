@@ -31,7 +31,7 @@ import Link from 'next/link';
 // Update schema to include the new field
 const formSchema = z.object({
   // Connection Keys
-  system_id: z.string().uuid(),
+  system_id: z.uuid(),
   media_type_id: z.string().uuid('Media Type is required'),
   status: z.boolean(),
   commissioned_on: z.string().nullable().optional(),
@@ -39,7 +39,7 @@ const formSchema = z.object({
 
   // Service Keys (Logical)
   service_name: z.string().min(1, 'Service Name / Customer is required'),
-  link_type_id: z.string().uuid().nullable().optional(),
+  link_type_id: z.uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
   lc_id: z.string().nullable().optional(),

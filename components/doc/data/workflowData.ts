@@ -38,9 +38,8 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-
-  // ============================================================================
-  // NEW MODULE: OFFLINE & SYNC
+// ============================================================================
+  // MODULE: OFFLINE & SYNC (UPDATED)
   // ============================================================================
   {
     value: 'offline_sync',
@@ -57,54 +56,56 @@ export const workflowSections: WorkflowSection[] = [
       {
         title: '1. Realtime Updates (Online)',
         userSteps: [
-          'When connected to the internet, the app listens for changes live.',
-          'If another user updates a record (e.g., changes a Ticket Status or Inventory Count), your screen updates automatically.',
-          'No manual refresh is required for collaborative tasks.',
+          'When connected, the app listens for database changes live.',
+          'If another user updates a record, your screen updates automatically.',
+          'The **Network Status Bar** (bottom) remains hidden while connection is healthy.',
         ],
         uiSteps: [
-          'The Sync Cloud icon in the header stays Green to indicate a live connection.',
-          'Tables and lists refresh silently in the background.',
+          'The Cloud icon in the header stays Green ("Synced").',
+          'Tables refresh silently in the background via `useRealtimeSubscription`.',
         ],
         techSteps: [
-          '**Hook:** `useRealtimeSubscription` connects to Supabase Realtime (WebSockets).',
-          '**Logic:** Listens for `POSTGRES_CHANGES` events and invalidates specific React Query keys to trigger a refetch.',
+          '**Hook:** `useRealtimeSubscription` connects to Supabase Realtime.',
+          '**Logic:** Listens for `POSTGRES_CHANGES` and invalidates specific React Query keys.',
         ],
       },
       {
         title: '2. Offline Mode',
         userSteps: [
           'The app automatically detects network loss.',
-          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams using locally cached data.',
-          '**Write Access:** You can Create/Edit records. Changes are queued locally.',
-          '**Restrictions:** Complex operations like Route Splicing are disabled to prevent data corruption.',
+          '**Read Access:** View Systems, Nodes, Employees, Inventory using locally cached data.',
+          '**Write Access:** Create/Edit/Delete records. Changes are queued locally.',
+          '**Status Bar:** A dark bar appears at the bottom indicating "Offline Mode".',
         ],
         uiSteps: [
-          'A "You\'re offline" banner appears.',
-          'The Sync Cloud icon turns Grey/Crossed out.',
+          'The header Cloud icon turns Grey ("Offline").',
+          'The persistent bottom bar shows "Offline Mode • View Only".',
+          'Modals for creating/editing items will show "Saved offline" toasts.',
         ],
         techSteps: [
-          '**Storage:** `Dexie.js` (IndexedDB) acts as the source of truth.',
-          '**Service Worker:** API calls use `NetworkOnly` strategy to prevent stale HTTP caching conflicts.',
+          '**Storage:** `Dexie.js` (IndexedDB) stores `v_` views for fast local access.',
+          '**Hooks:** `useLocalFirstQuery` serves local data immediately while network requests fail.',
         ],
       },
       {
         title: '3. Synchronization Queue',
         userSteps: [
           'Changes made while offline are stored in a "Pending Queue".',
-          'When internet restores, the app automatically processes this queue in the background.',
-          'Click the Cloud Icon to view pending or failed sync tasks.',
+          'When internet restores, the app automatically processes this queue.',
+          '**Visual Feedback:** The bottom bar turns Blue ("Syncing...") then Green ("Data Synced").',
         ],
         uiSteps: [
-          'The Cloud icon animates (Blue) while processing the queue.',
-          'Red Warning indicates sync conflicts (click to resolve).',
+          'Header Cloud icon animates (Blue) during processing.',
+          'If a sync fails (e.g. conflict), the bar turns Red. Click to retry or discard.',
         ],
         techSteps: [
-          '**Queue:** `mutation_queue` table in Dexie stores the payloads.',
+          '**Queue:** `mutation_queue` table in Dexie stores payloads.',
           '**Process:** `useMutationQueue` replays requests sequentially when `useOnlineStatus` becomes true.',
         ],
       },
     ],
   },
+
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)

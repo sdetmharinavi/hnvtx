@@ -1,9 +1,9 @@
 // path: components/home/HeroContent.tsx
-"use client";
+'use client';
 
-import { motion, MotionValue, TargetAndTransition, Variants } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { motion, MotionValue, TargetAndTransition, Variants } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 
 interface HeroContentProps {
   variants: {
@@ -18,20 +18,24 @@ interface HeroContentProps {
 }
 
 // Fixed Spinner to ensure Tailwind classes work reliably
-const LoadingSpinner = ({ size = "sm", color = "border-white" }: { size?: "sm" | "lg", color?: string }) => (
-  <div className={`animate-spin rounded-full border-2 border-t-transparent ${color} ${
-    size === "sm" ? "h-4 w-4" : "h-6 w-6"
-  }`} />
+const LoadingSpinner = ({
+  size = 'sm',
+  color = 'border-white',
+}: {
+  size?: 'sm' | 'lg';
+  color?: string;
+}) => (
+  <div
+    className={`animate-spin rounded-full border-2 border-t-transparent ${color} ${
+      size === 'sm' ? 'h-4 w-4' : 'h-6 w-6'
+    }`}
+  />
 );
 
-export default function HeroContent({
-  variants,
-  floatingAnimation,
-  textY,
-}: HeroContentProps) {
+export default function HeroContent({ variants, floatingAnimation, textY }: HeroContentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(28800);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,7 +53,7 @@ export default function HeroContent({
 
     if (countdown === 0) {
       setLoading(true);
-      router.push("/dashboard");
+      router.push('/dashboard');
       return;
     }
 
@@ -66,7 +70,7 @@ export default function HeroContent({
     e.preventDefault();
     setLoading(true);
     if (navTimerRef.current) clearTimeout(navTimerRef.current);
-    router.push("/dashboard");
+    router.push('/dashboard');
   };
 
   const formatTime = (date: Date) => {
@@ -74,7 +78,7 @@ export default function HeroContent({
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false
+      hour12: false,
     });
   };
 
@@ -83,7 +87,7 @@ export default function HeroContent({
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -92,19 +96,19 @@ export default function HeroContent({
       { name: 'IST', offset: 5.5, city: 'Kolkata' },
       { name: 'UTC', offset: 0, city: 'London' },
       { name: 'EST', offset: -5, city: 'New York' },
-      { name: 'JST', offset: 9, city: 'Tokyo' }
+      { name: 'JST', offset: 9, city: 'Tokyo' },
     ];
 
-    return zones.map(zone => {
-      const utcTime = currentTime.getTime() + (currentTime.getTimezoneOffset() * 60000);
-      const zoneTime = new Date(utcTime + (3600000 * zone.offset));
+    return zones.map((zone) => {
+      const utcTime = currentTime.getTime() + currentTime.getTimezoneOffset() * 60000;
+      const zoneTime = new Date(utcTime + 3600000 * zone.offset);
       return {
         ...zone,
         time: zoneTime.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          hour12: false
-        })
+          hour12: false,
+        }),
       };
     });
   };
@@ -126,30 +130,18 @@ export default function HeroContent({
       initial="hidden"
       animate="visible"
     >
-      {/* Floating badge */}
-      <motion.div
-        variants={variants.ctaVariants}
-        animate={floatingAnimation}
-        // FIX: Added bg-red-900 fallback
-        className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
-      >
-        <span className="text-xs font-semibold tracking-wide sm:text-sm">
-          🚀 Advanced Database Management
-        </span>
-      </motion.div>
-
       {/* Time & Date Wizard */}
-      <motion.div
-        variants={variants.highlightVariants}
-        className="mb-8 w-full max-w-4xl"
-      >
+      <motion.div variants={variants.highlightVariants} className="mb-8 w-full max-w-4xl">
         {/* Main Clock Display */}
         {/* FIX: Added bg-gray-900 fallback */}
         <div className="relative overflow-hidden rounded-2xl border border-red-400/30 bg-gray-900 bg-linear-to-br from-red-950/80 via-purple-950/60 to-red-950/80 p-6 shadow-2xl backdrop-blur-xl">
           {/* Animated background glow */}
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-0 left-1/4 h-32 w-32 animate-pulse rounded-full bg-red-500 blur-3xl" />
-            <div className="absolute bottom-0 right-1/4 h-32 w-32 animate-pulse rounded-full bg-purple-500 blur-3xl" style={{ animationDelay: '1s' }} />
+            <div
+              className="absolute bottom-0 right-1/4 h-32 w-32 animate-pulse rounded-full bg-purple-500 blur-3xl"
+              style={{ animationDelay: '1s' }}
+            />
           </div>
 
           <div className="relative z-10">
@@ -193,7 +185,7 @@ export default function HeroContent({
                   className="h-full rounded-full bg-red-500 bg-linear-to-r from-red-500 via-purple-500 to-pink-500 shadow-lg shadow-red-500/50"
                   initial={{ width: 0 }}
                   animate={{ width: `${getDayProgress()}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
                 />
               </div>
             </motion.div>
@@ -213,9 +205,7 @@ export default function HeroContent({
                   whileHover={{ scale: 1.05, y: -2 }}
                   className="rounded-lg border border-red-400/20 bg-red-900/30 p-3 backdrop-blur-sm transition-all hover:border-red-400/40 hover:bg-red-900/40"
                 >
-                  <div className="mb-1 text-xs font-semibold text-red-300/80">
-                    {zone.city}
-                  </div>
+                  <div className="mb-1 text-xs font-semibold text-red-300/80">{zone.city}</div>
                   <div className="mb-1 font-mono text-lg font-bold text-white sm:text-xl">
                     {zone.time}
                   </div>
@@ -241,14 +231,17 @@ export default function HeroContent({
           Record Database
         </span>
       </motion.h1>
-
-      <motion.p
-        variants={variants.subtitleVariants}
-        className="mb-6 max-w-xs px-2 text-base leading-relaxed text-gray-300 sm:mb-8 sm:max-w-2xl sm:px-0 sm:text-lg md:text-xl lg:max-w-3xl lg:text-2xl dark:text-gray-400"
+      {/* Floating badge */}
+      <motion.div
+        variants={variants.ctaVariants}
+        animate={floatingAnimation}
+        // FIX: Added bg-red-900 fallback
+        className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
       >
-        Secure, reliable, and efficient database management for transmission
-        records
-      </motion.p>
+        <span className="text-xs font-semibold tracking-wide sm:text-sm">
+          🚀 Secure, reliable, and efficient database management for transmission records
+        </span>
+      </motion.div>
 
       <motion.div
         variants={variants.ctaVariants}
@@ -257,7 +250,7 @@ export default function HeroContent({
         <motion.button
           whileHover={{
             scale: 1.02,
-            boxShadow: "0 10px 30px rgba(239, 68, 68, 0.3)",
+            boxShadow: '0 10px 30px rgba(239, 68, 68, 0.3)',
           }}
           whileTap={{ scale: 0.98 }}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/30 bg-red-600 px-6 py-3 text-base font-bold text-white shadow-xl transition-all hover:bg-red-700 sm:px-8 sm:py-4 sm:text-lg dark:bg-red-700 dark:hover:bg-red-800"
