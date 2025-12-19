@@ -85,7 +85,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     reset,
     control,
     watch,
-    setValue,
+    // setValue,
     trigger,
   } = useForm<SystemFormValues>({
     resolver: zodResolver(systemModalFormSchema) as Resolver<SystemFormValues>,
@@ -95,7 +95,7 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   // --- Watchers & Computed State ---
   const selectedSystemTypeId = watch("system_type_id");
-  const selectedNodeId = watch("node_id");
+  // const selectedNodeId = watch("node_id");
   
   const selectedSystemTypeLabel = useMemo(
     () => systemTypeOptions.find((st) => st.value === selectedSystemTypeId)?.label || "",

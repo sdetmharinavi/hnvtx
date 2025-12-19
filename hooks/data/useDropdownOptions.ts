@@ -8,7 +8,7 @@ import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { V_employeesRowSchema } from '@/schemas/zod-schemas';
 
-type TableName = 'lookup_types' | 'nodes' | 'maintenance_areas' | 'rings' | 'v_employees';
+type TableName = 'lookup_types' | 'nodes' | 'maintenance_areas' | 'rings' | 'v_employees' | 'employee_designations';
 
 interface OptionsQuery {
   tableName: TableName;
