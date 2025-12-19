@@ -13,16 +13,14 @@ import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { CommandMenu } from "@/components/common/CommandMenu";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription"; // ADDED
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { NetworkStatusBar } from "@/components/common/ui/NetworkStatusBar"; // IMPORTED
 
 // Inner component to safely use hooks inside providers
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const isMobile = useIsMobile();
   
-  // THE FIX: Activate Realtime Subscription
-  // This will listen for DB changes and auto-refresh React Query data
-  // It automatically pauses when offline.
   useRealtimeSubscription();
 
   const desktopSidebarWidth = isCollapsed ? 64 : 260;
@@ -31,6 +29,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CommandMenu />
+      {/* ADDED: Global Network Status Bar */}
+      <NetworkStatusBar />
 
       {/* Sidebar - Fixed position */}
       <div className="no-print">

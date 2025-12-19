@@ -1,3 +1,5 @@
+/* app/globals.css */
+
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -8,10 +10,10 @@
   --foreground: #171717;
 }
 
-/* app/globals.css */
-
 html {
-  font-size: 15px; /* Default base size */
+  font-size: 15px;
+  /* Prevent pull-to-refresh on mobile which breaks app-like feel for tables */
+  overscroll-behavior-y: none; 
 }
 
 /* Large screens (Full HD) */
@@ -42,7 +44,6 @@ html {
   --font-mono: var(--font-geist-mono);
 }
 
-
 /* Smooth transitions for interactive elements */
 button,
 a {
@@ -68,11 +69,40 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
+  /* Prevent bounce effect on macOS/iOS */
+  overscroll-behavior-y: none;
 }
 
 /* Ensure react-datepicker popper appears above modals/overlays */
 .react-datepicker-popper {
   z-index: 9999 !important;
+}
+
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569; /* slate-600 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* slate-500 */
 }
 
 /* Animation for the sync indicator */
@@ -92,7 +122,6 @@ body {
 }
 
 /* --- LEAFLET POPUP DARK MODE FIX --- */
-/* Target any leaflet popup inside a .dark container (like html.dark) */
 .dark .leaflet-popup-content-wrapper, 
 .dark .leaflet-popup-tip {
   background-color: #1f2937 !important; /* gray-800 */
@@ -106,7 +135,6 @@ body {
 }
 
 /* Calender */
-/* Custom Calendar Styles */
 .react-datepicker {
   border-radius: 0.75rem !important;
   border-color: #e5e7eb !important;
@@ -171,7 +199,7 @@ body {
   color: #dbeafe !important;
 }
 
-/* Add styles for the permanent map labels */
+/* Map Labels */
 .permanent-label {
   background: transparent;
   background-color: transparent;
@@ -179,24 +207,23 @@ body {
   box-shadow: none;
   font-size: 12px;
   font-weight: 600;
-  color: #2c3e50; /* A dark slate color for light mode */
+  color: #2c3e50; 
   text-shadow: 
     1px 1px 0 #ffffff, 
     -1px -1px 0 #ffffff, 
     1px -1px 0 #ffffff, 
-    -1px 1px 0 #ffffff; /* White outline for readability */
+    -1px 1px 0 #ffffff; 
 }
 
 .dark .permanent-label {
-  color: #dfe2e6; /* A light color for dark mode */
+  color: #dfe2e6; 
   text-shadow: 
     1px 1px 0 #2c3e50, 
     -1px -1px 0 #2c3e50, 
     1px -1px 0 #2c3e50, 
-    -1px 1px 0 #2c3e50; /* Dark outline for readability */
+    -1px 1px 0 #2c3e50; 
 }
 
-/* THE FIX: Adjust text alignment based on tooltip position */
 .leaflet-tooltip-left.permanent-label {
   text-align: right;
 }
@@ -205,27 +232,23 @@ body {
   text-align: left;
 }
 
-/* THE FIX: Simplified print styles that now work because the QR page has its own clean layout */
+/* Print Styles */
 @media print {
-  /* Hide elements marked with no-print */
   .no-print {
     display: none !important;
   }
 
-  /* Ensure the body and page wrapper have a clean white background for printing */
   body, .qr-page-wrapper {
     background: #ffffff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* Remove shadows and borders from the main content card for a cleaner print */
   .print-content {
     box-shadow: none !important;
-    border: none !important; /* Changed from 1px solid #ccc */
+    border: none !important;
   }
 
-  /* Force light theme styles for printing from dark mode */
   .dark .print-content {
     background-color: #ffffff !important;
   }
