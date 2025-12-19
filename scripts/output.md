@@ -4675,7 +4675,7 @@ export default function GlobalError({
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { NetworkFirst, CacheFirst } from "@serwist/strategies";
+import { NetworkFirst, CacheFirst, NetworkOnly } from "@serwist/strategies";
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -4689,21 +4689,17 @@ declare const self: ServiceWorkerGlobalScope;
 // --- CUSTOM CACHING STRATEGIES ---
 
 const customCache: RuntimeCaching[] = [
-  // 1. API/RPC Calls: NetworkFirst with Timeout
-  // Try network for 5 seconds (to get fresh data), if slow/offline, use cache.
-  // This ensures "freshness" when online but "speed/availability" when network is spotty.
+  // 1. API/RPC Calls: Network Only
+  // THE FIX: We strictly disable SW caching for API/Supabase calls.
+  // Our 'useLocalFirstQuery' + Dexie architecture handles offline data persistence at the application layer.
+  // Caching here causes stale data issues and conflicts with optimistic UI updates.
   {
-    matcher: ({ url }) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'),
-    handler: new NetworkFirst({
-      cacheName: "api-cache",
-      plugins: [
-        new ExpirationPlugin({
-          maxEntries: 500,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 7)
-        }),
-      ],
-      networkTimeoutSeconds: 5, // Wait 5s for network, then fall back to cache
-    }),
+    matcher: ({ url }) => 
+      url.pathname.startsWith('/api/') || 
+      url.pathname.startsWith('/rest/') || 
+      url.pathname.startsWith('/rpc/') ||
+      url.hostname.includes('supabase.co'), // Match Supabase hosted domains
+    handler: new NetworkOnly(),
   },
   
   // 2. Static Assets (Images, Fonts): CacheFirst
@@ -4722,20 +4718,18 @@ const customCache: RuntimeCaching[] = [
   },
 
   // 3. Navigation (HTML Pages): NetworkFirst with Short Timeout
-  // CRITICAL FIX: This makes navigation fast. 
-  // It tries network for 3 seconds. If slow, it serves the cached HTML immediately.
-  // The previous setting of 24h expiration caused the "not working after many days" issue.
+  // Keeps the App Shell fresh but loads fast.
   {
     matcher: ({ request }) => request.mode === 'navigate',
     handler: new NetworkFirst({
       cacheName: 'pages-cache',
       plugins: [
         new ExpirationPlugin({
-          maxEntries: 100, // Keep last 100 visited pages
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days (Increased from 24 hours)
+          maxEntries: 50, 
+          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
         }),
       ],
-      networkTimeoutSeconds: 3, // If network takes > 3s, use cache
+      networkTimeoutSeconds: 3, 
     }),
   },
 ];
@@ -4745,12 +4739,11 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  // Merge custom strategies BEFORE defaultCache to ensure they take precedence
   runtimeCaching: [...customCache, ...defaultCache],
-  disableDevLogs: true, // Cleaner console in production
+  disableDevLogs: true, 
 });
 
-// Push Notification Listeners
+// Push Notification Listeners (Unchanged)
 self.addEventListener('push', (event) => {
   if (event.data) {
     const data = event.data.json();
@@ -6913,304 +6906,6 @@ export default function InventoryPage() {
 }
 ```
 
-<!-- path: app/dashboard/connections/page.tsx -->
-```typescript
-// app/dashboard/connections/page.tsx
-'use client';
-
-import { useMemo, useState, useCallback } from 'react';
-import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { DataTable, TableAction } from '@/components/table';
-import { useCrudManager } from '@/hooks/useCrudManager';
-import {
-  V_system_connections_completeRowSchema,
-  Lookup_typesRowSchema,
-} from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
-import { FiGitBranch, FiMonitor, FiEye, FiGrid, FiList, FiSearch } from 'react-icons/fi';
-import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
-import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
-import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
-import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/common/ui/Input';
-import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
-import { ConnectionCard } from '@/components/connections/ConnectionCard';
-import { Row } from '@/hooks/database';
-import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-
-export default function GlobalConnectionsPage() {
-  const supabase = createClient();
-  const router = useRouter();
-
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-
-  // Trace State
-  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
-  const [isTracing, setIsTracing] = useState(false);
-  const tracePath = useTracePath(supabase);
-
-  const {
-    data: connections,
-    totalCount,
-    activeCount,
-    inactiveCount,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-    pagination,
-    search,
-    filters,
-  } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
-    tableName: 'system_connections',
-    localTableName: 'v_system_connections_complete',
-    dataQueryHook: useAllSystemConnectionsData,
-    displayNameField: 'service_name',
-    searchColumn: ['service_name', 'system_name', 'connected_system_name'],
-  });
-
-  // Fetch Filters
-  const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['media-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
-  );
-
-  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['link-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
-  );
-
-  const mediaOptions = useMemo(() => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })), [mediaTypesData]);
-  const linkTypeOptions = useMemo(() => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })), [linkTypesData]);
-
-  // Columns: Pass true to show the System Name context
-  const columns = SystemConnectionsTableColumns(connections, true);
-  const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
-
-  // Handlers
-  const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
-    setSelectedConnectionId(record.id);
-    setIsDetailsModalOpen(true);
-  };
-
-  const handleTracePath = async (record: V_system_connections_completeRowSchema) => {
-    setIsTracing(true);
-    setIsTraceModalOpen(true);
-    setTraceModalData(null);
-    try {
-      const traceData = await tracePath(record);
-      setTraceModalData(traceData);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to trace path');
-      setIsTraceModalOpen(false);
-    } finally {
-      setIsTracing(false);
-    }
-  };
-
-  const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
-    if (record.system_id) {
-      router.push(`/dashboard/systems/${record.system_id}`);
-    }
-  };
-
-  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => [
-    { key: 'view-details', label: 'Full Details', icon: <FiMonitor />, onClick: handleViewDetails, variant: 'primary' },
-    { key: 'view-path', label: 'View Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0) },
-    { key: 'go-to-system', label: 'Go to System', icon: <FiGitBranch />, onClick: handleGoToSystem, variant: 'secondary' },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [handleGoToSystem]);
-
-  const headerActions = useStandardHeaderActions({
-    data: connections,
-    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
-    isLoading,
-    exportConfig: { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' },
-  });
-
-  const headerStats = [
-    { value: totalCount, label: 'Total Connections' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
-  
-  // Mobile Render for Table Mode
-  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
-     return (
-        <ConnectionCard 
-            connection={record as V_system_connections_completeRowSchema}
-            onViewDetails={handleViewDetails}
-            onViewPath={handleTracePath}
-            onGoToSystem={handleGoToSystem}
-        />
-     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleGoToSystem]);
-
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
-
-  return (
-    <div className="p-4 md:p-6 space-y-6">
-      <PageHeader
-        title="Global Connection Explorer"
-        description="View and search all service connections across the entire network."
-        icon={<FiGitBranch />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading && connections.length === 0}
-        isFetching={isFetching}
-      />
-
-      {/* Sticky Filter Bar */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search service, system, or ID..." 
-                value={search.searchQuery} 
-                onChange={(e) => search.setSearchQuery(e.target.value)}
-                leftIcon={<FiSearch className="text-gray-400" />}
-                fullWidth
-                clearable
-            />
-          </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[160px]">
-                <SearchableSelect 
-                   placeholder="Link Type"
-                   options={linkTypeOptions}
-                   value={filters.filters.connected_link_type_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, connected_link_type_id: v}))}
-                   clearable
-                />
-             </div>
-             <div className="min-w-[160px]">
-                 <SearchableSelect 
-                   placeholder="Media Type"
-                   options={mediaOptions}
-                   value={filters.filters.media_type_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, media_type_id: v}))}
-                   clearable
-                />
-             </div>
-             <div className="min-w-[120px]">
-                 <select
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters.filters.status as string || ''}
-                    onChange={(e) => filters.setFilters(prev => ({...prev, status: e.target.value}))}
-                 >
-                    <option value="">Status</option>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                 </select>
-             </div>
-             {/* View Toggle */}
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><FiGrid /></button>
-                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><FiList /></button>
-             </div>
-          </div>
-      </div>
-
-      {/* Content */}
-      {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-             {connections.map(conn => (
-                <ConnectionCard 
-                    key={conn.id} 
-                    connection={conn}
-                    onViewDetails={handleViewDetails}
-                    onViewPath={handleTracePath}
-                    onGoToSystem={handleGoToSystem}
-                />
-             ))}
-             {connections.length === 0 && !isLoading && (
-                 <div className="col-span-full py-16 text-center text-gray-500">
-                    <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No connections found matching your criteria.</p>
-                 </div>
-             )}
-          </div>
-      ) : (
-           <DataTable
-            autoHideEmptyColumns={true}
-            tableName="v_system_connections_complete"
-            data={connections}
-            columns={orderedColumns}
-            loading={isLoading}
-            isFetching={isFetching}
-            actions={tableActions}
-            renderMobileItem={renderMobileItem}
-            pagination={{
-                current: pagination.currentPage,
-                pageSize: pagination.pageLimit,
-                total: totalCount,
-                showSizeChanger: true,
-                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
-            }}
-            customToolbar={
-              <SearchAndFilters
-                searchTerm={search.searchQuery}
-                onSearchChange={search.setSearchQuery}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
-                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-                activeFilterCount={Object.keys(filters.filters).length}
-                searchPlaceholder="Search service, customer..."
-              >
-                 <SelectFilter
-                    label="Media Type"
-                    filterKey="media_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={mediaOptions}
-                 />
-                 <SelectFilter
-                    label="Link Type"
-                    filterKey="connected_link_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={linkTypeOptions}
-                    placeholder="Filter by Link Type"
-                 />
-                 <SelectFilter
-                    label="Status"
-                    filterKey="status"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={[
-                        { value: 'true', label: 'Active' },
-                        { value: 'false', label: 'Inactive' }
-                    ]}
-                 />
-              </SearchAndFilters>
-            }
-          />
-      )}
-
-      <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={selectedConnectionId} />
-      <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
-    </div>
-  );
-}
-```
-
 <!-- path: app/dashboard/users/page.tsx -->
 ```typescript
 // app/dashboard/users/page.tsx
@@ -9247,7 +8942,7 @@ import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Input, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
-import { useRpcMutation, UploadColumnMapping, usePagedData, RpcFunctionArgs, Filters, Row } from '@/hooks/database';
+import { useRpcMutation, RpcFunctionArgs, Filters, Row, usePagedData, UploadColumnMapping } from '@/hooks/database';
 import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
@@ -9269,15 +8964,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
-// import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import {  FiDatabase, FiGitBranch, FiPieChart, FiUpload, FiGrid, FiList, FiSearch } from 'react-icons/fi';
+import {  FiDatabase, FiPieChart, FiUpload, FiGrid, FiList, FiSearch, FiGitBranch } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { ConnectionCard } from '@/components/connections/ConnectionCard'; // Updated Import
+import { ConnectionCard } from '@/components/connections/ConnectionCard';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -9288,7 +8982,6 @@ export default function SystemConnectionsPage() {
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
-  // THE FIX: Set default view mode to 'grid'
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -9297,7 +8990,6 @@ export default function SystemConnectionsPage() {
 
   // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
-  // const [showFilters, setShowFilters] = useState(false);
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -9324,14 +9016,7 @@ export default function SystemConnectionsPage() {
   const tracePath = useTracePath(supabase);
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || [
-    UserRole.ADMIN, 
-    UserRole.CPANADMIN, 
-    UserRole.MAANADMIN, 
-    UserRole.SDHADMIN, 
-    UserRole.ASSETADMIN, 
-    UserRole.MNGADMIN
-  ].includes(role as UserRole);
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
 
   const canDelete = !!isSuperAdmin;
 
@@ -9352,7 +9037,6 @@ export default function SystemConnectionsPage() {
 
   const useData = useSystemConnectionsData(systemId);
 
-  // THE FIX: The sorting logic is now handled largely by the hook, but we can refine it here
   const {
     data: connections,
     totalCount: totalConnections,
@@ -9365,16 +9049,12 @@ export default function SystemConnectionsPage() {
     filters
   });
 
-  // Client-side Sort Enhancement: Prioritize Port sorting
   const sortedConnections = useMemo(() => {
-    // If user is searching, stick to the hook's relevancy sort.
-    // If browsing, sort by Local Working Interface to mimic physical rack layout.
     if (!searchQuery && connections.length > 0) {
        const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
        return [...connections].sort((a, b) => {
           const portA = a.system_working_interface || '';
           const portB = b.system_working_interface || '';
-          // Fallback to service name if ports are identical (unlikely for active links)
           if (portA === portB) {
               return (a.service_name || '').localeCompare(b.service_name || '');
           }
@@ -9507,7 +9187,8 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-       const columnMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+       // ... (unchanged file handling logic)
+       const columnMapping: UploadColumnMapping<"v_system_connections_complete">[] = [
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
         { excelHeader: 'Status', dbKey: 'status', transform: toPgBoolean },
@@ -9541,7 +9222,7 @@ export default function SystemConnectionsPage() {
         { excelHeader: 'Sdh A Customer', dbKey: 'sdh_a_customer' },
         { excelHeader: 'Sdh B Slot', dbKey: 'sdh_b_slot' },
         { excelHeader: 'Sdh B Customer', dbKey: 'sdh_b_customer' },
-      ];
+      ] as UploadColumnMapping<"v_system_connections_complete">[];
        uploadConnections({ file, columns: columnMapping, parentSystemId: parentSystem.id });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -9622,6 +9303,7 @@ export default function SystemConnectionsPage() {
                 // No GoTo needed here as we are already on the system page
                 onGoToSystem={() => {}} 
                 isSystemContext={true}
+                // We don't pass Edit/Delete here to avoid duplication in Mobile View (DataTable renders actions below)
              />
              <div className="flex justify-end gap-2 px-2">
                  {actions}
@@ -9664,7 +9346,7 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
       
-      {/* Sticky Filter Bar - Moved Outside DataTable for better layout control in Grid View */}
+      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
           <div className="w-full lg:w-96">
             <Input 
@@ -9741,6 +9423,11 @@ export default function SystemConnectionsPage() {
                         onViewPath={handleTracePath}
                         onGoToSystem={() => {}} // No-op in this view
                         isSystemContext={true}
+                        // THE FIX: Added Props for Edit/Delete
+                        onEdit={canEdit ? openEditModal : undefined}
+                        onDelete={canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined}
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                     />
                 </div>
              ))}
@@ -9782,6 +9469,355 @@ export default function SystemConnectionsPage() {
       <ConfirmModal isOpen={isDeprovisionModalOpen} onConfirm={handleConfirmDeprovision} onCancel={() => setDeprovisionModalOpen(false)} title="Confirm Deprovisioning" message={`Are you sure you want to deprovision this connection?`} loading={deprovisionMutation.isPending} type="danger" />
       <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
       <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={detailsConnectionId} />
+    </div>
+  );
+}
+```
+
+<!-- path: app/dashboard/systems/connections/page.tsx -->
+```typescript
+// app/dashboard/connections/page.tsx
+'use client';
+
+import { useMemo, useState, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { DataTable, TableAction } from '@/components/table';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import {
+  V_system_connections_completeRowSchema,
+  Lookup_typesRowSchema,
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { buildUploadConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
+import { FiGitBranch, FiMonitor, FiEye, FiGrid, FiList, FiSearch, FiUpload } from 'react-icons/fi';
+import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
+import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
+import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
+import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/common/ui/Input';
+import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { ConnectionCard } from '@/components/connections/ConnectionCard';
+import { Row } from '@/hooks/database';
+import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
+import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
+import { UploadColumnMapping } from '@/hooks/database';
+
+export default function GlobalConnectionsPage() {
+  const supabase = createClient();
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isSuperAdmin, role } = useUser();
+
+  // Permissions
+  const canEdit = !!isSuperAdmin || [
+    UserRole.ADMIN, 
+    UserRole.CPANADMIN, 
+    UserRole.MAANADMIN, 
+    UserRole.SDHADMIN
+  ].includes(role as UserRole);
+
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [showFilters, setShowFilters] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+
+  // Trace State
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
+  const tracePath = useTracePath(supabase);
+
+  const {
+    data: connections,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+    filters,
+  } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
+    tableName: 'system_connections',
+    localTableName: 'v_system_connections_complete',
+    dataQueryHook: useAllSystemConnectionsData,
+    displayNameField: 'service_name',
+    searchColumn: ['service_name', 'system_name', 'connected_system_name'],
+  });
+
+  // --- UPLOAD LOGIC ---
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    }
+  });
+
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+  
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+       // We build a column config that mimics the one in system details, but expects system_name
+       const uploadConfig = buildUploadConfig("v_system_connections_complete");
+       const customMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+         { excelHeader: 'System Name', dbKey: 'system_name', required: true }, // IMPORTANT for global upload
+         ...uploadConfig.columnMapping.filter(c => c.dbKey !== 'system_id')
+       ];
+       uploadConnections({ file, columns: customMapping });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [uploadConnections]);
+
+  // Fetch Filters
+  const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['media-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
+  );
+
+  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+    ['link-types-filter'],
+    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
+    async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
+  );
+
+  const mediaOptions = useMemo(() => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })), [mediaTypesData]);
+  const linkTypeOptions = useMemo(() => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })), [linkTypesData]);
+
+  // Columns: Pass true to show the System Name context
+  const columns = SystemConnectionsTableColumns(connections, true);
+  const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+
+  // Handlers
+  const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
+    setSelectedConnectionId(record.id);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleTracePath = async (record: V_system_connections_completeRowSchema) => {
+    setIsTracing(true);
+    setIsTraceModalOpen(true);
+    setTraceModalData(null);
+    try {
+      const traceData = await tracePath(record);
+      setTraceModalData(traceData);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to trace path');
+      setIsTraceModalOpen(false);
+    } finally {
+      setIsTracing(false);
+    }
+  };
+
+  const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
+    if (record.system_id) {
+      router.push(`/dashboard/systems/${record.system_id}`);
+    }
+  };
+
+  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => [
+    { key: 'view-details', label: 'Full Details', icon: <FiMonitor />, onClick: handleViewDetails, variant: 'primary' },
+    { key: 'view-path', label: 'View Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0) },
+    { key: 'go-to-system', label: 'Go to System', icon: <FiGitBranch />, onClick: handleGoToSystem, variant: 'secondary' },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [handleGoToSystem]);
+
+  const headerActions = useStandardHeaderActions({
+    data: connections,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
+    isLoading,
+    exportConfig: { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' },
+  });
+
+  // Inject Upload Button if allowed
+  if (canEdit) {
+    headerActions.splice(1, 0, {
+      label: isUploading ? 'Uploading...' : 'Upload List',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+      hideTextOnMobile: true
+    });
+  }
+
+  const headerStats = [
+    { value: totalCount, label: 'Total Connections' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+  ];
+  
+  // Mobile Render for Table Mode
+  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
+     return (
+        <ConnectionCard 
+            connection={record as V_system_connections_completeRowSchema}
+            onViewDetails={handleViewDetails}
+            onViewPath={handleTracePath}
+            onGoToSystem={handleGoToSystem}
+        />
+     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleGoToSystem]);
+
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+
+      <PageHeader
+        title="Global Connection Explorer"
+        description="View and search all service connections across the entire network."
+        icon={<FiGitBranch />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading && connections.length === 0}
+        isFetching={isFetching}
+      />
+
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search service, system, or ID..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+                clearable
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[160px]">
+                <SearchableSelect 
+                   placeholder="Link Type"
+                   options={linkTypeOptions}
+                   value={filters.filters.connected_link_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, connected_link_type_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[160px]">
+                 <SearchableSelect 
+                   placeholder="Media Type"
+                   options={mediaOptions}
+                   value={filters.filters.media_type_id as string}
+                   onChange={(v) => filters.setFilters(prev => ({...prev, media_type_id: v}))}
+                   clearable
+                />
+             </div>
+             <div className="min-w-[120px]">
+                 <select
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={filters.filters.status as string || ''}
+                    onChange={(e) => filters.setFilters(prev => ({...prev, status: e.target.value}))}
+                 >
+                    <option value="">Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                 </select>
+             </div>
+             {/* View Toggle */}
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><FiGrid /></button>
+                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><FiList /></button>
+             </div>
+          </div>
+      </div>
+
+      {/* Content */}
+      {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+             {connections.map(conn => (
+                <ConnectionCard 
+                    key={conn.id} 
+                    connection={conn}
+                    onViewDetails={handleViewDetails}
+                    onViewPath={handleTracePath}
+                    onGoToSystem={handleGoToSystem}
+                />
+             ))}
+             {connections.length === 0 && !isLoading && (
+                 <div className="col-span-full py-16 text-center text-gray-500">
+                    <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No connections found matching your criteria.</p>
+                 </div>
+             )}
+          </div>
+      ) : (
+           <DataTable
+            autoHideEmptyColumns={true}
+            tableName="v_system_connections_complete"
+            data={connections}
+            columns={orderedColumns}
+            loading={isLoading}
+            isFetching={isFetching}
+            actions={tableActions}
+            renderMobileItem={renderMobileItem}
+            pagination={{
+                current: pagination.currentPage,
+                pageSize: pagination.pageLimit,
+                total: totalCount,
+                showSizeChanger: true,
+                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
+            }}
+            customToolbar={
+              <SearchAndFilters
+                searchTerm={search.searchQuery}
+                onSearchChange={search.setSearchQuery}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters(!showFilters)}
+                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
+                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+                activeFilterCount={Object.keys(filters.filters).length}
+                searchPlaceholder="Search service, customer..."
+              >
+                 <SelectFilter
+                    label="Media Type"
+                    filterKey="media_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={mediaOptions}
+                 />
+                 <SelectFilter
+                    label="Link Type"
+                    filterKey="connected_link_type_id"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={linkTypeOptions}
+                    placeholder="Filter by Link Type"
+                 />
+                 <SelectFilter
+                    label="Status"
+                    filterKey="status"
+                    filters={filters.filters}
+                    setFilters={filters.setFilters}
+                    options={[
+                        { value: 'true', label: 'Active' },
+                        { value: 'false', label: 'Inactive' }
+                    ]}
+                 />
+              </SearchAndFilters>
+            }
+          />
+      )}
+
+      <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={selectedConnectionId} />
+      <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
     </div>
   );
 }
@@ -11585,7 +11621,7 @@ export default function NetworkTopologyPage() {
 
       <div className="h-[70vh] bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-4">
         {isLoading && <PageSpinner text="Loading network data..." />}
-        {isError && <ErrorDisplay error={error.message} />}
+        {isError && <ErrorDisplay error={error?.message} />}
         {!isLoading && !isError && (
           <NetworkTopologyDiagram nodes={nodes} connections={cables} />
         )}
@@ -12080,7 +12116,7 @@ import {
   FiZap
 } from 'react-icons/fi';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
 import { PageSpinner, ErrorDisplay, Button } from '@/components/common/ui';
 import { 
@@ -12261,11 +12297,6 @@ export default function RingPathsPage() {
       disabled: !canEdit
     }
   ], [canEdit]);
-
-  const headerActions = useStandardHeaderActions({
-     data: [], 
-     isLoading: isLoadingPaths,
-  });
 
   const customHeaderActions = [
     {
@@ -12760,6 +12791,183 @@ export default function OfcCableDetailsPage() {
   );
 }
 
+```
+
+<!-- path: app/dashboard/ofc/connections/page.tsx -->
+```typescript
+// app/dashboard/ofc/connections/page.tsx
+'use client';
+
+import { useState, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { DataTable } from '@/components/table';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { buildUploadConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import useOrderedColumns from '@/hooks/useOrderedColumns';
+import { FiActivity, FiUpload, FiList, FiSearch } from 'react-icons/fi';
+import { useAllOfcConnectionsData } from '@/hooks/data/useAllOfcConnectionsData';
+import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
+import { Input } from '@/components/common/ui/Input';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
+import { Filters } from '@/hooks/database'; // THE FIX: Import Filters type
+
+export default function GlobalOfcConnectionsPage() {
+  const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isSuperAdmin, role } = useUser();
+
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ASSETADMIN].includes(role as UserRole);
+  
+  // THE FIX: Use Filters type instead of Record<string, string>
+  const [filters, setFilters] = useState<Filters>({});
+
+  const {
+    data: fibers,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    pagination,
+    search,
+  } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
+    tableName: 'ofc_connections',
+    localTableName: 'v_ofc_connections_complete',
+    dataQueryHook: useAllOfcConnectionsData,
+    displayNameField: 'ofc_route_name',
+    searchColumn: ['ofc_route_name', 'system_name'],
+  });
+
+  // --- UPLOAD LOGIC ---
+  const { mutate: uploadFibers, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {
+    onSuccess: (result) => {
+      if (result.successCount > 0) refetch();
+    }
+  });
+
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+  
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+       const uploadConfig = buildUploadConfig("v_ofc_connections_complete");
+       uploadFibers({ file, columns: uploadConfig.columnMapping });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [uploadFibers]);
+
+
+  const columns = OfcDetailsTableColumns(fibers);
+  const orderedColumns = useOrderedColumns(columns, ['ofc_route_name', 'fiber_no_sn', ...TABLE_COLUMN_KEYS.v_ofc_connections_complete]);
+
+  const headerActions = useStandardHeaderActions({
+    data: fibers,
+    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
+    isLoading,
+    exportConfig: { 
+        tableName: 'v_ofc_connections_complete', 
+        fileName: 'All_Physical_Fibers',
+        maxRows: 50000 
+    },
+  });
+
+  if (canEdit) {
+    headerActions.splice(1, 0, {
+      label: isUploading ? 'Uploading...' : 'Upload Data',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+      hideTextOnMobile: true
+    });
+  }
+
+  const headerStats = [
+    { value: totalCount, label: 'Total Fibers' },
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive/Faulty', color: 'danger' as const },
+  ];
+
+  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+
+      <PageHeader
+        title="Physical Fiber Inventory"
+        description="Search, export, and manage physical fiber properties across all cables."
+        icon={<FiActivity />}
+        stats={headerStats}
+        actions={headerActions}
+        isLoading={isLoading && fibers.length === 0}
+        isFetching={isFetching}
+      />
+
+      {/* Sticky Filter Bar */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
+          <div className="w-full lg:w-96">
+            <Input 
+                placeholder="Search route, system, node..." 
+                value={search.searchQuery} 
+                onChange={(e) => search.setSearchQuery(e.target.value)}
+                leftIcon={<FiSearch className="text-gray-400" />}
+                fullWidth
+                clearable
+            />
+          </div>
+          
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+             <div className="min-w-[120px]">
+                 <SelectFilter
+                    label=""
+                    filterKey="status"
+                    filters={filters}
+                    setFilters={setFilters}
+                    options={[
+                        { value: 'true', label: 'Active' },
+                        { value: 'false', label: 'Inactive' }
+                    ]}
+                    placeholder="All Status"
+                 />
+             </div>
+             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+                <button className={`p-2 rounded-md transition-all bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400`} title="Table View">
+                    <FiList size={16} />
+                </button>
+             </div>
+          </div>
+      </div>
+
+      <DataTable
+        autoHideEmptyColumns={true}
+        tableName="v_ofc_connections_complete"
+        data={fibers}
+        columns={orderedColumns}
+        loading={isLoading}
+        isFetching={isFetching}
+        searchable={false}
+        pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            showSizeChanger: true,
+            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
+        }}
+        customToolbar={<></>}
+      />
+    </div>
+  );
+}
 ```
 
 <!-- path: app/dashboard/ofc/page.tsx -->
@@ -13586,55 +13794,70 @@ import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
 import Sidebar from "@/components/navigation/sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { CommandMenu } from "@/components/common/CommandMenu";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary"; // IMPORTED
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription"; // ADDED
+
+// Inner component to safely use hooks inside providers
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const isMobile = useIsMobile();
+  
+  // THE FIX: Activate Realtime Subscription
+  // This will listen for DB changes and auto-refresh React Query data
+  // It automatically pauses when offline.
+  useRealtimeSubscription();
+
+  const desktopSidebarWidth = isCollapsed ? 64 : 260;
+  const marginValue = isMobile ? 0 : desktopSidebarWidth;
+
+  return (
+    <>
+      <CommandMenu />
+
+      {/* Sidebar - Fixed position */}
+      <div className="no-print">
+        <Sidebar
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          showMenuFeatures={true}
+        />
+      </div>
+
+      {/* Main container that shifts with sidebar */}
+      <div
+        className="flex min-h-screen flex-col transition-all duration-300 ease-in-out"
+        style={{
+          marginLeft: `${marginValue}px`,
+        }}
+      >
+        <div className="no-print">
+          <DashboardHeader
+            onMenuClick={() => setIsCollapsed(!isCollapsed)}
+          />
+        </div>
+
+        {/* Main Content WRAPPED in ErrorBoundary */}
+        <main className="flex-1">
+          <ErrorBoundary>
+              {children}
+          </ErrorBoundary>
+        </main>
+      </div>
+    </>
+  );
+}
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const isMobile = useIsMobile();
-
-  const desktopSidebarWidth = isCollapsed ? 64 : 260;
-  const marginValue = isMobile ? 0 : desktopSidebarWidth;
-
   return (
     <UserProvider>
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
-            <CommandMenu />
-
-            {/* Sidebar - Fixed position */}
-            <div className="no-print">
-              <Sidebar
-                isCollapsed={isCollapsed}
-                setIsCollapsed={setIsCollapsed}
-                showMenuFeatures={true}
-              />
-            </div>
-
-            {/* Main container that shifts with sidebar */}
-            <div
-              className="flex min-h-screen flex-col transition-all duration-300 ease-in-out"
-              style={{
-                marginLeft: `${marginValue}px`,
-              }}
-            >
-              <div className="no-print">
-                <DashboardHeader
-                  onMenuClick={() => setIsCollapsed(!isCollapsed)}
-                />
-              </div>
-
-              {/* Main Content WRAPPED in ErrorBoundary */}
-              <main className="flex-1">
-                <ErrorBoundary>
-                    {children}
-                </ErrorBoundary>
-              </main>
-            </div>
+             <DashboardContent>{children}</DashboardContent>
           </ViewSettingsProvider>
         </RouteBasedUploadConfigProvider>
       </Protected>
@@ -15776,7 +15999,6 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
 // config/table-columns/AuditLogsTableColumns.tsx
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
-import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatDate } from '@/utils/formatters';
 import Image from 'next/image';
 
@@ -16629,7 +16851,6 @@ export const PortsManagementTableColumns = (
   // 1. Generate base columns from the hook
   const columns = useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    // THE FIX: Added 'port_type_name' and 'port_capacity' to the omit array
     omit: [
       'id', 
       'system_id', 
@@ -16638,8 +16859,8 @@ export const PortsManagementTableColumns = (
       'created_at', 
       'updated_at', 
       'system_name',
-      'port_type_name', // Hiding Port Type
-      'port_capacity'   // Hiding Capacity
+      'port_type_name', 
+      'port_capacity'
     ], 
     overrides: {
       port: {
@@ -16694,7 +16915,7 @@ export const PortsManagementTableColumns = (
     title: 'Allocated Services',
     dataIndex: 'port', 
     width: 350,
-    render: (value, _record) => {
+    render: (value) => { // Removed unused _record parameter
         const portName = value as string; 
         if (!portName || !portServicesMap) return <span className="text-gray-400 italic text-xs">No info</span>;
         
@@ -38379,6 +38600,7 @@ import {
   FiShield,
   FiAirplay,
   FiDatabase,
+  FiActivity,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -38399,14 +38621,14 @@ function NavItems() {
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
         href: '/dashboard',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'diary',
         label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'user-management',
@@ -38441,7 +38663,7 @@ function NavItems() {
         label: 'E-File Tracking',
         icon: <FileText className="h-5 w-5" />,
         href: '/dashboard/e-files',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'base-menu',
@@ -38493,7 +38715,7 @@ function NavItems() {
           },
           {
             id: 'services',
-            label: 'Services & Customers',
+            label: 'Services',
             href: '/dashboard/services',
             icon: <FiDatabase className="h-5 w-5" />,
             roles: PERMISSIONS.canManageSystems,
@@ -38511,6 +38733,13 @@ function NavItems() {
             label: 'Optical Fiber Cable',
             href: '/dashboard/ofc',
             icon: <AiFillMerge className="h-5 w-5" />,
+            roles: PERMISSIONS.canManageRoutes,
+          },
+          {
+            id: 'ofc-connections',
+            label: 'Fiber Inventory', // NEW PAGE
+            href: '/dashboard/ofc/connections',
+            icon: <FiActivity className="h-5 w-5" />,
             roles: PERMISSIONS.canManageRoutes,
           },
           {
@@ -38538,7 +38767,7 @@ function NavItems() {
           {
             id: 'global-connections',
             label: 'Global Connections',
-            href: '/dashboard/connections',
+            href: '/dashboard/systems/connections',
             icon: <GitBranch className="h-5 w-5" />,
             roles: PERMISSIONS.canManageSystems,
           },
@@ -40259,7 +40488,7 @@ export default CableNotFound;
 // components/connections/ConnectionCard.tsx
 import React from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
@@ -40268,11 +40497,24 @@ interface ConnectionCardProps {
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
   onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
+  // NEW: CRUD Props
+  onEdit?: (conn: V_system_connections_completeRowSchema) => void;
+  onDelete?: (conn: V_system_connections_completeRowSchema) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
   isSystemContext?: boolean;
 }
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
-  connection, onViewDetails, onViewPath, onGoToSystem, isSystemContext = false
+  connection, 
+  onViewDetails, 
+  onViewPath, 
+  onGoToSystem, 
+  onEdit,
+  onDelete,
+  canEdit = false,
+  canDelete = false,
+  isSystemContext = false
 }) => {
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
@@ -40376,7 +40618,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             {connection.vlan && (
                 <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
                     <span className="text-[10px] text-gray-400 uppercase font-semibold">VLAN</span>
-                    <span className="font-mono font-medium text-gray-700 dark:text-gray-200">{connection.vlan}</span>
+                    <span className="font-mono font-medium text-gray-900 dark:text-gray-200">{connection.vlan}</span>
                 </div>
             )}
             {connection.media_type_name && (
@@ -40389,7 +40631,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
       </div>
 
       {/* Footer / Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2 pl-5" onClick={(e) => e.stopPropagation()}>
+      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end items-center gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
          {onGoToSystem && !isSystemContext && (
              <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
                 <FiServer className="w-4 h-4" />
@@ -40398,13 +40640,29 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
          <div className="flex-1"></div>
 
-         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details" className="flex-1 sm:flex-none">
-            <FiMonitor className="w-3.5 h-3.5 mr-1" /> Details
+         {/* Details Button */}
+         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details">
+            <FiMonitor className="w-3.5 h-3.5" />
          </Button>
 
+         {/* Trace Path Button */}
          {hasPath && (
             <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20">
-                <FiEye className="w-3.5 h-3.5 mr-1" /> Trace
+                <FiEye className="w-3.5 h-3.5" />
+            </Button>
+         )}
+
+         {/* NEW: Edit Button */}
+         {canEdit && onEdit && (
+            <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection">
+                <FiEdit2 className="w-3.5 h-3.5" />
+            </Button>
+         )}
+
+         {/* NEW: Delete Button */}
+         {canDelete && onDelete && (
+            <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
+                <FiTrash2 className="w-3.5 h-3.5" />
             </Button>
          )}
       </div>
@@ -50052,54 +50310,68 @@ export const workflowSections: WorkflowSection[] = [
   {
     value: 'offline_sync',
     icon: 'WifiOff',
-    title: 'Offline & Sync',
+    title: 'Offline & Realtime',
     subtitle: 'Data Availability',
     gradient: 'from-slate-500 to-gray-600',
     iconColor: 'text-slate-400',
     bgGlow: 'bg-slate-500/10',
     color: 'teal',
     purpose:
-      'To explain how the application behaves without internet connection and how data synchronization works.',
+      'To explain how the application handles data consistency, offline storage, and live updates from the server.',
     workflows: [
       {
-        title: '1. Offline Mode',
+        title: '1. Realtime Updates (Online)',
         userSteps: [
-          'The app automatically detects network status.',
-          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams while offline.',
-          '**Write Access:** You can Create/Edit records (except Routes). Changes are queued locally.',
-          '**Route Manager:** Splicing and topology editing are **disabled** offline to prevent conflicts.',
+          'When connected to the internet, the app listens for changes live.',
+          'If another user updates a record (e.g., changes a Ticket Status or Inventory Count), your screen updates automatically.',
+          'No manual refresh is required for collaborative tasks.',
         ],
         uiSteps: [
-          'A "You\'re offline" banner appears at the top.',
-          'The Sync Cloud icon in the header turns grey/crossed out.',
+          'The Sync Cloud icon in the header stays Green to indicate a live connection.',
+          'Tables and lists refresh silently in the background.',
         ],
         techSteps: [
-          '**Storage:** `Dexie.js` (IndexedDB) stores a local replica of all critical tables.',
-          '**Hooks:** `useLocalFirstQuery` serves local data instantly, bypassing network calls by default.',
+          '**Hook:** `useRealtimeSubscription` connects to Supabase Realtime (WebSockets).',
+          '**Logic:** Listens for `POSTGRES_CHANGES` events and invalidates specific React Query keys to trigger a refetch.',
         ],
       },
       {
-        title: '2. Data Synchronization',
+        title: '2. Offline Mode',
         userSteps: [
-          'Data is **Manual Sync** by default to save bandwidth and improve speed.',
-          "**To Update:** Click the **'Refresh'** button on any table or the **Sync Cloud** icon in the header.",
-          '**Uploads:** Offline changes (mutations) are stored in a queue.',
-          'When internet is restored, the app automatically processes the queue.',
+          'The app automatically detects network loss.',
+          '**Read Access:** You can view Systems, Nodes, Employees, Inventory, and Diagrams using locally cached data.',
+          '**Write Access:** You can Create/Edit records. Changes are queued locally.',
+          '**Restrictions:** Complex operations like Route Splicing are disabled to prevent data corruption.',
         ],
         uiSteps: [
-          "The Cloud icon animates (Blue/Bouncing) while syncing.",
-          "Green Checkmark indicates 'All Synced'.",
-          "Red Warning indicates sync errors (click to view details).",
+          'A "You\'re offline" banner appears.',
+          'The Sync Cloud icon turns Grey/Crossed out.',
         ],
         techSteps: [
-          '**Queue:** `useMutationQueue` stores requests in `mutation_queue` table.',
-          '**Sync Logic:** `useDataSync` pulls fresh data from Supabase RPCs and updates IndexedDB.',
+          '**Storage:** `Dexie.js` (IndexedDB) acts as the source of truth.',
+          '**Service Worker:** API calls use `NetworkOnly` strategy to prevent stale HTTP caching conflicts.',
+        ],
+      },
+      {
+        title: '3. Synchronization Queue',
+        userSteps: [
+          'Changes made while offline are stored in a "Pending Queue".',
+          'When internet restores, the app automatically processes this queue in the background.',
+          'Click the Cloud Icon to view pending or failed sync tasks.',
+        ],
+        uiSteps: [
+          'The Cloud icon animates (Blue) while processing the queue.',
+          'Red Warning indicates sync conflicts (click to resolve).',
+        ],
+        techSteps: [
+          '**Queue:** `mutation_queue` table in Dexie stores the payloads.',
+          '**Process:** `useMutationQueue` replays requests sequentially when `useOnlineStatus` becomes true.',
         ],
       },
     ],
   },
 
-    // ============================================================================
+  // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
   // ============================================================================
   {
@@ -50454,9 +50726,7 @@ export const workflowSections: WorkflowSection[] = [
           "Set 'Sort Order' to control dropdown position (Lower numbers appear first).",
           "Click 'Create'.",
         ],
-        uiSteps: [
-          "System Default options (marked 'Yes') and have disabled Edit/Delete buttons.",
-        ],
+        uiSteps: ["System Default options (marked 'Yes') and have disabled Edit/Delete buttons."],
         techSteps: [
           '**Validation:** Prevent editing if `is_system_default` is true to avoid breaking application logic.',
         ],
@@ -50746,63 +51016,58 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-// ============================================================================
+  // ============================================================================
   // MODULE 9: SYSTEMS MANAGEMENT
   // ============================================================================
   {
-    value: "systems_management",
-    icon: "GoServer",
-    title: "Systems",
-    subtitle: "Active Network Elements",
-    gradient: "from-blue-600 to-cyan-600",
-    iconColor: "text-blue-500",
-    bgGlow: "bg-blue-500/10",
-    color: "blue",
-    purpose: "To manage the active network elements (CPAN, SDH, MAAN, OLT) that light up the fiber network.",
+    value: 'systems_management',
+    icon: 'GoServer',
+    title: 'Systems',
+    subtitle: 'Active Network Elements',
+    gradient: 'from-blue-600 to-cyan-600',
+    iconColor: 'text-blue-500',
+    bgGlow: 'bg-blue-500/10',
+    color: 'blue',
+    purpose:
+      'To manage the active network elements (CPAN, SDH, MAAN, OLT) that light up the fiber network.',
     workflows: [
       {
-        title: "1. Adding Systems",
+        title: '1. Adding Systems',
         userSteps: [
-          "Navigate to `/dashboard/systems`.",
+          'Navigate to `/dashboard/systems`.',
           "Click 'Add New' (Restricted to specific Admins).",
           "Enter 'System Name', select 'Type' (e.g., CPAN) and 'Location' (Node).",
           "If it's a Ring-Based system, assign the Ring immediately.",
-          "Add IP Address (automatically formats without subnet) and other details.",
+          'Add IP Address (automatically formats without subnet) and other details.',
         ],
-        uiSteps: [
-          "Multi-step modal guides through basic info and topology configuration.",
-        ],
+        uiSteps: ['Multi-step modal guides through basic info and topology configuration.'],
         techSteps: [
-          "**RPC:** `upsert_system_with_details` transactionally handles system creation and ring association.",
+          '**RPC:** `upsert_system_with_details` transactionally handles system creation and ring association.',
         ],
       },
       {
-        title: "2. Port Management",
+        title: '2. Port Management',
         userSteps: [
           "Click the 'Manage Ports' (Server icon) on a system card.",
           "**Templates:** Click 'Apply Template' to auto-generate standard port configs (e.g., 'A1 Config').",
-          "**Heatmap:** View port status (Up/Down/Used) visually.",
-          "Click a port to manually edit its status or capacity.",
+          '**Heatmap:** View port status (Up/Down/Used) visually.',
+          'Click a port to manually edit its status or capacity.',
         ],
-        uiSteps: [
-          "Heatmap uses color coding: Green (Free), Blue (Used), Red (Admin Down).",
-        ],
+        uiSteps: ['Heatmap uses color coding: Green (Free), Blue (Used), Red (Admin Down).'],
         techSteps: [
-          "**Bulk Upsert:** Uses `useTableBulkOperations` to efficiently create/update hundreds of ports.",
-          "**View:** `v_ports_management_complete` aggregates status.",
+          '**Bulk Upsert:** Uses `useTableBulkOperations` to efficiently create/update hundreds of ports.',
+          '**View:** `v_ports_management_complete` aggregates status.',
         ],
       },
       {
-        title: "3. System Connections",
+        title: '3. System Connections',
         userSteps: [
           "Click 'View Details' to see connections originating from or terminating at this system.",
-          "Navigate to `/dashboard/connections` for a global view of all logical links.",
+          'Navigate to `/dashboard/connections` for a global view of all logical links.',
         ],
-        uiSteps: [
-          "Bi-directional view logic ensures connections are visible from both ends.",
-        ],
+        uiSteps: ['Bi-directional view logic ensures connections are visible from both ends.'],
         techSteps: [
-          "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective.",
+          '**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective.',
         ],
       },
     ],
@@ -50811,57 +51076,53 @@ export const workflowSections: WorkflowSection[] = [
   // MODULE 10: SYSTEM CONNECTION DETAILS
   // ============================================================================
   {
-    value: "system_connection_details",
-    icon: "FiGitBranch",
-    title: "System Connections",
-    subtitle: "Bi-Directional Links & Ports",
-    gradient: "from-blue-500 to-indigo-600",
-    iconColor: "text-indigo-400",
-    bgGlow: "bg-indigo-500/10",
-    color: "blue",
-    purpose: "To manage individual physical and logical links from a specific system perspective.",
+    value: 'system_connection_details',
+    icon: 'FiGitBranch',
+    title: 'System Connections',
+    subtitle: 'Bi-Directional Links & Ports',
+    gradient: 'from-blue-500 to-indigo-600',
+    iconColor: 'text-indigo-400',
+    bgGlow: 'bg-indigo-500/10',
+    color: 'blue',
+    purpose: 'To manage individual physical and logical links from a specific system perspective.',
     workflows: [
       {
-        title: "1. Connection Management",
+        title: '1. Connection Management',
         userSteps: [
-          "Navigate to `/dashboard/systems/[id]`.",
-          "**List View:** Shows all connections where this system is either the *Source* or *Destination*.",
-          "**Edit:** Update bandwidth, VLANs, or physical ports (Admin).",
-          "**Stats:** Header shows port utilization specific to this system.",
+          'Navigate to `/dashboard/systems/[id]`.',
+          '**List View:** Shows all connections where this system is either the *Source* or *Destination*.',
+          '**Edit:** Update bandwidth, VLANs, or physical ports (Admin).',
+          '**Stats:** Header shows port utilization specific to this system.',
         ],
         uiSteps: [
           "The 'End Node' column dynamically shows the *other* end of the link.",
-          "Port heatmap shows visual status of all slots/ports.",
+          'Port heatmap shows visual status of all slots/ports.',
         ],
         techSteps: [
           "**Hook:** `useSystemConnectionsData` normalizes the `sn_id` vs `en_id` perspective so the current system is always 'local'.",
         ],
       },
       {
-        title: "2. Fiber Provisioning",
+        title: '2. Fiber Provisioning',
         userSteps: [
           "Click 'Allocate Fibers' on a connection.",
-          "Select the outgoing cable and specific fiber strand.",
-          "If the route is multi-hop, select subsequent cables/fibers until the destination is reached.",
+          'Select the outgoing cable and specific fiber strand.',
+          'If the route is multi-hop, select subsequent cables/fibers until the destination is reached.',
           "Click 'Confirm'.",
         ],
-        uiSteps: [
-          "Dropdowns filter out already-occupied fibers.",
-        ],
+        uiSteps: ['Dropdowns filter out already-occupied fibers.'],
         techSteps: [
-          "**RPC:** `provision_service_path` atomically updates `logical_fiber_paths` and marks `ofc_connections` as used.",
+          '**RPC:** `provision_service_path` atomically updates `logical_fiber_paths` and marks `ofc_connections` as used.',
         ],
       },
       {
-        title: "3. Path Tracing",
+        title: '3. Path Tracing',
         userSteps: [
           "Click the 'Eye' icon on a provisioned connection.",
-          "View the complete physical path: System A -> Cable -> JC -> Cable -> System B.",
-          "Shows total distance and loss budget.",
+          'View the complete physical path: System A -> Cable -> JC -> Cable -> System B.',
+          'Shows total distance and loss budget.',
         ],
-        techSteps: [
-          "**RPC:** `trace_fiber_path`.",
-        ],
+        techSteps: ['**RPC:** `trace_fiber_path`.'],
       },
     ],
   },
@@ -50870,45 +51131,44 @@ export const workflowSections: WorkflowSection[] = [
   // MODULE 11: GLOBAL CONNECTIONS EXPLORER
   // ============================================================================
   {
-    value: "global_connections",
-    icon: "FiGitBranch",
-    title: "Global Connections",
-    subtitle: "Network-Wide Circuit View",
-    gradient: "from-indigo-600 to-violet-600",
-    iconColor: "text-indigo-500",
-    bgGlow: "bg-indigo-500/10",
-    color: "violet",
-    purpose: "To provide a searchable, unified view of every logical service connection across the entire network.",
+    value: 'global_connections',
+    icon: 'FiGitBranch',
+    title: 'Global Connections',
+    subtitle: 'Network-Wide Circuit View',
+    gradient: 'from-indigo-600 to-violet-600',
+    iconColor: 'text-indigo-500',
+    bgGlow: 'bg-indigo-500/10',
+    color: 'violet',
+    purpose:
+      'To provide a searchable, unified view of every logical service connection across the entire network.',
     workflows: [
       {
-        title: "1. Finding Circuits",
+        title: '1. Finding Circuits',
         userSteps: [
-          "Navigate to `/dashboard/connections`.",
+          'Navigate to `/dashboard/connections`.',
           "**Sorting:** Connections are sorted alphabetically by 'Service Name'.",
-          "**Search:** Enter a customer name, service ID, or any system name in the route to find a specific link.",
+          '**Search:** Enter a customer name, service ID, or any system name in the route to find a specific link.',
           "**Filtering:** Use dropdowns to isolate 'MPLS' links or specific Media Types.",
         ],
         uiSteps: [
-          "Grid View shows cards with Start/End points and status.",
-          "Table View provides detailed columns for bandwidth and interface data.",
+          'Grid View shows cards with Start/End points and status.',
+          'Table View provides detailed columns for bandwidth and interface data.',
         ],
         techSteps: [
-          "**Hook:** `useAllSystemConnectionsData` fetches `v_system_connections_complete`.",
+          '**Hook:** `useAllSystemConnectionsData` fetches `v_system_connections_complete`.',
         ],
       },
       {
-        title: "2. Deep Diving",
+        title: '2. Deep Diving',
         userSteps: [
           "Click 'Full Details' to open the connection inspector modal.",
           "Click 'View Path' to see the physical fiber trace.",
           "Click 'Go to System' to jump to the parent system's management page for editing.",
         ],
         uiSteps: [
-          "This page is read-only by design to prevent accidental modification of complex routes without context.",
+          'This page is read-only by design to prevent accidental modification of complex routes without context.',
         ],
-        techSteps: [
-          "**Navigation:** Uses Next.js router to switch contexts.",
-        ],
+        techSteps: ['**Navigation:** Uses Next.js router to switch contexts.'],
       },
     ],
   },
@@ -50916,7 +51176,7 @@ export const workflowSections: WorkflowSection[] = [
   // ============================================================================
   // MODULE 12: RINGS MANAGEMENT
   // ============================================================================
-{
+  {
     value: 'ring_manager',
     icon: 'GiLinkedRings',
     title: 'Ring Manager',
@@ -50933,7 +51193,7 @@ export const workflowSections: WorkflowSection[] = [
         userSteps: [
           'Navigate to `/dashboard/ring-manager`.',
           "Click 'Add New Ring' to create a named ring entity.",
-          "Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.",
+          'Set metadata like Ring Type (Access/Aggregation) and Maintenance Area.',
         ],
         uiSteps: [
           'The list shows all rings with their active system counts.',
@@ -50948,8 +51208,8 @@ export const workflowSections: WorkflowSection[] = [
         title: '2. Adding Systems to Ring',
         userSteps: [
           "Click 'Add Systems to Ring'.",
-          "**Step 1:** Select the target Ring.",
-          "**Step 2:** Select the System to add (Search by Name/IP).",
+          '**Step 1:** Select the target Ring.',
+          '**Step 2:** Select the System to add (Search by Name/IP).',
           "Set 'Order in Ring' (e.g., 1.0, 2.0). Decimals (1.1) indicate spurs.",
           "Toggle 'Is Hub' if this system connects spurs to the backbone.",
           "Click 'Save' (You can queue multiple adds before saving).",
@@ -50977,7 +51237,7 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
-// ============================================================================
+  // ============================================================================
   // MODULE 13: DIAGRAMS & FILES
   // ============================================================================
   {
@@ -50989,7 +51249,8 @@ export const workflowSections: WorkflowSection[] = [
     iconColor: 'text-slate-500',
     bgGlow: 'bg-slate-500/10',
     color: 'teal',
-    purpose: 'To securely store network diagrams, manuals, and site photos with folder organization.',
+    purpose:
+      'To securely store network diagrams, manuals, and site photos with folder organization.',
     workflows: [
       {
         title: '1. Folder Management',
@@ -50997,11 +51258,9 @@ export const workflowSections: WorkflowSection[] = [
           'Navigate to `/dashboard/diagrams`.',
           "Click 'Show Upload' to reveal the control panel.",
           "**Create:** Enter a new folder name and click 'Create'.",
-          "**Delete:** Select a folder and click the trash icon (Admin only).",
+          '**Delete:** Select a folder and click the trash icon (Admin only).',
         ],
-        uiSteps: [
-          'The file list filters automatically when a folder is selected.',
-        ],
+        uiSteps: ['The file list filters automatically when a folder is selected.'],
         techSteps: [
           '**Hook:** `useFolders` manages folder state via React Query.',
           '**Validation:** Prevents deleting non-empty folders (handled by DB constraint/UI check).',
@@ -51010,8 +51269,8 @@ export const workflowSections: WorkflowSection[] = [
       {
         title: '2. Uploading Files',
         userSteps: [
-          "Select a destination folder.",
-          "**Simple Upload:** Drag & drop files or click to browse.",
+          'Select a destination folder.',
+          '**Simple Upload:** Drag & drop files or click to browse.',
           "**Advanced (Camera):** Switch to 'Advanced Upload' to use the webcam/camera directly.",
           "Click 'Start Upload'.",
         ],
@@ -51030,19 +51289,14 @@ export const workflowSections: WorkflowSection[] = [
         userSteps: [
           'Switch between Grid and List view.',
           '**Search:** Filter files by name within the selected folder.',
-          "**Action:** Click the eye icon to preview, download icon to save.",
+          '**Action:** Click the eye icon to preview, download icon to save.',
         ],
-        uiSteps: [
-          'PDFs open in a new tab.',
-          'Images show a thumbnail preview.',
-        ],
-        techSteps: [
-          '**Table:** `files` linked to `folders` and `users`.',
-        ],
+        uiSteps: ['PDFs open in a new tab.', 'Images show a thumbnail preview.'],
+        techSteps: ['**Table:** `files` linked to `folders` and `users`.'],
       },
     ],
   },
-  
+
   // ============================================================================
   // MODULE 14: UTILITIES & MAINTENANCE
   // ============================================================================
@@ -69510,10 +69764,27 @@ export * from './cache-performance'
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { PublicTableName, TableRow, TableInsert, TableUpdate, OptimisticContext, UseTableMutationOptions, PagedQueryResult, Row } from "./queries-type-helpers";
+import { 
+  PublicTableName, 
+  TableRow, 
+  TableInsert, 
+  TableUpdate, 
+  OptimisticContext, 
+  UseTableMutationOptions, 
+  PagedQueryResult 
+} from "./queries-type-helpers";
+
+// Helper to check if the cache data is in Paged format
+function isPagedResult<T>(data: any): data is PagedQueryResult<T> {
+  return data && typeof data === 'object' && 'data' in data && Array.isArray(data.data) && 'count' in data;
+}
 
 // Generic toggle status hook
-export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>) {
+export function useToggleStatus<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>
+) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
@@ -69533,19 +69804,23 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
           
-          // THE FIX: Expect a PagedQueryResult object, not an array.
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: PagedQueryResult<Row<T>> | undefined) => {
-            if (!old || !old.data) return old;
-            
-            // Perform the map on the 'data' property.
-            const updatedData = old.data.map((item) => 
-              ("id" in item && (item as { id: unknown }).id === id 
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
+
+            const updateItem = (item: any) => 
+              ("id" in item && item.id === id) 
                 ? { ...item, status, updated_at: new Date().toISOString() } 
-                : item
-            ));
-            
-            // Return the full object structure.
-            return { ...old, data: updatedData };
+                : item;
+
+            if (isPagedResult(old)) {
+               return {
+                 ...old,
+                 data: old.data.map(updateItem)
+               };
+            } else if (Array.isArray(old)) {
+               return old.map(updateItem);
+            }
+            return old;
           });
           
           return { previousData };
@@ -69556,7 +69831,7 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
           context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -69567,15 +69842,18 @@ export function useToggleStatus<T extends PublicTableName>(supabase: SupabaseCli
 }
 
 // Optimized insert mutation with batching
-export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>) {
+export function useTableInsert<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
 
   return useMutation<TableRow<T>[], Error, TableInsert<T> | TableInsert<T>[], OptimisticContext>({
     mutationFn: async (data: TableInsert<T> | TableInsert<T>[]): Promise<TableRow<T>[]> => {
       const payload = (Array.isArray(data) ? data : [data]) as any;
 
-      // Batch large inserts for better performance
       if (payload.length > batchSize) {
         const batches = [];
         for (let i = 0; i < payload.length; i += batchSize) {
@@ -69594,28 +69872,37 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
       }
 
       const { data: result, error } = await supabase.from(tableName).insert(payload).select();
-
       if (error) throw error;
       return result as TableRow<T>[];
     },
     onMutate: optimisticUpdate
       ? async (newData) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
+          const newItems = Array.isArray(newData) ? newData : [newData];
+          const optimisticItems = newItems.map((item, index) => ({
+            ...item,
+            id: `temp-${Date.now()}-${index}`, // Temp ID
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            const newItems = Array.isArray(newData) ? newData : [newData];
-            return [
-              ...old,
-              ...newItems.map((item, index) => ({
-                ...item,
-                id: `temp-${Date.now()}-${index}`,
-              })),
-            ] as TableRow<T>[];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) {
+                return optimisticItems; 
+            }
+
+            if (isPagedResult(old)) {
+               return {
+                 ...old,
+                 data: [...old.data, ...optimisticItems],
+                 count: (old.count || 0) + optimisticItems.length
+               };
+            } else if (Array.isArray(old)) {
+               return [...old, ...optimisticItems];
+            }
+            return old;
           });
 
           return { previousData };
@@ -69623,14 +69910,10 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, newData, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -69641,9 +69924,13 @@ export function useTableInsert<T extends PublicTableName>(supabase: SupabaseClie
 }
 
 // Enhanced update mutation with optimizations
-export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>) {
+export function useTableUpdate<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
   return useMutation<TableRow<T>[], Error, { id: string; data: TableUpdate<T> }, OptimisticContext>({
     mutationFn: async ({ id, data }: { id: string; data: TableUpdate<T> }): Promise<TableRow<T>[]> => {
@@ -69659,14 +69946,25 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
     onMutate: optimisticUpdate
       ? async ({ id, data: newData }) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
+          const updateItem = (item: any) => 
+            ("id" in item && item.id === id) 
+              ? { ...item, ...newData, updated_at: new Date().toISOString() } 
+              : item;
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            return old.map((item) => ("id" in item && (item as { id: unknown }).id === id ? { ...item, ...newData } : item)) as TableRow<T>[];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
+            
+            if (isPagedResult(old)) {
+              return {
+                ...old,
+                data: old.data.map(updateItem)
+              };
+            } else if (Array.isArray(old)) {
+              return old.map(updateItem);
+            }
+            return old;
           });
 
           return { previousData };
@@ -69674,14 +69972,10 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -69692,15 +69986,18 @@ export function useTableUpdate<T extends PublicTableName>(supabase: SupabaseClie
 }
 
 // Enhanced delete mutation
-export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClient<Database>, tableName: T, options?: UseTableMutationOptions<void, string | string[], OptimisticContext>) {
+export function useTableDelete<T extends PublicTableName>(
+  supabase: SupabaseClient<Database>, 
+  tableName: T, 
+  options?: UseTableMutationOptions<void, string | string[], OptimisticContext>
+) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = false, batchSize = 1000, ...mutationOptions } = options || {};
+  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
 
   return useMutation<void, Error, string | string[], OptimisticContext>({
     mutationFn: async (id: string | string[]): Promise<void> => {
       const ids = Array.isArray(id) ? id : [id];
 
-      // Batch large deletes for better performance
       if (ids.length > batchSize) {
         const batches = [];
         for (let i = 0; i < ids.length; i += batchSize) {
@@ -69709,35 +70006,39 @@ export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClie
 
         await Promise.all(
           batches.map(async (batch) => {
-            const { error } = await supabase
-              .from(tableName)
-              .delete()
-              .in("id" as any, batch);
+            const { error } = await supabase.from(tableName).delete().in("id" as any, batch);
             if (error) throw error;
           })
         );
         return;
       }
 
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .in("id" as any, ids);
-
+      const { error } = await supabase.from(tableName).delete().in("id" as any, ids);
       if (error) throw error;
     },
     onMutate: optimisticUpdate
       ? async (id) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+          
+          const idsToDelete = Array.isArray(id) ? id : [id];
 
-          const previousData = queryClient.getQueriesData({
-            queryKey: ["table", tableName],
-          });
-          const ids = Array.isArray(id) ? id : [id];
+          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+            if (!old) return old;
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: TableRow<T>[] | undefined) => {
-            if (!old) return [];
-            return old.filter((item) => !("id" in item) || !ids.includes((item as { id: string }).id)) as TableRow<T>[];
+            const filterItem = (item: any) => !idsToDelete.includes(item.id);
+
+            if (isPagedResult(old)) {
+               const newData = old.data.filter(filterItem);
+               return {
+                 ...old,
+                 data: newData,
+                 count: (old.count || 0) - (old.data.length - newData.length)
+               };
+            } else if (Array.isArray(old)) {
+               return old.filter(filterItem);
+            }
+            return old;
           });
 
           return { previousData };
@@ -69745,14 +70046,10 @@ export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClie
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          if (context?.previousData) {
-            context.previousData.forEach(([queryKey, data]) => {
-              queryClient.setQueryData(queryKey, data);
-            });
-          }
+          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
         }
       : undefined,
-    onSuccess: (data, variables, context) => {
+    onSuccess: () => {
       if (invalidateQueries) {
         queryClient.invalidateQueries({ queryKey: ["table", tableName] });
         queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
@@ -69761,7 +70058,6 @@ export function useTableDelete<T extends PublicTableName>(supabase: SupabaseClie
     ...mutationOptions,
   });
 }
-
 ```
 
 <!-- path: hooks/database/rpc-hook-factory.ts -->
@@ -70887,6 +71183,169 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
     },
     onError: (error) => {
         toast.error(`An unexpected error occurred during upload: ${error.message}`);
+    }
+  });
+}
+```
+
+<!-- path: hooks/database/excel-queries/useOfcConnectionsExcelUpload.ts -->
+```typescript
+// hooks/database/excel-queries/useOfcConnectionsExcelUpload.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+
+import { Database } from '@/types/supabase-types';
+import {
+  UploadColumnMapping,
+  UseExcelUploadOptions,
+  TableInsert
+} from '@/hooks/database/queries-type-helpers';
+import {
+  EnhancedUploadResult,
+  validateValue,
+  ValidationError,
+} from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser';
+
+export interface OfcConnectionsUploadOptions {
+  file: File;
+  columns: UploadColumnMapping<'v_ofc_connections_complete'>[];
+}
+
+// THE FIX: Define payload based on the table structure, not a missing RPC
+type ConnectionPayload = TableInsert<'ofc_connections'>;
+
+export function useOfcConnectionsExcelUpload(
+  supabase: SupabaseClient<Database>,
+  options?: UseExcelUploadOptions<'v_ofc_connections_complete'>
+) {
+  const { showToasts = true, ...mutationOptions } = options || {};
+  const queryClient = useQueryClient();
+
+  return useMutation<EnhancedUploadResult, Error, OfcConnectionsUploadOptions>({
+    ...mutationOptions,
+    mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
+      const { file, columns } = uploadOptions;
+      const uploadResult: EnhancedUploadResult = { successCount: 0, errorCount: 0, totalRows: 0, errors: [], processingLogs: [], validationErrors: [], skippedRows: 0 };
+      
+      if (showToasts) toast.info('Reading Excel...');
+      const jsonData = await parseExcelFile(file);
+
+      if (jsonData.length < 2) {
+        if (showToasts) toast.warning('No data found.');
+        return uploadResult;
+      }
+
+      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const headerMap: Record<string, number> = {};
+      excelHeaders.forEach((header, index) => { headerMap[header.toLowerCase()] = index; });
+
+      const dataRows = jsonData.slice(1);
+      
+      // 1. Fetch Cable Routes for resolution (Name -> ID)
+      const cablesResp = await supabase.from('ofc_cables').select('id, route_name');
+      const cableNameToId = new Map<string, string>();
+      if (cablesResp.data) {
+          cablesResp.data.forEach(c => cableNameToId.set(c.route_name.trim().toLowerCase(), c.id));
+      }
+
+      const recordsToUpdate: ConnectionPayload[] = [];
+
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i] as unknown[];
+        if (row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')) {
+            uploadResult.skippedRows++;
+            continue;
+        }
+
+        const originalData: Record<string, unknown> = {};
+        excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
+        const rowValidationErrors: ValidationError[] = [];
+        const processedData: Record<string, unknown> = {};
+
+        for (const mapping of columns) {
+           const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
+           const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
+           let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
+           if (typeof finalValue === 'string') finalValue = finalValue.trim();
+
+           // Basic validation
+           if (mapping.required) {
+               const err = validateValue(finalValue, mapping.dbKey, true);
+               if(err) rowValidationErrors.push({ ...err, rowIndex: i, data: originalData });
+           }
+           
+           processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
+        }
+
+        // Resolve Cable ID
+        let cableId = processedData.ofc_id as string;
+        if (!cableId && processedData.ofc_route_name) {
+            cableId = cableNameToId.get(String(processedData.ofc_route_name).trim().toLowerCase()) || '';
+        }
+
+        if (!cableId) {
+             rowValidationErrors.push({ rowIndex: i, column: 'ofc_route_name', value: processedData.ofc_route_name, error: 'Cable Route not found' });
+        }
+        
+        if (!processedData.fiber_no_sn) {
+             rowValidationErrors.push({ rowIndex: i, column: 'fiber_no_sn', value: '', error: 'Fiber Number is required' });
+        }
+
+        if (rowValidationErrors.length > 0) {
+           uploadResult.errorCount++;
+           uploadResult.errors.push({ rowIndex: i+2, data: originalData, error: rowValidationErrors.map(e => e.error).join(', ') });
+           continue;
+        }
+
+        const record: ConnectionPayload = {
+            ofc_id: cableId,
+            fiber_no_sn: Number(processedData.fiber_no_sn),
+            // The connection logic assumes fiber_no_en matches sn if not explicitly provided differently in physical context
+            fiber_no_en: processedData.fiber_no_en ? Number(processedData.fiber_no_en) : Number(processedData.fiber_no_sn),
+            
+            otdr_distance_sn_km: processedData.otdr_distance_sn_km ? Number(processedData.otdr_distance_sn_km) : null,
+            sn_power_dbm: processedData.sn_power_dbm ? Number(processedData.sn_power_dbm) : null,
+            otdr_distance_en_km: processedData.otdr_distance_en_km ? Number(processedData.otdr_distance_en_km) : null,
+            en_power_dbm: processedData.en_power_dbm ? Number(processedData.en_power_dbm) : null,
+            route_loss_db: processedData.route_loss_db ? Number(processedData.route_loss_db) : null,
+            remark: processedData.remark as string | null,
+            updated_at: new Date().toISOString()
+        };
+        
+        recordsToUpdate.push(record);
+      }
+      
+      uploadResult.totalRows = recordsToUpdate.length;
+
+      if (recordsToUpdate.length > 0) {
+          if (showToasts) toast.info(`Updating ${recordsToUpdate.length} fibers...`);
+          
+          // Use Upsert on the table, matching the unique constraint/index
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error } = await supabase.from('ofc_connections').upsert(recordsToUpdate as any, { 
+              onConflict: 'ofc_id, fiber_no_sn', 
+              ignoreDuplicates: false 
+          });
+
+          if (error) {
+              uploadResult.errorCount = recordsToUpdate.length;
+              uploadResult.successCount = 0;
+              if (showToasts) toast.error("Batch update failed: " + error.message);
+          } else {
+              uploadResult.successCount = recordsToUpdate.length;
+              if (showToasts) toast.success(`Successfully updated ${recordsToUpdate.length} fibers.`);
+          }
+      }
+
+      return uploadResult;
+    },
+    onSuccess: (result) => {
+        if(result.successCount > 0) {
+            queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
+            queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
+        }
     }
   });
 }
@@ -73176,38 +73635,15 @@ import {
   validateValue,
   ValidationError,
 } from './excel-helpers';
+import { parseExcelFile } from '@/utils/excel-parser';
 
 export interface SystemConnectionUploadOptions {
   file: File;
   columns: UploadColumnMapping<'v_system_connections_complete'>[];
-  parentSystemId: string;
+  parentSystemId?: string; // CHANGED: Made optional for global upload
 }
 
 type RpcPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
-
-const parseExcelFile = async (file: File): Promise<unknown[][]> => {
-  const XLSX = await import('xlsx');
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        if (!event.target?.result) throw new Error('File reading failed.');
-        const buffer = event.target.result as ArrayBuffer;
-        const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-        const worksheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[worksheetName];
-        if (!worksheet) throw new Error('No worksheet found.');
-        const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: null });
-        resolve(data);
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = (error) => reject(new Error(`FileReader error: ${error.type}`));
-    reader.readAsArrayBuffer(file);
-  });
-};
 
 export function useSystemConnectionExcelUpload(
   supabase: SupabaseClient<Database>,
@@ -73253,7 +73689,7 @@ export function useSystemConnectionExcelUpload(
         for (const lt of linkTypesResp.data) { if (lt.name && lt.id) linkTypeNameToId.set(String(lt.name).trim().toLowerCase(), lt.id); }
       }
 
-      // 2. Fetch Systems for Name -> ID resolution
+      // 2. Fetch Systems for Name -> ID resolution (Optimized: Fetch ID and Name)
       const systemsResp = await supabase.from('systems').select('id, system_name');
       const systemNameToId = new Map<string, string>();
       if (!systemsResp.error && systemsResp.data) {
@@ -73281,7 +73717,6 @@ export function useSystemConnectionExcelUpload(
           let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
           if (typeof finalValue === 'string') finalValue = finalValue.trim();
 
-          // Don't validate ID fields strictly here as we might resolve them later
           if (!mapping.dbKey.endsWith('_id')) {
              const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
              if (validationError) { rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData }); }
@@ -73297,6 +73732,17 @@ export function useSystemConnectionExcelUpload(
           const key = linkTypeNameRaw.trim().toLowerCase();
           const foundId = linkTypeNameToId.get(key);
           if (foundId) resolvedLinkTypeId = foundId;
+        }
+
+        // Resolve System ID (Context for the connection)
+        let resolvedSystemId = parentSystemId;
+        if (!resolvedSystemId && processedData.system_name) {
+           const key = String(processedData.system_name).trim().toLowerCase();
+           resolvedSystemId = systemNameToId.get(key);
+        }
+
+        if (!resolvedSystemId) {
+            rowValidationErrors.push({ rowIndex: i, column: 'system_id', value: '', error: 'System ID missing. Ensure "System Name" column exists and matches a valid system.' });
         }
 
         // Resolve Destination System ID (en_id)
@@ -73321,7 +73767,7 @@ export function useSystemConnectionExcelUpload(
 
         const rpcPayload: RpcPayload = {
           p_id: toUndefined(processedData.id),
-          p_system_id: parentSystemId,
+          p_system_id: resolvedSystemId!, // We validated it exists above
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
           
@@ -73332,8 +73778,6 @@ export function useSystemConnectionExcelUpload(
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
           p_service_node_id: toUndefined(processedData.service_node_id), 
-          
-          // THE FIX: Explicitly map the service_id from the excel import
           p_service_id: toUndefined(processedData.service_id),
 
           p_sn_id: toUndefined(processedData.sn_id),
@@ -73353,6 +73797,7 @@ export function useSystemConnectionExcelUpload(
           
           p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
+          p_en_protection_interface: toUndefined(processedData.en_protection_interface),
           
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
@@ -73400,6 +73845,7 @@ export function useSystemConnectionExcelUpload(
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
         queryClient.invalidateQueries({ queryKey: ['system_connections-data'] }); 
+        queryClient.invalidateQueries({ queryKey: ['all-system-connections'] }); 
         queryClient.invalidateQueries({ queryKey: ['ports_management-data'] });
       }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
@@ -75653,9 +76099,8 @@ import {
   TableInsert,
   TableUpdate,
   TableInsertWithDates,
-  Row,
-  PagedQueryResult,
   PublicTableOrViewName,
+  PagedQueryResult,
 } from "@/hooks/database";
 import { toast } from "sonner";
 import { useDeleteManager } from "./useDeleteManager";
@@ -75693,7 +76138,6 @@ export interface DataQueryHookReturn<V> {
   isFetching?: boolean;
   error: Error | null;
   refetch: () => void;
-  // Allow arbitrary extra properties to pass through (like 'stats')
   [key: string]: unknown;
 }
 
@@ -75719,7 +76163,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   searchColumn,
   displayNameField = 'name',
   processDataForSave,
-  idType = 'string', // Default to string as UUIDs are most common
+  idType = 'string',
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -75760,7 +76204,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setCurrentPage(1);
   }, [debouncedSearch, filters, setCurrentPage]);
 
-  // THE FIX: Destructure known properties and capture the rest to pass through
   const { 
     data, 
     totalCount, 
@@ -75770,7 +76213,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isFetching, 
     error, 
     refetch,
-    ...restHookData // Capture extra props like 'stats'
+    ...restHookData 
   } = dataQueryHook({
     currentPage,
     pageLimit,
@@ -75778,18 +76221,80 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
+  // --- SMART SYNC HELPER ---
+  // Fetches a single record (using the View if available) and updates Dexie
+  const syncSingleRecord = useCallback(async (id: string | number) => {
+    const targetTable = localTableName || tableName;
+    const viewName = localTableName || tableName;
+    
+    try {
+      const { data: result, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: viewName,
+        p_limit: 1,
+        p_offset: 0,
+        p_filters: { id: String(id) },
+      });
+
+      if (error) throw error;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const records = (result as any)?.data || [];
+      if (records.length > 0) {
+        const record = records[0];
+        const table = getTable(targetTable);
+        await table.put(record);
+        console.log(`[useCrudManager] Synced record ${id} to local table ${targetTable}`);
+      }
+    } catch (err) {
+      console.error("[useCrudManager] Failed to sync single record:", err);
+      refetch();
+    }
+  }, [supabase, localTableName, tableName, refetch]);
+
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
-    onSuccess: () => { refetch(); closeModal(); toast.success("Record created successfully."); },
+    optimisticUpdate: false, 
+    onSuccess: async (data) => { 
+      toast.success("Record created successfully.");
+      closeModal();
+      if (data && data.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newId = (data[0] as any).id;
+        await syncSingleRecord(newId);
+      } else {
+        refetch(); 
+      }
+    },
     onError: (error) => toast.error(`Failed to create record: ${error.message}`),
   });
 
   const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(supabase, tableName, {
-    onSuccess: () => { refetch(); closeModal(); toast.success("Record updated successfully."); },
+    optimisticUpdate: false,
+    onSuccess: async (data) => { 
+      toast.success("Record updated successfully.");
+      closeModal();
+      if (data && data.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updatedId = (data[0] as any).id;
+        await syncSingleRecord(updatedId);
+      } else {
+        refetch();
+      }
+    },
     onError: (error) => toast.error(`Failed to update record: ${error.message}`),
   });
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
-    onSuccess: () => { refetch(); toast.success("Status updated successfully."); },
+    optimisticUpdate: false,
+    onSuccess: async (data) => { 
+      toast.success("Status updated successfully.");
+      if (data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const id = (data as any).id;
+        await syncSingleRecord(id);
+      } else {
+        refetch();
+      }
+    },
     onError: (error) => toast.error(`Failed to update status: ${error.message}`),
   });
 
@@ -75800,12 +76305,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     
     try {
         const table = getTable(targetTable);
-        // Cast IDs based on configured type before deletion
         const idsToDelete = idType === 'number' 
           ? deletedIds.map(Number).filter(n => !isNaN(n)) 
           : deletedIds;
           
-        await table.bulkDelete(idsToDelete as (string | number | [string, string])[]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await table.bulkDelete(idsToDelete as any);
         console.log(`[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`);
     } catch (e) {
         console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
@@ -75840,11 +76345,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       }
     } else { 
       try {
-        const table = getTable(tableName);
+        const targetTable = getTable(localTableName || tableName);
+        
         if (editingRecord && "id" in editingRecord && editingRecord.id) {
           const idToUpdate = String(editingRecord.id);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (table.update as any)(idToUpdate, processedData);
+          await (targetTable.update as any)(idType === 'number' ? Number(idToUpdate) : idToUpdate, processedData);
+          
           await addMutationToQueue({
             tableName,
             type: 'update',
@@ -75853,7 +76360,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         } else {
           const tempId = `offline_${uuidv4()}`;
           const newRecord = { ...processedData, id: tempId };
-          await table.add(newRecord as Row<T>);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.add(newRecord as any);
+          
           await addMutationToQueue({
             tableName,
             type: 'insert',
@@ -75862,11 +76371,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
         refetch(); 
         closeModal();
+        toast.info("Saved offline. Will sync when online.");
       } catch (err) {
         toast.error(`Offline operation failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, editingRecord, tableName, processDataForSave, updateItem, insertItem, refetch, closeModal]);
+  }, [isOnline, editingRecord, tableName, localTableName, processDataForSave, updateItem, insertItem, refetch, closeModal, idType]);
 
   const getDisplayName = useCallback((record: RecordWithId): string => {
     if (displayNameField) {
@@ -75893,9 +76403,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       if (window.confirm(`Are you sure you want to delete "${displayName}"? This will be synced when you're back online.`)) {
         try {
-          const table = getTable(tableName);
+          const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(idToDelete) : idToDelete;
-          await table.delete(idKey);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.delete(idKey as any);
           
           await addMutationToQueue({
             tableName,
@@ -75908,7 +76420,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, tableName, deleteManager, getDisplayName, refetch, idType]);
+  }, [isOnline, tableName, localTableName, deleteManager, getDisplayName, refetch, idType]);
 
   const handleToggleStatus = useCallback(async (record: RecordWithId & { status?: boolean | null }) => {
     if (!record.id) { toast.error("Cannot update status: Invalid ID"); return; }
@@ -75919,10 +76431,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       toggleStatus({ id: idToUpdate, status: newStatus });
     } else { 
       try {
-        const table = getTable(tableName);
+        const targetTable = getTable(localTableName || tableName);
         const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (table.update as any)(idKey, { status: newStatus });
+        await (targetTable.update as any)(idKey, { status: newStatus });
+        
         await addMutationToQueue({
           tableName,
           type: 'update',
@@ -75933,7 +76446,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, tableName, toggleStatus, refetch, idType]);
+  }, [isOnline, tableName, localTableName, toggleStatus, refetch, idType]);
 
   const handleCellEdit = useCallback(
     async (record: V, column: Column<V>, newValue: string) => {
@@ -75949,10 +76462,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         updateItem({ id, data: updateData });
       } else {
          try {
-          const table = getTable(tableName);
+          const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(id) : id;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (table.update as any)(idKey, updateData);
+          await (targetTable.update as any)(idKey, updateData);
+          
           await addMutationToQueue({
             tableName,
             type: 'update',
@@ -75964,7 +76478,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     },
-    [isOnline, updateItem, tableName, idType, refetch]
+    [isOnline, updateItem, tableName, localTableName, idType, refetch]
   );
   
   const handleRowSelect = useCallback((rows: Array<V & { id?: string | number }>) => {
@@ -75985,9 +76499,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     } else { 
       if (window.confirm(`Queue deletion for ${selectedRowIds.length} items?`)) {
         try {
-          const table = getTable(tableName);
+          const targetTable = getTable(localTableName || tableName);
           const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
-          await table.bulkDelete(idsKey as (string | number | [string, string])[]);
+          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await targetTable.bulkDelete(idsKey as any);
+          
           await addMutationToQueue({
             tableName,
             type: 'delete',
@@ -76000,7 +76517,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       }
     }
-  }, [isOnline, selectedRowIds, data, tableName, deleteManager, getDisplayName, refetch, handleClearSelection, idType]);
+  }, [isOnline, selectedRowIds, data, tableName, localTableName, deleteManager, getDisplayName, refetch, handleClearSelection, idType]);
 
   const handleBulkUpdateStatus = useCallback(async (status: "active" | "inactive") => {
     if (selectedRowIds.length === 0) return;
@@ -76009,19 +76526,21 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     if (isOnline) {
       const updates = selectedRowIds.map((id) => ({ id, data: { status: newStatus } as unknown as TableUpdate<T> }));
       bulkUpdate.mutate({ updates }, {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success(`Updated ${updates.length} records to ${status}`);
-          handleClearSelection();
           refetch();
+          handleClearSelection();
         },
         onError: (err) => toast.error(`Status update failed: ${err.message}`),
       });
     } else { 
       try {
-        const table = getTable(tableName);
+        const targetTable = getTable(localTableName || tableName);
         const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
+        
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await table.where('id').anyOf(idsKey).modify({ status: newStatus } as any);
+        await targetTable.where('id').anyOf(idsKey).modify({ status: newStatus } as any);
+        
         for (const id of selectedRowIds) {
           await addMutationToQueue({
             tableName,
@@ -76035,7 +76554,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         toast.error(`Offline bulk status update failed: ${(err as Error).message}`);
       }
     }
-  }, [isOnline, selectedRowIds, tableName, bulkUpdate, refetch, handleClearSelection, idType]);
+  }, [isOnline, selectedRowIds, tableName, localTableName, bulkUpdate, refetch, handleClearSelection, idType]);
 
   const handleBulkDeleteByFilter = useCallback((column: string, value: string | number | boolean | null, displayName: string) => {
       deleteManager.deleteBulk({ column, value, displayName });
@@ -76052,7 +76571,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     status: isLoading ? 'pending' : error ? 'error' : 'success',
   }) as UseQueryResult<PagedQueryResult<V>, Error>, [data, totalCount, isLoading, isFetching, error, refetch]);
 
-
   return {
     data: data || [],
     totalCount, activeCount, inactiveCount,
@@ -76068,7 +76586,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     bulkActions: { selectedRowIds, selectedCount: selectedRowIds.length, handleBulkDelete, handleBulkDeleteByFilter, handleBulkUpdateStatus, handleClearSelection, handleRowSelect },
     deleteModal: { isOpen: deleteManager.isConfirmModalOpen, message: deleteManager.confirmationMessage, onConfirm: deleteManager.handleConfirm, onCancel: deleteManager.handleCancel, loading: deleteManager.isPending },
     utils: { getDisplayName },
-    // THE FIX: Spread remaining hook data (e.g. stats)
     ...restHookData, 
   };
 }
@@ -76856,6 +77373,122 @@ export const useRingsData = (
       inactiveCount: totalCount - activeCount,
     };
   }, [allRings, searchQuery, filters, currentPage, pageLimit]);
+
+  return { ...processedData, isLoading, isFetching, error, refetch };
+};
+```
+
+<!-- path: hooks/data/useAllOfcConnectionsData.ts -->
+```typescript
+// hooks/data/useAllOfcConnectionsData.ts
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { DEFAULTS } from '@/constants/constants';
+import { 
+  buildServerSearchString, 
+  performClientSearch, 
+  performClientPagination 
+} from '@/hooks/database/search-utils';
+
+export const useAllOfcConnectionsData = (
+  params: DataQueryHookParams
+): DataQueryHookReturn<V_ofc_connections_completeRowSchema> => {
+  const { currentPage, pageLimit, filters, searchQuery } = params;
+
+  // Search Config
+  const searchFields = useMemo(
+    () => ['ofc_route_name', 'system_name', 'sn_name', 'en_name', 'maintenance_area_name'] as (keyof V_ofc_connections_completeRowSchema)[],
+    []
+  );
+  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
+
+  const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
+    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_ofc_connections_complete',
+      p_limit: DEFAULTS.PAGE_SIZE,
+      p_offset: 0,
+      p_filters: rpcFilters,
+      p_order_by: 'ofc_route_name',
+      p_order_dir: 'asc',
+    });
+
+    if (error) throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.data || [];
+  }, [searchQuery, filters, serverSearchFields]);
+
+  // Offline: Use the full collection
+  const localQueryFn = useCallback(() => {
+    return localDb.v_ofc_connections_complete.orderBy('ofc_route_name').toArray();
+  }, []);
+
+  const {
+    data: allFibers = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'v_ofc_connections_complete'>({
+    queryKey: ['all-ofc-connections', searchQuery, filters],
+    onlineQueryFn,
+    localQueryFn,
+    dexieTable: localDb.v_ofc_connections_complete,
+    autoSync: false // Manual sync recommended for large datasets
+  });
+
+  const processedData = useMemo(() => {
+    let filtered = allFibers || [];
+
+    // 1. Search
+    if (searchQuery) {
+        filtered = performClientSearch(filtered, searchQuery, searchFields);
+    }
+
+    // 2. Filters
+    if (filters.status) {
+         const statusBool = filters.status === 'true';
+         filtered = filtered.filter(c => c.status === statusBool);
+    }
+    if (filters.ofc_type_name) {
+        filtered = filtered.filter(c => c.ofc_type_name === filters.ofc_type_name);
+    }
+
+    // 3. Multi-Column Sort: Route Name -> Fiber Number
+    filtered.sort((a, b) => {
+        // Primary: Route Name (Natural Sort for text like "Route 1", "Route 10")
+        const routeA = a.ofc_route_name || '';
+        const routeB = b.ofc_route_name || '';
+        const routeCompare = routeA.localeCompare(routeB, undefined, { sensitivity: 'base', numeric: true });
+        
+        if (routeCompare !== 0) return routeCompare;
+        
+        // Secondary: Fiber Number (Numeric)
+        return (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0);
+    });
+    
+    const totalCount = filtered.length;
+    const activeCount = filtered.filter(c => !!c.status).length;
+    const inactiveCount = totalCount - activeCount;
+
+    // 4. Paginate
+    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
+
+    return {
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFibers, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
 };
@@ -79350,9 +79983,9 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 31: Added 'sort_order' to lookup_types index to support orderBy('sort_order')
-    this.version(31).stores({
-      lookup_types: '&id, category, name, sort_order', // ADDED sort_order
+    // VERSION 32: Added ofc_route_name to v_ofc_connections_complete index
+    this.version(32).stores({
+      lookup_types: '&id, category, name, sort_order', 
       
       maintenance_areas: '&id, name, parent_id, area_type_id',
       employee_designations: '&id, name, parent_id',
@@ -79393,7 +80026,8 @@ export class HNVTMDatabase extends Dexie {
       v_employee_designations: '&id, name',
       v_inventory_items: '&id, asset_no, name',
       v_user_profiles_extended: '&id, email, full_name, role, status',
-      v_ofc_connections_complete: '&id, ofc_id, system_id',
+      // THE FIX: Added ofc_route_name to index
+      v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name', 
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at',
       v_ports_management_complete: '&id, system_id, port',
       v_audit_logs: '&id, action_type, table_name, created_at', 
@@ -79401,8 +80035,7 @@ export class HNVTMDatabase extends Dexie {
       v_end_to_end_paths: '&path_id, path_name',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
       
-      // Also updated to ensure sorting performance for E-Files
-      v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at', // Added updated_at
+      v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at', 
       v_file_movements_extended: '&id, file_id, created_at',
 
       sync_status: 'tableName',
@@ -81077,6 +81710,124 @@ export function useTypedSorting<T extends Record<string, unknown>>(
 }
 ```
 
+<!-- path: hooks/useRealtimeSubscription.ts -->
+```typescript
+// hooks/useRealtimeSubscription.ts
+"use client";
+
+import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/utils/supabase/client";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+
+// Map of DB table names to React Query keys (matches keys in hooks/data/*)
+const TABLE_TO_QUERY_KEY_MAP: Record<string, string[]> = {
+  users: ['admin-users'],
+  user_profiles: ['user_profiles-data'],
+  employees: ['employees-data', 'v_employees'],
+  inventory_items: ['inventory_items-data', 'v_inventory_items'],
+  inventory_transactions: ['inventory-history'],
+  systems: ['systems-data', 'v_systems_complete'],
+  nodes: ['nodes-data', 'v_nodes_complete'],
+  ofc_cables: ['ofc_cables-data', 'v_ofc_cables_complete', 'ofc-routes-for-selection'],
+  ofc_connections: ['ofc_connections-data', 'v_ofc_connections_complete', 'available-fibers'],
+  system_connections: ['system_connections-data', 'v_system_connections_complete', 'all-system-connections'],
+  rings: ['rings-manager-data', 'v_rings'],
+  ring_based_systems: ['ring-systems-data'],
+  diary_notes: ['diary_data-for-month'],
+  e_files: ['e-files'],
+  file_movements: ['e-file-details'],
+  logical_paths: ['ring-connection-paths'],
+  maintenance_areas: ['maintenance_areas-data'],
+  lookup_types: ['lookup_types-data', 'categories-data-all']
+};
+
+/**
+ * Subscribes to global database changes and invalidates relevant React Query caches.
+ * This keeps the UI in sync with server state in real-time.
+ */
+export function useRealtimeSubscription() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+  
+  // Use a ref to debounce rapid-fire events (e.g. bulk uploads)
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const pendingTables = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    // Safety guard: Do not attempt connection if offline
+    if (!isOnline) return;
+
+    // console.log("[Realtime] Setting up subscription...");
+
+    const channel = supabase
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // Listen to INSERT, UPDATE, DELETE
+          schema: "public",
+        },
+        (payload) => {
+          const tableName = payload.table;
+          
+          // Add table to pending set
+          pendingTables.current.add(tableName);
+
+          // Debounce the invalidation
+          if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+          }
+
+          debounceTimeout.current = setTimeout(() => {
+            const tablesToInvalidate = Array.from(pendingTables.current);
+            pendingTables.current.clear();
+            
+            let invalidatedCount = 0;
+
+            tablesToInvalidate.forEach((tbl) => {
+              const queryKeys = TABLE_TO_QUERY_KEY_MAP[tbl];
+              
+              if (queryKeys) {
+                // Invalidate specific keys mapped to this table
+                queryKeys.forEach(key => {
+                   queryClient.invalidateQueries({ queryKey: [key] });
+                });
+                invalidatedCount++;
+              } else {
+                // Fallback: Invalidate by table name directly if no map exists
+                // This covers useTableQuery hooks that use ['table', tableName]
+                queryClient.invalidateQueries({ queryKey: ['table', tbl] });
+                // Also invalidate View versions commonly used
+                queryClient.invalidateQueries({ queryKey: ['table', `v_${tbl}`] });
+                // Try Generic data hook pattern
+                queryClient.invalidateQueries({ queryKey: [`${tbl}-data`] });
+                invalidatedCount++;
+              }
+            });
+
+            if (invalidatedCount > 0) {
+                // console.log(`[Realtime] Invalidated queries for: ${tablesToInvalidate.join(', ')}`);
+            }
+
+          }, 1000); // Wait 1 second before processing batch to allow bulk updates to finish
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+           // console.log("[Realtime] Connected.");
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    };
+  }, [supabase, queryClient, isOnline]);
+}
+```
+
 <!-- path: hooks/useCurrentTableName.ts -->
 ```typescript
 // hooks/useCurrentTableName.ts
@@ -81119,10 +81870,12 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return "lookup_types";
       // case "inventory":
       //   return "inventory_items";
-      case "ofc":
-        // Check if there's a third segment (ID) after ofc
-        const hasId = segments.length > dashboardIndex + 2 && segments[dashboardIndex + 2];
-        return hasId ? "ofc_connections" : "ofc_cables";
+     case "ofc":
+        // Check if there's a third segment
+        const subSegment = segments[dashboardIndex + 2];
+        if (!subSegment) return "ofc_cables"; // /dashboard/ofc
+        if (subSegment === 'connections') return "ofc_connections"; // /dashboard/ofc/connections (NEW)
+        return "ofc_connections"; // /dashboard/ofc/[id] (Existing)
       case "ofc_connections":
         return "ofc_connections";
       case "nodes":

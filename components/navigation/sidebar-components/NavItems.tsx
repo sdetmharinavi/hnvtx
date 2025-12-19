@@ -37,14 +37,14 @@ function NavItems() {
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
         href: '/dashboard',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'diary',
         label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'user-management',
@@ -79,7 +79,7 @@ function NavItems() {
         label: 'E-File Tracking',
         icon: <FileText className="h-5 w-5" />,
         href: '/dashboard/e-files',
-        roles: ROLES.VIEWERS,
+        roles: ROLES.ADMINS,
       },
       {
         id: 'base-menu',
