@@ -114,23 +114,29 @@ function TableRowBase<T extends TableOrViewName>({
               </div>
             </td>
           )}
-          {visibleColumns.map((column, colIndex) => (
+          {visibleColumns.map((column, colIndex) => {
+            const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key;
+            
+            return (
             <td
               key={column.key}
-              // Added 'relative' so the absolute edit overlay positions correctly over this cell
+              // THE FIX: Removed overflow-hidden from the TD class list
+              // This allows the absolute positioned edit box to extend beyond the cell boundaries
               className={`relative ${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white whitespace-nowrap ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
-              } ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} overflow-hidden`}
+              } ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} `}
               style={{
                 width: column.width,
                 minWidth: column.width ? undefined : "100px",
                 maxWidth: "350px"
               }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
-              {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
-                // Use absolute positioning with z-index to pop out of the cell boundaries if needed
+              {isEditing ? (
+                // Edit Mode: Absolute overlay
                 <div 
-                    className='absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-lg ring-1 ring-black/5 dark:ring-white/10 min-w-full w-auto'
+                    className='absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-xl ring-2 ring-blue-500/20 dark:ring-blue-500/40'
+                    // THE FIX: Ensure it is at least 100% width, but grows to fit content (buttons)
+                    style={{ width: 'auto', minWidth: '100%', minHeight: '100%' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                   <input
@@ -166,7 +172,8 @@ function TableRowBase<T extends TableOrViewName>({
                   </div>
                 </div>
               ) : (
-                <div className='flex items-center gap-2 group min-w-0'>
+                // Display Mode: Wrap in div with overflow-hidden to handle text clipping
+                <div className='flex items-center gap-2 group min-w-0 overflow-hidden max-w-full'>
                   {column.render ? (
                     column.render(
                       record[column.dataIndex as keyof DataRow<T>],
@@ -179,11 +186,11 @@ function TableRowBase<T extends TableOrViewName>({
                       className="text-sm"
                     />
                   )}
-                  {column.editable && <FiEdit3 size={12} className='opacity-0 group-hover:opacity-50 text-gray-400' />}
+                  {column.editable && <FiEdit3 size={12} className='opacity-0 group-hover:opacity-50 text-gray-400 shrink-0' />}
                 </div>
               )}
             </td>
-          ))}
+          )})}
         </tr>
     );
 }
