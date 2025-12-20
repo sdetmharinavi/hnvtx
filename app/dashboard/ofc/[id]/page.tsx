@@ -164,7 +164,7 @@ export default function OfcCableDetailsPage() {
 
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
-      const smartMode = (!isMobile && cableConnectionsData.length > 48) ? 'table' : 'grid';
+      const smartMode = (!isMobile && cableConnectionsData.length > 12) ? 'table' : 'grid';
       setViewMode(smartMode);
       setHasInitializedView(true);
     }
