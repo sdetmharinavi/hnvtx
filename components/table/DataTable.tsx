@@ -307,6 +307,12 @@ export function DataTable<T extends PublicTableOrViewName>({
     if (!autoHideEmptyColumns || processedData.length === 0) return new Set<string>();
     const nonEmptyKeys = new Set<string>();
     columns.forEach((col) => {
+      // THE FIX: Check for alwaysVisible flag
+      if (col.alwaysVisible) {
+        nonEmptyKeys.add(col.key);
+        return;
+      }
+      
       const hasValue = processedData.some((row) => {
         const val = row[col.dataIndex as keyof typeof row];
         if (val === null || val === undefined) return false;

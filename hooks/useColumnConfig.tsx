@@ -42,6 +42,8 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   resizable?: boolean;
   editable?: boolean;
   excelHeader?: string;
+  // NEW: Propagate alwaysVisible
+  alwaysVisible?: boolean;
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {
@@ -54,17 +56,12 @@ interface UseDynamicColumnConfigOptions<T extends PublicTableOrViewName> {
   data?: Row<T>[];
 }
 
-/**
- * A hook that dynamically generates a detailed and type-safe column configuration array
- * that is fully compatible with the application's standard `Column<T>` interface.
- */
 export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
   tableName: T,
   options: UseDynamicColumnConfigOptions<T> = {}
 ): Column<Row<T>>[] {
   const { overrides = {}, omit = [], data = [] } = options;
 
-  // THE FIX 1: Move dateColumns calculation to its own top-level useMemo.
   const dateColumns = useMemo(
     () =>
       new Set([
@@ -79,7 +76,6 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
     []
   );
 
-  // THE FIX 2: Move columnWidths calculation to its own top-level useMemo.
   const columnWidths = useMemo(() => {
     const widths: Record<string, number> = {};
     if (data.length > 0) {
@@ -92,7 +88,6 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
     return widths;
   }, [data, dateColumns]);
 
-  // THE FIX 3: The main columns calculation is now its own top-level useMemo.
   const columns = useMemo(() => {
     if (!tableName) {
       return [];

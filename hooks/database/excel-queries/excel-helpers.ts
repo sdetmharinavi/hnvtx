@@ -20,8 +20,9 @@ export interface Column<T> {
   excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
   excludeFromExport?: boolean;
   naturalSort?: boolean; 
-  // THE FIX: Added excelHeader property
   excelHeader?: string;
+  // NEW: Forces the column to stay visible even if autoHideEmptyColumns is true and data is empty
+  alwaysVisible?: boolean; 
 }
 
 export interface RPCConfig<TParams = Record<string, unknown>> {
