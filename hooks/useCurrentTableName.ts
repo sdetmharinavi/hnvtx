@@ -44,8 +44,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         if (!subSegment) return "ofc_cables"; // /dashboard/ofc
         if (subSegment === 'connections') return "ofc_connections"; // /dashboard/ofc/connections (NEW)
         return "ofc_connections"; // /dashboard/ofc/[id] (Existing)
-      case "ofc_connections":
-        return "ofc_connections";
+      // case "ofc_connections":
+      //   return "ofc_connections";
       case "nodes":
         return "nodes";
       case "systems":

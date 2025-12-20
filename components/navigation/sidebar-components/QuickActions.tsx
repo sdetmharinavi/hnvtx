@@ -1,3 +1,4 @@
+// components/navigation/sidebar-components/QuickActions.tsx
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,19 +24,26 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
   const [file, setFile] = useState<File | null>(null);
   const currentTableName = useCurrentTableName();
 
-  // Don't show on dashboard or when collapsed
+  // Determine if we are on the OFC Details page (e.g. /dashboard/ofc/uuid-123)
+  // We want to exclude /dashboard/ofc (list) and /dashboard/ofc/connections (global list)
+  const isOfcDetailsPage = 
+    pathname.startsWith('/dashboard/ofc/') && 
+    pathname !== '/dashboard/ofc/connections';
+
+  // Don't show on dashboard, when collapsed, if table can't be determined, OR if on OFC details page
   const shouldHideFeatures =
-    pathname === "/dashboard" || isCollapsed || !currentTableName;
+    pathname === "/dashboard" || 
+    isCollapsed || 
+    !currentTableName || 
+    isOfcDetailsPage;
 
   // Zustand integration
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // const pageKey = currentTableName as string;
 
   // Get the config for this specific context from the store.
   const { configs } = useUploadConfigStore();
   const storeConfig = configs[currentTableName as string];
-  // console.log("storeConfig", storeConfig);
 
   // Initialize the upload hook. Note that we don't know the table name here yet.
   const { mutate, isPending } = useExcelUpload(
@@ -43,7 +51,6 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
     currentTableName as PublicTableName,
     {
       onSuccess: (result) => {
-        // ... success handler
         return result.successCount > 0
           ? toast.success(
               `Successfully uploaded ${result.successCount} of ${result.totalRows} records.`
@@ -51,7 +58,6 @@ export const QuickActions = ({ isCollapsed, pathname }: QuickActionsProps) => {
           : toast.error(`Failed to upload ${result.totalRows} records.`);
       },
       onError: (error) => {
-        // ... error handler
         console.log(error);
       },
     }

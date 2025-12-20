@@ -53,11 +53,25 @@ export const OfcDetailsTableColumns = (
         title: 'End A Node',
         sortable: true,
         searchable: true,
+        // THE FIX: Fallback to physical sn_name if updated_sn_name is null
+        render: (value, record) => (
+          <TruncateTooltip 
+            text={(value as string) || record.sn_name || '—'} 
+            className="font-medium text-gray-900 dark:text-gray-100" 
+          />
+        ),
       },
       updated_en_name: {
         title: 'End B Node',
         sortable: true,
         searchable: true,
+        // THE FIX: Fallback to physical en_name if updated_en_name is null
+        render: (value, record) => (
+          <TruncateTooltip 
+            text={(value as string) || record.en_name || '—'} 
+            className="font-medium text-gray-900 dark:text-gray-100" 
+          />
+        ),
       },
       updated_fiber_no_sn: {
         title: 'End A Fiber',
@@ -87,14 +101,14 @@ export const OfcDetailsTableColumns = (
         title: 'End A Node',
         excelFormat: 'text',
         render(value, record) {
-          return <TruncateTooltip text={record.updated_sn_name || (value as string) || '—'} />;
+          return <TruncateTooltip text={record.updated_sn_name || record.sn_name || (value as string) || '—'} />;
         },
       },
       updated_en_id: {
         title: 'End B Node',
         excelFormat: 'text',
         render(value, record) {
-          return <TruncateTooltip text={record.updated_en_name || (value as string) || '—'} />;
+          return <TruncateTooltip text={record.updated_en_name || record.en_name || (value as string) || '—'} />;
         },
       },
       en_dom: { 

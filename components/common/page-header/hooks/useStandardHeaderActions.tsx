@@ -1,3 +1,4 @@
+// components/common/page-header/hooks/useStandardHeaderActions.tsx
 'use client';
 
 import { createClient } from '@/utils/supabase/client';
@@ -8,9 +9,9 @@ import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
-import { Filters, Row, PublicTableOrViewName, buildRpcFilters } from '@/hooks/database'; 
+import { Filters, Row, PublicTableOrViewName, buildRpcFilters, OrderBy } from '@/hooks/database'; 
 import { FiDownload, FiPlus, FiRefreshCw, FiWifiOff } from 'react-icons/fi';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface ExportFilterOption {
   label: string;
@@ -25,7 +26,9 @@ interface ExportConfig<T extends PublicTableOrViewName> {
   filterOptions?: ExportFilterOption[];
   filters?: Filters;
   fileName?: string;
-  useRpc?: boolean; 
+  useRpc?: boolean;
+  // Added orderBy support
+  orderBy?: OrderBy[];
 }
 
 interface StandardActionsConfig<T extends PublicTableOrViewName> {
@@ -44,7 +47,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   data,
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   const columns = useDynamicColumnConfig(exportConfig?.tableName as T, {
     data: data,
@@ -72,12 +75,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         return;
       }
 
-      // Check offline status for large RPC/DB exports
-      // Note: We could technically implement client-side export of the `data` prop here,
-      // but the `data` prop often only contains the *current page* of data, not the full dataset
-      // required for a meaningful report.
-      // Ideally, we'd fall back to client-side export if `data` is sufficient.
-      // For now, we block large exports to prevent confusion/errors.
       if (!isOnline) {
           toast.error('Export unavailable offline. Please connect to the internet.', {
               icon: <FiWifiOff />
@@ -112,7 +109,14 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           : true
       );
 
+      // Default sort logic if not provided
+      const orderBy = exportConfig.orderBy || [{ column: 'created_at', ascending: false }];
+
       if (exportConfig.useRpc) {
+        // Map OrderBy array to RPC string param if strictly one is expected,
+        // or just pick the first one for the simple RPC `p_order_by`
+        const primaryOrder = orderBy[0] || { column: 'id', ascending: true };
+
         rpcExcelDownload.mutate({
           fileName: finalFileName,
           sheetName: sheetName,
@@ -124,8 +128,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
               p_limit: exportConfig.maxRows || 50000, 
               p_offset: 0,
               p_filters: buildRpcFilters(filters || {}),
-              p_order_by: 'created_at', 
-              p_order_dir: 'desc'
+              p_order_by: primaryOrder.column,
+              p_order_dir: primaryOrder.ascending === false ? 'desc' : 'asc'
             }
           }
         });
@@ -136,6 +140,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           filters: filters,
           columns: columnsToExport,
           maxRows: exportConfig.maxRows,
+          // Pass the sort config to table downloader
+          orderBy: orderBy,
         });
       }
     },
