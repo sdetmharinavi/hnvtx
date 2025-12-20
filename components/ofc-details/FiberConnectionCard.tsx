@@ -33,15 +33,11 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
             F-{fiber.fiber_no_sn}
           </span>
           {isAllocated ? (
-            <div className='flex flex-col'>
+            <div className='flex flex-col w-20'>
               <span className='text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider'>
                 Allocated
               </span>
-              <span
-                className='text-xs font-medium text-gray-900 dark:text-white truncate max-w-[150px]'
-                title={fiber.system_name || ""}>
-                {fiber.system_name}
-              </span>
+              <TruncateTooltip className='text-xs font-medium text-gray-900 dark:text-white truncate max-w-[80px]' text={fiber.system_name || ""} />
             </div>
           ) : (
             <span className='text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full'>

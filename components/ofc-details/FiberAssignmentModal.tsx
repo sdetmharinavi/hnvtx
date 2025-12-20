@@ -6,14 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "@/components/common/ui/Modal";
 import { FormCard, FormSearchableSelect } from "@/components/common/form";
-import { V_ofc_connections_completeRowSchema, V_system_connections_completeRowSchema } from "@/schemas/zod-schemas";
+import { V_ofc_connections_completeRowSchema } from "@/schemas/zod-schemas";
 import { useAssignFiberToConnection } from "@/hooks/database/fiber-assignment-hooks";
 import { createClient } from "@/utils/supabase/client";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ArrowRight, GitMerge, Radio } from "lucide-react";
-// THE FIX: Import offline query hooks and local DB
 import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { localDb } from "@/hooks/data/localDb";
+import { useTableRecord } from "@/hooks/database"; // Import for fetching logical path details
 
 interface FiberAssignmentModalProps {
   isOpen: boolean;
@@ -29,6 +29,15 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Define a lightweight type specifically for the dropdown to avoid fetching unused fields
+type ConnectionOptionData = {
+  id: string | null;
+  service_name: string | null;
+  system_name: string | null;
+  connected_system_name: string | null;
+  status: boolean | null;
+};
+
 export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
   isOpen,
   onClose,
@@ -37,35 +46,69 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
   const supabase = createClient();
   const { mutate: assignFiber, isPending } = useAssignFiberToConnection();
 
-  const { control, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       role: 'working',
-      direction: 'tx'
+      direction: 'tx',
+      connection_id: ''
     }
   });
 
-  // THE FIX: Use useOfflineQuery instead of useTableQuery.
-  // This fetches from IndexedDB first (fast), then Supabase (fresh).
-  const { data: connectionsData, isLoading: isLoadingConnections } = useOfflineQuery<V_system_connections_completeRowSchema[]>(
+  // 1. If editing an existing link, fetch the parent Connection ID via the Logical Path
+  // The fiber view only gives us 'logical_path_id', we need 'system_connection_id' for the dropdown.
+  const { data: logicalPathData } = useTableRecord(
+    supabase,
+    'logical_fiber_paths',
+    fiber?.logical_path_id || null,
+    {
+      columns: 'system_connection_id',
+      enabled: isOpen && !!fiber?.logical_path_id
+    }
+  );
+
+  // 2. Pre-fill form when data is available
+  useEffect(() => {
+    if (isOpen && fiber) {
+        // Determine initial values
+        const currentRole = (fiber.fiber_role as 'working' | 'protection') || 'working';
+        const currentDirection = (fiber.path_direction as 'tx' | 'rx') || 'tx';
+        
+        // If we have a resolved connection ID from the fetch above, use it.
+        // Otherwise default to empty string.
+        const currentConnectionId = logicalPathData?.system_connection_id || '';
+
+        reset({
+            role: currentRole,
+            direction: currentDirection,
+            connection_id: currentConnectionId
+        });
+    }
+  }, [isOpen, fiber, logicalPathData, reset]);
+
+
+  // 3. Fetch Options using offline-first strategy
+  const { data: connectionsData, isLoading: isLoadingConnections } = useOfflineQuery<ConnectionOptionData[]>(
     ['active-system-connections-list'],
-    // Online Fetcher
+    // Online Fetcher: Selects only necessary columns
     async () => {
       const { data, error } = await supabase
         .from('v_system_connections_complete')
-        .select('id, service_name, system_name, connected_system_name, link_type_name, status')
+        .select('id, service_name, system_name, connected_system_name, status')
         .eq('status', true)
         .order('service_name', { ascending: true })
-        .limit(2000); // Reasonable limit for dropdowns
+        .limit(3000);
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as ConnectionOptionData[];
     },
-    // Offline Fetcher (Dexie)
+    // Offline Fetcher: Maps full local objects to the lighter interface
     async () => {
-      return await localDb.v_system_connections_complete
+      const all = await localDb.v_system_connections_complete
         .filter(c => c.status === true)
         .toArray();
+      
+      return all as unknown as ConnectionOptionData[];
     }
   );
 
@@ -95,20 +138,18 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
     });
   };
 
-  // Watch values for UI logic if needed
-  // const currentRole = watch('role');
-
   if (!fiber) return null;
+  const isEditMode = !!fiber.logical_path_id;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Assign Fiber #${fiber.fiber_no_sn}`} size="md">
       <FormCard
-        title="Link to Service"
-        subtitle={`Assign Fiber ${fiber.fiber_no_sn} to a System Connection`}
+        title={isEditMode ? "Edit Link" : "Link to Service"}
+        subtitle={isEditMode ? "Update existing assignment" : `Assign Fiber ${fiber.fiber_no_sn} to a System Connection`}
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isPending}
-        submitText="Link Fiber"
+        submitText={isEditMode ? "Update Link" : "Link Fiber"}
         standalone={false} // Embedded in Modal
       >
         <div className="space-y-6">
@@ -122,7 +163,9 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
              placeholder={isLoadingConnections ? "Loading services..." : "Search by Service Name or System..."}
              error={errors.connection_id}
              isLoading={isLoadingConnections}
-             className="z-50" // Ensure dropdown renders above other elements if needed
+             className="z-50"
+             // Disable changing the service during edit if you want to force unlinking first, 
+             // but usually allowing a move is better UX. Keeping enabled.
           />
 
           {/* Configuration Grid */}
