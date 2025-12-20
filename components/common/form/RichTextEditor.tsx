@@ -1,6 +1,6 @@
 'use client';
 
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useEditor, EditorContent, Editor, Mark, mergeAttributes } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import LinkExtension from '@tiptap/extension-link';
 import TableRow from '@tiptap/extension-table-row';
@@ -22,9 +22,94 @@ import {
   Trash2,
   Merge,
   Split,
+  Type, // Icon for Font Size
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { Label } from '@/components/common/ui/label/Label';
+
+// --- CUSTOM EXTENSIONS (Inline implementation to avoid new deps) ---
+
+// 1. TextStyle Mark (Required base for attributes like font-size, color)
+const TextStyle = Mark.create({
+  name: 'textStyle',
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: (element) => {
+          const hasStyle = (element as HTMLElement).hasAttribute('style');
+          if (!hasStyle) return false;
+          return {};
+        },
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+  },
+});
+
+// 2. FontSize Extension (Adds fontSize attribute to textStyle mark)
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    fontSize: {
+      setFontSize: (size: string) => ReturnType;
+      unsetFontSize: () => ReturnType;
+    };
+  }
+}
+
+const FontSize = Mark.create({
+  name: 'fontSize',
+  addOptions() {
+    return {
+      types: ['textStyle'],
+    };
+  },
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize || null,
+            renderHTML: (attributes) => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+              return {
+                style: `font-size: ${attributes.fontSize}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      setFontSize:
+        (fontSize) =>
+        ({ chain }) => {
+          return chain().setMark('textStyle', { fontSize }).run();
+        },
+      unsetFontSize:
+        () =>
+        ({ chain }) => {
+          // THE FIX: Removed .removeEmptyTextStyle() call
+          return chain()
+            .setMark('textStyle', { fontSize: null })
+            .run();
+        },
+    };
+  },
+});
 
 interface RichTextEditorProps {
   value: string;
@@ -39,11 +124,51 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) return null;
 
   const baseBtn =
-    'p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300';
+    'p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300 flex items-center justify-center';
   const activeBtn = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+
+  const fontSizes = [
+    { label: 'Default', value: '' },
+    { label: '12px', value: '12px' },
+    { label: '14px', value: '14px' },
+    { label: '16px', value: '16px' },
+    { label: '18px', value: '18px' },
+    { label: '20px', value: '20px' },
+    { label: '24px', value: '24px' },
+    { label: '30px', value: '30px' },
+  ];
+
+  // Helper to get current font size
+  const currentFontSize = editor.getAttributes('textStyle').fontSize || '';
 
   return (
     <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg items-center">
+      {/* Font Size Dropdown */}
+      <div className="relative flex items-center mr-1">
+        <Type size={14} className="absolute left-2 text-gray-400 pointer-events-none" />
+        <select
+          value={currentFontSize}
+          onChange={(e) => {
+            const size = e.target.value;
+            if (size) {
+              editor.chain().focus().setFontSize(size).run();
+            } else {
+              editor.chain().focus().unsetFontSize().run();
+            }
+          }}
+          className="pl-7 pr-2 py-1 h-8 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          title="Font Size"
+        >
+          {fontSizes.map((size) => (
+            <option key={size.label} value={size.value}>
+              {size.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -205,13 +330,14 @@ export const RichTextEditor = ({
     {
       extensions: [
         StarterKit.configure({ link: false }),
+        TextStyle, // Custom inline
+        FontSize,  // Custom inline
         LinkExtension.configure({
           openOnClick: false,
           HTMLAttributes: { class: 'text-blue-500 hover:underline cursor-pointer' },
         }),
         Table.configure({
           resizable: true,
-          // THE FIX: Allow tables to be wide and scrollable within the editor container
           HTMLAttributes: {
             class:
               'border-collapse table-auto w-full my-4 border border-gray-300 dark:border-gray-600',
@@ -234,7 +360,6 @@ export const RichTextEditor = ({
       editable: !disabled,
       editorProps: {
         attributes: {
-          // THE FIX: Prose classes adjusted for table support
           class:
             'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
         },
@@ -265,7 +390,6 @@ export const RichTextEditor = ({
         } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
         <MenuBar editor={editor} />
-        {/* THE FIX: Wrap editor content in overflow container for horizontal table scrolling */}
         <div className="overflow-x-auto w-full">
           <EditorContent editor={editor} placeholder={placeholder} />
         </div>
