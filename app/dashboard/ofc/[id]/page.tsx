@@ -346,6 +346,7 @@ export default function OfcCableDetailsPage() {
             loading={isLoading}
             actions={tableActions}
             selectable={canDelete}
+            onCellEdit={crudActions.handleCellEdit}
             searchable={false} // Custom search bar used
             customToolbar={<></>}
             renderMobileItem={renderMobileItem}
