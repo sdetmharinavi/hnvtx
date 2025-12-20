@@ -6,13 +6,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Modal } from "@/components/common/ui/Modal";
 import { FormCard, FormSearchableSelect } from "@/components/common/form";
-import { Button } from "@/components/common/ui/Button";
-import { V_ofc_connections_completeRowSchema } from "@/schemas/zod-schemas";
-import { useAssignFiberToConnection, AssignFiberPayload } from "@/hooks/database/fiber-assignment-hooks";
-import { useTableQuery } from "@/hooks/database";
+import { V_ofc_connections_completeRowSchema, V_system_connections_completeRowSchema } from "@/schemas/zod-schemas";
+import { useAssignFiberToConnection } from "@/hooks/database/fiber-assignment-hooks";
 import { createClient } from "@/utils/supabase/client";
 import { useMemo } from "react";
 import { ArrowRight, GitMerge, Radio } from "lucide-react";
+// THE FIX: Import offline query hooks and local DB
+import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+import { localDb } from "@/hooks/data/localDb";
 
 interface FiberAssignmentModalProps {
   isOpen: boolean;
@@ -44,28 +45,39 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
     }
   });
 
-  // Fetch all active system connections (Services)
-  // Optimization: Fetch columns needed for display
-  const { data: connectionsResult, isLoading: isLoadingConnections } = useTableQuery(
-    supabase, 
-    'v_system_connections_complete', 
-    {
-      columns: 'id, service_name, system_name, connected_system_name, link_type_name',
-      filters: { status: true },
-      limit: 2000, // Reasonable limit for search
-      enabled: isOpen
+  // THE FIX: Use useOfflineQuery instead of useTableQuery.
+  // This fetches from IndexedDB first (fast), then Supabase (fresh).
+  const { data: connectionsData, isLoading: isLoadingConnections } = useOfflineQuery<V_system_connections_completeRowSchema[]>(
+    ['active-system-connections-list'],
+    // Online Fetcher
+    async () => {
+      const { data, error } = await supabase
+        .from('v_system_connections_complete')
+        .select('id, service_name, system_name, connected_system_name, link_type_name, status')
+        .eq('status', true)
+        .order('service_name', { ascending: true })
+        .limit(2000); // Reasonable limit for dropdowns
+      
+      if (error) throw error;
+      return data || [];
+    },
+    // Offline Fetcher (Dexie)
+    async () => {
+      return await localDb.v_system_connections_complete
+        .filter(c => c.status === true)
+        .toArray();
     }
   );
 
   const connectionOptions = useMemo(() => {
-    return (connectionsResult?.data || []).map(conn => ({
+    return (connectionsData || []).map(conn => ({
       value: conn.id!,
-      // Display: Service Name (or System A -> System B)
+      // Display: Service Name (or System A -> System B fallback)
       label: conn.service_name 
-        ? `${conn.service_name} (${conn.system_name})`
-        : `${conn.system_name} → ${conn.connected_system_name}`
+        ? `${conn.service_name} (${conn.system_name || '?'})`
+        : `${conn.system_name || '?'} → ${conn.connected_system_name || '?'}`
     }));
-  }, [connectionsResult]);
+  }, [connectionsData]);
 
   const onSubmit = (data: FormValues) => {
     if (!fiber?.id) return;
@@ -83,7 +95,8 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
     });
   };
 
-  const currentRole = watch('role');
+  // Watch values for UI logic if needed
+  // const currentRole = watch('role');
 
   if (!fiber) return null;
 
@@ -109,6 +122,7 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
              placeholder={isLoadingConnections ? "Loading services..." : "Search by Service Name or System..."}
              error={errors.connection_id}
              isLoading={isLoadingConnections}
+             className="z-50" // Ensure dropdown renders above other elements if needed
           />
 
           {/* Configuration Grid */}
