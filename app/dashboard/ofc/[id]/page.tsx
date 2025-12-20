@@ -1,10 +1,10 @@
-// app/dashboard/ofc/[id]/page.tsx
+// path: app/dashboard/ofc/[id]/page.tsx
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ConfirmModal, Input } from '@/components/common/ui';
+import { PageSpinner, ConfirmModal, Input, Button } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { Row, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -14,7 +14,17 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit, Search, Grid, List, Trash2, Edit2, GitBranch } from 'lucide-react';
+import { FiberAssignmentModal } from '@/components/ofc-details/FiberAssignmentModal'; // NEW COMPONENT
+import { 
+  GitCommit, 
+  GitBranch, 
+  Search, 
+  Grid, 
+  List, 
+  Trash2, 
+  Edit2, 
+  Link as LinkIcon // NEW ICON
+} from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -33,8 +43,8 @@ import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 import { UserRole } from '@/types/user-roles';
 import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCard';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { Button } from '@/components/common/ui/Button';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
+import useIsMobile from '@/hooks/useIsMobile';
 
 
 export default function OfcCableDetailsPage() {
@@ -42,9 +52,15 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
+  const isMobile = useIsMobile();
 
+  // 1. Initialize with a safe default
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  // 2. Track if we've already set the smart default
   const [hasInitializedView, setHasInitializedView] = useState(false);
+
+  // 3. New State for Fiber Assignment Modal
+  const [assignFiber, setAssignFiber] = useState<V_ofc_connections_completeRowSchema | null>(null);
 
   const {
     data: cableConnectionsData,
@@ -56,7 +72,7 @@ export default function OfcCableDetailsPage() {
     editModal,
     deleteModal,
     actions: crudActions,
-    isMutating, // Get mutation loading state
+    isMutating, // Mutation loading state from CRUD manager
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
     localTableName: 'v_ofc_connections_complete', // Important for local sync lookup
@@ -64,6 +80,7 @@ export default function OfcCableDetailsPage() {
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
+  // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin;
   const canAdd = !!isSuperAdmin;
@@ -121,10 +138,27 @@ export default function OfcCableDetailsPage() {
     [cableSegments]
   );
 
+  // Generate Actions for Cards (Grid View)
   const getCardActions = useCallback(
     (record: V_ofc_connections_completeRowSchema) => {
+      // Fiber is considered free if it has no system assigned and no logical path
+      const isFree = !record.system_id && !record.logical_path_id;
+
       return (
         <>
+          {/* Link Service Button (New) */}
+          {canEdit && isFree && (
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={() => setAssignFiber(record)}
+              title="Assign to Service"
+              className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            >
+              <LinkIcon className="w-4 h-4" />
+            </Button>
+          )}
+
           {canEdit && (
             <Button
               size="xs"
@@ -160,13 +194,14 @@ export default function OfcCableDetailsPage() {
     [canEdit, canDelete, editModal, crudActions, handleTraceClick]
   );
 
+  // Effect to set smart view mode once data loads
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
-      const smartMode = (cableConnectionsData.length > 12) ? 'table' : 'grid';
+      const smartMode = (isMobile && cableConnectionsData.length > 48) ? 'table' : 'grid';
       setViewMode(smartMode);
       setHasInitializedView(true);
     }
-  }, [isLoading, cableConnectionsData.length, hasInitializedView]);
+  }, [isLoading, cableConnectionsData.length, hasInitializedView, isMobile]);
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
   const orderedColumns = useOrderedColumns(columns, [
@@ -181,6 +216,15 @@ export default function OfcCableDetailsPage() {
         icon: <GitCommit className="h-4 w-4" />,
         onClick: handleTraceClick,
         variant: 'secondary' as const,
+      },
+      // New: Link Service Action for Table View
+      {
+        key: 'link',
+        label: 'Link Service',
+        icon: <LinkIcon className="h-4 w-4" />,
+        onClick: (record: V_ofc_connections_completeRowSchema) => setAssignFiber(record),
+        variant: 'primary' as const,
+        hidden: (record: V_ofc_connections_completeRowSchema) => !!record.system_id // Hide if already assigned
       },
       ...createStandardActions({
         onEdit: canEdit ? editModal.openEdit : undefined,
@@ -264,6 +308,7 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
+      {/* Sticky Toolbar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
         <div className="w-full lg:w-96 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -291,6 +336,7 @@ export default function OfcCableDetailsPage() {
               placeholder="All Status"
             />
           </div>
+          {/* View Toggle */}
           <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
             <button
               onClick={() => setViewMode('grid')}
@@ -343,7 +389,7 @@ export default function OfcCableDetailsPage() {
             actions={tableActions}
             selectable={canDelete}
             onCellEdit={crudActions.handleCellEdit}
-            searchable={false}
+            searchable={false} // Custom search bar used
             customToolbar={<></>}
             renderMobileItem={renderMobileItem}
             pagination={{
@@ -360,15 +406,24 @@ export default function OfcCableDetailsPage() {
         )}
       </div>
 
+      {/* Edit/Create Modal (The Fix Applied Here: Passing handleSave as onSubmit) */}
       <OfcConnectionsFormModal
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null}
-        // THE FIX: Cast the handler to match the expected signature
+        // This cast ensures TS accepts the handleSave which takes generic TableInsert, 
+        // while the modal returns the specific schema. At runtime this works perfectly.
         onSubmit={crudActions.handleSave as unknown as (data: Ofc_connectionsInsertSchema) => void}
-        // Pass mutation loading state
         isLoading={isMutating}
       />
+
+      {/* Reverse Provisioning Modal */}
+      <FiberAssignmentModal 
+        isOpen={!!assignFiber}
+        onClose={() => setAssignFiber(null)}
+        fiber={assignFiber}
+      />
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
@@ -378,6 +433,7 @@ export default function OfcCableDetailsPage() {
         type="danger"
         loading={deleteModal.loading}
       />
+
       <FiberTraceModal
         refetch={refetch}
         isOpen={!!tracingFiber}
