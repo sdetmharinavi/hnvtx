@@ -36,7 +36,7 @@ import {  FiDatabase, FiPieChart, FiUpload, FiGrid, FiList, FiSearch, FiGitBranc
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { ConnectionCard } from '@/components/connections/ConnectionCard';
+import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 

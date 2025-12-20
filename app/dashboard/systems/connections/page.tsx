@@ -24,7 +24,6 @@ import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceM
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
-import { ConnectionCard } from '@/components/connections/ConnectionCard';
 import { Row } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
@@ -33,6 +32,7 @@ import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/u
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { UploadColumnMapping } from '@/hooks/database';
+import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
