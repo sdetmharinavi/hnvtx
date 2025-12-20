@@ -1,10 +1,8 @@
-// path: components/ofc-details/OfcConnectionsFormModal.tsx
+// components/ofc-details/OfcConnectionsFormModal.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Modal } from "@/components/common/ui/Modal";
-import { createClient } from "@/utils/supabase/client";
-import { useTableInsert, useTableUpdate } from "@/hooks/database";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormCard } from "@/components/common/form/FormCard";
@@ -13,14 +11,13 @@ import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas
 import { toast } from "sonner";
 import { z } from "zod";
 
-// THE FIX: Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
+// Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
 const connectionFormSchema = ofc_connectionsInsertSchema.omit({
     created_at: true,
     updated_at: true,
     sn_dom: true,
     en_dom: true
-    // We omit IDs if we handle them via mutation params, 
-    // but usually, we keep ofc_id and id for references.
+    // We keep ID fields to map them correctly in the parent handler if needed
 });
 
 type FormValues = z.infer<typeof connectionFormSchema>;
@@ -29,18 +26,25 @@ interface OfcConnectionsFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingOfcConnections?: Ofc_connectionsRowSchema | null;
-  onCreated?: (ofcConnections: Ofc_connectionsRowSchema) => void;
-  onUpdated?: (ofcConnections: Ofc_connectionsRowSchema) => void;
+  // THE FIX: Single onSubmit handler that takes form data
+  onSubmit: (data: FormValues) => void; 
+  isLoading: boolean;
 }
 
-export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections, onCreated, onUpdated }: OfcConnectionsFormModalProps) {
-  const supabase = createClient();
+export function OfcConnectionsFormModal({ 
+  isOpen, 
+  onClose, 
+  editingOfcConnections, 
+  onSubmit, 
+  isLoading 
+}: OfcConnectionsFormModalProps) {
+  
   const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     reset,
     control,
   } = useForm<FormValues>({
@@ -51,9 +55,6 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
       fiber_no_en: 1,
     },
   });
-
-  const { mutate: insertOfcConnections, isPending: creating } = useTableInsert(supabase, "ofc_connections");
-  const { mutate: updateOfcConnections, isPending: updating } = useTableUpdate(supabase, "ofc_connections");
 
   useEffect(() => {
     if (isOpen) {
@@ -72,6 +73,13 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
           remark: editingOfcConnections.remark,
           connection_category: editingOfcConnections.connection_category || 'SPLICE_TYPES',
           connection_type: editingOfcConnections.connection_type || 'straight',
+          system_id: editingOfcConnections.system_id,
+          logical_path_id: editingOfcConnections.logical_path_id,
+          fiber_role: editingOfcConnections.fiber_role,
+          updated_sn_id: editingOfcConnections.updated_sn_id,
+          updated_en_id: editingOfcConnections.updated_en_id,
+          updated_fiber_no_sn: editingOfcConnections.updated_fiber_no_sn,
+          updated_fiber_no_en: editingOfcConnections.updated_fiber_no_en,
         });
       } else {
         reset({
@@ -84,28 +92,9 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
   }, [isOpen, editingOfcConnections, reset]);
 
   const onValidSubmit = (formData: FormValues) => {
-    if (isEdit && editingOfcConnections?.id) {
-      updateOfcConnections(
-        { id: editingOfcConnections.id, data: formData },
-        {
-          onSuccess: (data) => {
-            onUpdated?.(Array.isArray(data) ? data[0] : data);
-            onClose();
-            toast.success("Connection updated successfully");
-          },
-          onError: (err) => toast.error(`Update failed: ${err.message}`)
-        }
-      );
-    } else {
-      insertOfcConnections(formData, {
-        onSuccess: (data) => {
-          onCreated?.(Array.isArray(data) ? data[0] : data);
-          onClose();
-          toast.success("Connection created successfully");
-        },
-        onError: (err) => toast.error(`Creation failed: ${err.message}`)
-      });
-    }
+    // Pass raw form data to parent. 
+    // Parent (useCrudManager) handles insert vs update based on its internal state or ID presence.
+    onSubmit(formData);
   };
 
   const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
@@ -115,17 +104,24 @@ export function OfcConnectionsFormModal({ isOpen, onClose, editingOfcConnections
   };
 
   const handleClose = useCallback(() => {
-    if (creating || updating) return;
+    if (isLoading) return;
     onClose();
-  }, [creating, updating, onClose]);
+  }, [isLoading, onClose]);
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} size='full' visible={false} className='h-screen w-screen transparent bg-gray-700 rounded-2xl'>
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} 
+      size='full' 
+      visible={false} 
+      className='h-screen w-screen transparent bg-gray-700 rounded-2xl'
+    >
       <FormCard 
         title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} 
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} 
         onCancel={handleClose} 
-        isLoading={creating || updating || isSubmitting}
+        isLoading={isLoading}
         standalone
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

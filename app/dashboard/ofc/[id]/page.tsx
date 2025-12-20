@@ -1,4 +1,4 @@
-// path: app/dashboard/ofc/[id]/page.tsx
+// app/dashboard/ofc/[id]/page.tsx
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -14,13 +14,14 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
-import { GitCommit, GitBranch, Search, Grid, List, Trash2, Edit2 } from 'lucide-react';
+import { GitCommit, Search, Grid, List, Trash2, Edit2, GitBranch } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
 import { useCreateOfcConnection } from '@/hooks/useCreateOfcConnection';
 import { toast } from 'sonner';
 import {
+  Ofc_connectionsInsertSchema,
   Ofc_connectionsRowSchema,
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
@@ -44,9 +45,7 @@ export default function OfcCableDetailsPage() {
   const { isSuperAdmin, role } = useUser();
   const isMobile = useIsMobile();
 
-  // 1. Initialize with a safe default (e.g., 'table')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
-  // 2. Track if we've already set the smart default
   const [hasInitializedView, setHasInitializedView] = useState(false);
 
   const {
@@ -54,18 +53,19 @@ export default function OfcCableDetailsPage() {
     isLoading,
     refetch,
     pagination,
-    search, // Destructure search control
-    filters, // Destructure filter control
+    search,
+    filters,
     editModal,
     deleteModal,
     actions: crudActions,
+    isMutating, // Get mutation loading state
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
     tableName: 'ofc_connections',
+    localTableName: 'v_ofc_connections_complete', // Important for local sync lookup
     dataQueryHook: useOfcConnectionsData(cableId as string),
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
-  // --- PERMISSIONS ---
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin;
   const canAdd = !!isSuperAdmin;
@@ -123,7 +123,6 @@ export default function OfcCableDetailsPage() {
     [cableSegments]
   );
 
-  // Generate Actions for Cards (Grid View)
   const getCardActions = useCallback(
     (record: V_ofc_connections_completeRowSchema) => {
       return (
@@ -163,15 +162,13 @@ export default function OfcCableDetailsPage() {
     [canEdit, canDelete, editModal, crudActions, handleTraceClick]
   );
 
-  // 3. Effect to set mode once data loads
   useEffect(() => {
-    // Only run if data is loaded, we have records, and we haven't set it yet
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
       const smartMode = (isMobile && cableConnectionsData.length > 48) ? 'table' : 'grid';
       setViewMode(smartMode);
-      setHasInitializedView(true); // Lock it so manual toggles aren't overridden
+      setHasInitializedView(true);
     }
-  }, [isLoading, cableConnectionsData.length, hasInitializedView]);
+  }, [isLoading, cableConnectionsData.length, hasInitializedView, isMobile]);
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
   const orderedColumns = useOrderedColumns(columns, [
@@ -269,7 +266,6 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
-      {/* Sticky Toolbar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
         <div className="w-full lg:w-96 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -297,7 +293,6 @@ export default function OfcCableDetailsPage() {
               placeholder="All Status"
             />
           </div>
-          {/* View Toggle */}
           <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
             <button
               onClick={() => setViewMode('grid')}
@@ -350,7 +345,7 @@ export default function OfcCableDetailsPage() {
             actions={tableActions}
             selectable={canDelete}
             onCellEdit={crudActions.handleCellEdit}
-            searchable={false} // Custom search bar used
+            searchable={false}
             customToolbar={<></>}
             renderMobileItem={renderMobileItem}
             pagination={{
@@ -371,8 +366,10 @@ export default function OfcCableDetailsPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null}
-        onCreated={crudActions.handleSave}
-        onUpdated={crudActions.handleSave}
+        // THE FIX: Cast the handler to match the expected signature
+        onSubmit={crudActions.handleSave as unknown as (data: Ofc_connectionsInsertSchema) => void}
+        // Pass mutation loading state
+        isLoading={isMutating}
       />
       <ConfirmModal
         isOpen={deleteModal.isOpen}

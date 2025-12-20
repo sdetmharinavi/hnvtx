@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! You can come up with innovative ideas for the project.Always Remember that I don't want to risk breaking the project as well as in rare case sql to be modified.Our first Concern is UI/UX and compatibility with older browsers.lets start.
+Let's begin! It is observed in ofc connections that when user is online, then also updates or added values are not instantly reflected on card/table
