@@ -87,34 +87,43 @@ END LOOP;
 END $$;
 
 -- -----------------------------------------------------------------------------
--- 4️⃣ Drop All Functions in the 'public' schema (except specified functions)
+-- 4️⃣ Drop All Functions in the 'public' schema (except specified functions
+--     and extension-owned functions)
 -- -----------------------------------------------------------------------------
 DO $$
 DECLARE r RECORD;
-BEGIN RAISE NOTICE 'Dropping all functions (except user management functions)...';
-FOR r IN (
-    SELECT p.oid::regprocedure::text as func_signature
-    FROM pg_proc p
+BEGIN
+    RAISE NOTICE 'Dropping all functions (except user management & extension functions)...';
+
+    FOR r IN (
+        SELECT
+            p.oid::regprocedure::text AS func_signature
+        FROM pg_proc p
         JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-    AND p.proname NOT IN (
-        'is_super_admin',
-        'get_my_role',
-        'get_my_user_details',
-        'admin_get_all_users_extended',
-        'admin_get_user_by_id',
-        'admin_update_user_profile',
-        'admin_bulk_update_status',
-        'admin_bulk_update_role',
-        'admin_bulk_delete_users',
-        'update_user_profile_timestamp',
-        'sync_user_role_to_auth',
-        'create_public_profile_for_new_user'
+        LEFT JOIN pg_depend d
+            ON d.objid = p.oid
+           AND d.deptype = 'e'   -- e = extension dependency
+        WHERE n.nspname = 'public'
+          AND d.objid IS NULL   -- ✅ exclude extension-owned functions
+          AND p.proname NOT IN (
+              'is_super_admin',
+              'get_my_role',
+              'get_my_user_details',
+              'admin_get_all_users_extended',
+              'admin_get_user_by_id',
+              'admin_update_user_profile',
+              'admin_bulk_update_status',
+              'admin_bulk_update_role',
+              'admin_bulk_delete_users',
+              'update_user_profile_timestamp',
+              'sync_user_role_to_auth',
+              'create_public_profile_for_new_user'
+          )
     )
-) LOOP EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
-RAISE NOTICE 'Dropped function: %',
-r.func_signature;
-END LOOP;
+    LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
+        RAISE NOTICE 'Dropped function: %', r.func_signature;
+    END LOOP;
 END $$;
 
 -- -----------------------------------------------------------------------------
@@ -254,3 +263,28 @@ USING ((select auth.uid()) = id);
 
 DO $$ BEGIN RAISE NOTICE 'RLS policies and grants recreated successfully.';
 END $$;
+
+-- Systems
+DROP INDEX IF EXISTS public.idx_systems_name_trgm;
+DROP INDEX IF EXISTS public.idx_systems_ip_trgm;
+
+-- Nodes
+DROP INDEX IF EXISTS public.idx_nodes_name_trgm;
+
+-- Employees
+DROP INDEX IF EXISTS public.idx_employees_name_trgm;
+DROP INDEX IF EXISTS public.idx_employees_pers_no_trgm;
+
+-- OFC Cables
+DROP INDEX IF EXISTS public.idx_ofc_cables_name_trgm;
+DROP INDEX IF EXISTS public.idx_ofc_cables_asset_trgm;
+
+-- Inventory
+DROP INDEX IF EXISTS public.idx_inventory_items_name_trgm;
+DROP INDEX IF EXISTS public.idx_inventory_items_asset_trgm;
+
+-- Services
+DROP INDEX IF EXISTS public.idx_services_name_trgm;
+
+-- Rings
+DROP INDEX IF EXISTS public.idx_rings_name_trgm;

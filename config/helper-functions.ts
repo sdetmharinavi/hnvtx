@@ -89,7 +89,7 @@ export function inferExcelFormat(
   if (name.endsWith("_no") || name.endsWith("_count") || name === 'capacity' || name === 'segment_order' || name === 'path_segment_order') return "integer";
   if (name.includes("amount") || name.includes("price") || name.includes("total") || name.includes("rkm") || name.includes("mbps")) return "number";
   if (name.includes("percent")) return "percentage";
-  if (name.includes("address") || name.includes("preference") || name.includes("metadata") || name.includes("meta_data") || name.includes("raw_user_meta_data") || name.includes("raw_app_meta_data") || name.endsWith("_json") || name.includes("json")) return "json";
+  if (name.includes("address") || name.includes("preference") || name.includes("metadata") || name.includes("meta_data") || name.includes("raw_user_meta_data") || name.includes("raw_app_meta_data") || name.endsWith("_json") || name.includes("json") || name === 'tags') return "json";
   return "text";
 }
 
@@ -107,6 +107,33 @@ export const toPgBoolean = (value: unknown): boolean | null => {
     if (["false", "f", "0", "no", "n"].includes(v)) return false;
   }
   return null;
+};
+
+// THE FIX: Added parseJson to handle JSON strings (arrays/objects) from Excel
+export const parseJson = (value: unknown): unknown => {
+  if (value === null || value === undefined) return null;
+  
+  // If it's already an object (rare from raw Excel read but possible), return it
+  if (typeof value === 'object') return value;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return null;
+    
+    // Simple check if it looks like JSON array or object
+    if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        console.warn(`Failed to parse JSON for value: ${value}`);
+        // If parsing fails, fall back to returning the original string
+        // (Postgres might accept it if it's simple text, or fail later)
+        return value;
+      }
+    }
+  }
+  
+  return value;
 };
 
 export function inferDynamicColumnWidth<T extends Record<string, unknown>>(

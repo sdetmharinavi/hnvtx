@@ -1,4 +1,4 @@
-import { toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
+import { parseJson, toPgBoolean, toPgDate, toTitleCase } from "@/config/helper-functions";
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from "@/config/helper-types";
 import type { UploadConfig } from "@/stores/useUploadConfigStore";
 import { PublicTableName, PublicTableOrViewName, Row, isTableName } from "@/hooks/database";
@@ -143,6 +143,8 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   },
   diary_notes: {
     note_date: { transform: toPgDate, excelFormat: "date" },
+    // THE FIX: Parse tags string "[]" into actual Array
+    tags: { transform: parseJson, excelFormat: "json" },
   },
   v_audit_logs: {
     created_at: { transform: toPgDate, excelFormat: "date" },
