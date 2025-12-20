@@ -6,7 +6,7 @@ import { TableOrViewName, Row } from "@/hooks/database";
 import { Column } from "@/hooks/database/excel-queries/excel-helpers";
 import { TruncateTooltip } from "@/components/common/TruncateTooltip";
 import { TableSkeleton } from "@/components/common/ui/table/TableSkeleton";
-import { FancyEmptyState } from "@/components/common/ui/FancyEmptyState"; // IMPORTED
+import { FancyEmptyState } from "@/components/common/ui/FancyEmptyState";
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
@@ -117,7 +117,8 @@ function TableRowBase<T extends TableOrViewName>({
           {visibleColumns.map((column, colIndex) => (
             <td
               key={column.key}
-              className={`${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white whitespace-nowrap ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
+              // Added 'relative' so the absolute edit overlay positions correctly over this cell
+              className={`relative ${densityClasses[density ?? "default"]} text-sm text-gray-900 dark:text-white whitespace-nowrap ${column.align === "center" ? "text-center" : column.align === "right" ? "text-right" : ""} ${
                 column.editable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50" : ""
               } ${bordered ? `${rowIndex < selectedRows.length - 1 ? "border-b" : ""} ${colIndex < visibleColumns.length - 1 || hasActions ? "border-r" : ""} border-gray-200 dark:border-gray-700` : ""} overflow-hidden`}
               style={{
@@ -127,8 +128,11 @@ function TableRowBase<T extends TableOrViewName>({
               }}
               onClick={() => column.editable && onCellEdit(record, column, rowIndex)}>
               {editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key ? (
-                // THE FIX: Stop propagation here to prevent td onClick from firing when interacting with edit controls
-                <div className='flex items-center gap-2' onClick={(e) => e.stopPropagation()}>
+                // Use absolute positioning with z-index to pop out of the cell boundaries if needed
+                <div 
+                    className='absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-lg ring-1 ring-black/5 dark:ring-white/10 min-w-full w-auto'
+                    onClick={(e) => e.stopPropagation()}
+                >
                   <input
                     ref={editInputRef}
                     type='text'
@@ -138,24 +142,28 @@ function TableRowBase<T extends TableOrViewName>({
                       if (e.key === "Enter") saveCellEdit();
                       if (e.key === "Escape") cancelCellEdit();
                     }}
-                    className='flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    className='min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
                   />
-                  <button 
-                    type="button"
-                    onClick={saveCellEdit} 
-                    className='p-1 text-green-600 hover:text-green-700' 
-                    aria-label="Save cell edit"
-                  >
-                    <FiCheck size={14} />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={cancelCellEdit} 
-                    className='p-1 text-red-600 hover:text-red-700' 
-                    aria-label="Cancel cell edit"
-                  >
-                    <FiX size={14} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                        type="button"
+                        onClick={saveCellEdit} 
+                        className='p-1.5 text-green-600 hover:text-green-700 bg-green-50 dark:bg-green-900/30 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors' 
+                        aria-label="Save"
+                        title="Save (Enter)"
+                    >
+                        <FiCheck size={14} />
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={cancelCellEdit} 
+                        className='p-1.5 text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/30 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors' 
+                        aria-label="Cancel"
+                        title="Cancel (Esc)"
+                    >
+                        <FiX size={14} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className='flex items-center gap-2 group min-w-0'>
@@ -217,7 +225,6 @@ function TableBodyBase<T extends TableOrViewName>({
       <tbody>
         <tr>
           <td colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)} className={rest.bordered ? "border-b border-gray-200 dark:border-gray-700" : ""}>
-             {/* THE FIX: Use FancyEmptyState */}
              <FancyEmptyState 
                 title="No Data Found" 
                 description={emptyText || "Try adjusting your search or filters."} 
