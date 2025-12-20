@@ -15,7 +15,7 @@ export const OfcDetailsTableColumns = (
       'system_id', 
       // 'system_name', // Removed from omit to ensure it's available for export
       'ofc_type_name', 'ofc_route_name', 'fiber_no_sn',
-      'fiber_no_en', 'logical_path_id', 'remark', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", 
+      'fiber_no_en', 'logical_path_id', 'status', 'maintenance_area_name', "updated_sn_id","updated_en_id", 
       // "connection_type","fiber_role", // Keep these visible for export too
       "path_direction"
     ],
