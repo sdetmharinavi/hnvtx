@@ -1,4 +1,4 @@
-// path: hooks/database/fiber-assignment-hooks.ts
+// hooks/database/fiber-assignment-hooks.ts
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const assignFiberSchema = z.object({
-  fiber_id: z.string().uuid(),
-  connection_id: z.string().uuid("Please select a valid connection"),
+  fiber_id: z.uuid(),
+  connection_id: z.uuid("Please select a valid connection"),
   role: z.enum(['working', 'protection']),
   direction: z.enum(['tx', 'rx']),
 });
@@ -32,14 +32,35 @@ export function useAssignFiberToConnection() {
     },
     onSuccess: () => {
       toast.success("Fiber assigned successfully!");
-      // Invalidate relevant queries to refresh UI
+      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
       queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
     },
-    onError: (err) => {
-      toast.error(`Assignment failed: ${err.message}`);
-    }
+    onError: (err) => toast.error(`Assignment failed: ${err.message}`)
+  });
+}
+
+// NEW: Hook to unlink fiber
+export function useReleaseFiber() {
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (fiberId: string) => {
+      const { error } = await supabase.rpc('release_fiber_from_connection', {
+        p_fiber_id: fiberId
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Fiber unlinked successfully!");
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
+      queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
+      queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
+      queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
+    },
+    onError: (err) => toast.error(`Unlink failed: ${err.message}`)
   });
 }
