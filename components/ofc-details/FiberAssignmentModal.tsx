@@ -36,6 +36,11 @@ type ConnectionOptionData = {
   system_name: string | null;
   connected_system_name: string | null;
   status: boolean | null;
+  connected_link_type_name: string | null;
+  bandwidth_allocated: string | null;
+  vlan: string | null;
+  sn_name: string | null;
+  sn_interface: string | null;
 };
 
 export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
@@ -94,7 +99,7 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
     async () => {
       const { data, error } = await supabase
         .from('v_system_connections_complete')
-        .select('id, service_name, system_name, connected_system_name, status')
+        .select('id,service_name,status,connected_link_type_name,bandwidth_allocated,vlan,sn_name,sn_interface')
         .eq('status', true)
         .order('service_name', { ascending: true })
         .limit(3000);
@@ -111,15 +116,15 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
       return all as unknown as ConnectionOptionData[];
     }
   );
+  
 
   const connectionOptions = useMemo(() => {
-    return (connectionsData || []).map(conn => ({
-      value: conn.id!,
-      // Display: Service Name (or System A -> System B fallback)
-      label: conn.service_name 
-        ? `${conn.service_name} (${conn.system_name || '?'})`
-        : `${conn.system_name || '?'} → ${conn.connected_system_name || '?'}`
-    }));
+    return (connectionsData || [])
+      .filter(conn => conn.service_name)
+      .map(conn => ({
+        value: conn.id!,
+        label: `${conn.service_name} ${conn.connected_link_type_name} ${conn.sn_name ? '('+conn.sn_name+')':''} ${conn.sn_interface ? '('+conn.sn_interface+')':''} ${conn.bandwidth_allocated ? '('+conn.bandwidth_allocated+')':''} ${conn.vlan ? '('+conn.vlan+')':''}`
+      }));
   }, [connectionsData]);
 
   const onSubmit = (data: FormValues) => {
@@ -142,7 +147,7 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
   const isEditMode = !!fiber.logical_path_id;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Assign Fiber #${fiber.fiber_no_sn}`} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Assign Fiber #${fiber.fiber_no_sn}`} size="full">
       <FormCard
         title={isEditMode ? "Edit Link" : "Link to Service"}
         subtitle={isEditMode ? "Update existing assignment" : `Assign Fiber ${fiber.fiber_no_sn} to a System Connection`}
@@ -164,6 +169,7 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
              error={errors.connection_id}
              isLoading={isLoadingConnections}
              className="z-50"
+             clearable
              // Disable changing the service during edit if you want to force unlinking first, 
              // but usually allowing a move is better UX. Keeping enabled.
           />
