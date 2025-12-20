@@ -10,6 +10,8 @@ export interface TruncateTooltipProps {
   id?: string;
   maxWidth?: number;
   renderAsHtml?: boolean;
+  copyOnDoubleClick?: boolean; // NEW PROP
+  onCopy?: () => void;
 }
 
 export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
@@ -18,12 +20,14 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   id,
   maxWidth = 320,
   renderAsHtml = false,
+  copyOnDoubleClick = false, // Default false
+  onCopy,
 }) => {
   const displayText = text ?? '';
   
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isLocked, setIsLocked] = useState(false); // New state for "Click to Lock"
+  const [isLocked, setIsLocked] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
   
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
@@ -33,59 +37,24 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   
   const tooltipId = `tt-${id ?? Math.random().toString(36).slice(2)}`;
 
-  // --- Overflow Detection ---
   const checkOverflow = useCallback(() => {
     const el = textRef.current;
     if (!el) return;
-    const hasOverflow = el.scrollWidth > el.clientWidth;
+    // Allow a small tolerance (1px) for sub-pixel rendering differences
+    const hasOverflow = el.scrollWidth > el.clientWidth + 1;
     setIsOverflowing(hasOverflow);
   }, []);
 
   useEffect(() => {
+    // Check on mount and resize
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
   }, [checkOverflow, displayText]);
 
-  // --- Positioning Logic ---
-  const updatePosition = useCallback(() => {
-    if (textRef.current) {
-      const rect = textRef.current.getBoundingClientRect();
-      
-      // Calculate available space
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-      
-      // Default: Bottom Left aligned
-      let top = rect.bottom + 8;
-      let left = rect.left;
-
-      // Flip to top if not enough space below
-      if (top + 100 > viewportHeight) {
-        top = rect.top - 8; // We'll handle the 'bottom-0' class logic via CSS or calculation if needed, but simple fixed top works usually
-        // Actually, for fixed positioning, we might need to render *above*. 
-        // For simplicity in this snippet, we stick to bottom unless strictly needed, 
-        // or we can use a library like floating-ui for perfection. 
-        // Let's keep it simple: ensure it doesn't go off right edge.
-      }
-
-      // Prevent going off right edge
-      if (left + maxWidth > viewportWidth) {
-        left = viewportWidth - maxWidth - 16;
-      }
-      
-      // Prevent going off left edge
-      if (left < 16) {
-        left = 16;
-      }
-
-      setCoords({ top, left });
-    }
-  }, [maxWidth]);
-
-  // --- Event Handlers ---
-
+  // Re-check on hover to ensure state is accurate before showing
   const handleMouseEnter = () => {
+    checkOverflow();
     if (!isLocked) {
       updatePosition();
       setIsHovered(true);
@@ -98,13 +67,58 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     }
   };
 
+  const updatePosition = useCallback(() => {
+    if (textRef.current) {
+      const rect = textRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      let top = rect.bottom + 8;
+      let left = rect.left;
+
+      // Prevent going off right edge
+      if (left + maxWidth > viewportWidth) {
+        left = viewportWidth - maxWidth - 16;
+      }
+      // Prevent going off left edge
+      if (left < 16) left = 16;
+
+      setCoords({ top, left });
+    }
+  }, [maxWidth]);
+
+  const doCopy = async () => {
+    try {
+      const textToCopy = renderAsHtml 
+        ? displayText.replace(/<[^>]*>?/gm, '') 
+        : displayText;
+        
+      await navigator.clipboard.writeText(textToCopy);
+      setJustCopied(true);
+      toast.success("Copied to clipboard");
+      if (onCopy) onCopy();
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error("Failed to copy");
+    }
+  };
+
+  // Single Click: Toggle Lock (Only if truncated)
   const handleClick = (e: React.MouseEvent) => {
-    // Only toggle lock if content is actually truncated
     if (isOverflowing) {
-      e.stopPropagation(); // Prevent triggering row clicks in tables
+      e.stopPropagation();
       updatePosition();
       setIsLocked((prev) => !prev);
-      setIsHovered(false); // Clear hover state so it doesn't flicker when unlocking
+      setIsHovered(false);
+    }
+  };
+
+  // Double Click: Copy (Always allowed if enabled)
+  const handleDoubleClick = async (e: React.MouseEvent) => {
+    if (copyOnDoubleClick) {
+      e.stopPropagation();
+      e.preventDefault(); // Prevent text selection
+      await doCopy();
     }
   };
 
@@ -114,47 +128,22 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     setIsHovered(false);
   };
 
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      // Strip HTML tags if copying from HTML content
-      const textToCopy = renderAsHtml 
-        ? displayText.replace(/<[^>]*>?/gm, '') 
-        : displayText;
-        
-      await navigator.clipboard.writeText(textToCopy);
-      setJustCopied(true);
-      toast.success("Copied to clipboard");
-      setTimeout(() => setJustCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error("Failed to copy");
-    }
-  };
-
-  // --- Click Outside & Escape Listener ---
+  // Close on Escape / Outside Click
   useEffect(() => {
     if (!isLocked) return;
-
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        tooltipRef.current && 
-        !tooltipRef.current.contains(e.target as Node) && 
-        textRef.current && 
-        !textRef.current.contains(e.target as Node)
+        tooltipRef.current && !tooltipRef.current.contains(e.target as Node) && 
+        textRef.current && !textRef.current.contains(e.target as Node)
       ) {
         setIsLocked(false);
       }
     };
-
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsLocked(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    
-    // Handle scrolling parents closing the tooltip
     document.addEventListener('scroll', updatePosition, true); 
 
     return () => {
@@ -164,9 +153,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     };
   }, [isLocked, updatePosition]);
 
-  // --- Render ---
-
-  const showTooltip = (isHovered || isLocked) && isOverflowing;
+  // Show tooltip if hovered/locked AND (overflowing OR locked)
+  // We allow showing it if locked even if not strictly overflowing (rare case, but safe)
+  const showTooltip = (isHovered && isOverflowing) || isLocked;
 
   return (
     <>
@@ -178,6 +167,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         tabIndex={isOverflowing ? 0 : -1}
         aria-describedby={showTooltip ? tooltipId : undefined}
         title={undefined} // Remove native tooltip
@@ -208,24 +198,18 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
               minWidth: '200px'
             }}
           >
-            {/* Content Area */}
             <div className={`${isLocked ? 'p-3 max-h-[300px] overflow-y-auto custom-scrollbar' : ''} select-text`}>
-              {renderAsHtml ? (
-                <div dangerouslySetInnerHTML={{ __html: displayText }} />
-              ) : (
-                displayText
-              )}
+              {renderAsHtml ? <div dangerouslySetInnerHTML={{ __html: displayText }} /> : displayText}
             </div>
 
-            {/* Action Bar (Only visible when locked) */}
             {isLocked && (
               <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
                 <div className="text-xs text-gray-400 italic">
-                  Select text to copy
+                  {copyOnDoubleClick ? "Double-click text to copy" : "Select text to copy"}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={handleCopy}
+                    onClick={(e) => { e.stopPropagation(); doCopy(); }}
                     className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
                     title="Copy content"
                   >
@@ -249,7 +233,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   );
 };
 
-// Helper Portal to ensure it breaks out of overflow:hidden parents (like tables)
 const Portal = ({ children }: { children: React.ReactNode }) => {
   if (typeof window === 'undefined') return null;
   return createPortal(children, document.body);

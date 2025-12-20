@@ -32,8 +32,6 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   const hasProtection = !!connection.system_protection_interface || !!connection.en_protection_interface;
-
-  // Determine End A Name: Prefer SN Name, fallback to System Name
   const endAName = connection.sn_name || connection.system_name || 'Local System';
   const endBName = connection.en_name || 'External';
 
@@ -58,8 +56,12 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                     </span>
                 )}
              </div>
-             <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight">
-                <TruncateTooltip text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} />
+             {/* THE FIX: Enable copyOnDoubleClick */}
+             <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight cursor-text">
+                <TruncateTooltip 
+                  text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} 
+                  copyOnDoubleClick={true} 
+                />
              </h3>
         </div>
         {!connection.status && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded uppercase">Inactive</span>}
@@ -70,24 +72,16 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
          
          {/* Flow Visual Box */}
          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700 relative">
-            
             <div className="flex justify-between items-center relative z-10">
-                
-                {/* END A (Left) */}
+                {/* END A */}
                 <div className="flex flex-col items-start max-w-[42%]">
                     <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END A</div>
-                    
-                    <div 
-                        className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-2" 
-                        title={endAName}
-                    >
+                    <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-2" title={endAName}>
                         {endAName}
                     </div>
-
                     <div className="inline-flex items-center justify-center font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 px-2.5 py-1 rounded border border-blue-200 dark:border-blue-900 text-xs shadow-sm min-w-12">
                         {connection.system_working_interface || 'N/A'}
                     </div>
-                    
                     {hasProtection && (
                          <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 dark:text-purple-400 font-mono" title="Protection Port">
                             <FiShield className="w-3 h-3" /> 
@@ -96,28 +90,22 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                     )}
                 </div>
 
-                {/* Arrow (Center) */}
+                {/* Arrow */}
                 <div className="flex flex-col items-center justify-center px-1">
                     <div className="p-1.5 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-400 shadow-sm">
                         <FiArrowRight className="w-4 h-4" />
                     </div>
                 </div>
 
-                {/* END B (Right) */}
+                {/* END B */}
                 <div className="flex flex-col items-end max-w-[42%] text-right">
                     <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END B</div>
-                     
-                     <div 
-                        className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" 
-                        title={endBName}
-                     >
+                     <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" title={endBName}>
                         {endBName}
                      </div>
-                     
                      <div className="font-mono text-xs text-gray-600 dark:text-gray-400 mb-1">
                         {connection.en_interface || 'N/A'}
                      </div>
-                     
                      <div className="flex items-center justify-end gap-1 text-[10px] text-gray-400 truncate w-full">
                         <FiMapPin className="w-3 h-3 shrink-0" /> 
                         <span className="truncate">{connection.en_node_name || 'Unknown'}</span>
@@ -144,7 +132,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
       </div>
 
       {/* Footer / Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end items-center gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
+      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
          {onGoToSystem && !isSystemContext && (
              <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
                 <FiServer className="w-4 h-4" />
@@ -153,26 +141,22 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
          <div className="flex-1"></div>
 
-         {/* Details Button */}
          <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details">
             <FiMonitor className="w-3.5 h-3.5" />
          </Button>
 
-         {/* Trace Path Button */}
          {hasPath && (
             <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20">
                 <FiEye className="w-3.5 h-3.5" />
             </Button>
          )}
 
-         {/* NEW: Edit Button */}
          {canEdit && onEdit && (
             <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection">
                 <FiEdit2 className="w-3.5 h-3.5" />
             </Button>
          )}
 
-         {/* NEW: Delete Button */}
          {canDelete && onDelete && (
             <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
                 <FiTrash2 className="w-3.5 h-3.5" />
