@@ -20,13 +20,13 @@ import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { Stepper } from "@/components/common/ui/Stepper";
-// REFACTORED: Imports
 import { 
   useLookupTypeOptions, 
   useActiveNodeOptions, 
   useMaintenanceAreaOptions, 
   useActiveRingOptions 
 } from "@/hooks/data/useDropdownOptions";
+import { localDb } from "@/hooks/data/localDb"; // Import localDb for lookup
 
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z.union([z.uuid(), z.literal('')]).optional().nullable(),
@@ -70,7 +70,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
-  // --- REFACTORED: Data Fetching using centralized hooks ---
+  // --- Data Fetching ---
   const { options: systemTypeOptions } = useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
   const { options: nodeOptions, isLoading: loadingNodes } = useActiveNodeOptions();
@@ -85,7 +85,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     reset,
     control,
     watch,
-    // setValue,
+    setValue,
     trigger,
   } = useForm<SystemFormValues>({
     resolver: zodResolver(systemModalFormSchema) as Resolver<SystemFormValues>,
@@ -93,20 +93,16 @@ export const SystemModal: FC<SystemModalProps> = ({
     mode: "onChange",
   });
 
-  // --- Watchers & Computed State ---
+  // --- Watchers ---
   const selectedSystemTypeId = watch("system_type_id");
-  // const selectedNodeId = watch("node_id");
+  const selectedNodeId = watch("node_id"); // Watch for Node selection changes
   
   const selectedSystemTypeLabel = useMemo(
     () => systemTypeOptions.find((st) => st.value === selectedSystemTypeId)?.label || "",
     [systemTypeOptions, selectedSystemTypeId]
   );
   
-  // Use label check for logic (code is in label now: "Name (CODE)")
   const isRingBasedSystem = useMemo(() => {
-     // NOTE: This is a simplified check since we don't have the `is_ring_based` boolean in the dropdown options
-     // Ideally, we might want to fetch that metadata. 
-     // For now, assume common ring types:
      const label = selectedSystemTypeLabel.toLowerCase();
      return label.includes('maan') || label.includes('sdh') || label.includes('ring') || label.includes('cpan');
   }, [selectedSystemTypeLabel]);
@@ -118,6 +114,33 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
+  // --- AUTO-FILL LOGIC: Maintenance Terminal based on Node ---
+  useEffect(() => {
+    const autoFillTerminal = async () => {
+      // Only auto-fill if a node is selected
+      if (!selectedNodeId) return;
+
+      // Don't overwrite if we are in Edit Mode and the form is initializing (handled by the useEffect below)
+      // This logic runs when the USER changes the node dropdown.
+      
+      try {
+        const nodeData = await localDb.v_nodes_complete.get(selectedNodeId);
+        
+        if (nodeData && nodeData.maintenance_terminal_id) {
+          setValue("maintenance_terminal_id", nodeData.maintenance_terminal_id, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to auto-fill maintenance terminal", error);
+      }
+    };
+
+    autoFillTerminal();
+  }, [selectedNodeId, setValue]);
+
+  // --- Initialization ---
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && rowData) {
@@ -145,7 +168,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
   }, [isOpen, isEditMode, rowData, reset]);
 
-  // Handlers
+  // --- Handlers ---
   const handleClose = useCallback(() => {
     if (isDirty) {
       if (!window.confirm("You have unsaved changes. Close anyway?")) return;
