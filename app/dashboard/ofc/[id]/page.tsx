@@ -34,12 +34,15 @@ import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCar
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { Button } from '@/components/common/ui/Button';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
+import useIsMobile from '@/hooks/useIsMobile';
+
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
+  const isMobile = useIsMobile();
 
   // 1. Initialize with a safe default (e.g., 'table')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
@@ -164,7 +167,7 @@ export default function OfcCableDetailsPage() {
   useEffect(() => {
     // Only run if data is loaded, we have records, and we haven't set it yet
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
-      const smartMode = cableConnectionsData.length > 48 ? 'table' : 'grid';
+      const smartMode = (isMobile && cableConnectionsData.length > 48) ? 'table' : 'grid';
       setViewMode(smartMode);
       setHasInitializedView(true); // Lock it so manual toggles aren't overridden
     }
