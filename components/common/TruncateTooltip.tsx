@@ -72,7 +72,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       const rect = textRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       
-      let top = rect.bottom + 8;
+      const top = rect.bottom + 8;
       let left = rect.left;
 
       // Prevent going off right edge
