@@ -26,7 +26,8 @@ import {
   useMaintenanceAreaOptions, 
   useActiveRingOptions 
 } from "@/hooks/data/useDropdownOptions";
-import { localDb } from "@/hooks/data/localDb"; // Import localDb for lookup
+import { localDb } from "@/hooks/data/localDb";
+import { Option } from "@/components/common/ui/select/SearchableSelect";
 
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z.union([z.uuid(), z.literal('')]).optional().nullable(),
@@ -77,6 +78,9 @@ export const SystemModal: FC<SystemModalProps> = ({
   const { options: maintenanceTerminalOptions } = useMaintenanceAreaOptions();
   const { options: ringOptions } = useActiveRingOptions();
 
+  // New: Local state to ensure the auto-filled terminal is always a valid option to display
+  const [inferredTerminalOption, setInferredTerminalOption] = useState<Option | null>(null);
+
   // --- Form Setup ---
   const {
     register,
@@ -95,7 +99,7 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   // --- Watchers ---
   const selectedSystemTypeId = watch("system_type_id");
-  const selectedNodeId = watch("node_id"); // Watch for Node selection changes
+  const selectedNodeId = watch("node_id");
   
   const selectedSystemTypeLabel = useMemo(
     () => systemTypeOptions.find((st) => st.value === selectedSystemTypeId)?.label || "",
@@ -114,19 +118,27 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
-  // --- AUTO-FILL LOGIC: Maintenance Terminal based on Node ---
+  // --- AUTO-FILL LOGIC ---
   useEffect(() => {
     const autoFillTerminal = async () => {
-      // Only auto-fill if a node is selected
       if (!selectedNodeId) return;
 
-      // Don't overwrite if we are in Edit Mode and the form is initializing (handled by the useEffect below)
-      // This logic runs when the USER changes the node dropdown.
-      
       try {
+        // Fetch full node details from local DB to get the associated maintenance terminal
         const nodeData = await localDb.v_nodes_complete.get(selectedNodeId);
         
         if (nodeData && nodeData.maintenance_terminal_id) {
+          
+          // THE FIX: If we found the terminal ID, grab its name too and set it as an option.
+          // This ensures the Select component can display the label immediately, 
+          // even if the main options list hasn't loaded it yet or filtered it out.
+          if (nodeData.maintenance_area_name) {
+             setInferredTerminalOption({
+                value: nodeData.maintenance_terminal_id,
+                label: nodeData.maintenance_area_name
+             });
+          }
+
           setValue("maintenance_terminal_id", nodeData.maintenance_terminal_id, {
             shouldValidate: true,
             shouldDirty: true,
@@ -139,6 +151,17 @@ export const SystemModal: FC<SystemModalProps> = ({
 
     autoFillTerminal();
   }, [selectedNodeId, setValue]);
+
+  // Combine standard options with the inferred one to ensure the selected value always has a label
+  const effectiveTerminalOptions = useMemo(() => {
+    if (inferredTerminalOption) {
+        // Prevent duplicates if the option already exists in the list
+        if (!maintenanceTerminalOptions.some(o => o.value === inferredTerminalOption.value)) {
+            return [...maintenanceTerminalOptions, inferredTerminalOption];
+        }
+    }
+    return maintenanceTerminalOptions;
+  }, [maintenanceTerminalOptions, inferredTerminalOption]);
 
   // --- Initialization ---
   useEffect(() => {
@@ -161,8 +184,18 @@ export const SystemModal: FC<SystemModalProps> = ({
           make: rowData.make ?? "",
           is_hub: rowData.is_hub ?? false,
         });
+        
+        // Ensure edit mode also populates the option if it's missing from the main list
+        if (rowData.maintenance_terminal_id && rowData.system_maintenance_terminal_name) {
+            setInferredTerminalOption({
+                value: rowData.maintenance_terminal_id,
+                label: rowData.system_maintenance_terminal_name
+            });
+        }
+
       } else {
         reset(createDefaultFormValues());
+        setInferredTerminalOption(null);
       }
       setStep(1);
     }
@@ -253,7 +286,14 @@ export const SystemModal: FC<SystemModalProps> = ({
                 {selectedSystemTypeLabel.includes("MAAN") && (
                   <FormInput name='maan_node_id' label='MAAN Node ID' register={register} error={errors.maan_node_id} />
                 )}
-                <FormSearchableSelect name='maintenance_terminal_id' label='Maintenance Terminal' control={control} options={maintenanceTerminalOptions} error={errors.maintenance_terminal_id} />
+                {/* THE FIX: Use effectiveTerminalOptions which includes the auto-filled value */}
+                <FormSearchableSelect 
+                  name='maintenance_terminal_id' 
+                  label='Maintenance Terminal' 
+                  control={control} 
+                  options={effectiveTerminalOptions} 
+                  error={errors.maintenance_terminal_id} 
+                />
                 <FormIPAddressInput name='ip_address' label='IP Address' control={control} error={errors.ip_address} />
                 <FormDateInput name='commissioned_on' label='Commissioned On' control={control} error={errors.commissioned_on} />
               </div>
