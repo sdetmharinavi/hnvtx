@@ -5478,6 +5478,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_fiber_to_connection: {
+        Args: {
+          p_connection_id: string
+          p_direction: string
+          p_fiber_id: string
+          p_role: string
+        }
+        Returns: undefined
+      }
       auto_splice_straight_segments: {
         Args: {
           p_jc_id: string
@@ -5859,6 +5868,10 @@ export type Database = {
         Args: { p_cable_id: string }
         Returns: undefined
       }
+      release_fiber_from_connection: {
+        Args: { p_fiber_id: string }
+        Returns: undefined
+      }
       restore_diagrams_backup: {
         Args: { p_files: Json; p_folders: Json }
         Returns: Json
@@ -5873,10 +5886,6 @@ export type Database = {
           id: string
           name: string
         }[]
-      }
-      search_systems_deep: {
-        Args: { p_limit?: number; p_offset?: number; p_search_term: string }
-        Returns: Json
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
