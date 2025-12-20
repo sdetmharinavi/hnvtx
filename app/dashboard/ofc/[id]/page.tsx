@@ -35,7 +35,6 @@ import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCar
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { Button } from '@/components/common/ui/Button';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
-import useIsMobile from '@/hooks/useIsMobile';
 
 
 export default function OfcCableDetailsPage() {
@@ -43,7 +42,6 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
-  const isMobile = useIsMobile();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [hasInitializedView, setHasInitializedView] = useState(false);
@@ -164,11 +162,11 @@ export default function OfcCableDetailsPage() {
 
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
-      const smartMode = (!isMobile && cableConnectionsData.length > 12) ? 'table' : 'grid';
+      const smartMode = (cableConnectionsData.length > 12) ? 'table' : 'grid';
       setViewMode(smartMode);
       setHasInitializedView(true);
     }
-  }, [isLoading, cableConnectionsData.length, hasInitializedView, isMobile]);
+  }, [isLoading, cableConnectionsData.length, hasInitializedView]);
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
   const orderedColumns = useOrderedColumns(columns, [
