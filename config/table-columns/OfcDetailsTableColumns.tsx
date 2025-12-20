@@ -73,11 +73,13 @@ export const OfcDetailsTableColumns = (
       },
       otdr_distance_sn_km: {
         title: 'End A OTDR (km)',
+        editable: true,
         sortable: true,
         searchable: true,
       },
       otdr_distance_en_km: {
         title: 'End B OTDR (km)',
+        editable: true,
         sortable: true,
         searchable: true,
       },
@@ -112,6 +114,9 @@ export const OfcDetailsTableColumns = (
       sn_power_dbm: { title: 'End A (dBm)', sortable: true },
       en_power_dbm: { title: 'End B (dBm)', sortable: true },
       route_loss_db: { title: 'Loss (dB)', sortable: true },
+      remark: {
+        editable: true,
+      }
     },
   });
 };

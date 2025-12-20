@@ -204,7 +204,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 
             {isLocked && (
               <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
-                <div className="text-xs text-gray-400 italic">
+                <div className="text-xs text-gray-800 italic">
                   {copyOnDoubleClick ? "Double-click text to copy" : "Select text to copy"}
                 </div>
                 <div className="flex items-center gap-1">
