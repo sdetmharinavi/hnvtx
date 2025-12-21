@@ -23,11 +23,21 @@ const customCache: RuntimeCaching[] = [
   // Our 'useLocalFirstQuery' + Dexie architecture handles offline data persistence at the application layer.
   // Caching here causes stale data issues and conflicts with optimistic UI updates.
   {
-    matcher: ({ url }) => 
-      url.pathname.startsWith('/api/') || 
-      url.pathname.startsWith('/rest/') || 
-      url.pathname.startsWith('/rpc/') ||
-      url.hostname.includes('supabase.co'), // Match Supabase hosted domains
+    matcher: ({ url }) => {
+      const isApiRoute = url.pathname.startsWith('/api/');
+      const isSupabaseApi = url.hostname.includes('supabase.co') && 
+                            (url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'));
+      
+      // THE FIX START: Exclude auth routes from service worker interception.
+      // This allows OAuth redirects (`/auth/v1/authorize`) to function correctly.
+      const isSupabaseAuth = url.hostname.includes('supabase.co') && url.pathname.startsWith('/auth/');
+      if (isSupabaseAuth) {
+        return false; // Let the browser handle this navigation.
+      }
+      // THE FIX END
+
+      return isApiRoute || isSupabaseApi;
+    },
     handler: new NetworkOnly(),
   },
   
