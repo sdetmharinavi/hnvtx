@@ -16,12 +16,15 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except the landing page `/`, `/login`, `/signup` and for the ones starting with:
+     * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - /auth/** (all auth API routes like callbacks)
+     * - Public pages (login, signup, etc.)
+     * - The root landing page ('/')
+     * This ensures the middleware only runs on protected routes.
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|^$|^login$|^signup$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|auth/.*|^$|^login$|^signup$|^forgot-password$|^reset-password$|^verify-email$).*)",
   ],
 };

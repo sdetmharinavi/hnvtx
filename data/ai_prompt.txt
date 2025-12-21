@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First I want a way out that if there is no value for updated_sn_name/updated_en_name then for that row sn_name/en_name will be used, however these are in omit list
+Let's begin! First I want to fix oauth signup case. On clicking google sigin button, its redirecting to https://hnvtm.vercel.app/login?error=oauth_failed with user created on supabase. 
