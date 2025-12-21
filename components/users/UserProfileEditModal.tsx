@@ -227,7 +227,7 @@ const UserProfileEditModal: React.FC<UserProfileEditProps> = ({
             </div>
           </div>
 
-          {(isSuperAdmin || currentUserRole === 'admin') && (
+          {(isSuperAdmin || currentUserRole === 'admin' || currentUserRole === 'admin_pro') && (
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"><FiShield className="text-orange-500" /> Administrative Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

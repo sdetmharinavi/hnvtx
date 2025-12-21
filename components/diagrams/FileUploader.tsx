@@ -38,7 +38,7 @@ export default function FileUploader() {
   const { isSuperAdmin, role } = useUser();
   const isOnline = useOnlineStatus(); // ADDED
 
-  const canCreate = !!isSuperAdmin || role === 'admin';
+  const canCreate = !!isSuperAdmin || role === 'admin' || role === 'admin_pro';
   const canDelete = !!isSuperAdmin;
   
   // Backup refs

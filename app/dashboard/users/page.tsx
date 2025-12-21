@@ -69,7 +69,7 @@ const AdminUsersPage = () => {
         onView: viewModal.open,
         onDelete: crudActions.handleDelete,
         canDelete: (record) => !record.is_super_admin,
-      }) as TableAction<"v_user_profiles_extended">[],
+      }) as TableAction<'v_user_profiles_extended'>[],
     [editModal.openEdit, viewModal.open, crudActions.handleDelete]
   );
 
@@ -84,9 +84,7 @@ const AdminUsersPage = () => {
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) return;
     if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`
-      )
+      !window.confirm(`Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`)
     )
       return;
 
@@ -143,47 +141,60 @@ const AdminUsersPage = () => {
     },
   ];
 
-  const renderMobileItem = useCallback((record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
-    return (
-      <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-             {record.avatar_url ? (
-                <Image src={record.avatar_url} alt="avatar" width={40} height={40} className="rounded-full" />
-             ) : (
+  const renderMobileItem = useCallback(
+    (record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
+      return (
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              {record.avatar_url ? (
+                <Image
+                  src={record.avatar_url}
+                  alt="avatar"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
+              ) : (
                 <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold">
-                    {record.first_name?.charAt(0)}
+                  {record.first_name?.charAt(0)}
                 </div>
-             )}
-             <div>
+              )}
+              <div>
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    {record.full_name}
-                    {record.is_super_admin && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200">SUPER</span>}
+                  {record.full_name}
+                  {record.is_super_admin && (
+                    <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200">
+                      SUPER
+                    </span>
+                  )}
                 </h3>
                 <div className="text-xs text-gray-500 dark:text-gray-400">{record.email}</div>
-             </div>
+              </div>
+            </div>
+            {actions}
           </div>
-          {actions}
-        </div>
-        
-        <div className="flex flex-wrap gap-2 items-center">
+
+          <div className="flex flex-wrap gap-2 items-center">
             <RoleBadge role={record.role as UserRole} />
             {record.designation && (
-                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
-                    {record.designation}
-                </span>
+              <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+                {record.designation}
+              </span>
             )}
-        </div>
+          </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
-             <div className="text-xs text-gray-400">
-                 Active: {record.last_activity_period || 'Never'}
-             </div>
-             <StatusBadge status={record.status ?? 'inactive'} />
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className="text-xs text-gray-400">
+              Active: {record.last_activity_period || 'Never'}
+            </div>
+            <StatusBadge status={record.status ?? 'inactive'} />
+          </div>
         </div>
-      </div>
-    );
-  }, []);
+      );
+    },
+    []
+  );
 
   if (error) {
     return (
@@ -219,15 +230,15 @@ const AdminUsersPage = () => {
         onBulkUpdateStatus={handleBulkUpdateStatus}
         onClearSelection={handleClearSelection}
       />
-           <DataTable
-      autoHideEmptyColumns={true}
+      <DataTable
+        autoHideEmptyColumns={true}
         tableName="v_user_profiles_extended"
-        data={users.map(user => ({
+        data={users.map((user) => ({
           ...user,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
           id: user.id || '',
-          address: user.address as Json | null
+          address: user.address as Json | null,
         }))}
         columns={columns}
         loading={isLoading || isOperationLoading}
@@ -257,9 +268,7 @@ const AdminUsersPage = () => {
             searchQuery={search.searchQuery}
             onSearchChange={search.setSearchQuery}
             roleFilter={(filters.filters.role as string) || ''}
-            onRoleFilterChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, role: value }))
-            }
+            onRoleFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, role: value }))}
             statusFilter={(filters.filters.status as string) || ''}
             onStatusFilterChange={(value) =>
               filters.setFilters((prev) => ({ ...prev, status: value }))

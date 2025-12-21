@@ -1,6 +1,7 @@
 // types/user-roles.ts
 
 export enum UserRole {
+    ADMINPRO = "admin_pro",
     ADMIN = "admin",
     CPANADMIN = "cpan_admin",
     MAANADMIN = "maan_admin",

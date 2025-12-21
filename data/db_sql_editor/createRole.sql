@@ -1,3 +1,5 @@
+CREATE ROLE admin_pro;
+GRANT admin_pro TO authenticator;
 CREATE ROLE admin;
 GRANT admin TO authenticator;
 CREATE ROLE cpan_admin;
