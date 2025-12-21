@@ -1,3 +1,4 @@
+// path: app/(auth)/login/page.tsx
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -20,13 +21,14 @@ const loginSchema = z.object({
 
 type LoginFormType = z.infer<typeof loginSchema>;
 
-// THE FIX: All dynamic logic is moved into this dedicated client component.
+// All dynamic logic is moved into this dedicated client component.
 function LoginForm() {
   const { authState, signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') || '/dashboard';
   const errorParam = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
 
   const {
     register,
@@ -47,10 +49,13 @@ function LoginForm() {
   }, [authState, router]);
 
   useEffect(() => {
-    if (errorParam === 'oauth_failed') {
-      toast.error('OAuth authentication failed. Please try again.');
+    if (errorParam) {
+      toast.error('Authentication Error', {
+        description: errorDescription || 'An unexpected error occurred. Please try again.',
+        duration: 8000,
+      });
     }
-  }, [errorParam]);
+  }, [errorParam, errorDescription]);
 
   const onSubmit = async (data: LoginFormType) => {
     const { success } = await signIn(data.email ?? '', data.password ?? '');
@@ -135,7 +140,7 @@ function LoginForm() {
   );
 }
 
-// THE FIX: The default export is now a Server Component that wraps the dynamic form in Suspense.
+// The default export is a Server Component that wraps the dynamic form in Suspense.
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
