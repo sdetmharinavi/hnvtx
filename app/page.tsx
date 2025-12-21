@@ -1,3 +1,4 @@
+// path: app/page.tsx
 "use client";
 
 import OfflineStatus from "@/components/pwa/offline-status";
@@ -11,6 +12,7 @@ import StatsHighlights from "@/components/home/StatsHighlights";
 import { containerVariants, ctaVariants, floatingAnimation, highlightVariants, subtitleVariants, titleVariants } from "@/components/home/variants";
 import OutdatedBrowserModal from "@/components/outdated/OutdatedBrowserModal";
 import { useOutdatedBrowserCheck } from "@/hooks/useOutdatedBrowserCheck";
+import FooterLinks from "@/components/home/FooterLinks"; // IMPORT THE NEW COMPONENT
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -80,6 +82,10 @@ export default function Home() {
              <StatsHighlights />
           </div>
         </div>
+
+        {/* ADD THE FOOTER COMPONENT HERE */}
+        <FooterLinks />
+
       </div>
       <PWAInstallPrompt />
       <OfflineStatus />
