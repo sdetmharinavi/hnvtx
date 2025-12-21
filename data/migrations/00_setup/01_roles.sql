@@ -4,8 +4,16 @@
 -- Create roles only if they don't exist
 DO $$
 BEGIN
+     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin_pro') THEN
+        CREATE ROLE admin_pro NOINHERIT;
+    END IF;
+
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin') THEN
         CREATE ROLE admin NOINHERIT;
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'ofc_admin') THEN
+        CREATE ROLE ofc_admin NOINHERIT;
     END IF;
 
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cpan_admin') THEN
@@ -41,7 +49,7 @@ DECLARE
     r TEXT;
 BEGIN
     FOR r IN
-        SELECT unnest(ARRAY['admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin', 'viewer'])
+        SELECT unnest(ARRAY['admin_pro','admin','ofc_admin','cpan_admin','maan_admin','sdh_admin','asset_admin','mng_admin', 'viewer'])
     LOOP
         IF NOT EXISTS (
             SELECT 1

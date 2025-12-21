@@ -43,3 +43,14 @@ CREATE INDEX IF NOT EXISTS idx_employees_remark_fts ON public.employees USING gi
 CREATE INDEX IF NOT EXISTS idx_nodes_remark_fts ON public.nodes USING gin(to_tsvector('english', remark));
 CREATE INDEX IF NOT EXISTS idx_ofc_cables_remark_fts ON public.ofc_cables USING gin(to_tsvector('english', remark));
 CREATE INDEX IF NOT EXISTS idx_ofc_connections_remark_fts ON public.ofc_connections USING gin(to_tsvector('english', remark));
+
+-- =================================================================
+-- Section 3: Trigram GIN Indexes (for fast ILIKE searches)
+-- =================================================================
+CREATE INDEX IF NOT EXISTS idx_employees_name_trgm ON public.employees USING gin (employee_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_employees_pers_no_trgm ON public.employees USING gin (employee_pers_no gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_nodes_name_trgm ON public.nodes USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_ofc_cables_name_trgm ON public.ofc_cables USING gin (route_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_ofc_cables_asset_trgm ON public.ofc_cables USING gin (asset_no gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_ofc_connections_remark_trgm ON public.ofc_connections USING gin (remark gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_rings_name_trgm ON public.rings USING gin (name gin_trgm_ops);

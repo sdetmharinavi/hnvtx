@@ -23,8 +23,8 @@ BEGIN
         v_status_bool := (p_status = 'active');
     END IF;
 
-    -- Handle User Activity (Admin Only)
-    IF (v_jwt_role = 'admin' OR v_is_super_admin) AND EXISTS (
+    -- Handle User Activity (Admin and Admin Pro Only)
+    IF (v_jwt_role IN ('admin', 'admin_pro') OR v_is_super_admin) AND EXISTS (
         SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_activity_logs'
     ) THEN
         SELECT jsonb_agg(jsonb_build_object('date', day::date, 'count', COALESCE(activity_count, 0)) ORDER BY day)

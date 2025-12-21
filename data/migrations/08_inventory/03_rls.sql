@@ -1,86 +1,94 @@
 -- path: data/migrations/08_inventory/03_rls.sql
--- Description: Applies Strict Role-Based Access Control (RBAC) for Inventory using specific roles.
+-- Description: Applies Strict Role-Based Access Control (RBAC) for Inventory. [REVISED FOR ADMIN_PRO & SYNTAX CORRECTION]
 
--- 1. Enable RLS
+-- =================================================================
+-- Section 1: Enable RLS & Define Table-Level Grants
+-- =================================================================
+
+-- Enable RLS on both tables
 ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inventory_transactions ENABLE ROW LEVEL SECURITY;
 
--- 2. RESET GRANTS
--- Revoke all to ensure we start clean
-REVOKE ALL ON public.inventory_items FROM authenticated;
-REVOKE ALL ON public.inventory_transactions FROM authenticated;
+-- ---- GRANTS FOR inventory_items ----
+-- Full control for roles that manage inventory data.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO admin, admin_pro, asset_admin;
+-- Read-only access for the viewer role.
+GRANT SELECT ON public.inventory_items TO viewer;
 
--- 3. APPLY TABLE LEVEL GRANTS
--- We grant these to 'authenticated' so the API can attempt the operation.
--- RLS policies below will determine if the operation is actually allowed.
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_items TO authenticated;
-GRANT SELECT ON public.inventory_transactions TO authenticated; 
--- Note: No INSERT/UPDATE/DELETE grant on transactions for direct API access. 
--- Those happen via SECURITY DEFINER functions only.
+-- ---- GRANTS FOR inventory_transactions ----
+-- Read-only access for all roles that can see inventory.
+GRANT SELECT ON public.inventory_transactions TO admin, admin_pro, asset_admin, viewer;
 
 
--- 4. DEFINE STRICT RLS POLICIES FOR INVENTORY ITEMS
+-- =================================================================
+-- Section 2: RLS Policies for inventory_items
+-- =================================================================
 
--- Policy: READ (Viewer, Admins, Super Admin)
--- "Viewer" role specifically allows reading. Admins imply read access.
-DROP POLICY IF EXISTS "Inventory Read Access" ON public.inventory_items;
-CREATE POLICY "Inventory Read Access"
+-- Drop old policies for idempotency
+DROP POLICY IF EXISTS "policy_read_inventory_items" ON public.inventory_items;
+DROP POLICY IF EXISTS "policy_update_inventory_items" ON public.inventory_items;
+DROP POLICY IF EXISTS "policy_insert_inventory_items" ON public.inventory_items;
+DROP POLICY IF EXISTS "policy_delete_inventory_items" ON public.inventory_items;
+
+-- Policy 1: Read Access
+CREATE POLICY "policy_read_inventory_items"
 ON public.inventory_items
 FOR SELECT
-TO authenticated
 USING (
-  public.is_super_admin() OR 
-  public.get_my_role() IN ('viewer', 'admin', 'asset_admin')
+  is_super_admin() OR
+  get_my_role() IN ('viewer', 'admin', 'admin_pro', 'asset_admin')
 );
 
--- Policy: WRITE (Admin, Asset Admin, Super Admin)
--- Viewers cannot write.
-DROP POLICY IF EXISTS "Inventory Write Access" ON public.inventory_items;
-CREATE POLICY "Inventory Write Access"
-ON public.inventory_items
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  public.is_super_admin() OR 
-  public.get_my_role() IN ('admin', 'asset_admin')
-);
-
-DROP POLICY IF EXISTS "Inventory Update Access" ON public.inventory_items;
-CREATE POLICY "Inventory Update Access"
+-- [CORRECTED] Policy 2: Update Access
+-- Allows updating items by roles with management privileges.
+CREATE POLICY "policy_update_inventory_items"
 ON public.inventory_items
 FOR UPDATE
-TO authenticated
 USING (
-  public.is_super_admin() OR 
-  public.get_my_role() IN ('admin', 'asset_admin')
+  is_super_admin() OR
+  get_my_role() IN ('admin', 'admin_pro', 'asset_admin')
 )
 WITH CHECK (
-  public.is_super_admin() OR 
-  public.get_my_role() IN ('admin', 'asset_admin')
+  is_super_admin() OR
+  get_my_role() IN ('admin', 'admin_pro', 'asset_admin')
 );
 
--- Policy: DELETE (Super Admin Only)
-DROP POLICY IF EXISTS "Inventory Delete Access" ON public.inventory_items;
-CREATE POLICY "Inventory Delete Access"
+-- [CORRECTED] Policy 3: Insert Access
+-- Allows creating items by roles with management privileges.
+CREATE POLICY "policy_insert_inventory_items"
+ON public.inventory_items
+FOR INSERT
+WITH CHECK (
+  is_super_admin() OR
+  get_my_role() IN ('admin', 'admin_pro', 'asset_admin')
+);
+
+-- Policy 4: Delete Access
+CREATE POLICY "policy_delete_inventory_items"
 ON public.inventory_items
 FOR DELETE
-TO authenticated
-USING (public.is_super_admin());
-
-
--- 5. DEFINE STRICT RLS POLICIES FOR TRANSACTIONS (LOGS)
-
--- Policy: READ (Viewer, Admins, Super Admin)
-DROP POLICY IF EXISTS "Transactions Read Access" ON public.inventory_transactions;
-CREATE POLICY "Transactions Read Access"
-ON public.inventory_transactions
-FOR SELECT
-TO authenticated
 USING (
-  public.is_super_admin() OR 
-  public.get_my_role() IN ('viewer', 'admin', 'asset_admin')
+  is_super_admin() OR
+  get_my_role() IN ('admin_pro', 'asset_admin')
 );
 
--- Policy: WRITE/DELETE
--- No policies created. Direct manipulation of the transaction log via API is forbidden.
--- Inserts must happen via the `issue_inventory_item` RPC function.
+-- =================================================================
+-- Section 3: RLS Policies for inventory_transactions (Logs)
+-- =================================================================
+
+DROP POLICY IF EXISTS "policy_read_inventory_transactions" ON public.inventory_transactions;
+
+-- Policy 1: Read Access
+CREATE POLICY "policy_read_inventory_transactions"
+ON public.inventory_transactions
+FOR SELECT
+USING (
+  is_super_admin() OR
+  get_my_role() IN ('viewer', 'admin', 'admin_pro', 'asset_admin')
+);
+
+-- =================================================================
+-- Section 4: Grants for Views
+-- =================================================================
+GRANT SELECT ON public.v_inventory_items TO authenticated;
+GRANT SELECT ON public.v_inventory_transactions_extended TO authenticated;

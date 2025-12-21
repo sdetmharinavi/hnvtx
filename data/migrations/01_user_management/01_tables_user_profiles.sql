@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   ),
   role TEXT DEFAULT 'viewer' CHECK (
     role IN (
+      'admin_pro',
       'admin',
       'viewer',
       'cpan_admin',

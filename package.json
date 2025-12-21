@@ -12,7 +12,7 @@
     "gitpush": "git add . && git commit -m \"$(date +'%Y-%m-%d %H:%M:%S')\" && git push",
     "find-unused": "node scripts/find-unused-files.js",
     "supabase": "supabase",
-    "gen:types": "supabase gen types typescript --project-id mnnttnrgafkymejqpjhw --schema public,auth > types/supabase-types.ts",
+    "gen:types": "supabase gen types typescript --project-id iceqhhlrxxpalmqcrdlr --schema public,auth > types/supabase-types.ts",
     "gen:flattened": "tsx scripts/generate-flattened-types.ts",
     "gen:zod": "tsx scripts/generate-zod-schemas.ts",
     "gen:all": "npm run gen:types && npm run gen:flattened && npm run gen:zod",

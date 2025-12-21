@@ -33,7 +33,7 @@ BEGIN
             d.created_at,
             d.updated_at
         FROM public.diary_notes d
-        LEFT JOIN public.v_user_profiles_extended p ON d.user_id = p.id
+        JOIN public.v_user_profiles_extended p ON d.user_id = p.id
         WHERE d.note_date BETWEEN start_date AND end_date
         ORDER BY d.note_date DESC, p.full_name;
     ELSE
@@ -49,7 +49,7 @@ BEGIN
             d.created_at,
             d.updated_at
         FROM public.diary_notes d
-        LEFT JOIN public.v_user_profiles_extended p ON d.user_id = p.id
+        JOIN public.v_user_profiles_extended p ON d.user_id = p.id
         WHERE d.user_id = auth.uid()
           AND d.note_date BETWEEN start_date AND end_date
         ORDER BY d.note_date DESC;

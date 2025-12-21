@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   auth: {
     Tables: {
@@ -6054,18 +6054,7 @@ export type Database = {
       [_ in never]: never
     }
     CompositeTypes: {
-      splice_connection: {
-        splice_id: string | null
-        jc_id: string | null
-        jc_name: string | null
-        jc_position_km: number | null
-        incoming_cable_id: string | null
-        incoming_fiber_no: number | null
-        outgoing_cable_id: string | null
-        outgoing_fiber_no: number | null
-        otdr_length_km: number | null
-        loss_db: number | null
-      }
+      [_ in never]: never
     }
   }
 }

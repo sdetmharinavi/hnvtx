@@ -107,6 +107,14 @@ BEGIN
   IF (TG_OP = 'INSERT') THEN
     PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
     RETURN NEW;
+  -- [NEW] Handle UPDATE case
+  ELSIF (TG_OP = 'UPDATE') THEN
+    -- Recalculate for the old cable if the cable itself changed, and the new one.
+    IF OLD.ofc_cable_id IS DISTINCT FROM NEW.ofc_cable_id THEN
+        PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
+    END IF;
+    PERFORM public.recalculate_segments_for_cable(NEW.ofc_cable_id);
+    RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
     PERFORM public.recalculate_segments_for_cable(OLD.ofc_cable_id);
     RETURN OLD;

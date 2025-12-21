@@ -19,3 +19,21 @@ CREATE INDEX IF NOT EXISTS idx_systems_make ON public.systems (make);
 -- =================================================================
 
 CREATE INDEX IF NOT EXISTS idx_systems_remark_fts ON public.systems USING gin(to_tsvector('english', remark));
+
+-- Indexes for the generic systems table (improves v_systems_complete)
+CREATE INDEX IF NOT EXISTS idx_systems_system_type_id ON public.systems (system_type_id);
+CREATE INDEX IF NOT EXISTS idx_systems_maintenance_terminal_id ON public.systems (maintenance_terminal_id);
+
+-- Indexes for system_connections (improves v_system_connections_complete)
+CREATE INDEX IF NOT EXISTS idx_system_connections_system_id ON public.system_connections (system_id);
+CREATE INDEX IF NOT EXISTS idx_system_connections_service_id ON public.system_connections (service_id);
+CREATE INDEX IF NOT EXISTS idx_system_connections_sn_id ON public.system_connections (sn_id);
+CREATE INDEX IF NOT EXISTS idx_system_connections_en_id ON public.system_connections (en_id);
+
+-- =================================================================
+-- Section 3: Trigram GIN Indexes (for fast ILIKE searches)
+-- =================================================================
+CREATE INDEX IF NOT EXISTS idx_systems_name_trgm ON public.systems USING gin (system_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_systems_ip_trgm ON public.systems USING gin ((ip_address::text) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_services_name_trgm ON public.services USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_system_connections_remark_trgm ON public.system_connections USING gin (remark gin_trgm_ops);

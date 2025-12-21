@@ -14,7 +14,7 @@ DECLARE
     v_is_admin BOOLEAN;
 BEGIN
     -- Check permissions
-    v_is_admin := public.is_super_admin() OR public.get_my_role() = 'admin';
+    v_is_admin := public.is_super_admin() OR public.get_my_role() IN ('admin', 'admin_pro');
 
     -- Fetch Folders
     SELECT jsonb_agg(f) INTO v_folders FROM (

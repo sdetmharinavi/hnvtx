@@ -19,12 +19,11 @@ GRANT EXECUTE ON FUNCTION public.admin_bulk_update_role(uuid[], text) TO authent
 GRANT EXECUTE ON FUNCTION public.admin_bulk_delete_users(uuid[]) TO authenticated;
 
 -- Grant Table Permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles TO admin, admin_pro;
 GRANT SELECT ON public.user_profiles TO viewer;
 
--- THE FIX: Grant SELECT permission on the view to authenticated users.
--- The `security_invoker` property on the view will ensure that the underlying
--- RLS policies on `user_profiles` are applied for each user.
+-- Grant SELECT on the view to authenticated users
+-- The `security_invoker` property on the view ensures RLS policies are applied for each user.
 GRANT SELECT ON public.v_user_profiles_extended TO authenticated;
 
 
@@ -41,35 +40,45 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON public.user_profiles
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
 DROP POLICY IF EXISTS "Users can delete their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.user_profiles;
+DROP POLICY IF EXISTS "Pro Admins can manage all profiles" ON public.user_profiles;
 
--- Allow super admins full access to all rows
+
+-- Policy 1: Super admins have unrestricted access (for database maintenance).
 CREATE POLICY "Super admins have full access to user_profiles"
 ON public.user_profiles
 FOR ALL
 USING (public.is_super_admin())
 WITH CHECK (public.is_super_admin());
 
--- Allow users to read their own profile
+-- Policy 2: Users can view their own profile.
+-- This remains essential for any logged-in user to see their own data.
 CREATE POLICY "Users can view their own profile"
 ON public.user_profiles
 FOR SELECT
 USING ((select auth.uid()) = id);
 
--- Allow users to update their own profile
+-- Policy 3: Users can update their own profile.
 CREATE POLICY "Users can update their own profile"
 ON public.user_profiles
 FOR UPDATE
 USING ((select auth.uid()) = id)
 WITH CHECK ((select auth.uid()) = id);
 
--- Allow users to insert their own profile
-CREATE POLICY "Users can insert their own profile"
+-- Policy 4: Admins and Pro Admins can view all user profiles.
+-- This policy fixes the critical gap, allowing admin roles to see all users
+-- in the user management dashboard.
+CREATE POLICY "Admins can view all profiles"
 ON public.user_profiles
-FOR INSERT
-WITH CHECK ((select auth.uid()) = id);
+FOR SELECT
+USING (public.get_my_role() IN ('admin', 'admin_pro'));
 
--- Allow users to delete their own profile
-CREATE POLICY "Users can delete their own profile"
+-- Policy 5: Pro Admins can manage (insert/update/delete) all profiles.
+-- This policy grants the 'admin_pro' role full management capabilities, while
+-- preventing a standard 'admin' from performing these actions on other users.
+-- This is enforced at the database level, complementing the security in the RPC functions.
+CREATE POLICY "Pro Admins can manage all profiles"
 ON public.user_profiles
-FOR DELETE
-USING ((select auth.uid()) = id);
+FOR ALL -- Applies to INSERT, UPDATE, DELETE
+USING (public.get_my_role() = 'admin_pro')
+WITH CHECK (public.get_my_role() = 'admin_pro');
