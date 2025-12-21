@@ -44,7 +44,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  applicationName: 'Harinavi Transmission Maintenance',
+  applicationName: 'hnvtm',
   title: {
     default: 'Harinavi Transmission Maintenance',
     template: '%s - PWA App',
