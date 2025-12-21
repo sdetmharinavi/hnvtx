@@ -1,5 +1,5 @@
 -- path: data/migrations/07_diary/02_rls_diary_notes.sql
--- Description: Applies Row-Level Security to the diary_notes table. [REVISED FOR ADMIN_PRO & SECURITY]
+-- Description: Applies a tiered Row-Level Security model to the diary_notes table.
 
 -- =================================================================
 -- Section 1: Enable RLS & Define Table-Level Grants
@@ -8,13 +8,11 @@
 -- Enable RLS
 ALTER TABLE public.diary_notes ENABLE ROW LEVEL SECURITY;
 
--- [CHANGED] More precise grants.
--- Authenticated users can perform all actions, but RLS will scope it to their own notes.
+-- Grant all actions at the table level. RLS policies will then filter what is allowed.
 GRANT ALL ON public.diary_notes TO authenticated;
-
--- Grant specific permissions to admin roles.
-GRANT SELECT ON public.diary_notes TO admin;
-GRANT SELECT, DELETE ON public.diary_notes TO admin_pro;
+-- Grant necessary permissions to admin roles. RLS will scope their access.
+GRANT ALL ON public.diary_notes TO admin;
+GRANT ALL ON public.diary_notes TO admin_pro;
 
 
 -- =================================================================
@@ -24,32 +22,32 @@ GRANT SELECT, DELETE ON public.diary_notes TO admin_pro;
 -- Drop old policies for idempotency
 DROP POLICY IF EXISTS "Users can manage their own diary notes" ON public.diary_notes;
 DROP POLICY IF EXISTS "Admins can read all diary notes" ON public.diary_notes;
-DROP POLICY IF EXISTS "Pro Admins can delete any diary note" ON public.diary_notes;
+DROP POLICY IF EXISTS "Pro Admins can manage all diary notes" ON public.diary_notes;
 
-
--- Policy 1: Users can manage their own notes. (No changes, already perfect)
--- This is the primary policy ensuring user privacy.
+-- Policy 1: (UNCHANGED) Baseline for all authenticated users.
+-- Allows users to fully manage their own entries.
 CREATE POLICY "Users can manage their own diary notes"
 ON public.diary_notes
-FOR ALL -- Applies to SELECT, INSERT, UPDATE, DELETE
+FOR ALL
 TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 
--- [NEW] Policy 2: Admins can read all diary notes for support/auditing.
--- This policy is for SELECT only. A standard 'admin' cannot modify or delete another user's notes.
+-- Policy 2: (NEW) Read-only access for standard Admins.
+-- Allows 'admin' role to view all entries for auditing/support, but not modify or delete them.
 CREATE POLICY "Admins can read all diary notes"
 ON public.diary_notes
 FOR SELECT
-TO admin, admin_pro -- Both roles can read
-USING (is_super_admin() OR get_my_role() IN ('admin', 'admin_pro'));
+TO admin
+USING (get_my_role() = 'admin');
 
 
--- [NEW] Policy 3: Pro Admins can delete any diary note for administrative purposes.
--- This policy grants deletion rights ONLY to the top-level 'admin_pro' role.
-CREATE POLICY "Pro Admins can delete any diary note"
+-- Policy 3: (REVISED) Full management access for Pro Admins & Super Admins.
+-- This is the permissive policy that allows bulk uploads, edits, and deletions for any user.
+CREATE POLICY "Pro Admins can manage all diary notes"
 ON public.diary_notes
-FOR DELETE
+FOR ALL
 TO admin_pro
-USING (is_super_admin() OR get_my_role() = 'admin_pro');
+USING (is_super_admin() OR get_my_role() = 'admin_pro')
+WITH CHECK (is_super_admin() OR get_my_role() = 'admin_pro');
