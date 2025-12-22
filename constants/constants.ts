@@ -8,11 +8,13 @@ export const DEFAULTS = {
 };
 
 export const allowedRoles = [
-    UserRole.VIEWER,
+    UserRole.ADMINPRO,
     UserRole.ADMIN,
     UserRole.CPANADMIN,
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
     UserRole.MNGADMIN,
+    UserRole.VIEWER,
+    UserRole.AUTHENTICATED,
   ]

@@ -23,6 +23,7 @@ GRANT ALL ON public.diary_notes TO admin_pro;
 DROP POLICY IF EXISTS "Users can manage their own diary notes" ON public.diary_notes;
 DROP POLICY IF EXISTS "Admins can read all diary notes" ON public.diary_notes;
 DROP POLICY IF EXISTS "Pro Admins can manage all diary notes" ON public.diary_notes;
+DROP POLICY IF EXISTS "Admins and Pro Admins can manage all diary notes" ON public.diary_notes;
 
 -- Policy 1: (UNCHANGED) Baseline for all authenticated users.
 -- Allows users to fully manage their own entries.
@@ -34,20 +35,14 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 
--- Policy 2: (NEW) Read-only access for standard Admins.
--- Allows 'admin' role to view all entries for auditing/support, but not modify or delete them.
-CREATE POLICY "Admins can read all diary notes"
-ON public.diary_notes
-FOR SELECT
-TO admin
-USING (get_my_role() = 'admin');
+-- DELETED POLICY: The "Admins can read all diary notes" policy was removed as it is now redundant.
 
 
--- Policy 3: (REVISED) Full management access for Pro Admins & Super Admins.
--- This is the permissive policy that allows bulk uploads, edits, and deletions for any user.
-CREATE POLICY "Pro Admins can manage all diary notes"
+-- Policy 2: (REVISED) Full management access for Admins, Pro Admins & Super Admins.
+-- This policy now correctly grants FOR ALL permissions (SELECT, INSERT, UPDATE, DELETE) to both 'admin' and 'admin_pro' roles.
+CREATE POLICY "Admins and Pro Admins can manage all diary notes"
 ON public.diary_notes
 FOR ALL
-TO admin_pro
-USING (is_super_admin() OR get_my_role() = 'admin_pro')
-WITH CHECK (is_super_admin() OR get_my_role() = 'admin_pro');
+TO admin, admin_pro
+USING (is_super_admin() OR get_my_role() IN ('admin', 'admin_pro'))
+WITH CHECK (is_super_admin() OR get_my_role() IN ('admin', 'admin_pro'));
