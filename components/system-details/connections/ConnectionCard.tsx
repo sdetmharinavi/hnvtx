@@ -1,14 +1,14 @@
 // path: components/system-details/connections/ConnectionCard.tsx
 import React, { useMemo } from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield, FiEdit2, FiTrash2, FiTag } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
 
 interface ConnectionCardProps {
   connection: V_system_connections_completeRowSchema;
-  parentSystemId?: string; // THE FIX: Made this prop optional
+  parentSystemId?: string; 
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
   onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
@@ -21,7 +21,7 @@ interface ConnectionCardProps {
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   connection, 
-  parentSystemId, // Now optional
+  parentSystemId,
   onViewDetails, 
   onViewPath, 
   onGoToSystem, 
@@ -34,9 +34,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   
-  // THE FIX: The logic now handles the optional parentSystemId
   const { endA, endB, hasProtection } = useMemo(() => {
-    // Only consider flipping if we are in a system context AND a parentSystemId is provided
     const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
 
     const endAData = {
@@ -92,7 +90,8 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
         {!connection.status && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded uppercase">Inactive</span>}
       </div>
 
-      <div className="p-4 space-y-4 flex-1 text-sm pl-5">
+      <div className="p-4 space-y-3 flex-1 text-sm pl-5">
+         
          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700 relative">
             <div className="flex justify-between items-start relative z-10">
                 <div className="flex flex-col items-start max-w-[45%]">
@@ -132,6 +131,23 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 </div>
             </div>
          </div>
+
+         {/* THE FIX START: Updated layout to show both VLAN and Media Type */}
+         <div className="grid grid-cols-2 gap-2 text-xs">
+            {connection.vlan && (
+                <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">VLAN</span>
+                    <span className="font-mono font-medium text-gray-900 dark:text-gray-200">{connection.vlan}</span>
+                </div>
+            )}
+            {connection.media_type_name && (
+                <div className="bg-white dark:bg-gray-700/30 px-3 py-2 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">Media</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200 truncate">{connection.media_type_name}</span>
+                </div>
+            )}
+         </div>
+         {/* THE FIX END */}
       </div>
       
       <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
