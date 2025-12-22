@@ -27,7 +27,7 @@ import { EmployeeCard } from '@/components/employee/EmployeeCard';
 import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui';
 import { UserRole } from '@/types/user-roles';
-import { useDropdownOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { useDropdownOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { FiGrid, FiList, FiSearch, FiUsers } from 'react-icons/fi';
 
 export default function EmployeesPage() {
@@ -58,9 +58,10 @@ export default function EmployeesPage() {
     displayNameField: 'employee_name',
   });
 
-  // --- REFACTORED: Use Centralized Hooks ---
-  
-  // 1. Fetch Designations via generic hook
+  // --- PERMISSIONS FIX: Define clear permissions ---
+  const canEdit = useMemo(() => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+
   const { options: desOptions } = useDropdownOptions({
     tableName: 'employee_designations',
     valueField: 'id',
@@ -69,10 +70,8 @@ export default function EmployeesPage() {
     orderBy: 'name'
   });
 
-  // 2. Fetch Areas via specialized hook
   const { options: areaOptions } = useMaintenanceAreaOptions();
 
-  // Table Logic
   const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_employees]);
   const isInitialLoad = isLoading && employees.length === 0;
@@ -81,16 +80,18 @@ export default function EmployeesPage() {
     () =>
       createStandardActions<V_employeesRowSchema>({
         onView: viewModal.open,
-        onEdit: editModal.openEdit,
-        onToggleStatus: isSuperAdmin ? crudActions.handleToggleStatus : undefined,
-        onDelete: isSuperAdmin ? crudActions.handleDelete : undefined,
+        // --- PERMISSIONS FIX: Guard actions ---
+        onEdit: canEdit ? editModal.openEdit : undefined,
+        onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
       }) as TableAction<'v_employees'>[],
     [
       viewModal.open,
       editModal.openEdit,
-      isSuperAdmin,
       crudActions.handleToggleStatus,
       crudActions.handleDelete,
+      canEdit,
+      canDelete
     ]
   );
 
@@ -100,7 +101,8 @@ export default function EmployeesPage() {
       await refetch();
       toast.success('Refreshed successfully!');
     },
-    onAddNew: editModal.openAdd,
+    // --- PERMISSIONS FIX: Guard action ---
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'employees' },
   });
@@ -118,13 +120,14 @@ export default function EmployeesPage() {
           employee={record as V_employeesRowSchema}
           onEdit={editModal.openEdit}
           onDelete={crudActions.handleDelete}
-          canDelete={!!isSuperAdmin}
-          canEdit={!!isSuperAdmin || !!(role === UserRole.ADMIN)}
+          // --- PERMISSIONS FIX: Pass permissions to card ---
+          canDelete={canDelete}
+          canEdit={canEdit}
           viewMode="list"
         />
       );
     },
-    [editModal.openEdit, crudActions.handleDelete, isSuperAdmin, role]
+    [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete]
   );
 
   if (error)
@@ -208,16 +211,20 @@ export default function EmployeesPage() {
           </div>
         </div>
       </div>
-
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        isOperationLoading={isMutating}
-        onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
-        onClearSelection={bulkActions.handleClearSelection}
-        entityName="employee"
-        showStatusUpdate={true}
-      />
+      
+      {/* --- PERMISSIONS FIX: Conditionally render Bulk Actions --- */}
+      {canEdit && (
+        <BulkActions
+          selectedCount={bulkActions.selectedCount}
+          isOperationLoading={isMutating}
+          onBulkDelete={bulkActions.handleBulkDelete}
+          onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
+          onClearSelection={bulkActions.handleClearSelection}
+          entityName="employee"
+          showStatusUpdate={true}
+          canDelete={() => canDelete}
+        />
+      )}
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -227,8 +234,8 @@ export default function EmployeesPage() {
               employee={emp}
               onEdit={editModal.openEdit}
               onDelete={crudActions.handleDelete}
-              canDelete={!!isSuperAdmin}
-              canEdit={!!isSuperAdmin || !!(role === UserRole.ADMIN)}
+              canDelete={canDelete}
+              canEdit={canEdit}
             />
           ))}
           {employees.length === 0 && !isLoading && (
@@ -245,7 +252,7 @@ export default function EmployeesPage() {
           loading={isLoading}
           isFetching={isFetching || isMutating}
           actions={tableActions}
-          selectable={!!isSuperAdmin}
+          selectable={canDelete}
           onRowSelect={(selectedRows) => {
             const validRows = selectedRows.filter(
               (row): row is V_employeesRowSchema & { id: string } => row.id != null
@@ -267,17 +274,19 @@ export default function EmployeesPage() {
           renderMobileItem={renderMobileItem}
         />
       )}
-
-      <EmployeeForm
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        employee={editModal.record}
-        onSubmit={crudActions.handleSave as (data: EmployeesInsertSchema) => void}
-        isLoading={isMutating}
-        // Pass options down to modal
-        designationOptions={desOptions}
-        maintenanceAreaOptions={areaOptions}
-      />
+      
+      {/* --- PERMISSIONS FIX: Conditionally render form modal --- */}
+      {canEdit && (
+        <EmployeeForm
+          isOpen={editModal.isOpen}
+          onClose={editModal.close}
+          employee={editModal.record}
+          onSubmit={crudActions.handleSave as (data: EmployeesInsertSchema) => void}
+          isLoading={isMutating}
+          designationOptions={desOptions}
+          maintenanceAreaOptions={areaOptions}
+        />
+      )}
 
       <EmployeeDetailsModal
         employee={viewModal.record}

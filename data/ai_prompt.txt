@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First I want to fix permission issue in diary.For Role admin I am getting Failed to create note: new row violates row-level security policy for table "diary_notes". For super admin no issue. Also for admin pro I am getting access denied for dashboard.
+Let's begin! First of all I want read only access(canview) to each front end pages for role viewer

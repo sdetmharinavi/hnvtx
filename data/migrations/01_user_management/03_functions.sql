@@ -281,7 +281,7 @@ CREATE OR REPLACE FUNCTION public.create_public_profile_for_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.user_profiles WHERE id = NEW.id) THEN
-        INSERT INTO public.user_profiles (id, first_name, last_name, avatar_url, phone_number, date_of_birth, address, preferences, status)
+        INSERT INTO public.user_profiles (id, first_name, last_name, avatar_url, phone_number, date_of_birth, address, preferences, status, role)
         VALUES (
             NEW.id,
             COALESCE(NEW.raw_user_meta_data->>'first_name', NEW.raw_user_meta_data->>'name', (SELECT initcap(word) FROM regexp_split_to_table(split_part(NEW.email, '@', 1), '[^a-zA-Z]+') AS word WHERE word ~ '^[a-zA-Z]+' LIMIT 1), 'Placeholder'),
@@ -292,7 +292,7 @@ BEGIN
             COALESCE(NEW.raw_user_meta_data->'address', '{}'::jsonb),
             -- ** Add the needsOnboarding flag to preferences**
             COALESCE(NEW.raw_user_meta_data->'preferences', '{}'::jsonb) || '{"needsOnboarding": true}',
-            'active'
+            'active', 'mng_admin'
         );
     END IF;
     RETURN NEW;

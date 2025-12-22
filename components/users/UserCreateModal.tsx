@@ -46,7 +46,7 @@ export function UserCreateModal({
       password: '',
       first_name: '',
       last_name: '',
-      role: 'viewer',
+      role: 'mng_admin',
       email_confirm: false,
     },
   });
@@ -136,7 +136,7 @@ export function UserCreateModal({
           <Controller
             control={control}
             name="role"
-            defaultValue="viewer" // ✅ add this
+            defaultValue="mng_admin" // ✅ add this
             render={({ field }) => (
               <div>
                 <label className="block text-sm font-medium mb-1">Role</label>

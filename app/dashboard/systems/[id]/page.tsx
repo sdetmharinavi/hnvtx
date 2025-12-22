@@ -527,7 +527,7 @@ export default function SystemConnectionsPage() {
       {isAllocationModalOpen && <FiberAllocationModal isOpen={isAllocationModalOpen} onClose={() => setIsAllocationModalOpen(false)} connection={connectionToAllocate} onSave={handleAllocationSave} parentSystem={parentSystem} />}
       <ConfirmModal isOpen={isDeprovisionModalOpen} onConfirm={handleConfirmDeprovision} onCancel={() => setDeprovisionModalOpen(false)} title="Confirm Deprovisioning" message={`Are you sure you want to deprovision this connection?`} loading={deprovisionMutation.isPending} type="danger" />
       <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
-      <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={detailsConnectionId} />
+      <SystemConnectionDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} connectionId={detailsConnectionId} parentSystem={parentSystem} />
     </div>
   );
 }

@@ -11,8 +11,7 @@ import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
-import { useAdminUserOperations } from '@/hooks/data/useAdminUserMutations';
-import type { UserCreateInput } from '@/hooks/data/useAdminUserMutations';
+import { useAdminUserOperations, type UserCreateInput } from '@/hooks/data/useAdminUserMutations';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
@@ -28,7 +27,7 @@ import { UserRole } from '@/types/user-roles';
 
 const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
-  const { isSuperAdmin } = useUser();
+  const { isSuperAdmin, role } = useUser();
   const {
     createUser,
     deleteUsers: bulkDelete,
@@ -59,18 +58,22 @@ const AdminUsersPage = () => {
     dataQueryHook: useUsersData,
   });
 
+  // --- PERMISSIONS FIX: Define clear management permissions ---
+  const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+
   const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
   const { selectedRowIds, handleClearSelection } = bulkActions;
 
   const tableActions = useMemo(
     () =>
       createStandardActions<V_user_profiles_extendedRowSchema>({
-        onEdit: editModal.openEdit,
+        // --- PERMISSIONS FIX: Guard edit and delete actions ---
+        onEdit: canManage ? editModal.openEdit : undefined,
         onView: viewModal.open,
-        onDelete: crudActions.handleDelete,
-        canDelete: (record) => !record.is_super_admin,
+        onDelete: canManage ? crudActions.handleDelete : undefined,
+        canDelete: (record) => canManage && !record.is_super_admin,
       }) as TableAction<'v_user_profiles_extended'>[],
-    [editModal.openEdit, viewModal.open, crudActions.handleDelete]
+    [editModal.openEdit, viewModal.open, crudActions.handleDelete, canManage]
   );
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -122,7 +125,8 @@ const AdminUsersPage = () => {
       await refetch();
       toast.success('Refreshed successfully!');
     },
-    onAddNew: () => setIsCreateModalOpen(true),
+    // --- PERMISSIONS FIX: Guard Add New button ---
+    onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'user_profiles' },
   });
@@ -221,15 +225,18 @@ const AdminUsersPage = () => {
         actions={headerActions}
         isLoading={isLoading}
       />
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        isSuperAdmin={!!isSuperAdmin}
-        isOperationLoading={isMutating}
-        onBulkDelete={handleBulkDelete}
-        onBulkUpdateRole={handleBulkUpdateRole}
-        onBulkUpdateStatus={handleBulkUpdateStatus}
-        onClearSelection={handleClearSelection}
-      />
+      {/* --- PERMISSIONS FIX: Conditionally render Bulk Actions --- */}
+      {canManage && (
+        <BulkActions
+          selectedCount={bulkActions.selectedCount}
+          isSuperAdmin={!!isSuperAdmin}
+          isOperationLoading={isMutating}
+          onBulkDelete={handleBulkDelete}
+          onBulkUpdateRole={handleBulkUpdateRole}
+          onBulkUpdateStatus={handleBulkUpdateStatus}
+          onClearSelection={handleClearSelection}
+        />
+      )}
       <DataTable
         autoHideEmptyColumns={true}
         tableName="v_user_profiles_extended"
@@ -286,7 +293,6 @@ const AdminUsersPage = () => {
       />
       <UserProfileEditModal
         isOpen={editModal.isOpen}
-        // THE FIX: The incorrect cast is no longer needed. The types now match.
         user={editModal.record as V_user_profiles_extendedRowSchema | null}
         onClose={editModal.close}
         onSave={() => {
@@ -309,12 +315,15 @@ const AdminUsersPage = () => {
         type="danger"
       />
 
-      <UserCreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreate={handleCreateUser}
-        isLoading={createUser.isPending}
-      />
+      {/* --- PERMISSIONS FIX: Conditionally render Create Modal --- */}
+      {canManage && (
+        <UserCreateModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={handleCreateUser}
+          isLoading={createUser.isPending}
+        />
+      )}
     </div>
   );
 };
