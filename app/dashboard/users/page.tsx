@@ -4,7 +4,7 @@
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import { ConfirmModal, ErrorDisplay, RoleBadge, StatusBadge } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner, RoleBadge, StatusBadge } from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { UserFilters } from '@/components/users/UserFilters';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
@@ -24,10 +24,12 @@ import { useUser } from '@/providers/UserProvider';
 import { useUsersData } from '@/hooks/data/useUsersData';
 import Image from 'next/image';
 import { UserRole } from '@/types/user-roles';
+import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 
 const AdminUsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
-  const { isSuperAdmin, role } = useUser();
+  // THE FIX: Get isUserLoading state to handle initial permission check
+  const { isSuperAdmin, role, isLoading: isUserLoading } = useUser();
   const {
     createUser,
     deleteUsers: bulkDelete,
@@ -39,8 +41,6 @@ const AdminUsersPage = () => {
   const {
     data: users,
     totalCount,
-    // activeCount,
-    // inactiveCount,
     isLoading,
     isMutating,
     error,
@@ -58,7 +58,6 @@ const AdminUsersPage = () => {
     dataQueryHook: useUsersData,
   });
 
-  // --- PERMISSIONS FIX: Define clear management permissions ---
   const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
   const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
@@ -67,7 +66,6 @@ const AdminUsersPage = () => {
   const tableActions = useMemo(
     () =>
       createStandardActions<V_user_profiles_extendedRowSchema>({
-        // --- PERMISSIONS FIX: Guard edit and delete actions ---
         onEdit: canManage ? editModal.openEdit : undefined,
         onView: viewModal.open,
         onDelete: canManage ? crudActions.handleDelete : undefined,
@@ -125,10 +123,9 @@ const AdminUsersPage = () => {
       await refetch();
       toast.success('Refreshed successfully!');
     },
-    // --- PERMISSIONS FIX: Guard Add New button ---
     onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,
-    exportConfig: canManage ? { tableName: 'user_profiles' } : undefined,
+    exportConfig: { tableName: 'user_profiles' },
   });
 
   const headerStats = [
@@ -200,6 +197,16 @@ const AdminUsersPage = () => {
     []
   );
 
+  // THE FIX: Add page-level loading and permission guard
+  if (isUserLoading) {
+    return <PageSpinner text="Verifying permissions..." />;
+  }
+  
+  const allowedRoles = [UserRole.ADMINPRO];
+  if (!isSuperAdmin && !allowedRoles.includes(role as UserRole)) {
+    return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
+  }
+
   if (error) {
     return (
       <ErrorDisplay
@@ -225,7 +232,6 @@ const AdminUsersPage = () => {
         actions={headerActions}
         isLoading={isLoading}
       />
-      {/* --- PERMISSIONS FIX: Conditionally render Bulk Actions --- */}
       {canManage && (
         <BulkActions
           selectedCount={bulkActions.selectedCount}
@@ -315,7 +321,6 @@ const AdminUsersPage = () => {
         type="danger"
       />
 
-      {/* --- PERMISSIONS FIX: Conditionally render Create Modal --- */}
       {canManage && (
         <UserCreateModal
           isOpen={isCreateModalOpen}

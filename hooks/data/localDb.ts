@@ -181,8 +181,7 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // VERSION 33: Added Performance Indexes for Offline Filtering
-    this.version(33).stores({
+    this.version(34).stores({
       lookup_types: '&id, category, name, sort_order, status', 
       
       maintenance_areas: '&id, name, parent_id, area_type_id, status',
@@ -193,7 +192,8 @@ export class HNVTMDatabase extends Dexie {
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       systems: '&id, system_name, node_id, status',
       cable_segments: '&id, original_cable_id',
-      junction_closures: '&id, node_id',
+      // THE FIX: Added ofc_cable_id as an index
+      junction_closures: '&id, node_id, ofc_cable_id',
       fiber_splices: '&id, jc_id',
       system_connections: '&id, system_id, status',
       user_profiles: '&id, first_name, last_name, role, status',
@@ -203,6 +203,7 @@ export class HNVTMDatabase extends Dexie {
       ports_management: '&id, [system_id+port], system_id',
       services: '&id, name',
       logical_fiber_paths: '&id, path_name, system_connection_id',
+      
       logical_paths: '&id, ring_id, start_node_id, end_node_id',
       ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status', 
       inventory_transactions: '&id, inventory_item_id, created_at',
@@ -213,8 +214,6 @@ export class HNVTMDatabase extends Dexie {
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
 
-      // === Optimized Indexes for Views ===
-      // Added indexes for common filter columns like 'status', 'maintenance_terminal_id', types, etc.
       v_nodes_complete: '&id, name, node_type_id, maintenance_terminal_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
       v_systems_complete: '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address]',
