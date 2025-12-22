@@ -42,6 +42,7 @@ export default function GlobalConnectionsPage() {
 
   // Permissions
   const canEdit = !!isSuperAdmin || [
+    UserRole.ADMINPRO,
     UserRole.ADMIN, 
     UserRole.CPANADMIN, 
     UserRole.MAANADMIN, 

@@ -83,8 +83,8 @@ export default function OfcCableDetailsPage() {
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
   const canAdd = !!isSuperAdmin;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails } = useRouteDetails(

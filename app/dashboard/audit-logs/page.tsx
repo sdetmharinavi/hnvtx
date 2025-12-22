@@ -44,7 +44,6 @@ export default function AuditLogsPage() {
   } = useCrudManager<'user_activity_logs', V_audit_logsRowSchema>({
     tableName: 'user_activity_logs', 
     localTableName: 'v_audit_logs',
-    // THE FIX: Identify IDs as numbers for correct local DB operations
     idType: 'number',
     dataQueryHook: useAuditLogsData,
     displayNameField: 'action_type',
@@ -117,8 +116,9 @@ export default function AuditLogsPage() {
   }, []);
 
   // Security check
-  if (!isSuperAdmin) {
-     return <UnauthorizedModal allowedRoles={[UserRole.ADMIN]} currentRole={role} />;
+  const allowedAuditRoles = [UserRole.ADMIN, UserRole.ADMINPRO];
+  if (!isSuperAdmin && !allowedAuditRoles.includes(role as UserRole)) {
+    return <UnauthorizedModal allowedRoles={allowedAuditRoles} currentRole={role} />;
   }
 
   if (error) {

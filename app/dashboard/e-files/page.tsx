@@ -75,9 +75,9 @@ export default function EFilesPage() {
   const { mutate: importBackup, isPending: isRestoring } = useImportEFileSystem();
 
   // --- PERMISSION LOGIC ---
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   // Strict check: Only true if isSuperAdmin is true.
-  const canDelete = isSuperAdmin === true;
+  const canDelete = isSuperAdmin === true || role === UserRole.ADMINPRO;
 
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

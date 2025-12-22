@@ -1,7 +1,7 @@
 // path: components/system-details/connections/ConnectionCard.tsx
 import React, { useMemo } from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiMapPin, FiShield, FiEdit2, FiTrash2, FiTag } from 'react-icons/fi';
+import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiShield, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
@@ -34,7 +34,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   
-  const { endA, endB, hasProtection } = useMemo(() => {
+  const { endA, endB } = useMemo(() => {
     const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
 
     const endAData = {

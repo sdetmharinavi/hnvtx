@@ -59,7 +59,7 @@ export default function RingPathsPage() {
   const [selectedPath, setSelectedPath] = useState<LogicalPathData | null>(null);
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.MAANADMIN || role === UserRole.CPANADMIN;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.MAANADMIN || role === UserRole.CPANADMIN;
 
   // 1. Fetch Ring Details (for header)
   const { data: ringData, isLoading: isLoadingRing } = useTableRecord<"v_rings">(

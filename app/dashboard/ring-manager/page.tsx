@@ -234,8 +234,8 @@ export default function RingManagerPage() {
   );
 
   // --- PERMISSIONS ---
-  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN);
-  const canDelete = !!isSuperAdmin;
+  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // Use the extracted hook via CrudManager
   const manager = useCrudManager<"rings", V_ringsRowSchema>({

@@ -69,9 +69,9 @@ export default function DesignationManagerPage() {
 
   // --- PERMISSIONS ---
   // Admins can Create/Edit
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   // Only Super Admin can Delete
-  const canDelete = !!isSuperAdmin;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const isInitialLoad = isLoading && allDesignations.length === 0;
 

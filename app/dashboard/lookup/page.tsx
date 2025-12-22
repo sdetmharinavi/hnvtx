@@ -37,7 +37,7 @@ export default function LookupTypesPage() {
 
   // --- PERMISSIONS ---
   const canManage = isSuperAdmin || role === UserRole.ADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const {
     data: lookupTypes,

@@ -81,9 +81,9 @@ export default function SystemConnectionsPage() {
   const tracePath = useTracePath(supabase);
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
-  const canDelete = !!isSuperAdmin;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // Fetch Options
   const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(

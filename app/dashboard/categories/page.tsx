@@ -31,8 +31,8 @@ export default function CategoriesPage() {
   const { isSuperAdmin, role } = useUser();
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- DATA FETCHING (Now Offline-Capable) ---
   const { 

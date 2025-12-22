@@ -6,14 +6,16 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const assignFiberSchema = z.object({
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const AssignFiberSchema = z.object({
   fiber_id: z.uuid(),
   connection_id: z.uuid("Please select a valid connection"),
   role: z.enum(['working', 'protection']),
   direction: z.enum(['tx', 'rx']),
 });
 
-export type AssignFiberPayload = z.infer<typeof assignFiberSchema>;
+export type AssignFiberPayload = z.infer<typeof AssignFiberSchema>;
 
 export function useAssignFiberToConnection() {
   const supabase = createClient();

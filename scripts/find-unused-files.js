@@ -45,6 +45,8 @@ class NextJsAppRouterUnusedFileFinder {
         }
       }
     } catch (error) {
+      console.log(error);
+      
       // Skip directories we can't read
     }
 

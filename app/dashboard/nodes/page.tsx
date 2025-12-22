@@ -61,8 +61,8 @@ const NodesPage = () => {
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
   const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');

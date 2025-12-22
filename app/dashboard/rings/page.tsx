@@ -77,8 +77,8 @@ export default function RingsPage() {
     searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
   });
 
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN || role === UserRole.ADMINPRO;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
   const { options: ringTypeOptions } = useLookupTypeOptions('RING_TYPES');

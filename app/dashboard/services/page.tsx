@@ -40,8 +40,8 @@ export default function ServicesPage() {
     displayNameField: 'name',
   });
 
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin;
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(role as UserRole);
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
     const name = item.name?.trim().toLowerCase() || '';

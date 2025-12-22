@@ -45,9 +45,9 @@ export default function MaintenanceAreasPage() {
 
   // --- PERMISSIONS ---
   // Admins can Create/Edit
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN;
+  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   // Only Super Admin can Delete
-  const canDelete = !!isSuperAdmin;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
   const isInitialLoad = isLoading && allAreas.length === 0;

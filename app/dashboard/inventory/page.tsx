@@ -57,8 +57,8 @@ export default function InventoryPage() {
   const { options: locationOptions } = useActiveNodeOptions();
 
   // Permission Logic
-  const canEdit = useMemo(() => !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN, [isSuperAdmin, role]);
-  const canDelete = !!isSuperAdmin;
+  const canEdit = useMemo(() => !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN, [isSuperAdmin, role]);
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const totalInventoryValue = useMemo(() => {
     return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);

@@ -64,8 +64,8 @@ export default function SystemsPage() {
   });
 
   // --- PERMISSIONS ---
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.CPANADMIN, UserRole.MAANADMIN, UserRole.SDHADMIN].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin;
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.CPANADMIN, UserRole.MAANADMIN, UserRole.SDHADMIN].includes(role as UserRole);
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- UPLOAD / EXPORT ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {

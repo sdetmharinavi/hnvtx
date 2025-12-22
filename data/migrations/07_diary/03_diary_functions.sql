@@ -19,9 +19,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-    -- Check if the current user is a super_admin or has the 'admin' role.
-    IF (is_super_admin() OR get_my_role() = 'admin') THEN
-        -- Admins can see all notes in the date range and the user's full name.
+    -- Check if the current user is a super_admin or has the 'admin' or 'admin_pro' role.
+    IF (is_super_admin() OR get_my_role() IN ('admin', 'admin_pro')) THEN
+        -- Admins and Pro Admins can see all notes in the date range and the user's full name.
         RETURN QUERY
         SELECT 
             d.id,

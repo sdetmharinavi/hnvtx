@@ -26,7 +26,7 @@ export default function GlobalOfcConnectionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSuperAdmin, role } = useUser();
 
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ASSETADMIN].includes(role as UserRole);
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
   
   // THE FIX: Use Filters type instead of Record<string, string>
   const [filters, setFilters] = useState<Filters>({});

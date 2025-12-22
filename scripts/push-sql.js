@@ -133,7 +133,7 @@ export function runPushSql(targets = process.argv.slice(2)) {
 
     console.log('\n✅ All scripts executed successfully.');
   } catch (err) {
-    console.error(`\n❌ An error occurred during execution.`);
+    console.error(`\n❌ An error occurred during execution.`, err);
     console.error(`   The script has been halted. Please check the error message from psql above`);
     console.error(`   to debug the issue in the failed SQL file.`);
     process.exit(1);

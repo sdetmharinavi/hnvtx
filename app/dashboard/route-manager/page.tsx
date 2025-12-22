@@ -34,8 +34,8 @@ export default function RouteManagerPage() {
   const { isSuperAdmin, role } = useUser();
 
   // Permissions
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
-  const canDelete = !!isSuperAdmin;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const {
     data: routeDetails,

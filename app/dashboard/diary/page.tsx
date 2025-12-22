@@ -54,9 +54,9 @@ export default function DiaryPage() {
     refetch,
   } = useDiaryData(currentDate);
 
-  const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.VIEWER].includes(currentUserRole as UserRole);
-  const canEdit = isSuperAdmin || currentUserRole === UserRole.ADMIN;
-  const canDelete = isSuperAdmin === true;
+  const canViewAll = isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.VIEWER].includes(currentUserRole as UserRole);
+  const canEdit = isSuperAdmin || currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.ADMINPRO;
+  const canDelete = isSuperAdmin === true || currentUserRole === UserRole.ADMINPRO;
 
   const filteredNotes = useMemo(() => {
     let notes = canViewAll 

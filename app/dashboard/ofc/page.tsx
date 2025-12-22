@@ -65,9 +65,9 @@ const OfcPage = () => {
 
   // --- PERMISSIONS ---
   // Only Asset Admins, Generic Admins, or Super Admins can edit physical infra
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
   // Strictly Super Admin for deletion
-  const canDelete = !!isSuperAdmin;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // Fetch Options
   const { data: ofcTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
