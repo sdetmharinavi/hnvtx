@@ -136,7 +136,7 @@ export default function RingsPage() {
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'rings' },
+    exportConfig: canEdit ? { tableName: 'rings' } : undefined,
   });
 
   const headerStats = [

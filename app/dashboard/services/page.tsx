@@ -93,7 +93,7 @@ export default function ServicesPage() {
       onAddNew: canEdit ? editModal.openAdd : undefined,
       isLoading,
       data: data as Row<'v_services'>[],
-      exportConfig: { tableName: 'v_services', fileName: `All_Services`, filters: filters.filters }
+      exportConfig: canEdit ? { tableName: 'v_services', fileName: `All_Services`, filters: filters.filters } : undefined
   });
 
   const enhancedHeaderActions: ActionButton[] = [

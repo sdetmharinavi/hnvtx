@@ -104,7 +104,7 @@ export default function EmployeesPage() {
     // --- PERMISSIONS FIX: Guard action ---
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'employees' },
+    exportConfig: canEdit ? { tableName: 'employees' } : undefined,
   });
 
   const headerStats = [

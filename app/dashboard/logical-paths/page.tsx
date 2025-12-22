@@ -18,6 +18,8 @@ import type { TableAction } from '@/components/table/datatable-types';
 import { LogicalPathsTableColumns } from '@/config/table-columns/LogicalPathsTableColumns';
 import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
@@ -28,7 +30,7 @@ const useLogicalPathsData = (params: {
 }): DataQueryHookReturn<LogicalPathView> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
-
+  
   const searchFilters = useMemo(() => {
     if (!searchQuery) return {};
     const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
@@ -67,6 +69,12 @@ const useLogicalPathsData = (params: {
 
 export default function LogicalPathsPage() {
   const router = useRouter();
+  const { role, isSuperAdmin } = useUser();
+  const canEdit = useMemo(
+    () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
+    [isSuperAdmin, role]
+  );
+  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
@@ -74,6 +82,7 @@ export default function LogicalPathsPage() {
   const [showFilters, setShowFilters] = useState(false); // Kept for consistency, though unused
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
+
 
   const {
     data: logicalPaths,
@@ -157,7 +166,7 @@ export default function LogicalPathsPage() {
       toast.success('Logical paths refreshed!');
     },
     isLoading: isLoading,
-    exportConfig: { tableName: 'v_end_to_end_paths' },
+    exportConfig: canEdit ? { tableName: 'v_end_to_end_paths' } : undefined,
   });
 
   const headerStats = [
@@ -222,7 +231,7 @@ export default function LogicalPathsPage() {
       />
 
       <ConfirmModal
-        isOpen={isDeleteModalOpen}
+        isOpen={canDelete && isDeleteModalOpen}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteModalOpen(false)}
         title="Confirm De-provisioning"

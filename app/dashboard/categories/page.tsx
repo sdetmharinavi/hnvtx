@@ -137,7 +137,7 @@ export default function CategoriesPage() {
     onRefresh: async () => { await refetchCategories(); toast.success('Refreshed!'); }, 
     onAddNew: canEdit ? openCreateModal : undefined,
     isLoading: isLoading, 
-    exportConfig: { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters },
+    exportConfig: canEdit ? { tableName: 'lookup_types', fileName: 'Categories', filters: serverFilters } : undefined,
   });
 
   const headerStats = useMemo(() => {

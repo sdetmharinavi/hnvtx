@@ -155,7 +155,7 @@ export default function GlobalConnectionsPage() {
     data: connections,
     onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
     isLoading,
-    exportConfig: { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' },
+    exportConfig: canEdit ? { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' } : undefined,
   });
 
   if (canEdit) {

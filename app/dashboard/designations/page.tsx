@@ -140,7 +140,7 @@ export default function DesignationManagerPage() {
     // Only allow adding new items if user has edit permission
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'employee_designations' },
+    exportConfig: canEdit ? { tableName: 'employee_designations' } : undefined,
   });
 
   headerActions.splice(headerActions.length - 1, 0, {

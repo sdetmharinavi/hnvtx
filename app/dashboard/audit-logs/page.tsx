@@ -66,7 +66,7 @@ export default function AuditLogsPage() {
     data: logs,
     onRefresh: async () => { await refetch(); toast.success('Logs refreshed!'); },
     isLoading: isLoading,
-    exportConfig: { tableName: 'v_audit_logs' }
+    exportConfig: !!isSuperAdmin ? { tableName: 'v_audit_logs' } : undefined
   });
 
   const renderMobileItem = useCallback((record: Row<'v_audit_logs'>, actions: React.ReactNode) => {

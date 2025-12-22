@@ -24,9 +24,9 @@ import { useDiaryData } from "@/hooks/data/useDiaryData";
 import { UserRole } from "@/types/user-roles";
 import { Input } from "@/components/common/ui/Input";
 import { Button } from "@/components/common/ui/Button";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
-import { localDb } from "@/hooks/data/localDb"; // ADDED
-import { addMutationToQueue } from "@/hooks/data/useMutationQueue"; // ADDED
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { localDb } from "@/hooks/data/localDb";
+import { addMutationToQueue } from "@/hooks/data/useMutationQueue";
 
 type ViewMode = 'day' | 'feed';
 
@@ -44,7 +44,7 @@ export default function DiaryPage() {
   const { user } = useAuthStore();
   const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   const {
     data: allNotesForMonth = [],
@@ -101,7 +101,6 @@ export default function DiaryPage() {
   const openEditModal = (note: Diary_notesRowSchema) => { setEditingNote(note); setIsFormOpen(true); };
   const closeFormModal = () => { setIsFormOpen(false); setEditingNote(null); };
 
-  // --- UPDATED SAVE HANDLER FOR OFFLINE SUPPORT ---
   const handleSaveNote = async (data: Diary_notesInsertSchema) => {
     if (!user?.id) {
       toast.error("User not authenticated");
@@ -111,17 +110,14 @@ export default function DiaryPage() {
     const payload = { ...data, user_id: user.id };
 
     if (isOnline) {
-      // Online: Use standard mutations
       if (editingNote) {
         updateNote({ id: editingNote.id, data: payload });
       } else {
         insertNote(payload);
       }
     } else {
-      // Offline: Handle via Dexie + Mutation Queue
       try {
         if (editingNote) {
-            // Update
             await localDb.diary_notes.update(editingNote.id, payload);
             await addMutationToQueue({
                 tableName: 'diary_notes',
@@ -130,7 +126,6 @@ export default function DiaryPage() {
             });
             toast.success("Note updated (Offline Mode). Will sync later.");
         } else {
-            // Create
             const tempId = uuidv4();
             const newRecord = { ...payload, id: tempId, created_at: new Date().toISOString() };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,7 +138,7 @@ export default function DiaryPage() {
             toast.success("Note created (Offline Mode). Will sync later.");
         }
         setIsFormOpen(false);
-        refetch(); // Refresh list from local DB
+        refetch();
       } catch (e) {
           console.error("Offline save failed", e);
           toast.error("Failed to save offline note.");
@@ -203,17 +198,22 @@ export default function DiaryPage() {
     onRefresh: async () => { await refetch(); toast.success("Notes refreshed!"); },
     onAddNew: canEdit ? openAddModal : undefined,
     isLoading,
-    exportConfig: { tableName: "diary_notes", fileName: "my_diary_notes" },
+    // THE FIX: Conditionally provide exportConfig based on permissions
+    exportConfig: canEdit ? { tableName: "diary_notes", fileName: "my_diary_notes" } : undefined,
   });
 
-  headerActions.splice(1, 0, {
-    label: isUploading ? "Uploading..." : "Upload",
-    onClick: handleUploadClick,
-    variant: "outline",
-    leftIcon: <FiUpload />,
-    disabled: isUploading || isLoading || !canEdit,
-    hideTextOnMobile: true
-  });
+  // THE FIX: Conditionally add the Upload button to the actions array
+  if (canEdit) {
+    headerActions.splice(1, 0, {
+      label: isUploading ? "Uploading..." : "Upload",
+      onClick: handleUploadClick,
+      variant: "outline",
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+      hideTextOnMobile: true
+    });
+  }
+
 
   if (error) return <ErrorDisplay error={error.message} actions={[{ label: "Retry", onClick: () => refetch(), variant: "primary" }]} />;
 

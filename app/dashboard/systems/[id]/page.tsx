@@ -328,11 +328,11 @@ export default function SystemConnectionsPage() {
     onRefresh: () => { refetch(); toast.success('Connections refreshed!'); },
     onAddNew: canEdit ? openAddModal : undefined,
     isLoading: isLoadingConnections,
-    exportConfig: {
+    exportConfig: canEdit ? {
         tableName: 'v_system_connections_complete',
         fileName: `${parentSystem?.node_name+"_"+parentSystem?.system_type_code+"_"+parentSystem?.ip_address?.split("/")[0] || 'system'}_connections`,
         filters: { system_id: systemId }
-    }
+    } : undefined
   });
 
   headerActions.splice(0, 0, {

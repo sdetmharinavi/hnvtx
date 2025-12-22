@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { ArrowDown, CheckCircle, CornerUpLeft, FilePlus } from 'lucide-react';
+import { ArrowUp, CheckCircle, CornerUpLeft, FilePlus } from 'lucide-react';
 import { EFileMovementRow } from '@/schemas/efile-schemas';
 
 interface Props {
@@ -11,17 +11,17 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
   // Sort history chronologically: Oldest (Initiated) at Top -> Newest (Current) at Bottom
   const chronologicalHistory = useMemo(() => {
     return [...history].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }, [history]);
 
   const getIcon = (action: string) => {
     switch (action) {
       case 'initiated': return <FilePlus className="w-4 h-4 text-blue-600" />;
-      case 'forwarded': return <ArrowDown className="w-4 h-4 text-indigo-600" />; // Changed icon to ArrowDown to imply flow
+      case 'forwarded': return <ArrowUp className="w-4 h-4 text-indigo-600" />; // Changed icon to ArrowUp to imply flow
       case 'returned': return <CornerUpLeft className="w-4 h-4 text-orange-600" />;
       case 'closed': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      default: return <ArrowDown className="w-4 h-4" />;
+      default: return <ArrowUp className="w-4 h-4" />;
     }
   };
 
@@ -33,7 +33,7 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
         return (
             <div key={move.id} className="relative group">
             {/* Timeline Dot/Icon */}
-            <div className={`absolute -left-[25px] p-1 rounded-full shadow-sm z-10 group-hover:scale-110 transition-transform border ${
+            <div className={`absolute -left-[28px] p-1 rounded-full shadow-sm z-10 group-hover:scale-110 transition-transform border ${
                 isLast 
                     ? 'bg-blue-100 border-blue-300 dark:bg-blue-900 dark:border-blue-700' 
                     : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700'

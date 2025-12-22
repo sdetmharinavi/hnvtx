@@ -112,7 +112,7 @@ export default function LookupTypesPage() {
       ? (hasSelectedCategory ? editModal.openAdd : () => toast.error("Please select a category first."))
       : undefined,
     isLoading: isLoading,
-    exportConfig: {
+    exportConfig: canManage ?  {
       tableName: "lookup_types",
       filterOptions: [
         {
@@ -121,7 +121,7 @@ export default function LookupTypesPage() {
           fileName: `selected_lookups.xlsx`,
         },
       ],
-    },
+    } : undefined,
   });
 
   const headerStats = [

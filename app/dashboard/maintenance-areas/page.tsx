@@ -82,7 +82,7 @@ export default function MaintenanceAreasPage() {
     // THE FIX: Condition the "Add New" button
     onAddNew: canEdit ? handleOpenCreateForm : undefined, 
     isLoading: isLoading,
-    exportConfig: { tableName: 'maintenance_areas' },
+    exportConfig: canEdit ? { tableName: 'maintenance_areas' } : undefined,
   });
   
   const headerStats = [

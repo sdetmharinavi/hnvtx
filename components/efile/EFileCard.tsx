@@ -11,16 +11,15 @@ interface EFileCardProps {
   onForward: (file: V_e_files_extendedRowSchema) => void;
   onEdit?: (file: V_e_files_extendedRowSchema) => void;
   onDelete?: (file: V_e_files_extendedRowSchema) => void;
-  // THE FIX: Split permissions
   canEdit: boolean;
   canDelete: boolean;
+  canForward: boolean; // THE FIX: Add canForward prop
 }
 
 export const EFileCard: React.FC<EFileCardProps> = ({
-  file, onView, onForward, onEdit, onDelete, canEdit, canDelete
+  file, onView, onForward, onEdit, onDelete, canEdit, canDelete, canForward
 }) => {
   
-  // Visual Logic
   const getPriorityColor = (p: string | null) => {
     switch(p) {
       case 'immediate': return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 animate-pulse';
@@ -98,18 +97,17 @@ export const EFileCard: React.FC<EFileCardProps> = ({
             </div>
 
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-               {!isClosed && (
+               {/* THE FIX: Wrap forward button in canForward check */}
+               {canForward && !isClosed && (
                  <Button size="xs" variant="primary" onClick={() => onForward(file)} title="Forward File" className="shadow-sm">
                     <FiSend className="w-3.5 h-3.5" />
                  </Button>
                )}
-               {/* Show Edit if allowed */}
                {canEdit && !isClosed && onEdit && (
                  <Button size="xs" variant="ghost" onClick={() => onEdit(file)} title="Edit Details">
                     <FiEdit2 className="w-3.5 h-3.5" />
                  </Button>
                )}
-               {/* Show Delete only if Super Admin */}
                {canDelete && onDelete && (
                  <Button size="xs" variant="ghost" onClick={() => onDelete(file)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <FiTrash2 className="w-3.5 h-3.5" />
@@ -121,3 +119,5 @@ export const EFileCard: React.FC<EFileCardProps> = ({
     </div>
   );
 };
+
+

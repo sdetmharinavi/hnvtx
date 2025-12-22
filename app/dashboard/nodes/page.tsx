@@ -91,7 +91,7 @@ const NodesPage = () => {
       toast.success('Refreshed successfully!');
     },
     isLoading: isLoading,
-    exportConfig: { tableName: 'nodes' },
+    exportConfig: canEdit ? { tableName: 'nodes' }: undefined,
   });
 
   headerActions.splice(headerActions.length - 1, 0, {

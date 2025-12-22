@@ -280,12 +280,12 @@ export default function OfcCableDetailsPage() {
     },
     onAddNew: canAdd ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    exportConfig: {
+    exportConfig: canEdit ? {
       tableName: 'v_ofc_connections_complete',
       fileName: `${routeDetails?.route.route_name}_connections`,
       filters: { ofc_id: { operator: 'eq', value: cableId as string } },
       orderBy: [{ column: 'fiber_no_sn', ascending: true }]
-    },
+    } : undefined,
   });
 
   // Inject Upload Button if allowed

@@ -76,11 +76,11 @@ export default function GlobalOfcConnectionsPage() {
     data: fibers,
     onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
     isLoading,
-    exportConfig: { 
+    exportConfig: canEdit ? { 
         tableName: 'v_ofc_connections_complete', 
         fileName: 'All_Physical_Fibers',
         maxRows: 50000 
-    },
+    } : undefined,
   });
 
   if (canEdit) {

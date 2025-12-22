@@ -30,6 +30,7 @@ import { Input } from '@/components/common/ui/Input';
 import { EFileCard } from '@/components/efile/EFileCard';
 import { UserRole } from '@/types/user-roles';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
+import { ActionButton } from '@/components/common/page-header';
 
 // Hardcoded categories to match the form options
 const CATEGORY_OPTIONS = [
@@ -45,12 +46,10 @@ export default function EFilesPage() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   
-  // Local state for filters/search
   const [searchQuery, setSearchQuery] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [filters, setFilters] = useState<Record<string, any>>({ status: 'active' });
 
-  // Modals State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [forwardModal, setForwardModal] = useState<{ isOpen: boolean; fileId: string | null }>({
     isOpen: false,
@@ -74,9 +73,7 @@ export default function EFilesPage() {
   const { mutate: exportBackup, isPending: isBackingUp } = useExportEFileSystem();
   const { mutate: importBackup, isPending: isRestoring } = useImportEFileSystem();
 
-  // --- PERMISSION LOGIC ---
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  // Strict check: Only true if isSuperAdmin is true.
   const canDelete = isSuperAdmin === true || role === UserRole.ADMINPRO;
 
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +133,43 @@ export default function EFilesPage() {
 
      return result;
   }, [files, searchQuery, filters]);
+  
+  // THE FIX: Conditionally build the header actions array
+  const headerActions = useMemo((): ActionButton[] => {
+    const actions: ActionButton[] = [
+      {
+        label: 'Refresh',
+        onClick: () => refetch(),
+        variant: 'outline',
+      },
+    ];
+
+    if (canEdit) {
+      actions.push({
+        label: 'Backup / Restore',
+        variant: 'outline',
+        leftIcon: <Database className="h-4 w-4" />,
+        disabled: isLoading || isRestoring || isBackingUp,
+        'data-dropdown': true,
+        hideTextOnMobile: true,
+        dropdownoptions: [
+          { label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup', onClick: () => exportBackup(), disabled: isBackingUp },
+          { label: isRestoring ? 'Restoring...' : 'Restore from Backup', onClick: () => backupInputRef.current?.click(), disabled: isRestoring },
+          { label: isExportingList ? 'Exporting List...' : 'Export Current View Only', onClick: handleExportList, disabled: isExportingList },
+        ],
+      });
+      actions.push({
+        label: 'Initiate File',
+        onClick: () => setIsCreateModalOpen(true),
+        variant: 'primary',
+        leftIcon: <Plus />,
+      });
+    }
+    
+    return actions;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refetch, canEdit, isLoading, isRestoring, isBackingUp, isExportingList, exportBackup, importBackup, handleExportList]);
+
 
   const columns: Column<EFileRow>[] = [
     {
@@ -251,32 +285,7 @@ export default function EFilesPage() {
         description="Track physical files, manage movement, and view history."
         icon={<FileText />}
         stats={[{ value: filteredFiles.length, label: 'Visible Files' }]}
-        actions={[
-          {
-            label: 'Refresh',
-            onClick: () => refetch(),
-            variant: 'outline',
-          },
-          {
-            label: 'Backup / Restore',
-            variant: 'outline',
-            leftIcon: <Database className="h-4 w-4" />,
-            disabled: isLoading || isRestoring || isBackingUp,
-            'data-dropdown': true,
-            hideTextOnMobile: true,
-            dropdownoptions: [
-              { label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup', onClick: () => exportBackup(), disabled: isBackingUp },
-              { label: isRestoring ? 'Restoring...' : 'Restore from Backup', onClick: () => backupInputRef.current?.click(), disabled: isRestoring },
-              { label: isExportingList ? 'Exporting List...' : 'Export Current View Only', onClick: handleExportList, disabled: isExportingList },
-            ],
-          },
-          {
-            label: 'Initiate File',
-            onClick: () => setIsCreateModalOpen(true),
-            variant: 'primary',
-            leftIcon: <Plus />,
-          },
-        ]}
+        actions={headerActions}
       />
 
       {/* Filters */}
@@ -288,6 +297,7 @@ export default function EFilesPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="text-gray-400" />}
                 fullWidth
+                clearable
             />
           </div>
           
@@ -351,6 +361,7 @@ export default function EFilesPage() {
                    onDelete={(f) => setDeleteModal({ isOpen: true, fileId: f.id! })}
                    canEdit={canEdit}
                    canDelete={canDelete}
+                   canForward={canEdit}
                 />
              ))}
              {filteredFiles.length === 0 && !isLoading && (
@@ -367,8 +378,7 @@ export default function EFilesPage() {
            <DataTable
             autoHideEmptyColumns={true}
             tableName="v_e_files_extended"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            data={filteredFiles as any}
+            data={filteredFiles}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             columns={columns as any}
             loading={isLoading}
@@ -380,17 +390,16 @@ export default function EFilesPage() {
                 key: 'view', label: 'Details', icon: <Eye className="w-4 h-4" />, onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`), variant: 'secondary',
               },
               {
-                key: 'forward', label: 'Forward', icon: <Send className="w-4 h-4" />, onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }), variant: 'primary', hidden: (rec) => rec.status !== 'active',
+                key: 'forward', label: 'Forward', icon: <Send className="w-4 h-4" />, onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }), variant: 'primary', 
+                hidden: (rec) => rec.status !== 'active' || !canEdit, 
               },
               {
                 key: 'edit', label: 'Edit Info', icon: <Edit className="w-4 h-4" />,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onClick: (rec) => setEditModal({ isOpen: true, file: rec as any }),
+                onClick: (rec) => setEditModal({ isOpen: true, file: rec }),
                 variant: 'secondary', hidden: (rec) => rec.status !== 'active' || !canEdit,
               },
               {
                 key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
-                // Strict hiding based on canDelete boolean
                 hidden: !canDelete,
               },
             ]}

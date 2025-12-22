@@ -112,7 +112,7 @@ export default function InventoryPage() {
     onRefresh: async () => { await refetch(); toast.success('Inventory refreshed!'); },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading,
-    exportConfig: { tableName: 'v_inventory_items', useRpc: true }
+    exportConfig: canEdit ? { tableName: 'v_inventory_items', useRpc: true } : undefined
   });
 
   if (canEdit) {

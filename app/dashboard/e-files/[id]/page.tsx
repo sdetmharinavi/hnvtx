@@ -8,14 +8,19 @@ import { ForwardFileModal } from "@/components/efile/ActionModals";
 import { useState } from "react";
 import { ArrowLeft, Send, Archive, FileText, User } from "lucide-react";
 import { HtmlContent } from "@/components/common/ui/HtmlContent";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EFileMovementRow } from "@/schemas/efile-schemas";
+import { useUser } from "@/providers/UserProvider"; // THE FIX: Import useUser
+import { UserRole } from "@/types/user-roles"; // THE FIX: Import UserRole
 
 export default function EFileDetailsPage() {
     const { id } = useParams();
     const router = useRouter();
     const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+
+    // THE FIX: Get user role for permission checks
+    const { isSuperAdmin, role } = useUser();
+    const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
     const { data, isLoading, isError, error } = useEFileDetails(id as string);
     const closeMutation = useCloseFile();
@@ -25,8 +30,6 @@ export default function EFileDetailsPage() {
 
     const { file, history } = data;
 
-    // THE FIX: Ensure we have a valid ID before rendering components that depend on it.
-    // This narrows the type of file.id from 'string | null' to 'string'.
     if (!file || !file.id) {
         return <ErrorDisplay error="Invalid file record: Missing ID" />;
     }
@@ -46,7 +49,6 @@ export default function EFileDetailsPage() {
                 )}
             </div>
 
-            {/* Custom Header with Break Words to prevent overflow */}
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-6">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-3">
@@ -64,7 +66,8 @@ export default function EFileDetailsPage() {
                     </div>
                 </div>
 
-                {isActive && (
+                {/* THE FIX: Wrap action buttons in canEdit check */}
+                {isActive && canEdit && (
                     <div className="flex gap-2 shrink-0">
                         <Button
                             variant="danger"
@@ -85,7 +88,6 @@ export default function EFileDetailsPage() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Left Column: Status Card */}
                 <div className="space-y-6">
                     <Card className="p-0 overflow-hidden border-blue-200 dark:border-blue-800 shadow-sm">
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 border-b border-blue-100 dark:border-blue-800">
@@ -146,15 +148,12 @@ export default function EFileDetailsPage() {
                     </Card>
                 </div>
 
-                {/* Right Column: Timeline */}
                 <div className="xl:col-span-2">
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 border-b dark:border-gray-700 pb-2">
                             Movement History
                         </h3>
-                        {/* THE FIX: Type assertion to satisfy the strict EFileMovementRow array type */}
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        <EFileTimeline history={history as any[]} />
+                        <EFileTimeline history={history as EFileMovementRow[]} />
                     </div>
                 </div>
             </div>
@@ -163,7 +162,7 @@ export default function EFileDetailsPage() {
             <ForwardFileModal
                 isOpen={isForwardModalOpen}
                 onClose={() => setIsForwardModalOpen(false)}
-                fileId={file.id} // TS knows this is string now
+                fileId={file.id}
             />
 
             <ConfirmModal

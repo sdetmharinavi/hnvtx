@@ -107,7 +107,7 @@ const OfcPage = () => {
     // Conditionally show Add New
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'ofc_cables' },
+    exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
   });
 
   const headerStats = [

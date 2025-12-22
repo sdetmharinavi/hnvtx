@@ -128,7 +128,7 @@ const AdminUsersPage = () => {
     // --- PERMISSIONS FIX: Guard Add New button ---
     onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'user_profiles' },
+    exportConfig: canManage ? { tableName: 'user_profiles' } : undefined,
   });
 
   const headerStats = [
