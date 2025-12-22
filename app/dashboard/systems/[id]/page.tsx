@@ -1,4 +1,4 @@
-// app/dashboard/systems/[id]/page.tsx
+// path: app/dashboard/systems/[id]/page.tsx
 "use client";
 
 import { useMemo, useState, useRef, useCallback } from 'react';
@@ -252,7 +252,7 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-       // ... (unchanged file handling logic)
+       // ... (unchanged file handling logic) ...
        const columnMapping: UploadColumnMapping<"v_system_connections_complete">[] = [
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
@@ -310,9 +310,7 @@ export default function SystemConnectionsPage() {
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
     const standard = createStandardActions<V_system_connections_completeRowSchema>({
-      // Condition: Edit
       onEdit: canEdit ? openEditModal : undefined,
-      // Condition: Delete (Super Admin)
       onDelete: canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined,
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) => Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
@@ -320,9 +318,7 @@ export default function SystemConnectionsPage() {
     return [
       { key: 'view-details', label: 'Full Details', icon: <Monitor className="w-4 h-4" />, onClick: handleViewDetails, variant: 'primary' },
       { key: 'view-path', label: 'View Path', icon: <Eye className="w-4 h-4" />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !isProvisioned(record) },
-      // Deprovision: Allow Admins to clear config (Edit action)
       { key: 'deprovision', label: 'Deprovision', icon: <ZapOff className="w-4 h-4" />, onClick: handleDeprovisionClick, variant: 'danger', hidden: (record) => !isProvisioned(record) || !canEdit },
-      // Allocate: Allow Admins
       { key: 'allocate-fiber', label: 'Allocate Fibers', icon: <FiGitBranch className="w-4 h-4" />, onClick: handleOpenAllocationModal, variant: 'primary', hidden: (record) => isProvisioned(record) || !canEdit },
       ...standard,
     ];
@@ -357,25 +353,26 @@ export default function SystemConnectionsPage() {
   }
 
   const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
-    // Reusing the ConnectionCard for mobile view to ensure consistency
-    // Mobile view implies actions are rendered externally, so we wrap card + actions
     return (
         <div className="flex flex-col gap-3">
              <ConnectionCard 
                 connection={record as V_system_connections_completeRowSchema}
+                parentSystemId={systemId}
                 onViewDetails={handleViewDetails}
                 onViewPath={handleTracePath}
-                // No GoTo needed here as we are already on the system page
                 onGoToSystem={() => {}} 
                 isSystemContext={true}
-                // We don't pass Edit/Delete here to avoid duplication in Mobile View (DataTable renders actions below)
+                onEdit={canEdit ? openEditModal : undefined}
+                onDelete={canDelete ? (rec) => deleteManager.deleteSingle({ id: rec.id!, name: rec.service_name || 'Connection' }) : undefined}
+                canEdit={canEdit}
+                canDelete={canDelete}
              />
              <div className="flex justify-end gap-2 px-2">
                  {actions}
              </div>
         </div>
     );
-  }, [handleViewDetails, handleTracePath]);
+  }, [systemId, handleViewDetails, handleTracePath, canEdit, canDelete, openEditModal, deleteManager]);
 
 
   if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
@@ -411,7 +408,6 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
       
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
           <div className="w-full lg:w-96">
             <Input 
@@ -457,7 +453,6 @@ export default function SystemConnectionsPage() {
                     placeholder="All Status"
                  />
              </div>
-             {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
                 <button 
                    onClick={() => setViewMode('grid')}
@@ -477,18 +472,17 @@ export default function SystemConnectionsPage() {
           </div>
       </div>
 
-      {/* Conditional Rendering: Grid vs Table */}
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {sortedConnections.map(conn => (
                 <div key={conn.id} className="h-full">
                     <ConnectionCard 
                         connection={conn}
+                        parentSystemId={systemId}
                         onViewDetails={handleViewDetails}
                         onViewPath={handleTracePath}
-                        onGoToSystem={() => {}} // No-op in this view
+                        onGoToSystem={() => {}} 
                         isSystemContext={true}
-                        // THE FIX: Added Props for Edit/Delete
                         onEdit={canEdit ? openEditModal : undefined}
                         onDelete={canDelete ? (record) => deleteManager.deleteSingle({ id: record.id!, name: record.service_name || record.connected_system_name || 'Connection' }) : undefined}
                         canEdit={canEdit}
@@ -507,7 +501,7 @@ export default function SystemConnectionsPage() {
            <DataTable
             autoHideEmptyColumns={true}
             tableName="v_system_connections_complete"
-            data={sortedConnections} // Use sorted data
+            data={sortedConnections} 
             columns={orderedColumns}
             loading={isLoadingConnections}
             isFetching={isLoadingConnections}
@@ -517,8 +511,8 @@ export default function SystemConnectionsPage() {
               current: currentPage, pageSize: pageLimit, total: totalConnections, showSizeChanger: true,
               onChange: (page, limit) => { setCurrentPage(page); setPageLimit(limit); },
             }}
-            searchable={false} // Custom toolbar used
-            customToolbar={<></>} // Custom toolbar rendered above
+            searchable={false} 
+            customToolbar={<></>} 
           />
       )}
 

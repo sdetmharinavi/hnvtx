@@ -1,4 +1,4 @@
-// components/system-details/SystemConnectionDetailsModal.tsx
+// path: components/system-details/SystemConnectionDetailsModal.tsx
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -42,31 +42,25 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 }) => {
   const supabase = createClient();
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTracing, setIsTracing] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tracePath = useTracePath(supabase);
 
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] = useState<V_system_connections_completeRowSchema | null>(null);
 
-  // 1. Fetch the main connection record
   const {
     data: connection,
     isLoading,
     refetch,
   } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
 
-  // 2. Fetch the parent system record
   const {
     data: parentSystem
   } = useTableRecord(supabase, 'v_systems_complete', connection?.system_id || null, {
     enabled: !!connection?.system_id
   });
 
-  // 3. Fetch OFC details related to this connection
   const allocatedFiberIds = useMemo(() => {
      if(!connection) return [];
      return [
@@ -106,18 +100,16 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     toast.success("Allocation updated successfully");
   }, [refetch]);
 
-  // --- COLUMNS ---
-
   const circuitColumns = useMemo(
     (): Column<Row<'v_system_connections_complete'>>[] => [
       {
         key: 'service_name',
         title: 'Service Name',
         dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
+        editable: true,
         width: 200,
         render: (val, record) => {
-           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-           return <span className="font-medium text-gray-900 dark:text-white">{(val as string) || (record as any).customer_name || 'N/A'}</span>
+           return <span className="font-medium text-gray-900 dark:text-white">{(val as string) || (record as V_system_connections_completeRowSchema).connected_system_name || 'N/A'}</span>
         }
       },
       {
@@ -130,6 +122,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         key: 'services_ip',
         title: 'Service IP',
         dataIndex: 'services_ip',
+        editable: true,
         width: 130,
         render: (val) => val ? <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{formatIP(val)}</span> : <span className="text-gray-400 italic text-xs">-</span>
       },
@@ -137,50 +130,66 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         key: 'services_interface',
         title: 'Service Port',
         dataIndex: 'services_interface',
+        editable: true,
         width: 120,
         render: (val) => val ? <span className="font-mono text-sm">{val as string}</span> : <span className="text-gray-400 italic text-xs">-</span>
       },
-      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', width: 100 },
+      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
       {
         key: 'bandwidth_allocated',
         title: 'Allocated',
         dataIndex: 'bandwidth_allocated',
+        editable: true,
         width: 100,
       },
-      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', width: 100 },
-      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', width: 150 },
-      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', width: 80 },
+      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
+      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
     ],
     []
   );
 
   const endPointData = useMemo(() => {
     if (!connection) return [];
-    const hasStartNode = !!connection.sn_name;
+    
+    // THE FIX: Define an extended type to satisfy TypeScript
+    type Endpoint = {
+        id: string;
+        end: string;
+        node_ip: unknown;
+        system_name: string;
+        interface: string | null | undefined;
+        protection_interface: string | null | undefined; // Added
+        realId: string | null;
+        fieldMap: Record<string, string>;
+    };
 
-    return [
-      {
-        id: `${connection.id}-A`,
-        end: 'End A',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        node_ip: hasStartNode ? connection.sn_ip : (connection.sn_ip || (connection as any).services_ip || parentSystem?.ip_address),
-        system_name: hasStartNode ? connection.sn_name : (connection.system_name || 'Unknown System'),
-        interface: hasStartNode ? connection.sn_interface : (connection.system_working_interface || connection.sn_interface),
-        realId: connection.id,
-        fieldMap: { interface: hasStartNode ? 'sn_interface' : 'system_working_interface' },
-      },
-      {
-        id: `${connection.id}-B`,
-        end: 'End B',
-        node_ip: connection.en_ip,
-        system_name: connection.en_name || '',
-        interface: connection.en_interface,
-        realId: connection.id,
-        fieldMap: { interface: 'en_interface' },
-      },
-    ];
+    const endA: Endpoint = {
+      id: `${connection.id}-A`,
+      end: 'End A',
+      node_ip: connection.sn_ip || (connection as V_system_connections_completeRowSchema).services_ip || parentSystem?.ip_address,
+      system_name: connection.sn_name || (connection.system_name || 'Unknown System'),
+      interface: connection.sn_interface || connection.system_working_interface,
+      protection_interface: connection.system_protection_interface, // Added
+      realId: connection.id,
+      fieldMap: { interface: 'sn_interface', protection_interface: 'system_protection_interface' },
+    };
+
+    const endB: Endpoint = {
+      id: `${connection.id}-B`,
+      end: 'End B',
+      node_ip: connection.en_ip,
+      system_name: connection.en_name || '',
+      interface: connection.en_interface,
+      protection_interface: (connection as V_system_connections_completeRowSchema).en_protection_interface, // Added
+      realId: connection.id,
+      fieldMap: { interface: 'en_interface', protection_interface: 'en_protection_interface' },
+    };
+
+    return [endA, endB];
   }, [connection, parentSystem]);
 
+  // THE FIX: Add the new column to the table definition
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endPointColumns: Column<any>[] = [
     {
@@ -190,7 +199,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       width: 80,
       render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
     },
-    { key: 'node_ip', title: 'Node IP', dataIndex: 'node_ip', width: 120 },
+    { key: 'node_ip', title: 'Node IP', dataIndex: 'node_ip', width: 120, render: (val) => formatIP(val) },
     {
       key: 'system_name',
       title: 'System Name',
@@ -200,10 +209,19 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     },
     {
       key: 'interface',
-      title: 'Interface/Port',
+      title: 'Working Port',
       dataIndex: 'interface',
+      editable: true,
       width: 150,
     },
+    {
+      key: 'protection_interface',
+      title: 'Protection Port',
+      dataIndex: 'protection_interface',
+      editable: true,
+      width: 150,
+      render: (val: unknown) => val ? <>{String(val)}</> : <span className="text-gray-400 italic text-xs">-</span>
+    }
   ];
 
   const ofcColumns = OfcDetailsTableColumns(ofcData?.data || []);
@@ -224,7 +242,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     }
   };
 
-  // Mobile Renderers (kept same)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const renderCircuitMobile = useCallback((record: any, _actions: React.ReactNode) => {
     return (
@@ -238,7 +255,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                     {record.connected_link_type_name || 'Link'}
                 </div>
             </div>
-            {/* ... rest of mobile view ... */}
         </div>
     );
   }, []);
@@ -305,22 +321,18 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       ) : connection ? (
         <div className="space-y-8 pb-10">
           
-          {/* SECTION 1: CIRCUIT INFO */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="Circuit Information" />
             <div className="p-0">
-               {/* THE FIX: Disable filters, search, and column toggle */}
                <DataTable
                   autoHideEmptyColumns={true}
                   tableName="v_system_connections_complete"
                   data={[connection]}
                   columns={circuitColumns}
-                  // Disable interactive features unnecessary for a single row detail view
                   searchable={false}
                   filterable={false}
                   showColumnSelector={false}
-                  showColumnsToggle={false} // Ensure toggle button is hidden
-                  //
+                  showColumnsToggle={false} 
                   onCellEdit={handleCellEdit}
                   renderMobileItem={renderCircuitMobile}
                   pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
@@ -330,24 +342,19 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
-          {/* SECTION 2: END POINTS */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader title="End A & End B Details" />
             <div className="p-0">
-                {/* THE FIX: Disable filters, search, and column toggle */}
                 <DataTable
                   autoHideEmptyColumns={true}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   tableName={'v_system_connections_complete' as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   data={endPointData as any[]}
                   columns={endPointColumns}
-                  // Disable interactive features
                   searchable={false}
                   filterable={false}
                   showColumnSelector={false}
-                  showColumnsToggle={false} // Ensure toggle button is hidden
-                  //
+                  showColumnsToggle={false}
                   renderMobileItem={renderEndpointMobile}
                   onCellEdit={handleCellEdit}
                   pagination={{ current: 1, pageSize: 2, total: 2, onChange: () => {} }}
@@ -357,7 +364,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             </div>
           </div>
 
-          {/* SECTION 3: OFC DETAILS */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <SectionHeader
               title="Optical Fiber Path"
@@ -371,13 +377,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
               }
             />
             <div className="p-4 space-y-6">
-               {/* 3.1 Path Text Summary */}
                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Logical Route</h4>
                   <PathDisplay systemConnectionId={connection.id} />
                </div>
 
-               {/* 3.2 Physical Fiber Table */}
                <div>
                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">Physical Fiber Segments</h4>
                   {!ofcData?.data || ofcData.data.length === 0 ? (
@@ -392,12 +396,10 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                         tableName="v_ofc_connections_complete"
                         data={ofcData.data}
                         columns={ofcColumns}
-                        // Disable filters/search for this nested list too
                         searchable={false}
                         filterable={false}
                         showColumnSelector={false}
                         showColumnsToggle={false}
-                        //
                         renderMobileItem={renderFiberMobile}
                         pagination={{ current: 1, pageSize: 10, total: ofcData.data.length, onChange: () => {} }}
                         density="compact"
