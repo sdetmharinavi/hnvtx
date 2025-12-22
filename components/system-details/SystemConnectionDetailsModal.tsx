@@ -349,6 +349,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                   autoHideEmptyColumns={true}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   tableName={'v_system_connections_complete' as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   data={endPointData as any[]}
                   columns={endPointColumns}
                   searchable={false}
