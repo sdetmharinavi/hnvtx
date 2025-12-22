@@ -189,7 +189,6 @@ export default function GlobalConnectionsPage() {
             onViewDetails={handleViewDetails}
             onViewPath={handleTracePath}
             onGoToSystem={handleGoToSystem}
-            parentSystemId={systemId}
         />
      );
   // eslint-disable-next-line react-hooks/exhaustive-deps
