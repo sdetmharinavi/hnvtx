@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want read only access(canview) to each front end pages for role viewer
+Let's begin! First of all we want to fix the errors we are getting on going to ofc/id page as can be seen in attachment

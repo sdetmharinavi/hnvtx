@@ -45,7 +45,7 @@ export async function GET(
       .from('v_ofc_cables_complete')
       .select('*')
       .eq('id', routeId)
-      .single();
+      .maybeSingle(); // THE FIX: Changed .single() to .maybeSingle()
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
@@ -90,13 +90,6 @@ export async function GET(
       segments: segmentData || [],
       splices: [] // Placeholder for splices
     };
-
-    // console.log("routeData", routeData);
-    // console.log("jcData", jcData);
-    // console.log("jointBoxes", jointBoxes);
-    // console.log("segmentData", segmentData);
-    // console.log("payload", payload);
-
 
     return NextResponse.json(payload);
 

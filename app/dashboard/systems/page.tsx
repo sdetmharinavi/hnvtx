@@ -158,14 +158,16 @@ export default function SystemsPage() {
       {
         label: "Refresh", onClick: () => { refetch(); toast.success("Systems refreshed."); },
         variant: "outline", leftIcon: <FiRefreshCw className={isLoading ? "animate-spin" : ""} />, disabled: isLoading,
-      },
-      {
+      }
+    ];
+    if (canEdit) {
+      actions.push(
+        {
         label: isExporting ? "Exporting..." : "Export", onClick: handleExport,
         variant: "outline", leftIcon: <FiDownload />, disabled: isExporting || isLoading,
         hideTextOnMobile: true
       }
-    ];
-    if (canEdit) {
+      );
       actions.splice(1, 0, {
         label: isUploading ? "Uploading..." : "Upload", onClick: handleUploadClick,
         variant: "outline", leftIcon: <FiUpload />, disabled: isUploading || isLoading,

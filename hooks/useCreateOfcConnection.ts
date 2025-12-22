@@ -1,4 +1,5 @@
-import { useCallback, useRef } from 'react'; // THE FIX: Import useRef
+// hooks/useCreateOfcConnection.ts
+import { useCallback, useRef } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,7 +21,6 @@ export const useCreateOfcConnection = ({
   isLoadingOfcConnections,
 }: useCreateOfcConnectionProps) => {
   const queryClient = useQueryClient();
-  // THE FIX: Create a ref to act as a lock, preventing concurrent executions.
   const isCreatingConnections = useRef(false);
 
   const { data: cable, isLoading: isLoadingCable } = usePagedData<Ofc_cablesRowSchema>(
@@ -47,27 +47,26 @@ export const useCreateOfcConnection = ({
       refetchOfcConnections();
     },
   });
+  
+  const cableData = cable?.data?.[0];
 
   const createMissingConnections = useCallback(async (): Promise<void> => {
-    // THE FIX: Check if an operation is already in progress. If so, exit immediately.
     if (isCreatingConnections.current) {
       console.log('Connection creation already in progress, skipping.');
       return;
     }
     
-    const cableData = cable?.data?.[0];
     if (!cableData || !cableData.capacity || cableData.capacity <= 0) {
         console.log('Skipping connection check: Cable data or capacity is missing.');
         return;
     }
 
     try {
-      // THE FIX: Set the lock to true before starting async operations.
       isCreatingConnections.current = true;
 
       const { data: existingConnections, error } = await supabase
         .from('ofc_connections')
-        .select('fiber_no_sn', { count: 'exact' }) // More efficient to count in the DB
+        .select('fiber_no_sn', { count: 'exact' })
         .eq('ofc_id', cableId);
 
       if (error) {
@@ -75,7 +74,9 @@ export const useCreateOfcConnection = ({
         throw error;
       }
 
-      const existingFiberNumbers = new Set(existingConnections.map(c => c.fiber_no_sn));
+      // THE FIX: Robustly handle null response before mapping to prevent TypeError.
+      const existingFiberNumbers = new Set(existingConnections?.map(c => c.fiber_no_sn) || []);
+      
       const missingFiberNumbers: number[] = [];
       for (let i = 1; i <= cableData.capacity; i++) {
         if (!existingFiberNumbers.has(i)) {
@@ -107,14 +108,16 @@ export const useCreateOfcConnection = ({
       toast.success(`Successfully created ${newConnections.length} missing connections.`);
 
     } catch (creationError) {
-      const errorMessage = creationError instanceof Error ? creationError.message : 'Unknown error';
+      // THE FIX: Log the actual error message, not the object.
+      const errorMessage = creationError instanceof Error ? creationError.message : String(creationError);
       toast.error(`Failed to create missing connections: ${errorMessage}`);
       throw creationError;
     } finally {
-      // THE FIX: Always release the lock when the operation is complete (success or fail).
       isCreatingConnections.current = false;
     }
-  }, [cable, cableId, createConnections, supabase]);
+  // THE FIX: Use stable primitive values as dependencies to prevent re-creation of the function.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cableData?.capacity, cableData?.sn_id, cableData?.en_id, cableId, createConnections, supabase]);
 
   const ensureConnectionsExist = useCallback(async (): Promise<void> => {
     if (isLoadingCable || isLoadingOfcConnections) {
@@ -123,8 +126,8 @@ export const useCreateOfcConnection = ({
     try {
       await createMissingConnections();
     } catch (error) {
-      console.error(`Failed to ensure connections exist: ${error}`);
-      // Errors are already handled and toasted inside createMissingConnections
+      // THE FIX: Log the specific error message for better debugging.
+      console.error(`Failed to ensure connections exist:`, error instanceof Error ? error.message : error);
     }
   }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 
