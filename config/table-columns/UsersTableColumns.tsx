@@ -33,6 +33,7 @@ export const UserProfileColumns = (data:V_user_profiles_extendedRowSchema[]) => 
         },
       },
       role: {
+        width: 140,
         render: (value) => {
           return <RoleBadge role={value as UserRole} />;
         },

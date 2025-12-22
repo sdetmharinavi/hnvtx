@@ -114,7 +114,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         key: 'service_name',
         title: 'Service Name',
         dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
-        editable: true,
         width: 200,
         render: (val, record) => {
            // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,7 +130,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         key: 'services_ip',
         title: 'Service IP',
         dataIndex: 'services_ip',
-        editable: true,
         width: 130,
         render: (val) => val ? <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">{formatIP(val)}</span> : <span className="text-gray-400 italic text-xs">-</span>
       },
@@ -139,21 +137,19 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         key: 'services_interface',
         title: 'Service Port',
         dataIndex: 'services_interface',
-        editable: true,
         width: 120,
         render: (val) => val ? <span className="font-mono text-sm">{val as string}</span> : <span className="text-gray-400 italic text-xs">-</span>
       },
-      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
+      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', width: 100 },
       {
         key: 'bandwidth_allocated',
         title: 'Allocated',
         dataIndex: 'bandwidth_allocated',
-        editable: true,
         width: 100,
       },
-      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', editable: true, width: 100 },
-      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
-      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
+      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', width: 100 },
+      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', width: 150 },
+      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', width: 80 },
     ],
     []
   );
@@ -206,7 +202,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       key: 'interface',
       title: 'Interface/Port',
       dataIndex: 'interface',
-      editable: true,
       width: 150,
     },
   ];

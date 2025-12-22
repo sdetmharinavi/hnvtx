@@ -1,42 +1,40 @@
+-- path: data/migrations/09_performance/03_fix_dom_triggers.sql
+-- Description: [FIXED] Creates a single, correct trigger to update DOM fields on OTDR changes.
 
-CREATE OR REPLACE FUNCTION public.update_dom_on_otdr_change()
+-- 1. Define the new, simplified trigger function
+CREATE OR REPLACE FUNCTION public.handle_dom_update_on_otdr_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-DECLARE
-    old_val NUMERIC;
-    new_val NUMERIC;
-    date_col_name TEXT;
 BEGIN
-    -- Get arguments passed from the trigger definition
-    date_col_name := TG_ARGV[1]; -- e.g., 'sn_dom' or 'en_dom'
-
-    -- Use EXECUTE to dynamically get OLD and NEW values for the specified columns
-    EXECUTE format('SELECT ($1).%I, ($2).%I', TG_ARGV[0], TG_ARGV[0])
-    INTO old_val, new_val
-    USING OLD, NEW;
-
-    IF new_val IS DISTINCT FROM old_val THEN
-        -- Use EXECUTE to dynamically set the new date value
-        EXECUTE format('SELECT jsonb_set(to_jsonb($1), ''{%s}'', to_jsonb(CURRENT_DATE))', date_col_name)
-        INTO NEW
-        USING NEW;
+    -- Check if the OTDR distance for the Start Node (SN) has changed.
+    IF NEW.otdr_distance_sn_km IS DISTINCT FROM OLD.otdr_distance_sn_km THEN
+        -- If it changed, update the sn_dom to the current date.
+        NEW.sn_dom := CURRENT_DATE;
     END IF;
+
+    -- Check if the OTDR distance for the End Node (EN) has changed.
+    IF NEW.otdr_distance_en_km IS DISTINCT FROM OLD.otdr_distance_en_km THEN
+        -- If it changed, update the en_dom to the current date.
+        NEW.en_dom := CURRENT_DATE;
+    END IF;
+
+    -- Return the (potentially modified) NEW record to be written to the table.
     RETURN NEW;
 END;
 $$;
 
--- This would be in a separate trigger file, e.g., 02_core_infrastructure/06_triggers.sql
--- NOTE: This replaces the functions in 09_performance/03_fix_dom_triggers.sql
+-- 2. Drop the old, problematic triggers for idempotency
 DROP TRIGGER IF EXISTS trigger_update_sn_dom ON public.ofc_connections;
-CREATE TRIGGER trigger_update_sn_dom
-BEFORE UPDATE ON public.ofc_connections
-FOR EACH ROW
-EXECUTE FUNCTION public.update_dom_on_otdr_change('otdr_distance_sn_km', 'sn_dom');
-
 DROP TRIGGER IF EXISTS trigger_update_en_dom ON public.ofc_connections;
-CREATE TRIGGER trigger_update_en_dom
+DROP TRIGGER IF EXISTS trg_update_ofc_connections_dom ON public.ofc_connections; -- Drop new name too
+
+-- 3. Create and attach the single, correct trigger
+CREATE TRIGGER trg_update_ofc_connections_dom
 BEFORE UPDATE ON public.ofc_connections
 FOR EACH ROW
-EXECUTE FUNCTION public.update_dom_on_otdr_change('otdr_distance_en_km', 'en_dom');
+EXECUTE FUNCTION public.handle_dom_update_on_otdr_change();
+
+COMMENT ON TRIGGER trg_update_ofc_connections_dom ON public.ofc_connections IS 
+'Before an update on ofc_connections, this trigger checks if OTDR distance values have changed and updates the corresponding date of measurement (DOM) fields.';
