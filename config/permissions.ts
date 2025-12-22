@@ -20,7 +20,6 @@ export const ROLES = {
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
-    UserRole.MNGADMIN,
   ],
 
   // System Specific Admins
@@ -36,7 +35,6 @@ export const ROLES = {
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
-    UserRole.MNGADMIN,
   ],
 
   // Specific Functional Groups
