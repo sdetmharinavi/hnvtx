@@ -1,16 +1,23 @@
 // path: components/system-details/SystemConnectionFormModal.tsx
-'use client';
+"use client";
 
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, SubmitErrorHandler, UseFormRegister, UseFormSetValue, UseFormWatch, FieldError } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { FC, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useForm,
+  SubmitErrorHandler,
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormWatch,
+  FieldError,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   V_servicesRowSchema,
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
-} from '@/schemas/zod-schemas';
-import { useTableQuery, useTableRecord } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
+} from "@/schemas/zod-schemas";
+import { useTableQuery, useTableRecord } from "@/hooks/database";
+import { createClient } from "@/utils/supabase/client";
 import {
   Modal,
   Tabs,
@@ -19,26 +26,26 @@ import {
   TabsContent,
   Input,
   Label,
-} from '@/components/common/ui';
-import { FormCard, FormDateInput, FormInput, FormSearchableSelect } from '@/components/common/form';
-import { z } from 'zod';
-import { toast } from 'sonner';
-import { Network, Settings, Activity, RefreshCw } from 'lucide-react';
-import { RpcFunctionArgs } from '@/hooks/database/queries-type-helpers';
-import { formatIP } from '@/utils/formatters';
-import Link from 'next/link';
+} from "@/components/common/ui";
+import { FormCard, FormDateInput, FormInput, FormSearchableSelect } from "@/components/common/form";
+import { z } from "zod";
+import { toast } from "sonner";
+import { Network, Settings, Activity, RefreshCw } from "lucide-react";
+import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
+import { formatIP } from "@/utils/formatters";
+import Link from "next/link";
 
 // Update schema to include the new field
 const formSchema = z.object({
   // Connection Keys
   system_id: z.uuid(),
-  media_type_id: z.string().uuid('Media Type is required'),
+  media_type_id: z.string().uuid("Media Type is required"),
   status: z.boolean(),
   commissioned_on: z.string().nullable().optional(),
   remark: z.string().nullable().optional(),
 
   // Service Keys (Logical)
-  service_name: z.string().min(1, 'Service Name / Customer is required'),
+  service_name: z.string().min(1, "Service Name / Customer is required"),
   link_type_id: z.uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
@@ -51,7 +58,7 @@ const formSchema = z.object({
   // Connectivity
   services_ip: z.string().nullable().optional(),
   services_interface: z.string().nullable().optional(),
-  system_working_interface: z.string().min(1, 'Working Interface is required'),
+  system_working_interface: z.string().min(1, "Working Interface is required"),
   system_protection_interface: z.string().nullable().optional(),
 
   // Topology
@@ -81,7 +88,7 @@ type ExtendedConnectionRow = V_system_connections_completeRowSchema & {
   customer_name?: string | null;
   en_protection_interface?: string | null;
 };
-type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
+type UpsertPayload = RpcFunctionArgs<"upsert_system_connection_with_details">;
 
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
@@ -100,7 +107,7 @@ const BandwidthInput = ({
   error,
   setValue,
   watch,
-  placeholder
+  placeholder,
 }: {
   name: "bandwidth" | "bandwidth_allocated";
   label: string;
@@ -113,44 +120,43 @@ const BandwidthInput = ({
   const currentValue = watch(name);
 
   const appendUnit = (unit: string) => {
-      const current = currentValue || '';
-      // Remove existing units to avoid duplication (e.g., "100 Mbps Gbps")
-      const clean = current.replace(/\s*(Kbps|Mbps|Gbps|G|M|K)$/i, '').trim();
-      
-      if (clean) {
-           setValue(name, `${clean} ${unit}`, { shouldValidate: true, shouldDirty: true });
-      } else {
-           // Optional: Handle empty state if needed, e.g. focusing the input
-      }
+    const current = currentValue || "";
+    // Remove existing units to avoid duplication (e.g., "100 Mbps Gbps")
+    const clean = current.replace(/\s*(Kbps|Mbps|Gbps|G|M|K)$/i, "").trim();
+
+    if (clean) {
+      setValue(name, `${clean} ${unit}`, { shouldValidate: true, shouldDirty: true });
+    } else {
+      // Optional: Handle empty state if needed, e.g. focusing the input
+    }
   };
 
   return (
-      <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label htmlFor={name}>{label}</Label>
-            <div className="flex gap-1">
-                {['Kbps', 'Mbps', 'Gbps'].map(unit => (
-                    <button
-                        key={unit}
-                        type="button"
-                        onClick={() => appendUnit(unit)}
-                        className="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-600 transition-colors"
-                        title={`Append ${unit}`}
-                    >
-                        {unit}
-                    </button>
-                ))}
-            </div>
-          </div>
-          <Input
-              id={name}
-              {...register(name)}
-              error={typeof error?.message === 'string' ? error.message : undefined}
-              placeholder={placeholder}
-          />
+    <div>
+      <div className='flex justify-between items-center mb-2'>
+        <Label htmlFor={name}>{label}</Label>
+        <div className='flex gap-1'>
+          {["Kbps", "Mbps", "Gbps"].map((unit) => (
+            <button
+              key={unit}
+              type='button'
+              onClick={() => appendUnit(unit)}
+              className='text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-600 dark:text-gray-300 rounded border border-gray-200 dark:border-gray-600 transition-colors'
+              title={`Append ${unit}`}>
+              {unit}
+            </button>
+          ))}
+        </div>
       </div>
+      <Input
+        id={name}
+        {...register(name)}
+        error={typeof error?.message === "string" ? error.message : undefined}
+        placeholder={placeholder}
+      />
+    </div>
   );
-}
+};
 
 export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   isOpen,
@@ -162,13 +168,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 }) => {
   const supabase = createClient();
   const isEditMode = !!editingConnection;
-  const [activeTab, setActiveTab] = useState('general');
-  const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
+  const [activeTab, setActiveTab] = useState("general");
+  const [serviceMode, setServiceMode] = useState<"existing" | "manual">("existing");
 
-  // Fetch the pristine record from DB when editing to avoid "flipped" view logic issues
   const { data: pristineRecord, isLoading: isLoadingPristine } = useTableRecord(
     supabase,
-    'v_system_connections_complete',
+    "v_system_connections_complete",
     isEditMode ? editingConnection?.id || null : null,
     { enabled: isOpen && isEditMode }
   );
@@ -184,44 +189,45 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   } = useForm<SystemConnectionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      system_id: parentSystem.id ?? '',
+      system_id: parentSystem.id ?? "",
       status: true,
-      media_type_id: '',
-      service_name: '',
-      link_type_id: '',
+      media_type_id: "",
+      service_name: "",
+      link_type_id: "",
     },
   });
 
-  const watchLinkTypeId = watch('link_type_id');
-  const watchExistingServiceId = watch('existing_service_id');
-  const watchSystemId = watch('system_id');
-  const watchEnId = watch('en_id');
-  const watchWorkingInterface = watch('system_working_interface');
-  const watchProtectionInterface = watch('system_protection_interface');
-  const watchSnInterface = watch('sn_interface');
-  const watchEnInterface = watch('en_interface');
-  const watchEnProtectionInterface = watch('en_protection_interface');
-  const watchSnId = watch('sn_id');
+  const watchLinkTypeId = watch("link_type_id");
+  const watchExistingServiceId = watch("existing_service_id");
+  const watchSystemId = watch("system_id");
+  const watchEnId = watch("en_id");
+  const watchWorkingInterface = watch("system_working_interface");
+  const watchProtectionInterface = watch("system_protection_interface");
+  const watchSnInterface = watch("sn_interface");
+  const watchEnInterface = watch("en_interface");
+  const watchEnProtectionInterface = watch("en_protection_interface");
+  const watchSnId = watch("sn_id");
 
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, 'v_systems_complete', {
-    columns: 'id, system_name, ip_address, node_name',
+  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
+    columns: "id, system_name, ip_address, node_name",
     limit: 5000,
   });
 
-  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
-    columns: 'id, name',
-    filters: { category: 'MEDIA_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
+  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, 'lookup_types', {
-    columns: 'id, name',
-    filters: { category: 'LINK_TYPES', name: { operator: 'neq', value: 'DEFAULT' } },
+  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
+    columns: "id, name",
+    filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
-  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, 'v_services', {
-    columns: 'id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id',
+  const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
+    columns:
+      "id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id, node_name",
     filters: { status: true },
-    orderBy: [{ column: 'name', ascending: true }],
+    orderBy: [{ column: "name", ascending: true }],
     limit: 2000,
   });
 
@@ -230,23 +236,23 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [servicesResult.data]
   );
 
-  const { data: mainSystemPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
-    columns: 'port, port_utilization, port_type_name, port_type_code',
-    filters: { system_id: watchSystemId || '', port_admin_status: true },
+  const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
+    filters: { system_id: watchSystemId || "", port_admin_status: true },
     limit: 1000,
     enabled: !!watchSystemId,
   });
 
-  const { data: snPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
-    columns: 'port, port_utilization, port_type_name, port_type_code',
-    filters: { system_id: watchSnId || '', port_admin_status: true },
+  const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
+    filters: { system_id: watchSnId || "", port_admin_status: true },
     limit: 1000,
     enabled: !!watchSnId,
   });
 
-  const { data: enPorts } = useTableQuery(supabase, 'v_ports_management_complete', {
-    columns: 'port, port_utilization, port_type_name, port_type_code',
-    filters: { system_id: watchEnId || '', port_admin_status: true },
+  const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
+    columns: "port, port_utilization, port_type_name, port_type_code",
+    filters: { system_id: watchEnId || "", port_admin_status: true },
     limit: 1000,
     enabled: !!watchEnId,
   });
@@ -261,7 +267,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       .filter((p) => p.port !== excludePort)
       .map((p) => ({
         value: p.port!,
-        label: `${p.port} ${p.port_utilization ? '(In Use)' : ''}`,
+        label: `${p.port} ${p.port_utilization && p.port !== currentValue ? "(In Use)" : ""}`,
       }))
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
 
@@ -274,10 +280,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const getPortTypeDisplay = useCallback(
     (portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
-      if (!portsList?.data || !portInterface) return '';
+      if (!portsList?.data || !portInterface) return "";
       const port = portsList.data.find((p) => p.port === portInterface);
-      if (!port) return 'Unknown';
-      return port.port_type_code || port.port_type_name || 'Unknown';
+      if (!port) return "Unknown";
+      return port.port_type_code || port.port_type_name || "Unknown";
     },
     []
   );
@@ -285,8 +291,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const systemOptions = useMemo(
     () =>
       (systemsResult.data || []).map((s) => {
-        const loc = s.node_name ? ` @ ${s.node_name}` : '';
-        const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : '';
+        const loc = s.node_name ? ` @ ${s.node_name}` : "";
+        const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
         return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
       }),
     [systemsResult.data]
@@ -308,51 +314,56 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
     return filteredServices.map((s) => ({
       value: s.id!,
-      label: `${s.name}${s.link_type_name ? ` (${s.link_type_name})${s.node_name ? '('+s.node_name+')' : ''}${s.vlan ? '('+s.vlan+')' : ''}${s.unique_id ? '('+s.unique_id+')' : ''}` : ''}`,
+      label: `${s.name}${
+        s.link_type_name
+          ? ` (${s.link_type_name})${s.node_name ? " @ " + s.node_name : ""}${
+              s.vlan ? " | VLAN:" + s.vlan : ""
+            }${s.unique_id ? " | UID:" + s.unique_id : ""}`
+          : ""
+      }`,
     }));
   }, [servicesData, watchLinkTypeId]);
 
-  // Sync working interface
   useEffect(() => {
     if (watchWorkingInterface && watchSnId === watchSystemId) {
-      setValue('sn_interface', watchWorkingInterface);
+      setValue("sn_interface", watchWorkingInterface);
     }
   }, [watchWorkingInterface, watchSnId, watchSystemId, setValue]);
 
   useEffect(() => {
     if (watchSnId && systemsResult.data) {
       const sys = systemsResult.data.find((s) => s.id === watchSnId);
-      if (sys && sys.ip_address) setValue('sn_ip', formatIP(sys.ip_address));
-      else setValue('sn_ip', '');
+      if (sys && sys.ip_address) setValue("sn_ip", formatIP(sys.ip_address));
+      else setValue("sn_ip", "");
     }
   }, [watchSnId, systemsResult.data, setValue]);
 
   useEffect(() => {
     if (watchEnId && systemsResult.data) {
       const sys = systemsResult.data.find((s) => s.id === watchEnId);
-      if (sys && sys.ip_address) setValue('en_ip', formatIP(sys.ip_address));
-      else setValue('en_ip', '');
+      if (sys && sys.ip_address) setValue("en_ip", formatIP(sys.ip_address));
+      else setValue("en_ip", "");
     }
   }, [watchEnId, systemsResult.data, setValue]);
 
   useEffect(() => {
-    if (serviceMode === 'existing' && watchExistingServiceId) {
+    if (serviceMode === "existing" && watchExistingServiceId) {
       const selectedService = servicesData.find((s) => s.id === watchExistingServiceId);
       if (selectedService) {
-        setValue('service_name', selectedService.name!);
-        if (selectedService.link_type_id) setValue('link_type_id', selectedService.link_type_id);
-        if (selectedService.vlan) setValue('vlan', selectedService.vlan);
+        setValue("service_name", selectedService.name!);
+        if (selectedService.link_type_id) setValue("link_type_id", selectedService.link_type_id);
+        if (selectedService.vlan) setValue("vlan", selectedService.vlan);
         if (selectedService.bandwidth_allocated)
-          setValue('bandwidth_allocated', selectedService.bandwidth_allocated);
-        if (selectedService.lc_id) setValue('lc_id', selectedService.lc_id);
-        if (selectedService.unique_id) setValue('unique_id', selectedService.unique_id);
+          setValue("bandwidth_allocated", selectedService.bandwidth_allocated);
+        if (selectedService.lc_id) setValue("lc_id", selectedService.lc_id);
+        if (selectedService.unique_id) setValue("unique_id", selectedService.unique_id);
       }
     }
   }, [watchExistingServiceId, serviceMode, servicesData, setValue]);
 
   useEffect(() => {
-    if (serviceMode === 'manual') {
-      setValue('existing_service_id', null);
+    if (serviceMode === "manual") {
+      setValue("existing_service_id", null);
     }
   }, [serviceMode, setValue]);
 
@@ -362,48 +373,52 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
   const enProtectionPortType = getPortTypeDisplay(watchEnProtectionInterface, enPorts);
 
-  // --- FORM INITIALIZATION ---
   useEffect(() => {
     if (isOpen) {
-      setActiveTab('general');
-
+      setActiveTab("general");
       if (isEditMode && pristineRecord) {
+        // THE FIX START: Refactored logic for clarity and correctness
         const extConnection = pristineRecord as ExtendedConnectionRow;
-        const safeValue = (val: string | null | undefined) => val ?? '';
+        const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
 
+        // Determine if the perspective needs to be "flipped"
         const isFlipped = extConnection.system_id !== parentSystem.id;
 
-        const mappedData = isFlipped
+        // Define start and end based on perspective
+        const startData = isFlipped
           ? {
-              system_id: parentSystem.id,
-              working_interface: extConnection.en_interface,
-              protection_interface: extConnection.en_protection_interface,
-              sn_id: extConnection.en_node_id,
-              en_id: extConnection.system_id,
-              sn_interface: extConnection.en_interface,
-              en_interface: extConnection.system_working_interface,
-              en_protection_interface: extConnection.system_protection_interface,
-              sn_ip: extConnection.en_ip,
-              en_ip: extConnection.sn_ip || extConnection.services_ip,
+              id: extConnection.en_id,
+              ip: extConnection.en_ip,
+              interface: extConnection.en_interface,
             }
           : {
-              system_id: extConnection.system_id,
-              working_interface: extConnection.system_working_interface,
-              protection_interface: extConnection.system_protection_interface,
-              sn_id: extConnection.sn_id,
-              en_id: extConnection.en_id,
-              sn_interface: extConnection.sn_interface,
-              en_interface: extConnection.en_interface,
-              en_protection_interface: extConnection.en_protection_interface,
-              sn_ip: extConnection.sn_ip,
-              en_ip: extConnection.en_ip,
+              id: extConnection.sn_id,
+              ip: extConnection.sn_ip,
+              interface: extConnection.sn_interface,
             };
 
-        setServiceMode(extConnection.service_id ? 'existing' : 'manual');
+        const endData = isFlipped
+          ? {
+              id: extConnection.system_id,
+              ip: extConnection.sn_ip || extConnection.services_ip,
+              interface: extConnection.system_working_interface,
+              protection_interface: extConnection.system_protection_interface,
+            }
+          : {
+              id: extConnection.en_id,
+              ip: extConnection.en_ip,
+              interface: extConnection.en_interface,
+              protection_interface: extConnection.en_protection_interface,
+            };
+
+        setServiceMode(extConnection.service_id ? "existing" : "manual");
 
         reset({
-          system_id: mappedData.system_id ?? '',
+          // Always use the parent system as the primary system_id for the form
+          system_id: parentSystem.id!,
+
+          // Logical Service Details
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
@@ -412,27 +427,42 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           unique_id: safeValue(extConnection.unique_id),
           existing_service_id: safeNull(extConnection.service_id),
 
+          // Physical Connection Details
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          services_ip: safeValue(String((extConnection as any).services_ip || '')),
+          services_ip: safeValue(String((extConnection as any).services_ip || "")),
           services_interface: safeValue(extConnection.services_interface),
 
-          system_working_interface: safeValue(mappedData.working_interface),
-          system_protection_interface: safeNull(mappedData.protection_interface),
+          // Map the "local" system's ports (which could be start or end of the DB record)
+          system_working_interface: safeValue(
+            isFlipped ? extConnection.en_interface : extConnection.system_working_interface
+          ),
+          system_protection_interface: safeNull(
+            isFlipped
+              ? extConnection.en_protection_interface
+              : extConnection.system_protection_interface
+          ),
 
-          sn_id: safeNull(mappedData.sn_id),
-          en_id: safeNull(mappedData.en_id),
-          sn_interface: safeNull(mappedData.sn_interface),
-          en_interface: safeNull(mappedData.en_interface),
-          en_protection_interface: safeNull(mappedData.en_protection_interface),
-          sn_ip: safeNull(String(mappedData.sn_ip || '')),
-          en_ip: safeNull(String(mappedData.en_ip || '')),
+          // Map Start Node (Side A)
+          sn_id: safeNull(startData.id),
+          sn_interface: safeNull(startData.interface),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          sn_ip: safeNull(formatIP(startData.ip as any)),
 
+          // Map End Node (Side B)
+          en_id: safeNull(endData.id),
+          en_interface: safeNull(endData.interface),
+          en_protection_interface: safeNull(endData.protection_interface),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          en_ip: safeNull(formatIP(endData.ip as any)),
+
+          // Timestamps & Remarks
           commissioned_on: safeNull(extConnection.commissioned_on),
           remark: safeNull(extConnection.remark),
           bandwidth: safeNull(extConnection.bandwidth),
 
+          // SDH
           stm_no: safeNull(extConnection.sdh_stm_no),
           carrier: safeNull(extConnection.sdh_carrier),
           a_slot: safeNull(extConnection.sdh_a_slot),
@@ -440,18 +470,19 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           b_slot: safeNull(extConnection.sdh_b_slot),
           b_customer: safeNull(extConnection.sdh_b_customer),
         });
+        // THE FIX END
       } else if (!isEditMode) {
         reset({
           system_id: parentSystem.id!,
           status: true,
-          media_type_id: '',
-          service_name: '',
-          link_type_id: '',
+          media_type_id: "",
+          service_name: "",
+          link_type_id: "",
           sn_id: parentSystem.id,
           sn_ip: formatIP(parentSystem.ip_address),
-          sn_interface: '',
+          sn_interface: "",
         });
-        setServiceMode('existing');
+        setServiceMode("existing");
       }
     }
   }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
@@ -497,8 +528,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   );
 
   const onInvalidSubmit: SubmitErrorHandler<SystemConnectionFormValues> = (errors) => {
-    console.error('Form Errors:', errors);
-    toast.error('Please check the form for errors.');
+    console.error("Form Errors:", errors);
+    toast.error("Please check the form for errors.");
   };
 
   const effectiveLoading = isLoading || (isEditMode && isLoadingPristine);
@@ -507,29 +538,27 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditMode ? 'Edit Service Connection' : 'New Service Connection'}
-      size="full"
-    >
+      title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
+      size='full'>
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
         isLoading={effectiveLoading}
         title={
-          <div className="flex items-center gap-2">
-            <span>{isEditMode ? 'Edit Service Connection' : 'New Service Connection'}</span>
-            {effectiveLoading && <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />}
+          <div className='flex items-center gap-2'>
+            <span>{isEditMode ? "Edit Service Connection" : "New Service Connection"}</span>
+            {effectiveLoading && <RefreshCw className='w-4 h-4 animate-spin text-gray-400' />}
           </div>
         }
         subtitle={
           isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
-            <span className="inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs">
-              <span className="shrink-0">⚠️ Editing Physical Source:</span>
+            <span className='inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs'>
+              <span className='shrink-0'>⚠️ Editing Physical Source:</span>
               <Link
                 href={`/dashboard/systems/${pristineRecord.system_id}`}
-                className="underline hover:text-white font-bold truncate max-w-[200px]"
+                className='underline hover:text-white font-bold truncate max-w-[200px]'
                 title={`Go to ${pristineRecord.system_name}`}
-                target="_blank"
-              >
+                target='_blank'>
                 {pristineRecord.system_name}
               </Link>
             </span>
@@ -538,171 +567,170 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           )
         }
         standalone
-        widthClass="w-full max-w-full"
-        heightClass="h-auto max-h-[90vh]"
-      >
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" /> General
+        widthClass='w-full max-w-full'
+        heightClass='h-auto max-h-[90vh]'>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
+          <TabsList className='grid w-full grid-cols-3 mb-4'>
+            <TabsTrigger value='general' className='flex items-center gap-2'>
+              <Activity className='w-4 h-4' /> General
             </TabsTrigger>
-            <TabsTrigger value="connectivity" className="flex items-center gap-2">
-              <Network className="w-4 h-4" /> Connectivity
+            <TabsTrigger value='connectivity' className='flex items-center gap-2'>
+              <Network className='w-4 h-4' /> Connectivity
             </TabsTrigger>
-            <TabsTrigger value="sdh" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" /> SDH / Legacy
+            <TabsTrigger value='sdh' className='flex items-center gap-2'>
+              <Settings className='w-4 h-4' /> SDH / Legacy
             </TabsTrigger>
           </TabsList>
 
-          <div className="mt-4 min-h-[350px] overflow-y-auto px-1">
+          <div className='mt-4 min-h-[350px] overflow-y-auto px-1'>
             {/* TAB 1: GENERAL */}
-            <TabsContent value="general" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <TabsContent value='general' className='space-y-6'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <FormSearchableSelect
-                  name="link_type_id"
-                  label="Link Type"
+                  name='link_type_id'
+                  label='Link Type'
                   control={control}
                   options={linkTypeOptions}
                   error={errors.link_type_id}
-                  placeholder="Select Type (e.g. MPLS)"
+                  placeholder='Select Type (e.g. MPLS)'
                 />
 
-                <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <div className='space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <div className='flex items-center gap-4'>
+                      <label className='flex items-center gap-2 text-sm cursor-pointer'>
                         <input
-                          type="radio"
-                          checked={serviceMode === 'existing'}
-                          onChange={() => setServiceMode('existing')}
-                          className="text-blue-600"
+                          type='radio'
+                          checked={serviceMode === "existing"}
+                          onChange={() => setServiceMode("existing")}
+                          className='text-blue-600'
                         />
-                        <span className="text-gray-700 dark:text-gray-300">Select Existing</span>
+                        <span className='text-gray-700 dark:text-gray-300'>Select Existing</span>
                       </label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <label className='flex items-center gap-2 text-sm cursor-pointer'>
                         <input
-                          type="radio"
-                          checked={serviceMode === 'manual'}
-                          onChange={() => setServiceMode('manual')}
-                          className="text-blue-600"
+                          type='radio'
+                          checked={serviceMode === "manual"}
+                          onChange={() => setServiceMode("manual")}
+                          className='text-blue-600'
                         />
-                        <span className="text-gray-700 dark:text-gray-300">Create/Manual</span>
+                        <span className='text-gray-700 dark:text-gray-300'>Create/Manual</span>
                       </label>
                     </div>
-                    {isEditMode && serviceMode === 'manual' && (
-                      <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200">
+                    {isEditMode && serviceMode === "manual" && (
+                      <span className='text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200'>
                         ⚠️ Service unlinked or deleted
                       </span>
                     )}
                   </div>
 
-                  {serviceMode === 'existing' ? (
-                    <div className="space-y-2">
+                  {serviceMode === "existing" ? (
+                    <div className='space-y-2'>
                       <FormSearchableSelect
-                        name="existing_service_id"
-                        label="Select Service"
+                        name='existing_service_id'
+                        label='Select Service'
                         control={control}
                         options={serviceOptions}
                         error={errors.existing_service_id}
-                        placeholder="Search services..."
+                        placeholder='Search services...'
                         clearable
                       />
-                      <input type="hidden" {...register('service_name')} />
+                      <input type='hidden' {...register("service_name")} />
                     </div>
                   ) : (
                     <FormInput
-                      name="service_name"
-                      label="New Service Name / Customer"
+                      name='service_name'
+                      label='New Service Name / Customer'
                       register={register}
                       error={errors.service_name}
-                      placeholder="e.g. SBI-Kolkata-Main"
+                      placeholder='e.g. SBI-Kolkata-Main'
                       required
                     />
                   )}
                 </div>
 
-                <FormInput name="vlan" label="VLAN" register={register} error={errors.vlan} />
-                
+                <FormInput name='vlan' label='VLAN' register={register} error={errors.vlan} />
+
                 {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
-                  name="bandwidth_allocated"
-                  label="Allocated BW"
+                  name='bandwidth_allocated'
+                  label='Allocated BW'
                   register={register}
                   error={errors.bandwidth_allocated}
                   setValue={setValue}
                   watch={watch}
-                  placeholder="e.g. 100 Mbps"
+                  placeholder='e.g. 100 Mbps'
                 />
 
-                <FormInput name="lc_id" label="LC ID" register={register} error={errors.lc_id} />
+                <FormInput name='lc_id' label='LC ID' register={register} error={errors.lc_id} />
                 <FormInput
-                  name="unique_id"
-                  label="Unique ID"
+                  name='unique_id'
+                  label='Unique ID'
                   register={register}
                   error={errors.unique_id}
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700">
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700'>
                 <FormSearchableSelect
-                  name="media_type_id"
-                  label="Media Type"
+                  name='media_type_id'
+                  label='Media Type'
                   control={control}
                   options={mediaTypeOptions}
                   error={errors.media_type_id}
                   required
                 />
-                
+
                 {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
-                  name="bandwidth"
-                  label="Physical Port Capacity"
+                  name='bandwidth'
+                  label='Physical Port Capacity'
                   register={register}
                   error={errors.bandwidth}
                   setValue={setValue}
                   watch={watch}
-                  placeholder="e.g. 10 Gbps"
+                  placeholder='e.g. 10 Gbps'
                 />
 
                 <FormDateInput
-                  name="commissioned_on"
-                  label="Commissioned On"
+                  name='commissioned_on'
+                  label='Commissioned On'
                   control={control}
                   error={errors.commissioned_on}
                 />
 
-                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
-                  <div className="col-span-2">
+                <div className='grid grid-cols-3 gap-4 col-span-full md:col-span-1'>
+                  <div className='col-span-2'>
                     <FormSearchableSelect
-                      name="system_working_interface"
-                      label="Working Port *"
+                      name='system_working_interface'
+                      label='Working Port *'
                       control={control}
                       options={mapPortsToOptions(
                         mainSystemPorts?.data,
                         pristineRecord?.system_working_interface
                       )}
                       error={errors.system_working_interface}
-                      placeholder="Select Working Port"
+                      placeholder='Select Working Port'
                       required
                     />
                   </div>
-                  <div className="col-span-1">
-                    <Label disabled className="mb-1">
+                  <div className='col-span-1'>
+                    <Label disabled className='mb-1'>
                       Type
                     </Label>
                     <Input
                       disabled
                       value={workingPortType}
-                      className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm"
+                      className='bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm'
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 col-span-full md:col-span-1">
-                  <div className="col-span-2">
+                <div className='grid grid-cols-3 gap-4 col-span-full md:col-span-1'>
+                  <div className='col-span-2'>
                     <FormSearchableSelect
-                      name="system_protection_interface"
-                      label="Protection Port"
+                      name='system_protection_interface'
+                      label='Protection Port'
                       control={control}
                       options={mapPortsToOptions(
                         mainSystemPorts?.data,
@@ -710,18 +738,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         watchWorkingInterface
                       )}
                       error={errors.system_protection_interface}
-                      placeholder="Select Protection Port"
+                      placeholder='Select Protection Port'
                       clearable
                     />
                   </div>
-                  <div className="col-span-1">
-                    <Label disabled className="mb-1">
+                  <div className='col-span-1'>
+                    <Label disabled className='mb-1'>
                       Type
                     </Label>
                     <Input
                       disabled
                       value={protectionPortType}
-                      className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm"
+                      className='bg-gray-50 dark:bg-gray-800/50 text-gray-500 font-mono text-sm'
                     />
                   </div>
                 </div>
@@ -729,122 +757,122 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
             </TabsContent>
 
             {/* TAB 2: CONNECTIVITY */}
-            <TabsContent value="connectivity" className="space-y-6">
-              <div className="p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6">
-                <h3 className="font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500">
+            <TabsContent value='connectivity' className='space-y-6'>
+              <div className='p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6'>
+                <h3 className='font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500'>
                   Service Endpoint Configuration
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                   <FormInput
-                    name="services_ip"
-                    label="Service IP"
+                    name='services_ip'
+                    label='Service IP'
                     register={register}
                     error={errors.services_ip}
-                    placeholder="x.x.x.x"
+                    placeholder='x.x.x.x'
                   />
                   <FormInput
-                    name="services_interface"
-                    label="Service Interface / Port"
+                    name='services_interface'
+                    label='Service Interface / Port'
                     register={register}
                     error={errors.services_interface}
-                    placeholder="e.g. Vlan100"
+                    placeholder='e.g. Vlan100'
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 border rounded dark:border-gray-700">
-                  <h3 className="font-semibold mb-3">Start Node (Side A)</h3>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                <div className='p-4 border rounded dark:border-gray-700'>
+                  <h3 className='font-semibold mb-3'>Start Node (Side A)</h3>
                   <FormSearchableSelect
-                    name="sn_id"
-                    label="Start System"
+                    name='sn_id'
+                    label='Start System'
                     control={control}
                     options={systemOptions}
                     error={errors.sn_id}
                   />
 
-                  <div className="grid grid-cols-3 gap-3 mt-2">
-                    <div className="col-span-2">
+                  <div className='grid grid-cols-3 gap-3 mt-2'>
+                    <div className='col-span-2'>
                       <FormSearchableSelect
-                        name="sn_interface"
-                        label="Interface"
+                        name='sn_interface'
+                        label='Interface'
                         control={control}
                         options={mapPortsToOptions(snPorts?.data, pristineRecord?.sn_interface)}
                         error={errors.sn_interface}
-                        placeholder={watchSnId ? 'Select Start Port' : 'Select System First'}
+                        placeholder={watchSnId ? "Select Start Port" : "Select System First"}
                         disabled={!watchSnId}
                       />
                     </div>
-                    <div className="col-span-1">
-                      <Label disabled className="mb-1">
+                    <div className='col-span-1'>
+                      <Label disabled className='mb-1'>
                         Type
                       </Label>
                       <Input
                         disabled
                         value={snPortType}
-                        className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                        className='bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]'
                       />
                     </div>
                   </div>
 
                   <FormInput
-                    name="sn_ip"
-                    label="IP Address"
+                    name='sn_ip'
+                    label='IP Address'
                     register={register}
                     error={errors.sn_ip}
-                    className="mt-2"
+                    className='mt-2'
                   />
                 </div>
 
-                <div className="p-4 border rounded dark:border-gray-700">
-                  <div className="flex justify-between border-b pb-2 dark:border-gray-600 mb-3">
-                    <h3 className="font-semibold">End Node (Side B)</h3>
+                <div className='p-4 border rounded dark:border-gray-700'>
+                  <div className='flex justify-between border-b pb-2 dark:border-gray-600 mb-3'>
+                    <h3 className='font-semibold'>End Node (Side B)</h3>
                   </div>
                   <FormSearchableSelect
-                    name="en_id"
-                    label="End System (If internal)"
+                    name='en_id'
+                    label='End System (If internal)'
                     control={control}
                     options={systemOptions}
                     error={errors.en_id}
                   />
 
-                  <div className="grid grid-cols-3 gap-3 mt-2">
-                    <div className="col-span-2">
+                  <div className='grid grid-cols-3 gap-3 mt-2'>
+                    <div className='col-span-2'>
                       {watchEnId ? (
                         <FormSearchableSelect
-                          name="en_interface"
-                          label="Interface"
+                          name='en_interface'
+                          label='Interface'
                           control={control}
                           options={mapPortsToOptions(enPorts?.data, watchEnInterface)}
                           error={errors.en_interface}
-                          placeholder="Select End Port"
+                          placeholder='Select End Port'
                         />
                       ) : (
                         <FormInput
-                          name="en_interface"
-                          label="Interface / Port"
+                          name='en_interface'
+                          label='Interface / Port'
                           register={register}
-                          placeholder="e.g. Port 1"
+                          placeholder='e.g. Port 1'
                         />
                       )}
                     </div>
-                    <div className="col-span-1">
-                      <Label disabled className="mb-1">
+                    <div className='col-span-1'>
+                      <Label disabled className='mb-1'>
                         Type
                       </Label>
                       <Input
                         disabled
                         value={enPortType}
-                        className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                        className='bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]'
                       />
                     </div>
                   </div>
 
                   {watchEnId && (
-                    <div className="grid grid-cols-3 gap-3 mt-2">
-                      <div className="col-span-2">
+                    <div className='grid grid-cols-3 gap-3 mt-2'>
+                      <div className='col-span-2'>
                         <FormSearchableSelect
-                          name="en_protection_interface"
-                          label="Protection Interface"
+                          name='en_protection_interface'
+                          label='Protection Interface'
                           control={control}
                           options={mapPortsToOptions(
                             enPorts?.data,
@@ -852,81 +880,81 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                             watchEnInterface
                           )}
                           error={errors.en_protection_interface}
-                          placeholder="Select Protection Port (Opt)"
+                          placeholder='Select Protection Port (Opt)'
                           clearable
                         />
                       </div>
-                      <div className="col-span-1">
-                        <Label disabled className="mb-1">
+                      <div className='col-span-1'>
+                        <Label disabled className='mb-1'>
                           Type
                         </Label>
                         <Input
                           disabled
                           value={enProtectionPortType}
-                          className="bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]"
+                          className='bg-white dark:bg-gray-900 text-gray-500 font-mono text-xs h-[42px]'
                         />
                       </div>
                     </div>
                   )}
 
                   <FormInput
-                    name="en_ip"
-                    label="IP Address"
+                    name='en_ip'
+                    label='IP Address'
                     register={register}
                     error={errors.en_ip}
-                    className="mt-2"
+                    className='mt-2'
                   />
                 </div>
               </div>
             </TabsContent>
 
             {/* TAB 3: SDH */}
-            <TabsContent value="sdh" className="space-y-6">
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+            <TabsContent value='sdh' className='space-y-6'>
+              <div className='bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800'>
+                <p className='text-sm text-blue-800 dark:text-blue-200'>
                   Enter details here if this connection runs over an SDH, DWDM, or Legacy network.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <FormInput
-                  name="stm_no"
-                  label="STM Number / Hierarchy"
+                  name='stm_no'
+                  label='STM Number / Hierarchy'
                   register={register}
                   error={errors.stm_no}
-                  placeholder="e.g. STM-16"
+                  placeholder='e.g. STM-16'
                 />
                 <FormInput
-                  name="carrier"
-                  label="Carrier / Operator"
+                  name='carrier'
+                  label='Carrier / Operator'
                   register={register}
                   error={errors.carrier}
                 />
-                <div className="space-y-3">
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase">Side A Details</h4>
+                <div className='space-y-3'>
+                  <h4 className='text-xs font-semibold text-gray-500 uppercase'>Side A Details</h4>
                   <FormInput
-                    name="a_slot"
-                    label="Slot/Port"
+                    name='a_slot'
+                    label='Slot/Port'
                     register={register}
                     error={errors.a_slot}
                   />
                   <FormInput
-                    name="a_customer"
-                    label="Customer/Location"
+                    name='a_customer'
+                    label='Customer/Location'
                     register={register}
                     error={errors.a_customer}
                   />
                 </div>
-                <div className="space-y-3">
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase">Side B Details</h4>
+                <div className='space-y-3'>
+                  <h4 className='text-xs font-semibold text-gray-500 uppercase'>Side B Details</h4>
                   <FormInput
-                    name="b_slot"
-                    label="Slot/Port"
+                    name='b_slot'
+                    label='Slot/Port'
                     register={register}
                     error={errors.b_slot}
                   />
                   <FormInput
-                    name="b_customer"
-                    label="Customer/Location"
+                    name='b_customer'
+                    label='Customer/Location'
                     register={register}
                     error={errors.b_customer}
                   />
