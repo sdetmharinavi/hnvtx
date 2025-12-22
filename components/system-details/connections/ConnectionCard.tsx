@@ -8,7 +8,7 @@ import { formatIP } from '@/utils/formatters';
 
 interface ConnectionCardProps {
   connection: V_system_connections_completeRowSchema;
-  parentSystemId: string; // NEW PROP
+  parentSystemId?: string; // THE FIX: Made this prop optional
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
   onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
@@ -21,7 +21,7 @@ interface ConnectionCardProps {
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   connection, 
-  parentSystemId,
+  parentSystemId, // Now optional
   onViewDetails, 
   onViewPath, 
   onGoToSystem, 
@@ -34,13 +34,14 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   
-  // THE FIX: Determine perspective and set data for End A and End B correctly
+  // THE FIX: The logic now handles the optional parentSystemId
   const { endA, endB, hasProtection } = useMemo(() => {
-    const isFlipped = isSystemContext && connection.en_id === parentSystemId;
+    // Only consider flipping if we are in a system context AND a parentSystemId is provided
+    const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
 
     const endAData = {
         name: isFlipped ? connection.en_name : (connection.sn_name || connection.system_name),
-        ip: formatIP(isFlipped ? connection.en_ip : connection.sn_ip),
+        ip: formatIP(isFlipped ? connection.en_ip : (connection.sn_ip || (connection as V_system_connections_completeRowSchema & {services_ip: unknown}).services_ip)),
         location: isFlipped ? connection.en_node_name : connection.sn_node_name,
         workingPort: isFlipped ? connection.en_interface : (connection.system_working_interface || connection.sn_interface),
         protectionPort: isFlipped ? (connection as V_system_connections_completeRowSchema & { en_protection_interface?: string }).en_protection_interface : connection.system_protection_interface,
@@ -48,7 +49,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
     
     const endBData = {
         name: isFlipped ? (connection.system_name || connection.sn_name) : connection.en_name,
-        ip: formatIP(isFlipped ? (connection.sn_ip || connection.services_ip) : connection.en_ip),
+        ip: formatIP(isFlipped ? (connection.sn_ip || (connection as V_system_connections_completeRowSchema & {services_ip: unknown}).services_ip) : connection.en_ip),
         location: isFlipped ? connection.sn_node_name : connection.en_node_name,
         workingPort: isFlipped ? (connection.system_working_interface || connection.sn_interface) : connection.en_interface,
         protectionPort: isFlipped ? connection.system_protection_interface : (connection as V_system_connections_completeRowSchema & { en_protection_interface?: string }).en_protection_interface,
