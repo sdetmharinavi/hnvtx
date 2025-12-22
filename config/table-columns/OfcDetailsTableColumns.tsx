@@ -134,9 +134,9 @@ export const OfcDetailsTableColumns = (
         searchable: true, 
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }) 
       },
-      sn_power_dbm: { title: 'End A (dBm)', sortable: true },
-      en_power_dbm: { title: 'End B (dBm)', sortable: true },
-      route_loss_db: { title: 'Loss (dB)', sortable: true },
+      sn_power_dbm: { title: 'End A (dBm)',editable: true, sortable: true },
+      en_power_dbm: { title: 'End B (dBm)',editable: true, sortable: true },
+      route_loss_db: { title: 'Loss (dB)',editable: true, sortable: true },
       remark: {
         editable: true,
       }
