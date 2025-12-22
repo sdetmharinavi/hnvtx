@@ -14,7 +14,6 @@ export const allowedRoles = [
     UserRole.MAANADMIN,
     UserRole.SDHADMIN,
     UserRole.ASSETADMIN,
-    UserRole.MNGADMIN,
     UserRole.VIEWER,
     UserRole.AUTHENTICATED,
   ]

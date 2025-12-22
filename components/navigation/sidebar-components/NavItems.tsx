@@ -37,49 +37,49 @@ function NavItems() {
         label: 'Home',
         icon: <FiHome className="h-5 w-5" />,
         href: '/dashboard',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
         id: 'diary',
         label: 'Log Book',
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
         id: 'user-management',
         label: 'User Management',
         icon: <FiUsers className="h-5 w-5" />,
         href: '/dashboard/users',
-        roles: PERMISSIONS.canManageUsers,
+        roles: PERMISSIONS.canManageUsers, // Correctly restricted
       },
       {
         id: 'audit-logs',
         label: 'Audit Logs',
         icon: <FiShield className="h-5 w-5" />,
         href: '/dashboard/audit-logs',
-        roles: PERMISSIONS.canViewAuditLogs,
+        roles: PERMISSIONS.canViewAuditLogs, // Correctly restricted
       },
       {
         id: 'employees',
         label: 'Employees',
         icon: <BsPeople className="h-5 w-5" />,
         href: '/dashboard/employees',
-        roles: PERMISSIONS.canManageEmployees,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageEmployees
       },
       {
         id: 'inventory',
         label: 'Inventory',
         icon: <FiArchive className="h-5 w-5" />,
         href: '/dashboard/inventory',
-        roles: PERMISSIONS.canManageInventory,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageInventory
       },
       {
         id: 'efiles',
         label: 'E-File Tracking',
         icon: <FileText className="h-5 w-5" />,
         href: '/dashboard/e-files',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
         id: 'base-menu',
@@ -92,49 +92,49 @@ function NavItems() {
             label: 'Designations',
             icon: <ImUserTie className="h-5 w-5" />,
             href: '/dashboard/designations',
-            roles: ROLES.PROADMINS,
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'categories',
             label: 'Categories',
             icon: <FiLayers className="h-5 w-5" />,
             href: '/dashboard/categories',
-            roles: ROLES.PROADMINS,
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'lookups',
             label: 'Lookups',
             icon: <FiList className="h-5 w-5" />,
             href: '/dashboard/lookup',
-            roles: ROLES.PROADMINS,
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'maintenance-areas',
             label: 'Maintenance Areas',
             icon: <FiMapPin className="h-5 w-5" />,
             href: '/dashboard/maintenance-areas',
-            roles: ROLES.PROADMINS,
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'nodes',
             label: 'Nodes',
             icon: <FiCpu className="h-5 w-5" />,
             href: '/dashboard/nodes',
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
           {
             id: 'rings',
             label: 'Rings',
             icon: <GiLinkedRings className="h-5 w-5" />,
             href: '/dashboard/rings',
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
           {
             id: 'services',
             label: 'Services',
             href: '/dashboard/services',
             icon: <FiDatabase className="h-5 w-5" />,
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
         ],
       },
@@ -149,21 +149,21 @@ function NavItems() {
             label: 'Optical Fiber Cable',
             href: '/dashboard/ofc',
             icon: <AiFillMerge className="h-5 w-5" />,
-            roles: PERMISSIONS.canManageRoutes,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
           },
           {
             id: 'ofc-connections',
-            label: 'Fiber Inventory', // NEW PAGE
+            label: 'Fiber Inventory',
             href: '/dashboard/ofc/connections',
             icon: <FiActivity className="h-5 w-5" />,
-            roles: PERMISSIONS.canManageRoutes,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
           },
           {
             id: 'route-manager',
             label: 'RouteManager',
             icon: <FaRoute className="h-5 w-5" />,
             href: '/dashboard/route-manager',
-            roles: PERMISSIONS.canManageRoutes,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
           },
         ],
       },
@@ -178,21 +178,21 @@ function NavItems() {
             label: 'Systems',
             href: '/dashboard/systems',
             icon: <GoServer className="h-5 w-5" />,
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
           {
             id: 'global-connections',
             label: 'Global Connections',
             href: '/dashboard/systems/connections',
             icon: <GitBranch className="h-5 w-5" />,
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
           {
             id: 'ring-manager',
             label: 'Rings Manager',
             icon: <GoServer className="h-5 w-5" />,
             href: '/dashboard/ring-manager',
-            roles: PERMISSIONS.canManageSystems,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
           },
         ],
       },
@@ -201,7 +201,7 @@ function NavItems() {
         label: 'Diagrams',
         icon: <TfiLayoutMediaOverlayAlt className="h-5 w-5" />,
         href: '/dashboard/diagrams',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
         id: 'kml-manager',
@@ -215,7 +215,7 @@ function NavItems() {
         label: 'Route Survey',
         icon: <FiAirplay className="h-5 w-5" />,
         href: 'https://route-survey.vercel.app/',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
         external: true,
         preferNative: true,
       },
@@ -224,7 +224,7 @@ function NavItems() {
         label: 'BTS Map',
         icon: <FiMap className="h-5 w-5" />,
         href: 'https://www.google.com/maps/d/u/0/embed?mid=1dpO2c3Qt2EmLFxovZ14rcqkjrN6uqlvP&ehbc=2E312F&ll=22.485295672038035%2C88.3701163022461&z=14',
-        roles: ROLES.ADMINS,
+        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
         external: true,
       },
       {
