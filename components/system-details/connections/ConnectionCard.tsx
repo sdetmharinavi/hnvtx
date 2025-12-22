@@ -33,7 +33,9 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   const hasProtection = !!connection.system_protection_interface || !!connection.en_protection_interface;
   const endAName = connection.sn_name || connection.system_name || 'Local System';
+  const endAIP = connection.sn_ip || 'N/A';
   const endBName = connection.en_name || 'External';
+  const endBIP = connection.en_ip || 'N/A';
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group relative overflow-hidden">
@@ -79,6 +81,9 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                     <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-2" title={endAName}>
                         {endAName}
                     </div>
+                    <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-2" title={endAIP}>
+                        {endAIP}
+                    </div>
                     <div className="inline-flex items-center justify-center font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900 px-2.5 py-1 rounded border border-blue-200 dark:border-blue-900 text-xs shadow-sm min-w-12">
                         {connection.system_working_interface || 'N/A'}
                     </div>
@@ -102,6 +107,9 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                     <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">END B</div>
                      <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" title={endBName}>
                         {endBName}
+                     </div>
+                     <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-1" title={endBIP}>
+                        {endBIP}
                      </div>
                      <div className="font-mono text-xs text-gray-600 dark:text-gray-400 mb-1">
                         {connection.en_interface || 'N/A'}
