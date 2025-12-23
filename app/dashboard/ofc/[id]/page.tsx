@@ -25,7 +25,8 @@ import {
   Link as LinkIcon, 
   Unlink, 
   Upload,
-  GitBranch
+  GitBranch,
+  FiRefreshCw
 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
@@ -56,7 +57,6 @@ export default function OfcCableDetailsPage() {
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const connectionsEnsured = useRef(false);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [hasInitializedView, setHasInitializedView] = useState(false);
@@ -87,6 +87,8 @@ export default function OfcCableDetailsPage() {
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
   const canAdd = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  // New permission for the verification button
+  const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails, isError: isRouteDetailsError } = useRouteDetails(
     cableId as string
@@ -104,36 +106,6 @@ export default function OfcCableDetailsPage() {
       if (result.successCount > 0) refetch();
     }
   });
-
-  // EFFECT TO ENSURE CONNECTIONS EXIST
-  useEffect(() => {
-    if (
-      !isLoading &&
-      !isLoadingRouteDetails &&
-      !isLoadingUtil &&
-      routeDetails?.route &&
-      utilization &&
-      !connectionsEnsured.current &&
-      !createConnectionsMutation.isPending
-    ) {
-      connectionsEnsured.current = true;
-
-      const expectedCount = routeDetails.route.capacity;
-      const existingCount = (utilization.used_fibers || 0) + (utilization.available_fibers || 0);
-
-      if (expectedCount && existingCount < expectedCount) {
-        createConnectionsMutation.mutate({ cable: routeDetails.route as Ofc_cablesRowSchema });
-      }
-    }
-  }, [
-    isLoading,
-    isLoadingRouteDetails,
-    isLoadingUtil,
-    routeDetails,
-    utilization,
-    createConnectionsMutation
-  ]);
-
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
   
@@ -287,6 +259,22 @@ export default function OfcCableDetailsPage() {
     ],
     [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, canEdit, canDelete, handleTraceClick]
   );
+  
+  // THIS IS THE NEW MANUAL HANDLER
+  const handleVerifyAndCreateFibers = useCallback(() => {
+    if (routeDetails?.route && utilization) {
+      const expectedCount = routeDetails.route.capacity;
+      const existingCount = (utilization.used_fibers || 0) + (utilization.available_fibers || 0);
+
+      if (expectedCount && existingCount < expectedCount) {
+        createConnectionsMutation.mutate({ cable: routeDetails.route as Ofc_cablesRowSchema });
+      } else {
+        toast.success("All fiber connections are present and accounted for.");
+      }
+    } else {
+      toast.error("Cable data not fully loaded yet. Please wait a moment and try again.");
+    }
+  }, [routeDetails, utilization, createConnectionsMutation]);
 
   const headerActions = useStandardHeaderActions({
     data: cableConnectionsData as V_ofc_connections_completeRowSchema[],
@@ -303,6 +291,18 @@ export default function OfcCableDetailsPage() {
       orderBy: [{ column: 'fiber_no_sn', ascending: true }]
     },
   });
+
+  // ADD THE NEW BUTTON TO THE HEADER ACTIONS
+  if (canVerifyFibers) {
+    headerActions.splice(1, 0, {
+      label: createConnectionsMutation.isPending ? 'Verifying...' : 'Verify Fibers',
+      onClick: handleVerifyAndCreateFibers,
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />,
+      disabled: createConnectionsMutation.isPending || isLoading,
+      hideTextOnMobile: true,
+    });
+  }
 
   if (canEdit) {
     headerActions.splice(1, 0, {
@@ -425,7 +425,7 @@ export default function OfcCableDetailsPage() {
             {cableConnectionsData.map((fiber) => (
               <FiberConnectionCard key={fiber.id} fiber={fiber} actions={getCardActions(fiber)} />
             ))}
-            {cableConnectionsData.length === 0 && (
+            {cableConnectionsData.length === 0 && !isLoading && (
               <div className="col-span-full">
                 <FancyEmptyState
                   title="No fibers found"

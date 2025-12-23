@@ -117,7 +117,8 @@ BEGIN
                 WHERE 
                     (v_status_bool IS NULL OR s.status = v_status_bool) AND
                     (p_type IS NULL OR s.system_type_name = p_type) AND
-                    (p_region IS NULL OR s.maintenance_area_name = p_region) AND
+                    -- THIS IS THE FIX: Changed s.maintenance_area_name to s.system_maintenance_terminal_name
+                    (p_region IS NULL OR s.system_maintenance_terminal_name = p_region) AND
                     (p_node_type IS NULL OR s.node_type_name = p_node_type) AND
                     (p_query IS NULL OR s.system_name ILIKE '%' || p_query || '%')
                 GROUP BY pm.port_type_code
