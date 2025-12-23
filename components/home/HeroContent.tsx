@@ -36,9 +36,9 @@ const LoadingSpinner = ({
 export default function HeroContent({ variants, floatingAnimation, textY }: HeroContentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(28800);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isPaused, setIsPaused] = useState(false); // THIS IS THE NEW STATE
+  const [isPaused, setIsPaused] = useState(false);
 
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -50,23 +50,24 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     return () => clearInterval(timeInterval);
   }, []);
 
-  // THIS IS THE MODIFIED EFFECT
+  // THIS IS THE CORRECTED EFFECT
   useEffect(() => {
-    // If loading, paused, or already at zero, do nothing.
-    if (loading || isPaused || countdown === 0) {
-      // Ensure any running timer is cleared if we enter a paused state.
+    // First, handle the termination condition: redirect when countdown reaches zero.
+    if (countdown <= 0) {
+      if (!loading) { // Prevent multiple router pushes
+        setLoading(true);
+        router.push('/dashboard');
+      }
+      return; // Stop the effect here
+    }
+
+    // Next, handle pause conditions. If paused or loading, clear any timer and do nothing.
+    if (loading || isPaused) {
       if (navTimerRef.current) clearTimeout(navTimerRef.current);
       return;
     }
 
-    // When the countdown hits zero, trigger the redirect.
-    if (countdown <= 0) {
-      setLoading(true);
-      router.push('/dashboard');
-      return;
-    }
-
-    // Set up the timer to decrement the countdown.
+    // If we're here, it means we should be actively counting down.
     navTimerRef.current = setTimeout(() => {
       setCountdown((prev) => prev - 1);
     }, 1000);
@@ -75,7 +76,7 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     return () => {
       if (navTimerRef.current) clearTimeout(navTimerRef.current);
     };
-  }, [countdown, loading, router, isPaused]); // Added isPaused to dependency array
+  }, [countdown, loading, router, isPaused]);
 
   const handleGetStarted = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -148,7 +149,6 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
       {/* Time & Date Wizard */}
       <motion.div variants={variants.highlightVariants} className="mb-8 w-full max-w-4xl">
         {/* Main Clock Display */}
-        {/* FIX: Added bg-gray-900 fallback */}
         <div className="relative overflow-hidden rounded-2xl border border-red-400/30 bg-gray-900 bg-linear-to-br from-red-950/80 via-purple-950/60 to-red-950/80 p-6 shadow-2xl backdrop-blur-xl">
           {/* Animated background glow */}
           <div className="absolute inset-0 opacity-30">
@@ -196,7 +196,6 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-red-950/50">
                 <motion.div
-                  // FIX: Added bg-red-500 fallback
                   className="h-full rounded-full bg-red-500 bg-linear-to-r from-red-500 via-purple-500 to-pink-500 shadow-lg shadow-red-500/50"
                   initial={{ width: 0 }}
                   animate={{ width: `${getDayProgress()}%` }}
@@ -271,7 +270,6 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
           )}
         </motion.button>
 
-        {/* THIS IS THE MODIFIED COUNTDOWN TIMER */}
         {!loading && (
           <motion.button
             type="button"
@@ -291,11 +289,10 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
           </motion.button>
         )}
       </motion.div>
-            {/* Floating badge */}
+      {/* Floating badge */}
       <motion.div
         variants={variants.ctaVariants}
         animate={floatingAnimation}
-        // FIX: Added bg-red-900 fallback
         className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
       >
         <span className="text-xs font-semibold tracking-wide sm:text-sm">
