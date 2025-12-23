@@ -48,7 +48,7 @@ import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { SystemCard } from '@/components/systems/SystemCard';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; 
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -119,7 +119,7 @@ export default function SystemsPage() {
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
   });
 
-  // --- REFACTORED: Use Centralized Dropdown Hooks ---
+  // --- DROPDOWNS ---
   const { options: systemTypeOptions } = useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
 
@@ -335,8 +335,9 @@ export default function SystemsPage() {
             <SearchableSelect
               placeholder="System Type"
               options={systemTypeOptions}
-              value={filters.filters.system_type_name as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_type_name: v }))}
+              // FIX: Use ID key for filter value
+              value={filters.filters.system_type_id as string}
+              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_type_id: v }))}
               clearable
             />
           </div>
@@ -344,8 +345,9 @@ export default function SystemsPage() {
             <SearchableSelect
               placeholder="Capacity"
               options={capacityOptions}
-              value={filters.filters.system_capacity_name as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_capacity_name: v }))}
+              // FIX: Use ID key for filter value
+              value={filters.filters.system_capacity_id as string}
+              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_capacity_id: v }))}
               clearable
             />
           </div>

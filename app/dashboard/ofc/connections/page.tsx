@@ -79,6 +79,8 @@ export default function GlobalOfcConnectionsPage() {
     exportConfig: canEdit ? { 
         tableName: 'v_ofc_connections_complete', 
         fileName: 'All_Physical_Fibers',
+        useRpc: true,
+        orderBy: [{ column: 'ofc_route_name', ascending: true }],
         maxRows: 50000 
     } : undefined,
   });

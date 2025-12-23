@@ -19,7 +19,6 @@ export const useSystemsData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   // Configuration for Search
-  // THE FIX: Added 'ip_address' to client-side search fields
   const searchFields = [
     'system_name',
     'system_type_name',
@@ -85,16 +84,15 @@ export const useSystemsData = (
 
     // Search
     if (searchQuery) {
-        // THE FIX: Simplified search. performClientSearch now handles ip_address string matching automatically.
         filtered = performClientSearch(filtered, searchQuery, searchFields);
     }
 
-    // Explicit Filters
-    if (filters.system_type_name) {
-      filtered = filtered.filter(s => s.system_type_name === filters.system_type_name);
+    // Explicit Filters (FIXED: Using ID matching)
+    if (filters.system_type_id) {
+      filtered = filtered.filter(s => s.system_type_id === filters.system_type_id);
     }
-    if (filters.system_capacity_name) {
-      filtered = filtered.filter(s => s.system_capacity_name === filters.system_capacity_name);
+    if (filters.system_capacity_id) {
+      filtered = filtered.filter(s => s.system_capacity_id === filters.system_capacity_id);
     }
     if (filters.status) {
       filtered = filtered.filter(s => String(s.status) === filters.status);
