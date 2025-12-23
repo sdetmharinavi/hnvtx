@@ -4,6 +4,7 @@
 import { motion, MotionValue, TargetAndTransition, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { PauseCircle, PlayCircle } from 'lucide-react'; // Import icons
 
 interface HeroContentProps {
   variants: {
@@ -35,8 +36,9 @@ const LoadingSpinner = ({
 export default function HeroContent({ variants, floatingAnimation, textY }: HeroContentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(28800);
+  const [countdown, setCountdown] = useState(15);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isPaused, setIsPaused] = useState(false); // THIS IS THE NEW STATE
 
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,29 +50,42 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     return () => clearInterval(timeInterval);
   }, []);
 
+  // THIS IS THE MODIFIED EFFECT
   useEffect(() => {
-    if (loading) return;
+    // If loading, paused, or already at zero, do nothing.
+    if (loading || isPaused || countdown === 0) {
+      // Ensure any running timer is cleared if we enter a paused state.
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+      return;
+    }
 
-    if (countdown === 0) {
+    // When the countdown hits zero, trigger the redirect.
+    if (countdown <= 0) {
       setLoading(true);
       router.push('/dashboard');
       return;
     }
 
+    // Set up the timer to decrement the countdown.
     navTimerRef.current = setTimeout(() => {
       setCountdown((prev) => prev - 1);
     }, 1000);
 
+    // Cleanup function to clear the timer on re-render or unmount.
     return () => {
       if (navTimerRef.current) clearTimeout(navTimerRef.current);
     };
-  }, [countdown, loading, router]);
+  }, [countdown, loading, router, isPaused]); // Added isPaused to dependency array
 
   const handleGetStarted = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
     if (navTimerRef.current) clearTimeout(navTimerRef.current);
     router.push('/dashboard');
+  };
+
+  const handleTogglePause = () => {
+    setIsPaused(prev => !prev);
   };
 
   const formatTime = (date: Date) => {
@@ -231,17 +246,6 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
           Record Database
         </span>
       </motion.h1>
-      {/* Floating badge */}
-      <motion.div
-        variants={variants.ctaVariants}
-        animate={floatingAnimation}
-        // FIX: Added bg-red-900 fallback
-        className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
-      >
-        <span className="text-xs font-semibold tracking-wide sm:text-sm">
-          🚀 Secure, reliable, and efficient database management for transmission records
-        </span>
-      </motion.div>
 
       <motion.div
         variants={variants.ctaVariants}
@@ -267,16 +271,36 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
           )}
         </motion.button>
 
+        {/* THIS IS THE MODIFIED COUNTDOWN TIMER */}
         {!loading && (
-          <motion.div
+          <motion.button
+            type="button"
+            onClick={handleTogglePause}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
+            animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
-            className="text-xs sm:text-sm text-gray-400 font-mono bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10"
+            className={`flex items-center gap-2 text-xs sm:text-sm font-mono rounded-full backdrop-blur-sm border border-white/10 transition-colors duration-300 ${
+              isPaused 
+                ? 'bg-yellow-900/50 text-yellow-300 px-4 py-2 hover:bg-yellow-900/70'
+                : 'bg-black/30 text-gray-400 px-3 py-1 hover:bg-black/50'
+            }`}
+            title={isPaused ? "Click to resume redirect" : "Click to pause redirect"}
           >
-            Auto-redirecting in {countdown}s
-          </motion.div>
+            {isPaused ? <PlayCircle size={14} /> : <PauseCircle size={14} />}
+            {isPaused ? 'Redirect Paused' : `Auto-redirecting in ${countdown}s`}
+          </motion.button>
         )}
+      </motion.div>
+            {/* Floating badge */}
+      <motion.div
+        variants={variants.ctaVariants}
+        animate={floatingAnimation}
+        // FIX: Added bg-red-900 fallback
+        className="mb-6 rounded-full border border-red-400/40 bg-red-900 bg-linear-to-r from-red-500/20 to-purple-500/20 px-4 py-2 text-red-200 shadow-lg backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 dark:border-blue-400/40 dark:from-blue-500/20 dark:to-cyan-500/20 dark:text-blue-200"
+      >
+        <span className="text-xs font-semibold tracking-wide sm:text-sm">
+          🚀 Secure, reliable, and efficient database management for transmission records
+        </span>
       </motion.div>
     </motion.div>
   );

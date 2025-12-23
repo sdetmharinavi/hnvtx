@@ -1,5 +1,6 @@
+// path: stores/themeStore.ts
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, subscribeWithSelector } from "zustand/middleware";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -9,17 +10,18 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set) => ({
-      theme: "system", // Default value
-      setTheme: (newTheme: Theme) => {
-        set({ theme: newTheme });
-      },
-    }),
-    {
-      name: "theme-storage", // localStorage key
-      // **RECOMMENDATION: Add partialize to ensure consistent storage format**
-      partialize: (state) => ({ theme: state.theme }),
-    }
+  subscribeWithSelector( // THIS IS THE FIX: Wrap with subscribeWithSelector
+    persist(
+      (set) => ({
+        theme: "system", // Default value
+        setTheme: (newTheme: Theme) => {
+          set({ theme: newTheme });
+        },
+      }),
+      {
+        name: "theme-storage", // localStorage key
+        partialize: (state) => ({ theme: state.theme }),
+      }
+    )
   )
 );

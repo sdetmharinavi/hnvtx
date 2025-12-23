@@ -1,3 +1,4 @@
+// path: app/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
@@ -8,6 +9,7 @@ import ThemeProvider from '@/providers/ThemeProvider';
 import PwaRegistry from '@/components/pwa/PwaRegistry';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { LocalDbProvider } from '@/providers/LocalDbProvider';
+import { AppearanceProvider } from '@/providers/AppearanceProvider'; // IMPORTED
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -117,14 +119,17 @@ export default function RootLayout({
         />
         {/* 3. Providers & App */}
         <ThemeProvider>
-          <QueryProvider>
-            <LocalDbProvider>
-              <ToastProvider>
-                <PwaRegistry />
-                {children}
-              </ToastProvider>
-            </LocalDbProvider>
-          </QueryProvider>
+          {/* WRAP with AppearanceProvider */}
+          <AppearanceProvider>
+            <QueryProvider>
+              <LocalDbProvider>
+                <ToastProvider>
+                  <PwaRegistry />
+                  {children}
+                </ToastProvider>
+              </LocalDbProvider>
+            </QueryProvider>
+          </AppearanceProvider>
         </ThemeProvider>
       </body>
     </html>

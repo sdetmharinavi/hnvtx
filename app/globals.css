@@ -1,4 +1,4 @@
-/* app/globals.css */
+/* path: app/globals.css */
 
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
@@ -8,10 +8,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-size-multiplier: 1;
 }
 
 html {
-  font-size: 15px;
+  /* THIS IS THE CHANGE: Use the CSS variable to calculate font size */
+  font-size: calc(15px * var(--font-size-multiplier));
   /* Prevent pull-to-refresh on mobile which breaks app-like feel for tables */
   overscroll-behavior-y: none;
   height: 100%; /* Ensure legacy browser support */
@@ -20,21 +22,21 @@ html {
 /* Large screens (Full HD) */
 @media (min-width: 1920px) {
   html {
-    font-size: 16px;
+    font-size: calc(16px * var(--font-size-multiplier));
   }
 }
 
 /* 2K Screens */
 @media (min-width: 2560px) {
   html {
-    font-size: 18px;
+    font-size: calc(18px * var(--font-size-multiplier));
   }
 }
 
 /* 4K Screens */
 @media (min-width: 3840px) {
   html {
-    font-size: 22px;
+    font-size: calc(22px * var(--font-size-multiplier));
   }
 }
 

@@ -1,3 +1,4 @@
+// path: components/common/ui/index.ts
 export { Button } from './Button';
 export { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription, CardAction } from './card';
 export { Input } from './Input';
@@ -15,7 +16,4 @@ export { RoleBadge } from './badges/RoleBadge';
 export { StatusBadge } from './badges/StatusBadge';
 export {Tabs, TabsContent, TabsList, TabsTrigger} from './tabs';
 export {SearchableSelect} from './select/SearchableSelect';
-
-
-
-
+export { FontSizeToggle } from './FontSizeToggle';

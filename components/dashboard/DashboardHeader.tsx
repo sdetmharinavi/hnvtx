@@ -16,6 +16,7 @@ import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
 import { SyncStatusModal } from "./SyncStatusModal";
+import { FontSizeToggle } from "../common/ui/FontSizeToggle";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -153,7 +154,8 @@ export default function DashboardHeader({
                       >
                         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                           <AuthButton />
-                          <div className="p-2 border-t border-gray-100 dark:border-gray-700">
+                          <div className="p-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-center gap-2">
+                            <FontSizeToggle />
                             <ThemeToggle />
                           </div>
                         </div>
@@ -163,6 +165,10 @@ export default function DashboardHeader({
                 </div>
               ) : (
                 <>
+                  <div className="flex items-center gap-2">
+                    <FontSizeToggle />
+                    <ThemeToggle />
+                  </div>
                   <div className="group">
                     <Link
                       href="/onboarding"
@@ -191,7 +197,6 @@ export default function DashboardHeader({
                       </div>
                     </div>
                   </div>
-                  <ThemeToggle />
                 </>
               )}
             </div>
