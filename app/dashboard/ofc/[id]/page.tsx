@@ -25,8 +25,7 @@ import {
   Link as LinkIcon, 
   Unlink, 
   Upload,
-  GitBranch,
-  FiRefreshCw
+  GitBranch
 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
@@ -50,6 +49,7 @@ import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
+import { FiRefreshCw } from 'react-icons/fi';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
