@@ -137,7 +137,7 @@ export default function MaintenanceAreasPage() {
         <AreaFormModal
           isOpen={isFormOpen} onClose={() => setFormOpen(false)}
           onSubmit={(data: Maintenance_areasInsertSchema) => handleFormSubmit(data, editingArea)}
-          area={editingArea} allAreas={allAreas} areaTypes={areaTypes}
+          area={editingArea} allAreas={allAreas}
           isLoading={createAreaMutation.isPending || updateAreaMutation.isPending}
         />
       )}

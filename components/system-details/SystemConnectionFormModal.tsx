@@ -34,45 +34,33 @@ import { Network, Settings, Activity, RefreshCw } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 import { formatIP } from "@/utils/formatters";
 import Link from "next/link";
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
 
-// Update schema to include the new field
 const formSchema = z.object({
-  // Connection Keys
   system_id: z.uuid(),
   media_type_id: z.string().uuid("Media Type is required"),
   status: z.boolean(),
   commissioned_on: z.string().nullable().optional(),
   remark: z.string().nullable().optional(),
-
-  // Service Keys (Logical)
   service_name: z.string().min(1, "Service Name / Customer is required"),
   link_type_id: z.uuid().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),
   vlan: z.string().nullable().optional(),
   lc_id: z.string().nullable().optional(),
   unique_id: z.string().nullable().optional(),
-
-  // UI Helper
   existing_service_id: z.string().nullable().optional(),
-
-  // Connectivity
   services_ip: z.string().nullable().optional(),
   services_interface: z.string().nullable().optional(),
   system_working_interface: z.string().min(1, "Working Interface is required"),
   system_protection_interface: z.string().nullable().optional(),
-
-  // Topology
   sn_id: z.string().nullable().optional(),
   en_id: z.string().nullable().optional(),
   sn_ip: z.string().nullable().optional(),
   en_ip: z.string().nullable().optional(),
   sn_interface: z.string().nullable().optional(),
   en_interface: z.string().nullable().optional(),
-  // Destination Protection Interface
   en_protection_interface: z.string().nullable().optional(),
   bandwidth: z.string().nullable().optional(),
-
-  // SDH
   stm_no: z.string().nullable().optional(),
   carrier: z.string().nullable().optional(),
   a_slot: z.string().nullable().optional(),
@@ -99,7 +87,6 @@ interface SystemConnectionFormModalProps {
   isLoading: boolean;
 }
 
-// --- Helper Component for Bandwidth Inputs ---
 const BandwidthInput = ({
   name,
   label,
@@ -121,13 +108,10 @@ const BandwidthInput = ({
 
   const appendUnit = (unit: string) => {
     const current = currentValue || "";
-    // Remove existing units to avoid duplication (e.g., "100 Mbps Gbps")
     const clean = current.replace(/\s*(Kbps|Mbps|Gbps|G|M|K)$/i, "").trim();
 
     if (clean) {
       setValue(name, `${clean} ${unit}`, { shouldValidate: true, shouldDirty: true });
-    } else {
-      // Optional: Handle empty state if needed, e.g. focusing the input
     }
   };
 
@@ -208,19 +192,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchEnProtectionInterface = watch("en_protection_interface");
   const watchSnId = watch("sn_id");
 
+  // THIS IS THE FIX: Replaced useTableQuery with offline-first hooks
+  const { options: mediaTypeOptions } = useLookupTypeOptions('MEDIA_TYPES');
+  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
+
   const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
     columns: "id, system_name, ip_address, node_name",
     limit: 5000,
-  });
-
-  const { data: mediaTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name",
-    filters: { category: "MEDIA_TYPES", name: { operator: "neq", value: "DEFAULT" } },
-  });
-
-  const { data: linkTypes = { data: [] } } = useTableQuery(supabase, "lookup_types", {
-    columns: "id, name",
-    filters: { category: "LINK_TYPES", name: { operator: "neq", value: "DEFAULT" } },
   });
 
   const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
@@ -298,15 +276,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [systemsResult.data]
   );
 
-  const mediaTypeOptions = useMemo(
-    () => mediaTypes.data.map((t) => ({ value: t.id, label: t.name })),
-    [mediaTypes.data]
-  );
-  const linkTypeOptions = useMemo(
-    () => linkTypes.data.map((t) => ({ value: t.id, label: t.name })),
-    [linkTypes.data]
-  );
-
   const serviceOptions = useMemo(() => {
     let filteredServices = servicesData;
     if (watchLinkTypeId) {
@@ -377,15 +346,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     if (isOpen) {
       setActiveTab("general");
       if (isEditMode && pristineRecord) {
-        // THE FIX START: Refactored logic for clarity and correctness
         const extConnection = pristineRecord as ExtendedConnectionRow;
         const safeValue = (val: string | null | undefined) => val ?? "";
         const safeNull = (val: string | null | undefined) => val ?? null;
-
-        // Determine if the perspective needs to be "flipped"
         const isFlipped = extConnection.system_id !== parentSystem.id;
 
-        // Define start and end based on perspective
         const startData = isFlipped
           ? {
               id: extConnection.en_id,
@@ -415,10 +380,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         setServiceMode(extConnection.service_id ? "existing" : "manual");
 
         reset({
-          // Always use the parent system as the primary system_id for the form
           system_id: parentSystem.id!,
-
-          // Logical Service Details
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
@@ -426,15 +388,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           lc_id: safeValue(extConnection.lc_id),
           unique_id: safeValue(extConnection.unique_id),
           existing_service_id: safeNull(extConnection.service_id),
-
-          // Physical Connection Details
           status: extConnection.status ?? true,
           media_type_id: safeValue(extConnection.media_type_id),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           services_ip: safeValue(String((extConnection as any).services_ip || "")),
           services_interface: safeValue(extConnection.services_interface),
-
-          // Map the "local" system's ports (which could be start or end of the DB record)
           system_working_interface: safeValue(
             isFlipped ? extConnection.en_interface : extConnection.system_working_interface
           ),
@@ -443,26 +401,18 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
               ? extConnection.en_protection_interface
               : extConnection.system_protection_interface
           ),
-
-          // Map Start Node (Side A)
           sn_id: safeNull(startData.id),
           sn_interface: safeNull(startData.interface),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sn_ip: safeNull(formatIP(startData.ip as any)),
-
-          // Map End Node (Side B)
           en_id: safeNull(endData.id),
           en_interface: safeNull(endData.interface),
           en_protection_interface: safeNull(endData.protection_interface),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           en_ip: safeNull(formatIP(endData.ip as any)),
-
-          // Timestamps & Remarks
           commissioned_on: safeNull(extConnection.commissioned_on),
           remark: safeNull(extConnection.remark),
           bandwidth: safeNull(extConnection.bandwidth),
-
-          // SDH
           stm_no: safeNull(extConnection.sdh_stm_no),
           carrier: safeNull(extConnection.sdh_carrier),
           a_slot: safeNull(extConnection.sdh_a_slot),
@@ -470,7 +420,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           b_slot: safeNull(extConnection.sdh_b_slot),
           b_customer: safeNull(extConnection.sdh_b_customer),
         });
-        // THE FIX END
       } else if (!isEditMode) {
         reset({
           system_id: parentSystem.id!,
@@ -539,7 +488,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
-      size='full'>
+      size="full">
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={onClose}
@@ -567,8 +516,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           )
         }
         standalone
-        widthClass='w-full max-w-full'
-        heightClass='h-auto max-h-[90vh]'>
+        widthClass="w-full max-w-full"
+        heightClass="h-auto max-h-[90vh]">
         <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
           <TabsList className='grid w-full grid-cols-3 mb-4'>
             <TabsTrigger value='general' className='flex items-center gap-2'>
@@ -583,7 +532,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           </TabsList>
 
           <div className='mt-4 min-h-[350px] overflow-y-auto px-1'>
-            {/* TAB 1: GENERAL */}
             <TabsContent value='general' className='space-y-6'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                 <FormSearchableSelect
@@ -651,7 +599,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
                 <FormInput name='vlan' label='VLAN' register={register} error={errors.vlan} />
 
-                {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
                   name='bandwidth_allocated'
                   label='Allocated BW'
@@ -681,7 +628,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   required
                 />
 
-                {/* --- USE CUSTOM BANDWIDTH COMPONENT --- */}
                 <BandwidthInput
                   name='bandwidth'
                   label='Physical Port Capacity'
@@ -756,7 +702,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
               </div>
             </TabsContent>
 
-            {/* TAB 2: CONNECTIVITY */}
             <TabsContent value='connectivity' className='space-y-6'>
               <div className='p-4 border rounded dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 mb-6'>
                 <h3 className='font-semibold mb-3 text-sm uppercase tracking-wide text-gray-500'>
@@ -908,7 +853,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
               </div>
             </TabsContent>
 
-            {/* TAB 3: SDH */}
             <TabsContent value='sdh' className='space-y-6'>
               <div className='bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800'>
                 <p className='text-sm text-blue-800 dark:text-blue-200'>
