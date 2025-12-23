@@ -84,10 +84,9 @@ export default function OfcCableDetailsPage() {
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
+  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN].includes(role as UserRole);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
-  const canAdd = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  // New permission for the verification button
+  const canAdd = canEdit;
   const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
 
   const { data: routeDetails, isLoading: isLoadingRouteDetails, isError: isRouteDetailsError } = useRouteDetails(

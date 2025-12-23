@@ -9,6 +9,7 @@ export enum UserRole {
     ASSETADMIN = "asset_admin",
     MNGADMIN = "mng_admin",
     VIEWER = "viewer",
+    OFCADMIN = "ofc_admin",
     AUTHENTICATED = "authenticated",
     ANON = "anon",
 }
