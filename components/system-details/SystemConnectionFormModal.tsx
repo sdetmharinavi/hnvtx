@@ -16,7 +16,8 @@ import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
 } from "@/schemas/zod-schemas";
-import { useTableQuery, useTableRecord } from "@/hooks/database";
+// THE FIX: Import useRpcRecord from core-queries
+import { useRpcRecord, useTableQuery } from "@/hooks/database";
 import { createClient } from "@/utils/supabase/client";
 import {
   Modal,
@@ -34,7 +35,8 @@ import { Network, Settings, Activity, RefreshCw } from "lucide-react";
 import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 import { formatIP } from "@/utils/formatters";
 import Link from "next/link";
-import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
+// THE FIX: Import new hooks
+import { useLookupTypeOptions, useSystemOptions, usePortOptions } from "@/hooks/data/useDropdownOptions";
 
 const formSchema = z.object({
   system_id: z.uuid(),
@@ -155,7 +157,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const [activeTab, setActiveTab] = useState("general");
   const [serviceMode, setServiceMode] = useState<"existing" | "manual">("existing");
 
-  const { data: pristineRecord, isLoading: isLoadingPristine } = useTableRecord(
+  // THE FIX: Use useRpcRecord to ensure we can fetch the full view details even with RLS enabled
+  const { data: pristineRecord, isLoading: isLoadingPristine } = useRpcRecord(
     supabase,
     "v_system_connections_complete",
     isEditMode ? editingConnection?.id || null : null,
@@ -192,15 +195,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchEnProtectionInterface = watch("en_protection_interface");
   const watchSnId = watch("sn_id");
 
-  // THIS IS THE FIX: Replaced useTableQuery with offline-first hooks
+  // Dropdown Data - using new RPC-safe hooks
   const { options: mediaTypeOptions } = useLookupTypeOptions('MEDIA_TYPES');
   const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
+  const { data: systemsData, isLoading: systemsLoading } = useSystemOptions();
 
-  const { data: systemsResult = { data: [] } } = useTableQuery(supabase, "v_systems_complete", {
-    columns: "id, system_name, ip_address, node_name",
-    limit: 5000,
-  });
-
+  // Service Data (Can stay useTableQuery or move to RPC if needed, usually Services table is more open)
   const { data: servicesResult = { data: [] } } = useTableQuery(supabase, "v_services", {
     columns:
       "id, name, link_type_id, link_type_name, bandwidth_allocated, vlan, lc_id, unique_id, node_name",
@@ -214,26 +214,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     [servicesResult.data]
   );
 
-  const { data: mainSystemPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchSystemId || "", port_admin_status: true },
-    limit: 1000,
-    enabled: !!watchSystemId,
-  });
-
-  const { data: snPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchSnId || "", port_admin_status: true },
-    limit: 1000,
-    enabled: !!watchSnId,
-  });
-
-  const { data: enPorts } = useTableQuery(supabase, "v_ports_management_complete", {
-    columns: "port, port_utilization, port_type_name, port_type_code",
-    filters: { system_id: watchEnId || "", port_admin_status: true },
-    limit: 1000,
-    enabled: !!watchEnId,
-  });
+  // Port Data - using new RPC-safe hook
+  const { data: mainSystemPorts, isLoading: mainPortsLoading } = usePortOptions(watchSystemId || null);
+  const { data: snPorts, isLoading: snPortsLoading } = usePortOptions(watchSnId || null);
+  const { data: enPorts, isLoading: enPortsLoading } = usePortOptions(watchEnId || null);
 
   const mapPortsToOptions = (
     portsData: { port: string | null; port_utilization: boolean | null }[] | undefined,
@@ -258,8 +242,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const getPortTypeDisplay = useCallback(
     (portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
-      if (!portsList?.data || !portInterface) return "";
-      const port = portsList.data.find((p) => p.port === portInterface);
+      if (!portsList || !portInterface) return "";
+      const port = portsList.find((p) => p.port === portInterface);
       if (!port) return "Unknown";
       return port.port_type_code || port.port_type_name || "Unknown";
     },
@@ -268,12 +252,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
   const systemOptions = useMemo(
     () =>
-      (systemsResult.data || []).map((s) => {
+      (systemsData || []).map((s) => {
         const loc = s.node_name ? ` @ ${s.node_name}` : "";
         const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
         return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
       }),
-    [systemsResult.data]
+    [systemsData]
   );
 
   const serviceOptions = useMemo(() => {
@@ -300,20 +284,20 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   }, [watchWorkingInterface, watchSnId, watchSystemId, setValue]);
 
   useEffect(() => {
-    if (watchSnId && systemsResult.data) {
-      const sys = systemsResult.data.find((s) => s.id === watchSnId);
+    if (watchSnId && systemsData) {
+      const sys = systemsData.find((s) => s.id === watchSnId);
       if (sys && sys.ip_address) setValue("sn_ip", formatIP(sys.ip_address));
       else setValue("sn_ip", "");
     }
-  }, [watchSnId, systemsResult.data, setValue]);
+  }, [watchSnId, systemsData, setValue]);
 
   useEffect(() => {
-    if (watchEnId && systemsResult.data) {
-      const sys = systemsResult.data.find((s) => s.id === watchEnId);
+    if (watchEnId && systemsData) {
+      const sys = systemsData.find((s) => s.id === watchEnId);
       if (sys && sys.ip_address) setValue("en_ip", formatIP(sys.ip_address));
       else setValue("en_ip", "");
     }
-  }, [watchEnId, systemsResult.data, setValue]);
+  }, [watchEnId, systemsData, setValue]);
 
   useEffect(() => {
     if (serviceMode === "existing" && watchExistingServiceId) {
@@ -481,7 +465,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     toast.error("Please check the form for errors.");
   };
 
-  const effectiveLoading = isLoading || (isEditMode && isLoadingPristine);
+  const effectiveLoading = isLoading || (isEditMode && isLoadingPristine) || systemsLoading || mainPortsLoading || snPortsLoading || enPortsLoading;
 
   return (
     <Modal
@@ -652,12 +636,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       label='Working Port *'
                       control={control}
                       options={mapPortsToOptions(
-                        mainSystemPorts?.data,
+                        mainSystemPorts,
                         pristineRecord?.system_working_interface
                       )}
                       error={errors.system_working_interface}
                       placeholder='Select Working Port'
                       required
+                      isLoading={mainPortsLoading}
                     />
                   </div>
                   <div className='col-span-1'>
@@ -679,13 +664,14 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                       label='Protection Port'
                       control={control}
                       options={mapPortsToOptions(
-                        mainSystemPorts?.data,
+                        mainSystemPorts,
                         pristineRecord?.system_protection_interface,
                         watchWorkingInterface
                       )}
                       error={errors.system_protection_interface}
                       placeholder='Select Protection Port'
                       clearable
+                      isLoading={mainPortsLoading}
                     />
                   </div>
                   <div className='col-span-1'>
@@ -733,6 +719,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     control={control}
                     options={systemOptions}
                     error={errors.sn_id}
+                    isLoading={systemsLoading}
                   />
 
                   <div className='grid grid-cols-3 gap-3 mt-2'>
@@ -741,10 +728,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         name='sn_interface'
                         label='Interface'
                         control={control}
-                        options={mapPortsToOptions(snPorts?.data, pristineRecord?.sn_interface)}
+                        options={mapPortsToOptions(snPorts, pristineRecord?.sn_interface)}
                         error={errors.sn_interface}
                         placeholder={watchSnId ? "Select Start Port" : "Select System First"}
                         disabled={!watchSnId}
+                        isLoading={snPortsLoading}
                       />
                     </div>
                     <div className='col-span-1'>
@@ -778,6 +766,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     control={control}
                     options={systemOptions}
                     error={errors.en_id}
+                    isLoading={systemsLoading}
                   />
 
                   <div className='grid grid-cols-3 gap-3 mt-2'>
@@ -787,9 +776,10 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                           name='en_interface'
                           label='Interface'
                           control={control}
-                          options={mapPortsToOptions(enPorts?.data, watchEnInterface)}
+                          options={mapPortsToOptions(enPorts, watchEnInterface)}
                           error={errors.en_interface}
                           placeholder='Select End Port'
+                          isLoading={enPortsLoading}
                         />
                       ) : (
                         <FormInput
@@ -820,13 +810,14 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                           label='Protection Interface'
                           control={control}
                           options={mapPortsToOptions(
-                            enPorts?.data,
+                            enPorts,
                             watchEnProtectionInterface,
                             watchEnInterface
                           )}
                           error={errors.en_protection_interface}
                           placeholder='Select Protection Port (Opt)'
                           clearable
+                          isLoading={enPortsLoading}
                         />
                       </div>
                       <div className='col-span-1'>
