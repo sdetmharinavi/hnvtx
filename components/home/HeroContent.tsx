@@ -36,7 +36,7 @@ const LoadingSpinner = ({
 export default function HeroContent({ variants, floatingAnimation, textY }: HeroContentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(28800);
+  const [countdown, setCountdown] = useState(15);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPaused, setIsPaused] = useState(false);
 
