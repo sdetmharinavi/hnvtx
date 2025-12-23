@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we want to fix if any bugs in the project, check thoroughly for any such bugs. Second thing in some pages/section didn't update instantly when User is online, check those areas.
+Let's begin! First we will fix bugs like in /api/route/[id]. Its saying Error fetching route details for ID 0f9b5bec-1d37-48da-8e21-24d5628ae24f: Error: Route fetch error: permission denied for view v_ofc_cables_complete. As view is security invoker, I guess it should have been fetched using rpc instead of direct as we are doing for other views. Also while exporting excel on ofc/id page getting error Export failed: No data found for the selected criteria.

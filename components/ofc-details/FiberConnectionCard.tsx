@@ -92,6 +92,13 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                     {startDom || "-"}
                   </span>
                 </div>
+                {fiber.sn_power_dbm &&
+                  <div className='flex justify-between'>
+                  <span className='text-gray-400'>EA Power</span>
+                  <span className='font-mono text-gray-600 dark:text-gray-400'>
+                    {fiber.sn_power_dbm ? `${fiber.sn_power_dbm}dBm` : "-"}
+                  </span>
+                </div>}
               </div>
             </div>
 
@@ -128,6 +135,15 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                     {endDom || "-"}
                   </span>
                 </div>
+                {
+                  fiber.en_power_dbm &&
+                  <div className='flex justify-between'>
+                  <span className='text-gray-400'>EB Power</span>
+                  <span className='font-mono text-gray-600 dark:text-gray-400'>
+                    {fiber.en_power_dbm ? `${fiber.en_power_dbm}dBm` : "-"}
+                  </span>
+                </div>
+                }
               </div>
             </div>
           </div>

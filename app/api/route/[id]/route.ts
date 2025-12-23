@@ -2,6 +2,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import z from 'zod';
+import { 
+  V_ofc_cables_completeRowSchema, 
+  V_junction_closures_completeRowSchema, 
+  Cable_segmentsRowSchema 
+} from '@/schemas/zod-schemas';
 
 // It is NOT a database model, but an API contract.
 const evolutionCommitPayloadSchema = z.object({
@@ -41,45 +46,69 @@ export async function GET(
   const supabase = await createClient();
 
   try {
-    // 1. Fetch main route info from the complete view
-    const { data: routeData, error: routeError } = await supabase
-      .from('v_ofc_cables_complete')
-      .select('*')
-      .eq('id', routeId)
-      .maybeSingle(); 
+    // 1. Fetch main route info using RPC to bypass RLS
+    const { data: routeRpcData, error: routeError } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_ofc_cables_complete',
+      p_limit: 1,
+      p_offset: 0,
+      p_filters: { id: routeId }
+    });
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
+    
+    // Parse RPC result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const routeDataList = (routeRpcData as any)?.data as V_ofc_cables_completeRowSchema[];
+    const routeData = routeDataList?.[0];
+
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     
-    // 2. Fetch all existing JCs on this cable
-    // THE FIX: Changed 'node:node_id(name)' to 'node:nodes(name)'
-    // PostgREST uses the table name 'nodes' to resolve the relationship.
-    const { data: jcData, error: jcError } = await supabase
-      .from('junction_closures')
-      .select('*, node:nodes(name)') 
-      .eq('ofc_cable_id', routeId);
+    // 2. Fetch all existing JCs using RPC (v_junction_closures_complete already joins nodes)
+    const { data: jcRpcData, error: jcError } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_junction_closures_complete',
+      p_limit: 1000,
+      p_offset: 0,
+      p_filters: { ofc_cable_id: routeId }
+    });
 
     if (jcError) throw new Error(`JC fetch error: ${jcError.message}`);
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jcDataList = (jcRpcData as any)?.data as V_junction_closures_completeRowSchema[];
 
-    const jointBoxes = (jcData || []).map(jc => ({
+    // Transform to match the UI's expected "JointBox" schema
+    const jointBoxes = (jcDataList || []).map(jc => ({
       ...jc,
+      id: jc.id!, // Ensure ID is present
+      node_id: jc.node_id!,
+      ofc_cable_id: jc.ofc_cable_id!,
+      created_at: null, // View doesn't strictly require these for visualization
+      updated_at: null,
       status: 'existing' as const,
+      // Map the joined name from the view to the nested node object
+      node: { name: jc.name },
       attributes: {
-        position_on_route: (jc.position_km / (routeData.current_rkm || 1)) * 100,
-        // The name is now correctly available under the 'node' relation alias
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        name: (jc as any).node?.name 
+        position_on_route: (jc.position_km && routeData.current_rkm) 
+          ? (jc.position_km / routeData.current_rkm) * 100 
+          : 0,
+        name: jc.name || undefined
       }
     }));
 
-    // 3. Fetch all current segments for this cable
-    const { data: segmentData, error: segmentError } = await supabase
-      .from('cable_segments')
-      .select('*')
-      .eq('original_cable_id', routeId)
-      .order('segment_order');
+    // 3. Fetch all current segments using RPC
+    const { data: segmentRpcData, error: segmentError } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'cable_segments', // Can query tables directly via this RPC
+      p_limit: 1000,
+      p_offset: 0,
+      p_filters: { original_cable_id: routeId },
+      p_order_by: 'segment_order',
+      p_order_dir: 'asc'
+    });
       
     if (segmentError) throw new Error(`Segment fetch error: ${segmentError.message}`);
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const segmentData = (segmentRpcData as any)?.data as Cable_segmentsRowSchema[];
 
     // Construct the final payload correctly
     const payload = {

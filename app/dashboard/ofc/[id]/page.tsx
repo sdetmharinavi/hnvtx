@@ -26,6 +26,7 @@ import {
   Unlink,
   Upload,
   GitBranch,
+  RefreshCw,
 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
@@ -49,7 +50,6 @@ import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
-import { FiRefreshCw } from 'react-icons/fi';
 import { formatDate } from '@/utils/formatters';
 
 export default function OfcCableDetailsPage() {
@@ -304,7 +304,6 @@ export default function OfcCableDetailsPage() {
     ]
   );
 
-  // THIS IS THE NEW MANUAL HANDLER
   const handleVerifyAndCreateFibers = useCallback(() => {
     if (routeDetails?.route && utilization) {
       const expectedCount = routeDetails.route.capacity;
@@ -330,23 +329,19 @@ export default function OfcCableDetailsPage() {
     isLoading: isLoading,
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
-      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${
-        routeDetails?.route.route_name
-      }_connections`,
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${routeDetails?.route.route_name}_connections`,
+      // THE FIX: Use simple key-value filter syntax for reliability in exports
       filters: { ofc_id: cableId as string },
       orderBy: [{ column: 'fiber_no_sn', ascending: true }],
     },
   });
 
-  // ADD THE NEW BUTTON TO THE HEADER ACTIONS
   if (canVerifyFibers) {
     headerActions.splice(1, 0, {
       label: createConnectionsMutation.isPending ? 'Verifying...' : 'Verify Fibers',
       onClick: handleVerifyAndCreateFibers,
       variant: 'outline',
-      leftIcon: (
-        <FiRefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />
-      ),
+      leftIcon: <RefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />,
       disabled: createConnectionsMutation.isPending || isLoading,
       hideTextOnMobile: true,
     });
