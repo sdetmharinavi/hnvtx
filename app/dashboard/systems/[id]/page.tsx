@@ -1,7 +1,7 @@
 // path: app/dashboard/systems/[id]/page.tsx
 "use client";
 
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
@@ -30,13 +30,14 @@ import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; // THIS IS THE FIX
 import {  FiDatabase, FiPieChart, FiUpload, FiGrid, FiList, FiSearch, FiGitBranch } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { localDb } from '@/hooks/data/localDb';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -53,10 +54,8 @@ export default function SystemConnectionsPage() {
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Local Filter State
   const [filters, setFilters] = useState<Filters>({});
 
-  // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<V_system_connections_completeRowSchema | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +69,6 @@ export default function SystemConnectionsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
-  // Stats Configuration State
   const [isStatsConfigOpen, setIsStatsConfigOpen] = useState(false);
   const [statsFilters, setStatsFilters] = useState<StatsFilterState>({
     includeAdminDown: true,
@@ -80,25 +78,12 @@ export default function SystemConnectionsPage() {
 
   const tracePath = useTracePath(supabase);
 
-  // --- PERMISSIONS ---
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // Fetch Options
-  const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['media-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
-  );
-  const mediaOptions = useMemo(() => (mediaTypesData || []).map(t => ({ value: t.id, label: t.name })), [mediaTypesData]);
-
-  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['link-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
-  );
-  const linkTypeOptions = useMemo(() => (linkTypesData || []).map(t => ({ value: t.id, label: t.name })), [linkTypesData]);
+  // --- THIS IS THE FIX: Use offline-capable hook ---
+  const { options: mediaOptions } = useLookupTypeOptions('MEDIA_TYPES');
+  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
 
   const useData = useSystemConnectionsData(systemId);
 
@@ -144,7 +129,6 @@ export default function SystemConnectionsPage() {
       }
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const capacityOptions = useMemo(() => {
     const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
     return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
@@ -252,7 +236,6 @@ export default function SystemConnectionsPage() {
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && parentSystem?.id) {
-       // ... (unchanged file handling logic) ...
        const columnMapping: UploadColumnMapping<"v_system_connections_complete">[] = [
         { excelHeader: 'Id', dbKey: 'id' },
         { excelHeader: 'Media Type Id', dbKey: 'media_type_id', required: true },
@@ -352,7 +335,7 @@ export default function SystemConnectionsPage() {
     });
   }
 
-  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>, actions: React.ReactNode) => {
+  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
     return (
         <div className="flex flex-col gap-3">
              <ConnectionCard 
@@ -368,7 +351,7 @@ export default function SystemConnectionsPage() {
                 canDelete={canDelete}
              />
              <div className="flex justify-end gap-2 px-2">
-                 {actions}
+                 {/* This is where mobile actions would go if not on the card */}
              </div>
         </div>
     );

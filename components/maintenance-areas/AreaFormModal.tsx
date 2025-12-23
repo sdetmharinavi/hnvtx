@@ -1,4 +1,4 @@
-// components/maintenance-areas/AreaFormModal.tsx
+// path: components/maintenance-areas/AreaFormModal.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +18,8 @@ import {
   Maintenance_areasRowSchema,
 } from "@/schemas/zod-schemas";
 import { generateCodeFromName } from "@/config/helper-functions";
+// THIS IS THE FIX: Import the correct hook
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
 
 export function AreaFormModal({
   isOpen,
@@ -25,11 +27,13 @@ export function AreaFormModal({
   onSubmit,
   area,
   allAreas,
-  areaTypes,
   isLoading,
-}: AreaFormModalProps) {
+}: Omit<AreaFormModalProps, 'areaTypes'>) { // areaTypes is now fetched internally
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
   const isEditMode = !!area;
+
+  // THIS IS THE FIX: Use the offline-first hook internally
+  const { options: areaTypeOptions, isLoading: isLoadingAreaTypes } = useLookupTypeOptions('MAINTENANCE_AREA_TYPES');
 
   const {
     register,
@@ -62,13 +66,11 @@ export function AreaFormModal({
     if (isOpen) {
       setIsCodeManuallyEdited(isEditMode);
       if (area) {
-        // ** Manually map fields from the 'area' prop to what the form schema expects.**
-        // This avoids passing unexpected nested objects (like `parent_area`) to the form state.
         reset({
           name: area.name,
           code: area.code,
           area_type_id: area.area_type_id,
-          parent_id: area.parent_id, // Use the ID directly, not the nested object
+          parent_id: area.parent_id,
           contact_person: area.contact_person,
           contact_number: area.contact_number,
           email: area.email,
@@ -122,6 +124,7 @@ export function AreaFormModal({
   };
 
   if (!isOpen) return null;
+  const combinedLoading = isLoading || isLoadingAreaTypes;
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm'>
@@ -130,137 +133,40 @@ export function AreaFormModal({
           onSubmit={handleSubmit(onValidSubmit)}
           title={area ? "Edit Area" : "Add New Area"}
           onCancel={onClose}
-          isLoading={isLoading}
+          isLoading={combinedLoading}
           heightClass='max-h-[85vh] overflow-y-auto'
           standalone>
-          {/* Basic Information Section */}
           <div className='space-y-4'>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='name'
-                label='Area Name'
-                register={register}
-                error={errors.name}
-                required
-                disabled={isLoading}
-              />
-
-              <FormInput
-                name='code'
-                label='Area Code'
-                register={register}
-                error={errors.code}
-                disabled={isLoading}
-                onChange={(e) => {
-                  setIsCodeManuallyEdited(true);
-                  register("code").onChange(e);
-                }}
-              />
+              <FormInput name='name' label='Area Name' register={register} error={errors.name} required disabled={combinedLoading} />
+              <FormInput name='code' label='Area Code' register={register} error={errors.code} disabled={combinedLoading} onChange={(e) => { setIsCodeManuallyEdited(true); register("code").onChange(e); }} />
             </div>
-
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormSearchableSelect
-                name='area_type_id'
-                label='Area Type'
-                control={control}
-                error={errors.area_type_id}
-                disabled={isLoading}
-                options={areaTypes
-                  .filter((type) => type.name !== "DEFAULT")
-                  .map((type) => ({ value: type.id, label: type.name }))}
-              />
-
-              <FormSearchableSelect
-                name='parent_id'
-                label='Parent Area'
-                control={control}
-                error={errors.parent_id}
-                disabled={isLoading}
-                options={availableParents.map((a) => ({ value: a.id, label: a.name }))}
-              />
+              <FormSearchableSelect name='area_type_id' label='Area Type' control={control} error={errors.area_type_id} disabled={combinedLoading} options={areaTypeOptions} />
+              <FormSearchableSelect name='parent_id' label='Parent Area' control={control} error={errors.parent_id} disabled={combinedLoading} options={availableParents.map((a) => ({ value: a.id, label: a.name }))} />
             </div>
           </div>
 
-          {/* Contact Information Section */}
           <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
-              Contact Information
-            </h3>
-
+            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>Contact Information</h3>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='contact_person'
-                label='Contact Person'
-                register={register}
-                error={errors.contact_person}
-                disabled={isLoading}
-              />
-
-              <FormInput
-                name='contact_number'
-                label='Contact Number'
-                register={register}
-                error={errors.contact_number}
-                disabled={isLoading}
-              />
+              <FormInput name='contact_person' label='Contact Person' register={register} error={errors.contact_person} disabled={combinedLoading} />
+              <FormInput name='contact_number' label='Contact Number' register={register} error={errors.contact_number} disabled={combinedLoading} />
             </div>
-
-            <FormInput
-              name='email'
-              label='Email Address'
-              register={register}
-              error={errors.email}
-              disabled={isLoading}
-            />
+            <FormInput name='email' label='Email Address' register={register} error={errors.email} disabled={combinedLoading} />
           </div>
 
-          {/* Location Information Section */}
           <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
-              Location Details
-            </h3>
-
-            <FormTextarea
-              name='address'
-              label='Address'
-              control={control}
-              error={errors.address}
-              disabled={isLoading}
-            />
-
+            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>Location Details</h3>
+            <FormTextarea name='address' label='Address' control={control} error={errors.address} disabled={combinedLoading} />
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='latitude'
-                label='Latitude'
-                type='number'
-                step='any'
-                register={register}
-                error={errors.latitude}
-                disabled={isLoading}
-                placeholder='e.g., 22.5726'
-              />
-
-              <FormInput
-                name='longitude'
-                label='Longitude'
-                type='number'
-                step='any'
-                register={register}
-                error={errors.longitude}
-                disabled={isLoading}
-                placeholder='e.g., 88.3639'
-              />
+              <FormInput name='latitude' label='Latitude' type='number' step='any' register={register} error={errors.latitude} disabled={combinedLoading} placeholder='e.g., 22.5726' />
+              <FormInput name='longitude' label='Longitude' type='number' step='any' register={register} error={errors.longitude} disabled={combinedLoading} placeholder='e.g., 88.3639' />
             </div>
           </div>
 
-          {/* Status Section */}
           <div className='mt-6 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <FormSwitch
-              name='status'
-              label='Active Status'
-              control={control}
-              error={errors.status}
-            />
+            <FormSwitch name='status' label='Active Status' control={control} error={errors.status} />
           </div>
         </FormCard>
       </div>

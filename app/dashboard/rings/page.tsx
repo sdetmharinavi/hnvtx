@@ -1,21 +1,17 @@
-// app/dashboard/rings/page.tsx
+// path: app/dashboard/rings/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
-// import { FaNetworkWired } from 'react-icons/fa';
-
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, StatusBadge, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { RingModal } from '@/components/rings/RingModal';
-// import { RingSystemsModal } from '@/components/rings/RingSystemsModal';
 import { DataTable, TableAction } from '@/components/table';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { createStandardActions } from '@/components/table/action-helpers';
-
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useRingsData } from '@/hooks/data/useRingsData';
 import { V_ringsRowSchema, RingsRowSchema, RingsInsertSchema } from '@/schemas/zod-schemas';
@@ -23,10 +19,10 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
-import { FiMapPin } from 'react-icons/fi';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+// THIS IS THE FIX: Import the correct hooks
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 
 const STATUS_OPTIONS = {
   OFC: [
@@ -49,10 +45,6 @@ const STATUS_OPTIONS = {
 export default function RingsPage() {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
-  // const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
-  // const [selectedRingForSystems, setSelectedRingForSystems] = useState<V_ringsRowSchema | null>(
-  //   null
-  // );
 
   const { isSuperAdmin, role } = useUser();
 
@@ -84,12 +76,11 @@ export default function RingsPage() {
     role === UserRole.ADMINPRO;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- REFACTORED: Use Centralized Dropdown Hooks ---
+  // --- REFACTORED: Use Centralized, Offline-First Hooks ---
   const { options: ringTypeOptions } = useLookupTypeOptions('RING_TYPES');
   const { options: maintenanceAreaOptions } = useMaintenanceAreaOptions();
-
+  
   const { stats, totalNodesAcrossRings } = useMemo(() => {
-    // ... (stats calculation remains the same) ...
     const s = {
       spec: { issued: 0, pending: 0 },
       ofc: { ready: 0, partial: 0, pending: 0 },
@@ -125,33 +116,14 @@ export default function RingsPage() {
     [router]
   );
 
-  // const handleManageSystems = useCallback((record: V_ringsRowSchema) => {
-  //   setSelectedRingForSystems(record);
-  //   setIsSystemsModalOpen(true);
-  // }, []);
-
   const tableActions = useMemo((): TableAction<'v_rings'>[] => {
     const standardActions = createStandardActions<V_ringsRowSchema>({
       onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
       onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
-    // standardActions.unshift({
-    //   key: 'manage-systems',
-    //   label: 'Manage Systems',
-    //   icon: <FaNetworkWired className="w-4 h-4" />,
-    //   onClick: handleManageSystems,
-    //   variant: 'secondary',
-    // });
     return standardActions;
-  }, [
-    editModal.openEdit,
-    handleView,
-    crudActions.handleDelete,
-    // handleManageSystems,
-    canEdit,
-    canDelete,
-  ]);
+  }, [editModal.openEdit, handleView, crudActions.handleDelete, canEdit, canDelete]);
 
   const isInitialLoad = isLoading && rings.length === 0;
 
@@ -186,7 +158,6 @@ export default function RingsPage() {
   ];
 
   const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
-    // ... (mobile item render remains the same) ...
     return (
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-start">
@@ -197,39 +168,6 @@ export default function RingsPage() {
             </span>
           </div>
           {actions}
-        </div>
-        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300 mt-1">
-          <div className="flex items-center gap-1.5">
-            <FiMapPin className="w-3.5 h-3.5 text-gray-400" />
-            <span className="truncate max-w-[120px]">{record.maintenance_area_name}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-gray-900 dark:text-white">{record.total_nodes}</span>
-            <span>Nodes</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-1 mt-2">
-          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-            <div className="text-[10px] text-gray-400">OFC</div>
-            <div className="text-xs font-medium text-blue-600 dark:text-blue-400">
-              {record.ofc_status || '-'}
-            </div>
-          </div>
-          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-            <div className="text-[10px] text-gray-400">BTS</div>
-            <div className="text-xs font-medium text-green-600 dark:text-green-400">
-              {record.bts_status || '-'}
-            </div>
-          </div>
-          <div className="text-center p-1 bg-gray-50 dark:bg-gray-800 rounded">
-            <div className="text-[10px] text-gray-400">SPEC</div>
-            <div className="text-xs font-medium text-orange-600 dark:text-orange-400">
-              {record.spec_status || '-'}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-          <StatusBadge status={record.status ?? false} />
         </div>
       </div>
     );
@@ -249,7 +187,9 @@ export default function RingsPage() {
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
+        className="mb-4"
       />
+      
       <DataTable
         autoHideEmptyColumns={true}
         tableName="v_rings"
@@ -341,12 +281,6 @@ export default function RingsPage() {
         }))}
         isLoading={isMutating}
       />
-
-      {/* <RingSystemsModal
-        isOpen={isSystemsModalOpen}
-        onClose={() => setIsSystemsModalOpen(false)}
-        ring={selectedRingForSystems}
-      /> */}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

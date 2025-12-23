@@ -1,8 +1,8 @@
-// app/dashboard/ofc/page.tsx
+// path: app/dashboard/ofc/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/common/BulkActions';
@@ -13,25 +13,23 @@ import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 import {
   Ofc_cablesRowSchema,
   V_ofc_cables_completeRowSchema,
-  Lookup_typesRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import { TABLE_COLUMN_KEYS, buildUploadConfig } from '@/constants/table-column-keys';
 import { useUser } from '@/providers/UserProvider';
 import { AiFillMerge } from 'react-icons/ai';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
 import { Row } from '@/hooks/database';
-import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
-import { Input } from '@/components/common/ui/Input';
-import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
+import { FiGrid, FiList, FiSearch, FiUpload } from 'react-icons/fi';
+import { Input, SearchableSelect } from '@/components/common/ui';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
 import { UserRole } from '@/types/user-roles';
+// THIS IS THE FIX: Import the correct, centralized hook
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 
 const OfcPage = () => {
   const router = useRouter();
@@ -63,39 +61,21 @@ const OfcPage = () => {
 
   const isInitialLoad = isLoading && ofcData.length === 0;
 
-  // --- PERMISSIONS ---
-  // Only Asset Admins, Generic Admins, or Super Admins can edit physical infra
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
-  // Strictly Super Admin for deletion
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // Fetch Options
-  const { data: ofcTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['ofc-types-for-filter'],
-    async () => (await createClient().from('lookup_types').select('*').eq('category', 'OFC_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'OFC_TYPES' }).toArray()
-  );
-
-  const { data: ofcOwnersData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['ofc-owners-for-filter'],
-    async () => (await createClient().from('lookup_types').select('*').eq('category', 'OFC_OWNER')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'OFC_OWNER' }).toArray()
-  );
-
-  const ofcTypes = useMemo(() => (ofcTypesData || []).filter(t => t.name !== 'DEFAULT'), [ofcTypesData]);
-  const ofcOwners = useMemo(() => (ofcOwnersData || []).filter(o => o.name !== 'DEFAULT'), [ofcOwnersData]);
-
-  // Table Config
+  // --- REFACTORED: Use Centralized Dropdown Hooks ---
+  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES');
+  const { options: ofcOwnerOptions } = useLookupTypeOptions('OFC_OWNER');
+  
   const columns = OfcTableColumns(ofcData);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
   
   const tableActions = useMemo(
     () =>
       createStandardActions<V_ofc_cables_completeRowSchema>({
-        // Conditionally pass edit handler
         onEdit: canEdit ? editModal.openEdit : undefined,
         onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
-        // Conditionally pass delete handler
         onDelete: canDelete ? crudActions.handleDelete : undefined,
       }) as TableAction<'v_ofc_cables_complete'>[],
     [editModal.openEdit, router, crudActions.handleDelete, canEdit, canDelete]
@@ -104,7 +84,6 @@ const OfcPage = () => {
   const headerActions = useStandardHeaderActions({
     data: ofcData as Ofc_cablesRowSchema[],
     onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    // Conditionally show Add New
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
@@ -143,7 +122,6 @@ const OfcPage = () => {
         isFetching={isFetching}
       />
       
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
           <div className="w-full lg:w-96">
             <Input 
@@ -160,7 +138,7 @@ const OfcPage = () => {
              <div className="min-w-[160px]">
                 <SearchableSelect 
                    placeholder="Cable Type"
-                   options={ofcTypes.map(t => ({ value: t.id, label: t.name }))}
+                   options={ofcTypeOptions}
                    value={filters.filters.ofc_type_id as string}
                    onChange={(v) => filters.setFilters(prev => ({...prev, ofc_type_id: v}))}
                    clearable
@@ -169,13 +147,12 @@ const OfcPage = () => {
              <div className="min-w-[160px]">
                  <SearchableSelect 
                    placeholder="Owner"
-                   options={ofcOwners.map(o => ({ value: o.id, label: o.name }))}
+                   options={ofcOwnerOptions}
                    value={filters.filters.ofc_owner_id as string}
                    onChange={(v) => filters.setFilters(prev => ({...prev, ofc_owner_id: v}))}
                    clearable
                 />
              </div>
-             {/* View Toggle */}
              <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
                 <button 
                    onClick={() => setViewMode('grid')}
@@ -203,11 +180,9 @@ const OfcPage = () => {
         onClearSelection={bulkActions.handleClearSelection}
         entityName="ofc cable"
         showStatusUpdate={true}
-        // THE FIX: Pass delete capability
         canDelete={() => canDelete}
       />
       
-      {/* Content */}
       {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
              {ofcData.map(cable => (
@@ -237,7 +212,6 @@ const OfcPage = () => {
             loading={isLoading}
             isFetching={isFetching || isMutating}
             actions={tableActions}
-            // THE FIX: Selectable only if user can delete
             selectable={canDelete}
             onRowSelect={(rows) => {
                 const validRows = rows.filter((row): row is V_ofc_cables_completeRowSchema & { id: string } => row.id != null);

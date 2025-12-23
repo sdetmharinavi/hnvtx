@@ -1,7 +1,7 @@
+// path: components/ofc/OfcForm/OfcForm.tsx
 // Main OfcForm component
 import React, { useCallback, useMemo } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { usePagedData, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
@@ -20,8 +20,12 @@ import {
   Ofc_cablesRowSchema,
   V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { FormSearchableSelect } from '@/components/common/form';
 import { DEFAULTS } from '@/constants/constants';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useNodesData } from '@/hooks/data/useNodesData';
+// THIS IS THE FIX: Import the correct hooks for dropdown data
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { FormSearchableSelect } from '@/components/common/form';
 
 interface OfcFormProps {
   ofcCable?: Ofc_cablesRowSchema;
@@ -38,7 +42,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
   pageLoading,
   isOpen,
 }) => {
-  const supabase = createClient();
   const { form, isEdit } = useOfcFormData(ofcCable);
   const {
     handleSubmit,
@@ -46,7 +49,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
     register,
     setValue,
     watch,
-    formState: { errors, isDirty }, // Added isDirty
+    formState: { errors, isDirty },
   } = form;
 
   // Watch critical form values
@@ -55,47 +58,18 @@ const OfcForm: React.FC<OfcFormProps> = ({
   const routeName = watch('route_name');
   const currentOfcTypeId = watch('ofc_type_id');
 
-  // Data fetching with optimized queries
-  const { data: nodesData, isLoading: nodesLoading } = usePagedData<V_nodes_completeRowSchema>(
-    supabase,
-    'v_nodes_complete',
-    {
-      filters: {
-        status: true,
-        node_type_name: {
-          operator: 'in',
-          value: OFC_FORM_CONFIG.ALLOWED_NODE_TYPES,
-        },
-      },
-      limit: DEFAULTS.PAGE_SIZE,
-    }
-  );
+  // --- DATA FETCHING (REFACTORED) ---
 
-  const { data: ofcTypesResult, isLoading: ofcTypesLoading } = useTableQuery(
-    supabase,
-    'lookup_types',
-    {
-      filters: {
-        category: { operator: 'eq', value: 'OFC_TYPES' },
-        name: { operator: 'neq', value: 'DEFAULT' },
-      },
-      orderBy: [{ column: 'name', ascending: true }],
-      columns: 'id, name',
-      staleTime: DEFAULTS.CACHE_TIME,
-    }
-  );
-  const ofcTypesData = ofcTypesResult?.data;
-
-  const {
-    data: maintenanceTerminalsResult,
-    isLoading: maintenanceTerminalsLoading,
-  } = useTableQuery(supabase, 'maintenance_areas', {
-    filters: { status: true },
-    orderBy: [{ column: 'name', ascending: true }],
-    columns: 'id, name',
-    staleTime: DEFAULTS.CACHE_TIME,
-  });
-  const maintenanceTerminalsData = maintenanceTerminalsResult?.data;
+  // 1. Fetch Nodes using the existing useCrudManager setup
+  const { data: nodesData, isLoading: nodesLoading } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
+      tableName: 'nodes',
+      dataQueryHook: useNodesData,
+  }).queryResult;
+  
+  // 2. THIS IS THE FIX: Use centralized hooks that are offline-first
+  const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions('OFC_TYPES');
+  const { options: ownerOptions, isLoading: ownersLoading } = useLookupTypeOptions('OFC_OWNER');
+  const { options: maintenanceTerminalOptions, isLoading: maintenanceTerminalsLoading } = useMaintenanceAreaOptions();
 
   // Custom hooks for complex logic
   const setValueWithType = useCallback(
@@ -108,9 +82,12 @@ const OfcForm: React.FC<OfcFormProps> = ({
     },
     [setValue]
   );
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodes = useMemo(() => (nodesData as any)?.data || [], [nodesData]);
 
-  const startingNodeName = useMemo(() => nodesData?.data.find(node => node.id === startingNodeId)?.name || null, [nodesData, startingNodeId]);
-  const endingNodeName = useMemo(() => nodesData?.data.find(node => node.id === endingNodeId)?.name || null, [nodesData, endingNodeId]);
+  const startingNodeName = useMemo(() => nodes.find((node: V_nodes_completeRowSchema) => node.id === startingNodeId)?.name || null, [nodes, startingNodeId]);
+  const endingNodeName = useMemo(() => nodes.find((node: V_nodes_completeRowSchema) => node.id === endingNodeId)?.name || null, [nodes, endingNodeId]);
 
   const { existingRoutes, isLoading: routeGenerationLoading } =
     useRouteGeneration<Ofc_cablesRowSchema>({
@@ -119,19 +96,18 @@ const OfcForm: React.FC<OfcFormProps> = ({
 
   const { isCapacityLocked } = useCapacityInference<Ofc_cablesInsertSchema>({
     currentOfcTypeId,
-    ofcTypeOptions:
-      ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [],
+    ofcTypeOptions: ofcTypeOptions || [],
     setValue: setValueWithType,
   });
 
   // Memoized options to prevent unnecessary re-renders
   const nodeOptions = useMemo(
     (): Option[] =>
-      nodesData?.data.map((node: V_nodes_completeRowSchema) => ({
+      nodes.map((node: V_nodes_completeRowSchema) => ({
         value: String(node.id),
         label: node.name || `Node ${node.id}`,
-      })) || [],
-    [nodesData]
+      })),
+    [nodes]
   );
 
   const startingNodeOptions = useMemo(
@@ -144,41 +120,10 @@ const OfcForm: React.FC<OfcFormProps> = ({
     [nodeOptions, startingNodeId]
   );
 
-  const ofcTypeOptions = useMemo(
-    (): Option[] =>
-      ofcTypesData?.map((type) => ({ value: type.id, label: type.name })) || [],
-    [ofcTypesData]
-  );
-
-  const maintenanceTerminalOptions = useMemo(
-    (): Option[] =>
-      maintenanceTerminalsData?.map((terminal) => ({
-        value: terminal.id,
-        label: terminal.name,
-      })) || [],
-    [maintenanceTerminalsData]
-  );
-
-  const {
-    data: lookupTypesResult,
-  } = useTableQuery(supabase, "lookup_types", {
-    orderBy: [{ column: "name", ascending: true }],
-    filters: {
-      name: { operator: "neq", value: "DEFAULT" },
-      category: { operator: "eq", value: "OFC_OWNER" },
-    }
-  });
-  const lookupTypes = lookupTypesResult?.data;
-
-  const ownerOptions = useMemo(
-    (): Option[] =>
-      lookupTypes?.map((owner) => ({ value: owner.id, label: owner.name })) || [],
-    [lookupTypes]
-  );
-
   const isLoading =
     nodesLoading ||
     ofcTypesLoading ||
+    ownersLoading || // Added owner loading state
     maintenanceTerminalsLoading ||
     pageLoading ||
     routeGenerationLoading;
@@ -191,7 +136,6 @@ const OfcForm: React.FC<OfcFormProps> = ({
     console.log('Invalid form submission', errors, "Invalid form submission", data);
   };
 
-  // SAFE CLOSE HANDLER
   const handleClose = useCallback(() => {
     if (isDirty) {
       const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
@@ -206,8 +150,8 @@ const OfcForm: React.FC<OfcFormProps> = ({
       onClose={handleClose}
       visible={false}
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
-      closeOnOverlayClick={false} // Prevent overlay close
-      closeOnEscape={!isDirty}    // Prevent escape if dirty
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}
     >
       <FormCard
         key={isEdit ? ofcCable?.id ?? 'edit' : 'new'}
@@ -238,11 +182,13 @@ const OfcForm: React.FC<OfcFormProps> = ({
               endingNodeOptions={endingNodeOptions}
               routeName={routeName}
             />
+            
             <FormSearchableSelect
               control={control}
               name="ofc_owner_id"
               label="Owner"
-              options={ownerOptions}
+              options={ownerOptions} // Use the new hook data
+              isLoading={ownersLoading} // Add loading state
             />
 
             <CableSpecificationsSection
@@ -251,14 +197,14 @@ const OfcForm: React.FC<OfcFormProps> = ({
               errors={errors}
               setValue={setValue}
               watch={watch}
-              ofcTypeOptions={ofcTypeOptions}
+              ofcTypeOptions={ofcTypeOptions} // Use the new hook data
               isCapacityLocked={isCapacityLocked}
             />
 
             <MaintenanceSection
               control={control}
               errors={errors}
-              maintenanceTerminalOptions={maintenanceTerminalOptions}
+              maintenanceTerminalOptions={maintenanceTerminalOptions} // Use the new hook data
             />
           </div>
         </div>
