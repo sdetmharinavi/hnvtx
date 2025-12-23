@@ -39,14 +39,14 @@ export function useLocalFirstQuery<
   dexieTable,
   enabled = true,
   staleTime = Infinity, // Default to Infinity to prevent background refetches
-  autoSync = false,     // THE FIX: Default to Manual Sync
+  autoSync = false,     // Default to Manual Sync
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
 
   // 1. Fetch Local Data (Always available via Dexie)
-  // This is the primary data source for the UI.
-  const localData = useLiveQuery(localQueryFn, localQueryDeps, undefined);
-
+  // useLiveQuery returns undefined while loading, then the array
+  const localData = useLiveQuery(localQueryFn, localQueryDeps, "loading");
+  
   // 2. Network Query Configuration
   const shouldFetchOnMount = enabled && isOnline && autoSync;
 
@@ -94,12 +94,14 @@ export function useLocalFirstQuery<
   }, [networkData, dexieTable]);
 
   // 4. Determine Loading State
-  const hasLocalData = Array.isArray(localData) ? localData.length > 0 : !!localData;
+  // "loading" is the string identifier we passed to useLiveQuery default
+  const isLocalLoading = localData === "loading";
+  const hasLocalData = Array.isArray(localData) && localData.length > 0;
   
-  // Only show "Loading" if we have absolutely no data AND we are actively fetching
-  // In manual mode (autoSync=false), isNetworkLoading is false initially, so this returns false,
-  // allowing the empty state or local data to show immediately.
-  const isLoading = (isNetworkLoading && autoSync) && !hasLocalData;
+  // Show loading if:
+  // 1. Dexie is still initializing (isLocalLoading)
+  // 2. OR we are forced to fetch network (autoSync) AND we have no local data yet
+  const isLoading = isLocalLoading || ((isNetworkLoading && autoSync) && !hasLocalData);
 
   // 5. Determine Error State
   // Suppress network errors if we have local data to show
@@ -109,14 +111,17 @@ export function useLocalFirstQuery<
   // 6. Indicators
   const isSyncing = isNetworkFetching;
   const isStale = isNetworkError && hasLocalData; // We have data, but last sync failed
+  
+  // Safe data return
+  const safeData = Array.isArray(localData) ? localData : [];
 
   return {
-    data: localData, // Always return local data
+    data: safeData,
     isLoading,
     isFetching: isSyncing,
     isError,
     error,
-    refetch, // Passing this allows the "Refresh" buttons to trigger the network call
+    refetch, 
     networkStatus: networkQueryStatus,
     isStale,
     isSyncing

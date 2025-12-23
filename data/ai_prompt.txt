@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we want to fix the errors we are getting on dashboard page i.e. Online fetch failed, falling back to local calculation: {code: '42703', details: null, hint: null, message: 'column s.maintenance_area_name does not exist'}. Also I don't want to check ofc connections exist or not automatically in frontend. It should be through a button and should be available to only super admin or admin pro
+Let's begin! First of all we want to fix if any bugs in the project, check thoroughly for any such bugs. Second thing in some pages/section didn't update instantly when User is online, check those areas.

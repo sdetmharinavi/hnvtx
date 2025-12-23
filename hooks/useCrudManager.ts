@@ -140,11 +140,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- SMART SYNC HELPER ---
-  // Fetches a single record (using the View if available) and updates Dexie
+  // --- SMART SYNC HELPER (Write-Through Cache) ---
+  // If the record was just updated online, fetch it via RPC (to get View computed fields) 
+  // and write immediately to Dexie.
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
       const targetTable = localTableName || tableName;
+      // We use the view name if available, otherwise table name, to get full data structure
       const viewName = localTableName || tableName;
 
       try {
@@ -163,10 +165,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           const record = records[0];
           const table = getTable(targetTable);
           await table.put(record);
-          console.log(`[useCrudManager] Synced record ${id} to local table ${targetTable}`);
+          // console.log(`[useCrudManager] Write-Through: Synced record ${id} to ${targetTable}`);
         }
       } catch (err) {
         console.error('[useCrudManager] Failed to sync single record:', err);
+        // Fallback: Just trigger a standard refetch
         refetch();
       }
     },
@@ -174,10 +177,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
-    optimisticUpdate: false,
+    optimisticUpdate: false, // We handle our own optimistic update via Dexie
     onSuccess: async (data) => {
       toast.success('Record created successfully.');
       closeModal();
+      
+      // Write-Through: If we got data back, sync it to Dexie immediately
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newId = (data[0] as any).id;
@@ -194,6 +199,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Record updated successfully.');
       closeModal();
+      
+      // Write-Through
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatedId = (data[0] as any).id;
@@ -209,6 +216,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     optimisticUpdate: false,
     onSuccess: async (data) => {
       toast.success('Status updated successfully.');
+      
+      // Write-Through
       if (data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = (data as any).id;
@@ -246,7 +255,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const deleteManager = useDeleteManager({
     tableName,
     onSuccess: async (deletedIds) => {
+      // Clean up Dexie immediately
       await handleLocalCleanup(deletedIds);
+      // Then trigger network refetch to be safe
       refetch();
       handleClearSelection();
     },
@@ -334,7 +345,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               payload: newRecord,
             });
           }
-          refetch();
+          refetch(); // This will pull the new local data immediately
           closeModal();
           toast.info('Saved offline. Will sync when online.');
         } catch (err) {
@@ -356,7 +367,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     ]
   );
 
-  // --- DELETE HANDLER (Refactored for Unified Modal) ---
+  // --- DELETE HANDLER ---
   const handleDelete = useCallback(
     async (record: RecordWithId) => {
       if (!record.id) {
@@ -368,10 +379,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       const itemToDelete = { id: idToDelete, name: displayName };
 
       if (isOnline) {
-        // Normal online flow via Mutation
         deleteManager.deleteSingle(itemToDelete);
       } else {
-        // Offline flow: Pass a custom handler to the modal so UI remains consistent
+        // Offline custom delete handler
         deleteManager.deleteSingle(itemToDelete, async (ids) => {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(ids[0]) : ids[0];
@@ -386,8 +396,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           });
 
           toast.info('Deleted locally. Will sync when online.');
-          // We call refetch inside the delete manager's onSuccess if we wire it up correctly,
-          // but here the custom handler takes over, so we refetch manually.
           refetch();
         });
       }
@@ -454,14 +462,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     ]
   );
 
-  // --- BULK DELETE HANDLER (Refactored for Unified Modal) ---
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowIds.length === 0) {
       toast.error('No records selected');
       return;
     }
 
-    // Create friendly display items for the modal
     const selectedRecords = data
       .filter((record) => selectedRowIds.includes(String(record.id)))
       .map((record) => ({
@@ -472,7 +478,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     if (isOnline) {
       deleteManager.deleteMultiple(selectedRecords);
     } else {
-      // Offline flow with custom handler
       deleteManager.deleteMultiple(selectedRecords, async (ids) => {
         const targetTable = getTable(localTableName || tableName);
         const idsKey = idType === 'number' ? ids.map(Number) : ids;

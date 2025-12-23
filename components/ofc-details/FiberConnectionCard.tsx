@@ -148,13 +148,8 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
           {fiber.remark && (
             <>
             <br />
-              <span>
                 Remarks:{" "}
-                <span className='font-mono font-medium text-gray-900 dark:text-gray-200'>
-                  {fiber.route_loss_db ? `${fiber.route_loss_db}dB` : "-"}
-                </span>
-              </span>
-              <TruncateTooltip text={fiber.remark} className='text-gray-900 italic max-w-[150px]' />
+              <TruncateTooltip text={fiber.remark} className='font-mono font-medium text-gray-900 dark:text-gray-200 italic max-w-[150px]' />
             </>
           )}
         </div>

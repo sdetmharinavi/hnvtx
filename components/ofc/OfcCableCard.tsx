@@ -1,7 +1,7 @@
 // components/ofc/OfcCableCard.tsx
 import React from 'react';
 import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiInfo, FiLayers } from 'react-icons/fi';
+import { FiActivity, FiEdit2, FiMapPin, FiTrash2, FiInfo, FiLayers, FiDatabase } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 
@@ -77,6 +77,12 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
                 <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
                     <FiActivity className="w-3 h-3 text-gray-400" />
                     <span className="truncate">Asset: <span className="font-mono">{cable.asset_no}</span></span>
+                </div>
+            )}
+            {cable.transnet_id && (
+                <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                    <FiDatabase className="w-3 h-3 text-gray-400" />
+                    <span className="truncate">Transnet ID: <span className="font-mono">{cable.transnet_id}</span></span>
                 </div>
             )}
             <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 col-span-2">

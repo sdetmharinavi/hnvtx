@@ -1,4 +1,4 @@
-// path: hooks/data/useDropdownOptions.ts
+// hooks/data/useDropdownOptions.ts
 "use client";
 
 import { useMemo } from 'react';
@@ -35,11 +35,17 @@ const cleanFilters = (filters: Record<string, any>) => {
 export function useDropdownOptions({ tableName, valueField, labelField, filters = {}, orderBy = 'name' }: OptionsQuery) {
   const onlineQueryFn = async () => {
     const validFilters = cleanFilters(filters);
+    
+    // THE FIX: Select '*' instead of partial columns.
+    // This ensures:
+    // 1. We receive fields needed for filtering (e.g., 'status', 'category')
+    // 2. We don't overwrite full local records with partial data via bulkPut
     const { data, error } = await createClient()
       .from(tableName)
-      .select(`${valueField}, ${labelField}`)
+      .select('*') 
       .match(validFilters)
       .order(orderBy);
+
     if (error) throw error;
     return data || [];
   };
@@ -54,6 +60,7 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
 
     return table
       .filter(item => {
+        // Strict local filtering works now because 'item' will have all fields
         return Object.entries(validFilters).every(([key, val]) => item[key] === val);
       })
       .toArray()
@@ -77,6 +84,7 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dexieTable: localDb.table(tableName) as any,
     staleTime: 60 * 60 * 1000, 
+    autoSync: true 
   });
 
   const options: Option[] = useMemo(() => {
@@ -102,7 +110,7 @@ export const useLookupTypeOptions = (category: string) => {
     orderBy: 'sort_order'
   });
 
-  // THE FIX: Client-side filtering to exclude 'DEFAULT' since match() is equality-only
+  // Client-side filtering to exclude 'DEFAULT' since match() is equality-only
   const filteredOptions = useMemo(() => 
     options.filter(o => o.label !== 'DEFAULT'), 
   [options]);
@@ -141,7 +149,7 @@ export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
     const { data, error } = await createClient()
       .from('v_employees')
-      .select('id, employee_name, employee_designation_name, maintenance_area_name')
+      .select('*') // Changed to * here as well for consistency
       .eq('status', true)
       .order('employee_name');
     if (error) throw error;
@@ -160,6 +168,7 @@ export function useEmployeeOptions() {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employees,
+    autoSync: true 
   });
 
   const options: Option[] = useMemo(() => {

@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
-      "serwist"
+      "ADMINPRO",
+      "dexie",
+      "OFCADMIN",
+      "refetches",
+      "uuidv"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative",

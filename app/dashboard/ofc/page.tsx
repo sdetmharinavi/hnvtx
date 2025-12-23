@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/common/BulkActions';
@@ -14,17 +14,16 @@ import {
   Ofc_cablesRowSchema,
   V_ofc_cables_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
 import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS, buildUploadConfig } from '@/constants/table-column-keys';
+import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useUser } from '@/providers/UserProvider';
 import { AiFillMerge } from 'react-icons/ai';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
 import { Row } from '@/hooks/database';
-import { FiGrid, FiList, FiSearch, FiUpload } from 'react-icons/fi';
+import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { Input, SearchableSelect } from '@/components/common/ui';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
 import { UserRole } from '@/types/user-roles';
@@ -61,7 +60,7 @@ const OfcPage = () => {
 
   const isInitialLoad = isLoading && ofcData.length === 0;
 
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.OFCADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---

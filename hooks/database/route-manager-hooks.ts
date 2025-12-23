@@ -252,9 +252,9 @@ export function useJcSplicingDetails(jcId: string | null) {
             segments_at_jc: segmentsPayload
         };
 
-      } catch (err) {
+       } catch (err) {
         console.error("Local DB splicing details build failed:", err);
-        return null;
+        return null; // Graceful failure instead of crash
       }
     },
     enabled: !!jcId,

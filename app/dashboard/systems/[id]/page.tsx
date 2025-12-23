@@ -1,14 +1,14 @@
 // path: app/dashboard/systems/[id]/page.tsx
 "use client";
 
-import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, Input, PageSpinner } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useRpcMutation, RpcFunctionArgs, Filters, Row, usePagedData, UploadColumnMapping } from '@/hooks/database';
-import { V_system_connections_completeRowSchema, V_systems_completeRowSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { V_system_connections_completeRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { DEFAULTS } from '@/constants/constants';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
@@ -36,8 +36,8 @@ import { StatsConfigModal, StatsFilterState } from '@/components/system-details/
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
+// import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+// import { localDb } from '@/hooks/data/localDb';
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 
@@ -114,25 +114,25 @@ export default function SystemConnectionsPage() {
     return connections;
   }, [connections, searchQuery]);
 
-  const { data: uniqueValues } = useOfflineQuery(
-      ['connection-filter-options', systemId],
-      async () => {
-          const { data } = await supabase.from('v_system_connections_complete')
-            .select('connected_link_type_name, bandwidth')
-            .or(`system_id.eq.${systemId},en_id.eq.${systemId}`);
-          return data || [];
-      },
-      async () => {
-        const source = await localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray();
-        const dest = await localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray();
-        return [...source, ...dest];
-      }
-  );
+  // const { data: uniqueValues } = useOfflineQuery(
+  //     ['connection-filter-options', systemId],
+  //     async () => {
+  //         const { data } = await supabase.from('v_system_connections_complete')
+  //           .select('connected_link_type_name, bandwidth')
+  //           .or(`system_id.eq.${systemId},en_id.eq.${systemId}`);
+  //         return data || [];
+  //     },
+  //     async () => {
+  //       const source = await localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray();
+  //       const dest = await localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray();
+  //       return [...source, ...dest];
+  //     }
+  // );
 
-  const capacityOptions = useMemo(() => {
-    const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
-    return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
-  }, [uniqueValues]);
+  // const capacityOptions = useMemo(() => {
+  //   const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
+  //   return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
+  // }, [uniqueValues]);
 
   const { data: systemData, isLoading: isLoadingSystem } = usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', { filters: { id: systemId } });
   const parentSystem = systemData?.data?.[0];

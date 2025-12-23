@@ -1,4 +1,4 @@
-// path: hooks/database/system-connection-hooks.ts
+// hooks/database/system-connection-hooks.ts
 "use client";
 import { useRpcMutation } from "@/hooks/database/rpc-queries";
 import { createClient } from "@/utils/supabase/client";
@@ -25,7 +25,7 @@ export function useUpsertSystemConnection() {
         queryClient.invalidateQueries({ queryKey: ['ports_management-data', variables.p_system_id] });
       }
 
-      // 2. Invalidate Destination System Data (The Fix)
+      // 2. Invalidate Destination System Data (Bidirectional Fix)
       // If an End Node ID was provided, refresh that system's data too so the connection appears instantly.
       if (variables.p_en_id) {
         queryClient.invalidateQueries({ queryKey: ['system_connections-data', variables.p_en_id] });
