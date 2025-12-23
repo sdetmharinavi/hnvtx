@@ -1,7 +1,7 @@
 // app/dashboard/systems/connections/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
@@ -9,14 +9,11 @@ import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_system_connections_completeRowSchema,
-  Lookup_typesRowSchema,
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { buildUploadConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
 import { FiGitBranch, FiMonitor, FiEye, FiGrid, FiList, FiSearch, FiUpload } from 'react-icons/fi';
 import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
@@ -34,6 +31,8 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { UploadColumnMapping } from '@/hooks/database';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
+// THE FIX: Import the centralized hook
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
@@ -100,20 +99,9 @@ export default function GlobalConnectionsPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [uploadConnections]);
 
-  const { data: mediaTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['media-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'MEDIA_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'MEDIA_TYPES' }).toArray()
-  );
-
-  const { data: linkTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['link-types-filter'],
-    async () => (await supabase.from('lookup_types').select('*').eq('category', 'LINK_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'LINK_TYPES' }).toArray()
-  );
-
-  const mediaOptions = useMemo(() => (mediaTypesData || []).map((t) => ({ value: t.id, label: t.name })), [mediaTypesData]);
-  const linkTypeOptions = useMemo(() => (linkTypesData || []).map((t) => ({ value: t.id, label: t.name })), [linkTypesData]);
+  // THE FIX: Replaced useOfflineQuery with useLookupTypeOptions
+  const { options: mediaOptions, isLoading: mediaLoading } = useLookupTypeOptions('MEDIA_TYPES');
+  const { options: linkTypeOptions, isLoading: linkTypeLoading } = useLookupTypeOptions('LINK_TYPES');
 
   const columns = SystemConnectionsTableColumns(connections, true);
   const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
@@ -158,7 +146,6 @@ export default function GlobalConnectionsPage() {
     exportConfig: canEdit ? { 
         tableName: 'v_system_connections_complete', 
         fileName: 'Global_Connections_List',
-        // THE FIX: Use RPC
         useRpc: true 
     } : undefined,
   });
@@ -192,7 +179,6 @@ export default function GlobalConnectionsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleGoToSystem]);
 
-  // Create a synthetic parentSystem object from the selected connection
   const parentSystemForModal = useMemo((): V_systems_completeRowSchema | null => {
     if (!selectedConnection) return null;
     
@@ -260,12 +246,14 @@ export default function GlobalConnectionsPage() {
           
           <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
              <div className="min-w-[160px]">
+                {/* THE FIX: Pass options from hook and isLoading */}
                 <SearchableSelect 
                    placeholder="Link Type"
                    options={linkTypeOptions}
                    value={filters.filters.connected_link_type_id as string}
                    onChange={(v) => filters.setFilters(prev => ({...prev, connected_link_type_id: v}))}
                    clearable
+                   isLoading={linkTypeLoading}
                 />
              </div>
              <div className="min-w-[160px]">
@@ -275,6 +263,7 @@ export default function GlobalConnectionsPage() {
                    value={filters.filters.media_type_id as string}
                    onChange={(v) => filters.setFilters(prev => ({...prev, media_type_id: v}))}
                    clearable
+                   isLoading={mediaLoading}
                 />
              </div>
              <div className="min-w-[120px]">
@@ -347,6 +336,7 @@ export default function GlobalConnectionsPage() {
                     filters={filters.filters}
                     setFilters={filters.setFilters}
                     options={mediaOptions}
+                    isLoading={mediaLoading}
                  />
                  <SelectFilter
                     label="Link Type"
@@ -355,6 +345,7 @@ export default function GlobalConnectionsPage() {
                     setFilters={filters.setFilters}
                     options={linkTypeOptions}
                     placeholder="Filter by Link Type"
+                    isLoading={linkTypeLoading}
                  />
                  <SelectFilter
                     label="Status"

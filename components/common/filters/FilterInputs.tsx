@@ -15,6 +15,7 @@ interface SelectFilterProps extends FilterWrapperProps {
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
   options: Option[];
   placeholder?: string;
+  isLoading?: boolean;
 }
 
 interface InputFilterProps extends FilterWrapperProps {
@@ -33,6 +34,7 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
   setFilters,
   options,
   placeholder,
+  isLoading = false, // Default to false
 }) => {
   // Safely extract the current value, ensuring it's a string for the component.
   const currentValue = filters[filterKey];
@@ -65,6 +67,7 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
         onChange={handleChange}
         placeholder={placeholder || `All ${label}`}
         clearable
+        isLoading={isLoading} // Pass it through
       />
     </div>
   );
