@@ -50,7 +50,6 @@ import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
-import { formatDate } from '@/utils/formatters';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
@@ -329,8 +328,9 @@ export default function OfcCableDetailsPage() {
     isLoading: isLoading,
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
-      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${routeDetails?.route.route_name}_connections`,
-      // THE FIX: Use simple key-value filter syntax for reliability in exports
+      fileName: `${routeDetails?.route.route_name}_fibers`,
+      // THE FIX: Added useRpc: true to force RPC usage for export
+      useRpc: true, 
       filters: { ofc_id: cableId as string },
       orderBy: [{ column: 'fiber_no_sn', ascending: true }],
     },
