@@ -23,7 +23,7 @@ import { BulkActions } from "@/components/common/BulkActions";
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { UserRole } from "@/types/user-roles";
 import { FiGrid, FiList, FiSearch } from "react-icons/fi";
-import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions"; // IMPORTED
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions"; 
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -57,7 +57,6 @@ export default function ServicesPage() {
 
   const columns = ServicesTableColumns(data, duplicateSet);
 
-  // --- REFACTORED: Use Centralized Hook ---
   const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
 
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
@@ -93,7 +92,13 @@ export default function ServicesPage() {
       onAddNew: canEdit ? editModal.openAdd : undefined,
       isLoading,
       data: data as Row<'v_services'>[],
-      exportConfig: canEdit ? { tableName: 'v_services', fileName: `All_Services`, filters: filters.filters } : undefined
+      exportConfig: canEdit ? { 
+        tableName: 'v_services', 
+        fileName: `All_Services`, 
+        filters: filters.filters,
+        // THE FIX: Use RPC
+        useRpc: true
+      } : undefined
   });
 
   const enhancedHeaderActions: ActionButton[] = [

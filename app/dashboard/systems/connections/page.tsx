@@ -155,7 +155,12 @@ export default function GlobalConnectionsPage() {
     data: connections,
     onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
     isLoading,
-    exportConfig: canEdit ? { tableName: 'v_system_connections_complete', fileName: 'Global_Connections_List' } : undefined,
+    exportConfig: canEdit ? { 
+        tableName: 'v_system_connections_complete', 
+        fileName: 'Global_Connections_List',
+        // THE FIX: Use RPC
+        useRpc: true 
+    } : undefined,
   });
 
   if (canEdit) {
@@ -187,7 +192,7 @@ export default function GlobalConnectionsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleGoToSystem]);
 
-  // --- THE FIX: Create a synthetic parentSystem object from the selected connection ---
+  // Create a synthetic parentSystem object from the selected connection
   const parentSystemForModal = useMemo((): V_systems_completeRowSchema | null => {
     if (!selectedConnection) return null;
     
