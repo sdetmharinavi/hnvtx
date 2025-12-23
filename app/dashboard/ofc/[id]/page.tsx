@@ -15,17 +15,17 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcConnectionsFormModal } from '@/components/ofc-details/OfcConnectionsFormModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { FiberAssignmentModal } from '@/components/ofc-details/FiberAssignmentModal';
-import { 
-  GitCommit, 
-  Search, 
-  Grid, 
-  List, 
-  Trash2, 
-  Edit2, 
-  Link as LinkIcon, 
-  Unlink, 
+import {
+  GitCommit,
+  Search,
+  Grid,
+  List,
+  Trash2,
+  Edit2,
+  Link as LinkIcon,
+  Unlink,
   Upload,
-  GitBranch
+  GitBranch,
 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
@@ -63,7 +63,9 @@ export default function OfcCableDetailsPage() {
   const [hasInitializedView, setHasInitializedView] = useState(false);
 
   const [assignFiber, setAssignFiber] = useState<V_ofc_connections_completeRowSchema | null>(null);
-  const [fiberToUnlink, setFiberToUnlink] = useState<V_ofc_connections_completeRowSchema | null>(null);
+  const [fiberToUnlink, setFiberToUnlink] = useState<V_ofc_connections_completeRowSchema | null>(
+    null
+  );
   const { mutate: unlinkFiber, isPending: isUnlinking } = useReleaseFiber();
   const createConnectionsMutation = useCreateOfcConnection();
 
@@ -85,38 +87,52 @@ export default function OfcCableDetailsPage() {
     displayNameField: ['system_name', 'ofc_route_name'],
   });
 
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN].includes(role as UserRole);
+  const canEdit =
+    !!isSuperAdmin ||
+    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN].includes(role as UserRole);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
   const canAdd = canEdit;
   const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
 
-  const { data: routeDetails, isLoading: isLoadingRouteDetails, isError: isRouteDetailsError } = useRouteDetails(
-    cableId as string
-  );
+  const {
+    data: routeDetails,
+    isLoading: isLoadingRouteDetails,
+    isError: isRouteDetailsError,
+  } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  const { data: utilResult, isLoading: isLoadingUtil } = useTableQuery(supabase, 'v_cable_utilization', {
-    filters: { cable_id: cableId as string },
-    limit: 1,
-  });
+  const { data: utilResult, isLoading: isLoadingUtil } = useTableQuery(
+    supabase,
+    'v_cable_utilization',
+    {
+      filters: { cable_id: cableId as string },
+      limit: 1,
+    }
+  );
   const utilization = utilResult?.data?.[0];
 
-  const { mutate: uploadConnections, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
+  const { mutate: uploadConnections, isPending: isUploading } = useOfcConnectionsExcelUpload(
+    supabase,
+    {
+      onSuccess: (result) => {
+        if (result.successCount > 0) refetch();
+      },
     }
-  });
+  );
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
-  
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-       const uploadConfig = buildUploadConfig("v_ofc_connections_complete");
-       uploadConnections({ file, columns: uploadConfig.columnMapping });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [uploadConnections]);
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const uploadConfig = buildUploadConfig('v_ofc_connections_complete');
+        uploadConnections({ file, columns: uploadConfig.columnMapping });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    [uploadConnections]
+  );
 
   const [tracingFiber, setTracingFiber] = useState<{
     startSegmentId: string;
@@ -131,12 +147,12 @@ export default function OfcCableDetailsPage() {
 
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
-      const smartMode = (cableConnectionsData.length > 12) ? 'table' : 'grid';
+      const smartMode = cableConnectionsData.length > 12 ? 'table' : 'grid';
       setViewMode(smartMode);
       setHasInitializedView(true);
     }
   }, [isLoading, cableConnectionsData.length, hasInitializedView]);
-  
+
   const handleTraceClick = useCallback(
     (record: V_ofc_connections_completeRowSchema) => {
       const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
@@ -155,9 +171,9 @@ export default function OfcCableDetailsPage() {
 
   const handleUnlink = () => {
     if (fiberToUnlink && fiberToUnlink.id) {
-        unlinkFiber(fiberToUnlink.id, {
-            onSuccess: () => setFiberToUnlink(null)
-        });
+      unlinkFiber(fiberToUnlink.id, {
+        onSuccess: () => setFiberToUnlink(null),
+      });
     }
   };
 
@@ -167,22 +183,38 @@ export default function OfcCableDetailsPage() {
 
       return (
         <>
-          {canEdit && (
-            isFree ? (
-              <Button size="xs" variant="secondary" onClick={() => setAssignFiber(record)} title="Assign to Service" className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+          {canEdit &&
+            (isFree ? (
+              <Button
+                size="xs"
+                variant="secondary"
+                onClick={() => setAssignFiber(record)}
+                title="Assign to Service"
+                className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              >
                 <LinkIcon className="w-4 h-4" />
               </Button>
             ) : (
               <div className="flex gap-1">
-                 <Button size="xs" variant="ghost" onClick={() => setAssignFiber(record)} title="Edit Link">
-                   <Edit2 className="w-4 h-4" />
-                 </Button>
-                 <Button size="xs" variant="ghost" onClick={() => setFiberToUnlink(record)} title="Unlink" className="text-orange-600 hover:bg-orange-50">
-                   <Unlink className="w-4 h-4" />
-                 </Button>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setAssignFiber(record)}
+                  title="Edit Link"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setFiberToUnlink(record)}
+                  title="Unlink"
+                  className="text-orange-600 hover:bg-orange-50"
+                >
+                  <Unlink className="w-4 h-4" />
+                </Button>
               </div>
-            )
-          )}
+            ))}
           {canEdit && (
             <Button
               size="xs"
@@ -204,7 +236,12 @@ export default function OfcCableDetailsPage() {
             </Button>
           )}
           <div className="flex-1"></div>
-          <Button size="xs" variant="outline" onClick={() => handleTraceClick(record)} title="Trace Path">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => handleTraceClick(record)}
+            title="Trace Path"
+          >
             <GitCommit className="w-4 h-4 mr-1" /> Trace
           </Button>
         </>
@@ -257,9 +294,16 @@ export default function OfcCableDetailsPage() {
         onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
       }),
     ],
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, canEdit, canDelete, handleTraceClick]
+    [
+      editModal.openEdit,
+      crudActions.handleDelete,
+      crudActions.handleToggleStatus,
+      canEdit,
+      canDelete,
+      handleTraceClick,
+    ]
   );
-  
+
   // THIS IS THE NEW MANUAL HANDLER
   const handleVerifyAndCreateFibers = useCallback(() => {
     if (routeDetails?.route && utilization) {
@@ -269,10 +313,10 @@ export default function OfcCableDetailsPage() {
       if (expectedCount && existingCount < expectedCount) {
         createConnectionsMutation.mutate({ cable: routeDetails.route as Ofc_cablesRowSchema });
       } else {
-        toast.success("All fiber connections are present and accounted for.");
+        toast.success('All fiber connections are present and accounted for.');
       }
     } else {
-      toast.error("Cable data not fully loaded yet. Please wait a moment and try again.");
+      toast.error('Cable data not fully loaded yet. Please wait a moment and try again.');
     }
   }, [routeDetails, utilization, createConnectionsMutation]);
 
@@ -286,9 +330,11 @@ export default function OfcCableDetailsPage() {
     isLoading: isLoading,
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
-      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${routeDetails?.route.route_name}_connections`,
-      filters: { ofc_id: cableId as string }, 
-      orderBy: [{ column: 'fiber_no_sn', ascending: true }]
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${
+        routeDetails?.route.route_name
+      }_connections`,
+      filters: { ofc_id: cableId as string },
+      orderBy: [{ column: 'fiber_no_sn', ascending: true }],
     },
   });
 
@@ -298,7 +344,9 @@ export default function OfcCableDetailsPage() {
       label: createConnectionsMutation.isPending ? 'Verifying...' : 'Verify Fibers',
       onClick: handleVerifyAndCreateFibers,
       variant: 'outline',
-      leftIcon: <FiRefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />,
+      leftIcon: (
+        <FiRefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />
+      ),
       disabled: createConnectionsMutation.isPending || isLoading,
       hideTextOnMobile: true,
     });
@@ -306,9 +354,12 @@ export default function OfcCableDetailsPage() {
 
   if (canEdit) {
     headerActions.splice(1, 0, {
-        label: isUploading ? 'Uploading...' : 'Upload Data', onClick: handleUploadClick,
-        variant: 'outline', leftIcon: <Upload className="w-4 h-4" />, disabled: isUploading || isLoading,
-        hideTextOnMobile: true
+      label: isUploading ? 'Uploading...' : 'Upload Data',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <Upload className="w-4 h-4" />,
+      disabled: isUploading || isLoading,
+      hideTextOnMobile: true,
     });
   }
 
@@ -352,7 +403,13 @@ export default function OfcCableDetailsPage() {
 
   return (
     <div className="mx-auto space-y-6 p-4 md:p-6">
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
 
       <PageHeader
         title="OFC Cable Details"
@@ -470,7 +527,7 @@ export default function OfcCableDetailsPage() {
       />
 
       {canEdit && (
-        <FiberAssignmentModal 
+        <FiberAssignmentModal
           isOpen={!!assignFiber}
           onClose={() => setAssignFiber(null)}
           fiber={assignFiber}
