@@ -54,6 +54,7 @@ const OfcPage = () => {
     actions: crudActions,
   } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
+    localTableName: 'v_ofc_cables_complete', 
     dataQueryHook: useOfcData,
     displayNameField: 'route_name',
   });

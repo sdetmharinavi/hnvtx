@@ -54,12 +54,16 @@ export default function EmployeesPage() {
     actions: crudActions,
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
+    localTableName: 'v_employees',
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
   });
 
   // --- PERMISSIONS FIX: Define clear permissions ---
-  const canEdit = useMemo(() => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+  const canEdit = useMemo(
+    () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
+    [isSuperAdmin, role]
+  );
   const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
   const { options: desOptions } = useDropdownOptions({
@@ -67,7 +71,7 @@ export default function EmployeesPage() {
     valueField: 'id',
     labelField: 'name',
     filters: { status: true },
-    orderBy: 'name'
+    orderBy: 'name',
   });
 
   const { options: areaOptions } = useMaintenanceAreaOptions();
@@ -91,7 +95,7 @@ export default function EmployeesPage() {
       crudActions.handleToggleStatus,
       crudActions.handleDelete,
       canEdit,
-      canDelete
+      canDelete,
     ]
   );
 
@@ -211,7 +215,7 @@ export default function EmployeesPage() {
           </div>
         </div>
       </div>
-      
+
       {/* --- PERMISSIONS FIX: Conditionally render Bulk Actions --- */}
       {canEdit && (
         <BulkActions
@@ -274,7 +278,7 @@ export default function EmployeesPage() {
           renderMobileItem={renderMobileItem}
         />
       )}
-      
+
       {/* --- PERMISSIONS FIX: Conditionally render form modal --- */}
       {canEdit && (
         <EmployeeForm

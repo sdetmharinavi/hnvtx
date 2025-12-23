@@ -50,6 +50,7 @@ import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
 import { FiRefreshCw } from 'react-icons/fi';
+import { formatDate } from '@/utils/formatters';
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
@@ -285,8 +286,8 @@ export default function OfcCableDetailsPage() {
     isLoading: isLoading,
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
-      fileName: `${routeDetails?.route.route_name}_connections`,
-      filters: { ofc_id: { operator: 'eq', value: cableId as string } },
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}_${routeDetails?.route.route_name}_connections`,
+      filters: { ofc_id: cableId as string }, 
       orderBy: [{ column: 'fiber_no_sn', ascending: true }]
     },
   });

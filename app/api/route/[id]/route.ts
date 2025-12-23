@@ -1,3 +1,4 @@
+// path: app/api/route/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import z from 'zod';
@@ -45,15 +46,17 @@ export async function GET(
       .from('v_ofc_cables_complete')
       .select('*')
       .eq('id', routeId)
-      .maybeSingle(); // THE FIX: Changed .single() to .maybeSingle()
+      .maybeSingle(); 
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
     
-    // 2. Fetch all existing JCs on this cable (now includes the nested node name)
+    // 2. Fetch all existing JCs on this cable
+    // THE FIX: Changed 'node:node_id(name)' to 'node:nodes(name)'
+    // PostgREST uses the table name 'nodes' to resolve the relationship.
     const { data: jcData, error: jcError } = await supabase
       .from('junction_closures')
-      .select('*, node:node_id(name)')
+      .select('*, node:nodes(name)') 
       .eq('ofc_cable_id', routeId);
 
     if (jcError) throw new Error(`JC fetch error: ${jcError.message}`);
@@ -63,8 +66,9 @@ export async function GET(
       status: 'existing' as const,
       attributes: {
         position_on_route: (jc.position_km / (routeData.current_rkm || 1)) * 100,
-        // The name is now correctly available under the 'node' relation
-        name: jc.node?.name 
+        // The name is now correctly available under the 'node' relation alias
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        name: (jc as any).node?.name 
       }
     }));
 
@@ -77,7 +81,7 @@ export async function GET(
       
     if (segmentError) throw new Error(`Segment fetch error: ${segmentError.message}`);
 
-    // FIX: Construct the final payload correctly
+    // Construct the final payload correctly
     const payload = {
       route: {
         ...routeData,
@@ -121,9 +125,11 @@ export async function POST(
   
       const supabase = await createClient();
   
-      const { data, error } = await supabase.rpc('commit_route_evolution', {
+      const { data, error } = await supabase.rpc('upsert_route_topology_from_excel', {
         p_route_id: routeId,
-        p_planned_equipment: validationResult.data.plannedJointBoxes,
+        p_junction_closures: validationResult.data.plannedJointBoxes,
+        p_cable_segments: validationResult.data.plannedSegments,
+        p_fiber_splices: validationResult.data.plannedSplices,
       });
       
       if (error) throw error;

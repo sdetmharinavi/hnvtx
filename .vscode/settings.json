@@ -1,9 +1,13 @@
 {
     "cSpell.words": [
       "ADMINPRO",
+      "CPANADMIN",
       "dexie",
+      "DWDM",
+      "maan",
       "OFCADMIN",
       "refetches",
+      "treeify",
       "uuidv"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",

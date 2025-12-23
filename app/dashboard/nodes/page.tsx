@@ -54,20 +54,30 @@ const NodesPage = () => {
     actions: crudActions,
   } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
     tableName: 'nodes',
+    localTableName: 'v_nodes_complete',
     dataQueryHook: useNodesData,
-    displayNameField: 'name'
+    searchColumn: ['name', 'remark'],
+    displayNameField: 'name',
   });
 
-  const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(nodes, 'name', 'Nodes');
+  const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
+    nodes,
+    'name',
+    'Nodes'
+  );
 
   // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canEdit =
+    isSuperAdmin ||
+    role === UserRole.ADMIN ||
+    role === UserRole.ADMINPRO ||
+    role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
   const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');
   const { options: areaOptions } = useMaintenanceAreaOptions();
-  
+
   const isInitialLoad = isLoading && nodes.length === 0;
 
   const columns = NodesTableColumns(nodes, showDuplicates ? duplicateSet : undefined);
@@ -91,15 +101,15 @@ const NodesPage = () => {
       toast.success('Refreshed successfully!');
     },
     isLoading: isLoading,
-    exportConfig: canEdit ? { tableName: 'nodes' }: undefined,
+    exportConfig: canEdit ? { tableName: 'nodes' } : undefined,
   });
 
   headerActions.splice(headerActions.length - 1, 0, {
-    label: showDuplicates ? "Hide Duplicates" : "Find Duplicates",
+    label: showDuplicates ? 'Hide Duplicates' : 'Find Duplicates',
     onClick: toggleDuplicates,
-    variant: "outline",
+    variant: 'outline',
     leftIcon: <FiCopy />,
-    hideTextOnMobile: true
+    hideTextOnMobile: true,
   });
 
   const headerStats = [
@@ -108,20 +118,29 @@ const NodesPage = () => {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  const renderMobileItem = useCallback((record: Row<'v_nodes_complete'>) => {
+  const renderMobileItem = useCallback(
+    (record: Row<'v_nodes_complete'>) => {
       return (
-         <NodeCard 
-            node={record as V_nodes_completeRowSchema}
-            onEdit={editModal.openEdit}
-            onDelete={crudActions.handleDelete}
-            onView={viewModal.open}
-            canEdit={canEdit}
-            canDelete={canDelete} 
-         />
-      )
-  }, [editModal.openEdit, crudActions.handleDelete, viewModal.open, canEdit, canDelete]);
+        <NodeCard
+          node={record as V_nodes_completeRowSchema}
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          onView={viewModal.open}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      );
+    },
+    [editModal.openEdit, crudActions.handleDelete, viewModal.open, canEdit, canDelete]
+  );
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="mx-auto space-y-6 p-4 md:p-6">
@@ -137,54 +156,64 @@ const NodesPage = () => {
 
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search node name, remark..." 
-                value={search.searchQuery} 
-                onChange={(e) => search.setSearchQuery(e.target.value)}
-                leftIcon={<FiSearch className="text-gray-400" />}
-                fullWidth
-                clearable
+        <div className="w-full lg:w-96">
+          <Input
+            placeholder="Search node name, remark..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            leftIcon={<FiSearch className="text-gray-400" />}
+            fullWidth
+            clearable
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[180px]">
+            <SearchableSelect
+              placeholder="Node Type"
+              options={nodeTypeOptions}
+              value={filters.filters.node_type_id as string}
+              onChange={(v) => filters.setFilters((prev) => ({ ...prev, node_type_id: v }))}
+              clearable
             />
           </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[180px]">
-                <SearchableSelect 
-                   placeholder="Node Type"
-                   options={nodeTypeOptions}
-                   value={filters.filters.node_type_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, node_type_id: v}))}
-                   clearable
-                />
-             </div>
-             <div className="min-w-[180px]">
-                 <SearchableSelect 
-                   placeholder="Maintenance Area"
-                   options={areaOptions}
-                   value={filters.filters.maintenance_terminal_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, maintenance_terminal_id: v}))}
-                   clearable
-                />
-             </div>
-             {/* View Toggle */}
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button 
-                   onClick={() => setViewMode('grid')}
-                   className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-                   title="Grid View"
-                >
-                    <FiGrid />
-                </button>
-                <button 
-                   onClick={() => setViewMode('table')}
-                   className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`}
-                   title="Table View"
-                >
-                    <FiList />
-                </button>
-             </div>
+          <div className="min-w-[180px]">
+            <SearchableSelect
+              placeholder="Maintenance Area"
+              options={areaOptions}
+              value={filters.filters.maintenance_terminal_id as string}
+              onChange={(v) =>
+                filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: v }))
+              }
+              clearable
+            />
           </div>
+          {/* View Toggle */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <FiGrid />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <FiList />
+            </button>
+          </div>
+        </div>
       </div>
 
       <BulkActions
@@ -200,51 +229,56 @@ const NodesPage = () => {
 
       {/* Content Area */}
       {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-             {nodes.map(node => (
-                <NodeCard 
-                    key={node.id} 
-                    node={node} 
-                    onEdit={editModal.openEdit} 
-                    onDelete={crudActions.handleDelete} 
-                    onView={viewModal.open}
-                    canEdit={canEdit}
-                    canDelete={canDelete} 
-                />
-             ))}
-             {nodes.length === 0 && !isLoading && (
-                 <div className="col-span-full py-16 text-center text-gray-500">
-                    <FiCpu className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No nodes found matching your criteria.</p>
-                 </div>
-             )}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {nodes.map((node) => (
+            <NodeCard
+              key={node.id}
+              node={node}
+              onEdit={editModal.openEdit}
+              onDelete={crudActions.handleDelete}
+              onView={viewModal.open}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+          ))}
+          {nodes.length === 0 && !isLoading && (
+            <div className="col-span-full py-16 text-center text-gray-500">
+              <FiCpu className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No nodes found matching your criteria.</p>
+            </div>
+          )}
+        </div>
       ) : (
-           <DataTable
-            autoHideEmptyColumns={true}
-            tableName="v_nodes_complete"
-            data={nodes}
-            columns={orderedColumns}
-            loading={isLoading}
-            actions={tableActions}
-            selectable={canDelete}
-            onRowSelect={(rows) => {
-                const validRows = rows.filter((row): row is V_nodes_completeRowSchema & { id: string } => row.id != null);
-                bulkActions.handleRowSelect(validRows);
-            }}
-            showColumnsToggle={true}
-            searchable={false} // Custom toolbar used
-            onCellEdit={crudActions.handleCellEdit}
-            renderMobileItem={renderMobileItem}
-            pagination={{
-                current: pagination.currentPage,
-                pageSize: pagination.pageLimit,
-                total: totalCount,
-                showSizeChanger: true,
-                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
-            }}
-            customToolbar={<></>}
-          />
+        <DataTable
+          autoHideEmptyColumns={true}
+          tableName="v_nodes_complete"
+          data={nodes}
+          columns={orderedColumns}
+          loading={isLoading}
+          actions={tableActions}
+          selectable={canDelete}
+          onRowSelect={(rows) => {
+            const validRows = rows.filter(
+              (row): row is V_nodes_completeRowSchema & { id: string } => row.id != null
+            );
+            bulkActions.handleRowSelect(validRows);
+          }}
+          showColumnsToggle={true}
+          searchable={false} // Custom toolbar used
+          onCellEdit={crudActions.handleCellEdit}
+          renderMobileItem={renderMobileItem}
+          pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            showSizeChanger: true,
+            onChange: (p, s) => {
+              pagination.setCurrentPage(p);
+              pagination.setPageLimit(s);
+            },
+          }}
+          customToolbar={<></>}
+        />
       )}
 
       {editModal.isOpen && (
@@ -256,13 +290,13 @@ const NodesPage = () => {
           isLoading={isMutating}
         />
       )}
-      
+
       <NodeDetailsModal
         isOpen={viewModal.isOpen}
         node={viewModal.record as V_nodes_completeRowSchema}
         onClose={viewModal.close}
       />
-      
+
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
