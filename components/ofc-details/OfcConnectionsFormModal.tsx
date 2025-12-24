@@ -13,11 +13,11 @@ import { z } from "zod";
 
 // Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
 const connectionFormSchema = ofc_connectionsInsertSchema.omit({
-    created_at: true,
-    updated_at: true,
-    sn_dom: true,
-    en_dom: true
-    // We keep ID fields to map them correctly in the parent handler if needed
+  created_at: true,
+  updated_at: true,
+  sn_dom: true,
+  en_dom: true,
+  // We keep ID fields to map them correctly in the parent handler if needed
 });
 
 type FormValues = z.infer<typeof connectionFormSchema>;
@@ -27,24 +27,23 @@ interface OfcConnectionsFormModalProps {
   onClose: () => void;
   editingOfcConnections?: Ofc_connectionsRowSchema | null;
   // THE FIX: Single onSubmit handler that takes form data
-  onSubmit: (data: FormValues) => void; 
+  onSubmit: (data: FormValues) => void;
   isLoading: boolean;
 }
 
-export function OfcConnectionsFormModal({ 
-  isOpen, 
-  onClose, 
-  editingOfcConnections, 
-  onSubmit, 
-  isLoading 
+export function OfcConnectionsFormModal({
+  isOpen,
+  onClose,
+  editingOfcConnections,
+  onSubmit,
+  isLoading,
 }: OfcConnectionsFormModalProps) {
-  
   const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     control,
   } = useForm<FormValues>({
@@ -71,8 +70,8 @@ export function OfcConnectionsFormModal({
           route_loss_db: editingOfcConnections.route_loss_db,
           status: editingOfcConnections.status ?? true,
           remark: editingOfcConnections.remark,
-          connection_category: editingOfcConnections.connection_category || 'SPLICE_TYPES',
-          connection_type: editingOfcConnections.connection_type || 'straight',
+          connection_category: editingOfcConnections.connection_category || "SPLICE_TYPES",
+          connection_type: editingOfcConnections.connection_type || "straight",
           system_id: editingOfcConnections.system_id,
           logical_path_id: editingOfcConnections.logical_path_id,
           fiber_role: editingOfcConnections.fiber_role,
@@ -83,16 +82,24 @@ export function OfcConnectionsFormModal({
         });
       } else {
         reset({
-            status: true,
-            connection_category: 'SPLICE_TYPES',
-            connection_type: 'straight'
+          status: true,
+          connection_category: "SPLICE_TYPES",
+          connection_type: "straight",
         });
       }
     }
   }, [isOpen, editingOfcConnections, reset]);
 
+  const handleClose = useCallback(() => {
+    if (isLoading) return;
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  }, [isLoading, onClose, isDirty]);
+
   const onValidSubmit = (formData: FormValues) => {
-    // Pass raw form data to parent. 
+    // Pass raw form data to parent.
     // Parent (useCrudManager) handles insert vs update based on its internal state or ID presence.
     onSubmit(formData);
   };
@@ -103,42 +110,90 @@ export function OfcConnectionsFormModal({
     toast.error(`Validation error in: ${errorFields}`);
   };
 
-  const handleClose = useCallback(() => {
-    if (isLoading) return;
-    onClose();
-  }, [isLoading, onClose]);
-
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
-      title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} 
-      size='full' 
-      visible={false} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose} // Use handleClose
+      title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"}
+      size='full'
+      visible={false}
       className='h-screen w-screen transparent bg-gray-700 rounded-2xl'
-    >
-      <FormCard 
-        title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"} 
-        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} 
-        onCancel={handleClose} 
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}>
+      <FormCard
+        title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"}
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        onCancel={handleClose} // Use handleClose
         isLoading={isLoading}
-        standalone
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput name='fiber_no_sn' label='Start Node Fiber No. *' register={register} error={errors.fiber_no_sn} disabled />
-            <FormInput name='fiber_no_en' label='End Node Fiber No.' register={register} error={errors.fiber_no_en} disabled />
-            
-            <FormInput name='otdr_distance_sn_km' label='OTDR Distance SN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_sn_km} />
-            <FormInput name='sn_power_dbm' label='SN Power (dBm)' register={register} type="number" step='0.01' error={errors.sn_power_dbm} />
-            <FormInput name='otdr_distance_en_km' label='OTDR Distance EN (km)' register={register} type="number" step='0.001' error={errors.otdr_distance_en_km} />
-            <FormInput name='en_power_dbm' label='EN Power (dBm)' register={register} type="number" step='0.01' error={errors.en_power_dbm} />
-            <FormInput name='route_loss_db' label='Route Loss (dB)' register={register} type="number" step='0.01' error={errors.route_loss_db} />
+        standalone>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <FormInput
+            name='fiber_no_sn'
+            label='Start Node Fiber No. *'
+            register={register}
+            error={errors.fiber_no_sn}
+            disabled
+          />
+          <FormInput
+            name='fiber_no_en'
+            label='End Node Fiber No.'
+            register={register}
+            error={errors.fiber_no_en}
+            disabled
+          />
+
+          <FormInput
+            name='otdr_distance_sn_km'
+            label='OTDR Distance SN (km)'
+            register={register}
+            type='number'
+            step='0.001'
+            error={errors.otdr_distance_sn_km}
+          />
+          <FormInput
+            name='sn_power_dbm'
+            label='SN Power (dBm)'
+            register={register}
+            type='number'
+            step='0.01'
+            error={errors.sn_power_dbm}
+          />
+          <FormInput
+            name='otdr_distance_en_km'
+            label='OTDR Distance EN (km)'
+            register={register}
+            type='number'
+            step='0.001'
+            error={errors.otdr_distance_en_km}
+          />
+          <FormInput
+            name='en_power_dbm'
+            label='EN Power (dBm)'
+            register={register}
+            type='number'
+            step='0.01'
+            error={errors.en_power_dbm}
+          />
+          <FormInput
+            name='route_loss_db'
+            label='Route Loss (dB)'
+            register={register}
+            type='number'
+            step='0.01'
+            error={errors.route_loss_db}
+          />
         </div>
         <div className='mt-4'>
           <FormSwitch name='status' label='Active' control={control} error={errors.status} />
         </div>
-        <div className="mt-4">
-            <FormTextarea name='remark' label='Remark' control={control} error={errors.remark} rows={4} />
+        <div className='mt-4'>
+          <FormTextarea
+            name='remark'
+            label='Remark'
+            control={control}
+            error={errors.remark}
+            rows={4}
+          />
         </div>
       </FormCard>
     </Modal>

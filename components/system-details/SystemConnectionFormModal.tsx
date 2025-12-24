@@ -36,7 +36,11 @@ import { RpcFunctionArgs } from "@/hooks/database/queries-type-helpers";
 import { formatIP } from "@/utils/formatters";
 import Link from "next/link";
 // THE FIX: Import new hooks
-import { useLookupTypeOptions, useSystemOptions, usePortOptions } from "@/hooks/data/useDropdownOptions";
+import {
+  useLookupTypeOptions,
+  useSystemOptions,
+  usePortOptions,
+} from "@/hooks/data/useDropdownOptions";
 
 const formSchema = z.object({
   system_id: z.uuid(),
@@ -169,7 +173,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     control,
     handleSubmit,
     register,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     watch,
     setValue,
@@ -196,8 +200,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const watchSnId = watch("sn_id");
 
   // Dropdown Data - using new RPC-safe hooks
-  const { options: mediaTypeOptions } = useLookupTypeOptions('MEDIA_TYPES');
-  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
+  const { options: mediaTypeOptions } = useLookupTypeOptions("MEDIA_TYPES");
+  const { options: linkTypeOptions } = useLookupTypeOptions("LINK_TYPES");
   const { data: systemsData, isLoading: systemsLoading } = useSystemOptions();
 
   // Service Data (Can stay useTableQuery or move to RPC if needed, usually Services table is more open)
@@ -215,7 +219,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   );
 
   // Port Data - using new RPC-safe hook
-  const { data: mainSystemPorts, isLoading: mainPortsLoading } = usePortOptions(watchSystemId || null);
+  const { data: mainSystemPorts, isLoading: mainPortsLoading } = usePortOptions(
+    watchSystemId || null
+  );
   const { data: snPorts, isLoading: snPortsLoading } = usePortOptions(watchSnId || null);
   const { data: enPorts, isLoading: enPortsLoading } = usePortOptions(watchEnId || null);
 
@@ -420,6 +426,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
   }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
 
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  }, [onClose, isDirty]);
+
   const onValidSubmit = useCallback(
     (formData: SystemConnectionFormValues) => {
       const payload: UpsertPayload & { p_en_protection_interface?: string | null } = {
@@ -465,17 +478,25 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     toast.error("Please check the form for errors.");
   };
 
-  const effectiveLoading = isLoading || (isEditMode && isLoadingPristine) || systemsLoading || mainPortsLoading || snPortsLoading || enPortsLoading;
+  const effectiveLoading =
+    isLoading ||
+    (isEditMode && isLoadingPristine) ||
+    systemsLoading ||
+    mainPortsLoading ||
+    snPortsLoading ||
+    enPortsLoading;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose} // Use handleClose
       title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
-      size="full">
+      size='full'
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}>
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        onCancel={onClose}
+        onCancel={handleClose} // Use handleClose
         isLoading={effectiveLoading}
         title={
           <div className='flex items-center gap-2'>
@@ -500,8 +521,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           )
         }
         standalone
-        widthClass="w-full max-w-full"
-        heightClass="h-auto max-h-[90vh]">
+        widthClass='w-full max-w-full'
+        heightClass='h-auto max-h-[90vh]'>
         <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full'>
           <TabsList className='grid w-full grid-cols-3 mb-4'>
             <TabsTrigger value='general' className='flex items-center gap-2'>

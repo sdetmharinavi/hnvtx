@@ -1,24 +1,20 @@
 // components/nodes/NodeFormModal.tsx
-'use client';
+"use client";
 
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Modal } from '@/components/common/ui/Modal';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { FormCard } from '@/components/common/form/FormCard';
+import React, { useCallback, useEffect, useMemo } from "react";
+import { Modal } from "@/components/common/ui/Modal";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { FormCard } from "@/components/common/form/FormCard";
 import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
   FormTextarea,
-} from '@/components/common/form/FormControls';
-import {
-  NodesInsertSchema,
-  nodesInsertSchema,
-  NodesRowSchema,
-} from '@/schemas/zod-schemas';
+} from "@/components/common/form/FormControls";
+import { NodesInsertSchema, nodesInsertSchema, NodesRowSchema } from "@/schemas/zod-schemas";
 // REFACTORED: Import centralized hooks
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from "@/hooks/data/useDropdownOptions";
 
 interface NodeFormModalProps {
   isOpen: boolean;
@@ -38,13 +34,13 @@ export function NodeFormModal({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     control,
   } = useForm<NodesInsertSchema>({
     resolver: zodResolver(nodesInsertSchema),
     defaultValues: {
-      name: '',
+      name: "",
       node_type_id: null,
       latitude: null,
       longitude: null,
@@ -57,24 +53,24 @@ export function NodeFormModal({
   const isEdit = useMemo(() => Boolean(editingNode), [editingNode]);
 
   // --- REFACTORED: Use Hooks ---
-  const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');
+  const { options: nodeTypeOptions } = useLookupTypeOptions("NODE_TYPES");
   const { options: maintenanceAreaOptions } = useMaintenanceAreaOptions();
 
   useEffect(() => {
     if (!isOpen) return;
     if (editingNode) {
       reset({
-        name: editingNode.name ?? '',
+        name: editingNode.name ?? "",
         node_type_id: editingNode.node_type_id ?? null,
         latitude: editingNode.latitude,
         longitude: editingNode.longitude,
         maintenance_terminal_id: editingNode.maintenance_terminal_id ?? null,
-        remark: typeof editingNode.remark === 'string' ? editingNode.remark : null,
+        remark: typeof editingNode.remark === "string" ? editingNode.remark : null,
         status: editingNode.status ?? true,
       });
     } else {
       reset({
-        name: '',
+        name: "",
         node_type_id: null,
         latitude: null,
         longitude: null,
@@ -85,6 +81,13 @@ export function NodeFormModal({
     }
   }, [isOpen, editingNode, reset]);
 
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  }, [onClose, isDirty]);
+
   const onValidSubmit = useCallback(
     (formData: NodesInsertSchema) => {
       onSubmit(formData);
@@ -93,54 +96,111 @@ export function NodeFormModal({
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={''} visible={false} className="h-0 w-0 bg-transparent">
-      <div className="h-full w-full overflow-y-auto">
-        <div className="min-h-full flex items-center justify-center p-4 sm:p-6 md:p-8">
-          <div className="w-full">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={""}
+      visible={false}
+      className='h-0 w-0 bg-transparent'
+      closeOnOverlayClick={false}
+      closeOnEscape={!isDirty}>
+      <div className='h-full w-full overflow-y-auto'>
+        <div className='min-h-full flex items-center justify-center p-4 sm:p-6 md:p-8'>
+          <div className='w-full'>
             <FormCard
-              title={isEdit ? 'Edit Node' : 'Add Node'}
+              title={isEdit ? "Edit Node" : "Add Node"}
               onSubmit={handleSubmit(onValidSubmit)}
               onCancel={onClose}
               isLoading={isLoading}
-              standalone
-            >
-              <div className="space-y-6">
+              standalone>
+              <div className='space-y-6'>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700'>
                     Basic Information
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className="md:col-span-2">
-                      <FormInput name="name" label="Node Name" register={register} error={errors.name} disabled={isLoading} placeholder="Enter node name" />
+                  <div className='grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6'>
+                    <div className='md:col-span-2'>
+                      <FormInput
+                        name='name'
+                        label='Node Name'
+                        register={register}
+                        error={errors.name}
+                        disabled={isLoading}
+                        placeholder='Enter node name'
+                      />
                     </div>
                     {/* REFACTORED: Pass pre-fetched options directly */}
-                    <FormSearchableSelect name="node_type_id" label="Node Type" control={control} options={nodeTypeOptions} error={errors.node_type_id} disabled={isLoading} placeholder="Select node type" />
-                    <FormSearchableSelect name="maintenance_terminal_id" label="Maintenance Terminal" control={control} options={maintenanceAreaOptions} error={errors.maintenance_terminal_id} disabled={isLoading} placeholder="Select maintenance terminal" />
+                    <FormSearchableSelect
+                      name='node_type_id'
+                      label='Node Type'
+                      control={control}
+                      options={nodeTypeOptions}
+                      error={errors.node_type_id}
+                      disabled={isLoading}
+                      placeholder='Select node type'
+                    />
+                    <FormSearchableSelect
+                      name='maintenance_terminal_id'
+                      label='Maintenance Terminal'
+                      control={control}
+                      options={maintenanceAreaOptions}
+                      error={errors.maintenance_terminal_id}
+                      disabled={isLoading}
+                      placeholder='Select maintenance terminal'
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700'>
                     Location Coordinates
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                    <FormInput name="latitude" label="Latitude" register={register} error={errors.latitude} disabled={isLoading} type="number" step="any" placeholder="e.g., 22.5726" />
-                    <FormInput name="longitude" label="Longitude" register={register} error={errors.longitude} disabled={isLoading} type="number" step="any" placeholder="e.g., 88.3639" />
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6'>
+                    <FormInput
+                      name='latitude'
+                      label='Latitude'
+                      register={register}
+                      error={errors.latitude}
+                      disabled={isLoading}
+                      type='number'
+                      step='any'
+                      placeholder='e.g., 22.5726'
+                    />
+                    <FormInput
+                      name='longitude'
+                      label='Longitude'
+                      register={register}
+                      error={errors.longitude}
+                      disabled={isLoading}
+                      type='number'
+                      step='any'
+                      placeholder='e.g., 88.3639'
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700'>
                     Additional Information
                   </h3>
-                  <div className="space-y-4 md:space-y-6">
-                    <FormTextarea name="remark" label="Remark" control={control} error={errors.remark} disabled={isLoading} placeholder="Add any additional notes or remarks" rows={4} />
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className='space-y-4 md:space-y-6'>
+                    <FormTextarea
+                      name='remark'
+                      label='Remark'
+                      control={control}
+                      error={errors.remark}
+                      disabled={isLoading}
+                      placeholder='Add any additional notes or remarks'
+                      rows={4}
+                    />
+                    <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg'>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">Node Status</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enable or disable this node</p>
+                        <p className='font-medium text-gray-900 dark:text-gray-100'>Node Status</p>
+                        <p className='text-sm text-gray-500 dark:text-gray-400 mt-1'>
+                          Enable or disable this node
+                        </p>
                       </div>
-                      <FormSwitch name="status" label="" control={control} error={errors.status} />
+                      <FormSwitch name='status' label='' control={control} error={errors.status} />
                     </div>
                   </div>
                 </div>

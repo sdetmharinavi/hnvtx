@@ -1,7 +1,6 @@
-// components/inventory/InventoryFormModal.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "@/components/common/ui";
@@ -18,11 +17,10 @@ import {
   V_inventory_itemsRowSchema,
 } from "@/schemas/zod-schemas";
 import { z } from "zod";
-// REFACTORED: Use Centralized Hooks
-import { 
-  useLookupTypeOptions, 
-  useActiveNodeOptions, 
-  useMaintenanceAreaOptions 
+import {
+  useLookupTypeOptions,
+  useActiveNodeOptions,
+  useMaintenanceAreaOptions,
 } from "@/hooks/data/useDropdownOptions";
 
 interface InventoryFormModalProps {
@@ -48,9 +46,8 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
 }) => {
   const isEditMode = !!editingItem;
 
-  // --- REFACTORED: Data Fetching ---
-  const { options: categoryOptions } = useLookupTypeOptions('INVENTORY_CATEGORY');
-  const { options: statusOptions } = useLookupTypeOptions('INVENTORY_STATUS');
+  const { options: categoryOptions } = useLookupTypeOptions("INVENTORY_CATEGORY");
+  const { options: statusOptions } = useLookupTypeOptions("INVENTORY_STATUS");
   const { options: locationOptions } = useActiveNodeOptions();
   const { options: functionalLocationOptions } = useMaintenanceAreaOptions();
 
@@ -59,10 +56,21 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
     handleSubmit,
     reset,
     control,
-    formState: { errors },
+    formState: { errors, isDirty }, // Extract isDirty
   } = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
   });
+
+  // --- THE FIX: Intercept Close Action ---
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      const confirmClose = window.confirm(
+        "You have unsaved changes. Are you sure you want to close?"
+      );
+      if (!confirmClose) return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,12 +106,13 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose} // Use handleClose
       title={isEditMode ? "Edit Inventory Item" : "Add Inventory Item"}
-      className='w-0 h-0 bg-transparent'>
+      className='w-0 h-0 bg-transparent'
+      closeOnOverlayClick={false}>
       <FormCard
         onSubmit={handleSubmit(handleFormSubmit)}
-        onCancel={onClose}
+        onCancel={handleClose} // Use handleClose
         isLoading={isLoading}
         title={isEditMode ? "Edit Item" : "Add New Item"}
         standalone>

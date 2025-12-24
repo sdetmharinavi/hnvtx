@@ -28,17 +28,19 @@ export function AreaFormModal({
   area,
   allAreas,
   isLoading,
-}: Omit<AreaFormModalProps, 'areaTypes'>) { // areaTypes is now fetched internally
+}: Omit<AreaFormModalProps, "areaTypes">) {
+  // areaTypes is now fetched internally
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
   const isEditMode = !!area;
 
   // THIS IS THE FIX: Use the offline-first hook internally
-  const { options: areaTypeOptions, isLoading: isLoadingAreaTypes } = useLookupTypeOptions('MAINTENANCE_AREA_TYPES');
+  const { options: areaTypeOptions, isLoading: isLoadingAreaTypes } =
+    useLookupTypeOptions("MAINTENANCE_AREA_TYPES");
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset,
     control,
     watch,
@@ -119,6 +121,13 @@ export function AreaFormModal({
     return allAreas.filter((a) => !excludeIds.has(a.id));
   }, [area, allAreas]);
 
+  const handleClose = () => {
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  };
+
   const onValidSubmit = (data: Maintenance_areasInsertSchema) => {
     onSubmit(data);
   };
@@ -132,41 +141,123 @@ export function AreaFormModal({
         <FormCard
           onSubmit={handleSubmit(onValidSubmit)}
           title={area ? "Edit Area" : "Add New Area"}
-          onCancel={onClose}
+          onCancel={handleClose}
           isLoading={combinedLoading}
           heightClass='max-h-[85vh] overflow-y-auto'
           standalone>
           <div className='space-y-4'>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput name='name' label='Area Name' register={register} error={errors.name} required disabled={combinedLoading} />
-              <FormInput name='code' label='Area Code' register={register} error={errors.code} disabled={combinedLoading} onChange={(e) => { setIsCodeManuallyEdited(true); register("code").onChange(e); }} />
+              <FormInput
+                name='name'
+                label='Area Name'
+                register={register}
+                error={errors.name}
+                required
+                disabled={combinedLoading}
+              />
+              <FormInput
+                name='code'
+                label='Area Code'
+                register={register}
+                error={errors.code}
+                disabled={combinedLoading}
+                onChange={(e) => {
+                  setIsCodeManuallyEdited(true);
+                  register("code").onChange(e);
+                }}
+              />
             </div>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormSearchableSelect name='area_type_id' label='Area Type' control={control} error={errors.area_type_id} disabled={combinedLoading} options={areaTypeOptions} />
-              <FormSearchableSelect name='parent_id' label='Parent Area' control={control} error={errors.parent_id} disabled={combinedLoading} options={availableParents.map((a) => ({ value: a.id, label: a.name }))} />
+              <FormSearchableSelect
+                name='area_type_id'
+                label='Area Type'
+                control={control}
+                error={errors.area_type_id}
+                disabled={combinedLoading}
+                options={areaTypeOptions}
+              />
+              <FormSearchableSelect
+                name='parent_id'
+                label='Parent Area'
+                control={control}
+                error={errors.parent_id}
+                disabled={combinedLoading}
+                options={availableParents.map((a) => ({ value: a.id, label: a.name }))}
+              />
             </div>
           </div>
 
           <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>Contact Information</h3>
+            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
+              Contact Information
+            </h3>
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput name='contact_person' label='Contact Person' register={register} error={errors.contact_person} disabled={combinedLoading} />
-              <FormInput name='contact_number' label='Contact Number' register={register} error={errors.contact_number} disabled={combinedLoading} />
+              <FormInput
+                name='contact_person'
+                label='Contact Person'
+                register={register}
+                error={errors.contact_person}
+                disabled={combinedLoading}
+              />
+              <FormInput
+                name='contact_number'
+                label='Contact Number'
+                register={register}
+                error={errors.contact_number}
+                disabled={combinedLoading}
+              />
             </div>
-            <FormInput name='email' label='Email Address' register={register} error={errors.email} disabled={combinedLoading} />
+            <FormInput
+              name='email'
+              label='Email Address'
+              register={register}
+              error={errors.email}
+              disabled={combinedLoading}
+            />
           </div>
 
           <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>Location Details</h3>
-            <FormTextarea name='address' label='Address' control={control} error={errors.address} disabled={combinedLoading} />
+            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
+              Location Details
+            </h3>
+            <FormTextarea
+              name='address'
+              label='Address'
+              control={control}
+              error={errors.address}
+              disabled={combinedLoading}
+            />
             <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput name='latitude' label='Latitude' type='number' step='any' register={register} error={errors.latitude} disabled={combinedLoading} placeholder='e.g., 22.5726' />
-              <FormInput name='longitude' label='Longitude' type='number' step='any' register={register} error={errors.longitude} disabled={combinedLoading} placeholder='e.g., 88.3639' />
+              <FormInput
+                name='latitude'
+                label='Latitude'
+                type='number'
+                step='any'
+                register={register}
+                error={errors.latitude}
+                disabled={combinedLoading}
+                placeholder='e.g., 22.5726'
+              />
+              <FormInput
+                name='longitude'
+                label='Longitude'
+                type='number'
+                step='any'
+                register={register}
+                error={errors.longitude}
+                disabled={combinedLoading}
+                placeholder='e.g., 88.3639'
+              />
             </div>
           </div>
 
           <div className='mt-6 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <FormSwitch name='status' label='Active Status' control={control} error={errors.status} />
+            <FormSwitch
+              name='status'
+              label='Active Status'
+              control={control}
+              error={errors.status}
+            />
           </div>
         </FormCard>
       </div>

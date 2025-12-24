@@ -1,4 +1,3 @@
-// components/employee/EmployeeForm.tsx
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Option } from "@/components/common/ui/select/SearchableSelect";
@@ -23,7 +22,6 @@ interface EmployeeFormProps {
   employee?: V_employeesRowSchema | null;
   onSubmit: (data: EmployeesInsertSchema) => void;
   isLoading: boolean;
-  // REFACTORED: Accept pre-formatted options
   designationOptions: Option[];
   maintenanceAreaOptions: Option[];
 }
@@ -41,7 +39,7 @@ const EmployeeForm = ({
     control,
     handleSubmit,
     register,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty }, // Extract isDirty
     reset,
   } = useForm<EmployeesInsertSchema>({
     resolver: zodResolver(employeesInsertSchema),
@@ -59,6 +57,14 @@ const EmployeeForm = ({
       status: true,
     },
   });
+
+  // --- THE FIX: Intercept Close Action ---
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+    }
+    onClose();
+  }, [isDirty, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -98,17 +104,10 @@ const EmployeeForm = ({
     onSubmit(data);
   };
 
-  const handleClose = useCallback(() => {
-    if (isDirty) {
-      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
-    }
-    onClose();
-  }, [isDirty, onClose]);
-
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={handleClose} // Use handleClose
       title={employee ? "Edit Employee" : "Add New Employee"}
       visible={false}
       className='bg-transparent h-0 w-0'
@@ -117,7 +116,7 @@ const EmployeeForm = ({
       <FormCard
         title={employee ? "Edit Employee" : "Add New Employee"}
         onSubmit={handleSubmit(onValidFormSubmit)}
-        onCancel={handleClose}
+        onCancel={handleClose} // Use handleClose
         isLoading={isLoading}
         disableSubmit={isLoading}
         standalone>
