@@ -276,3 +276,65 @@ body {
     color: #000000 !important;
   }
 }
+
+/* --- PRINT STYLES --- */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Explicitly hide layout elements that might persist */
+  .no-print, header, nav, aside, footer, button, .uppy-dashboard-container {
+    display: none !important;
+  }
+
+  /* Make the map visible and fill the page */
+  .printable-map-container, 
+  .printable-map-container * {
+    visibility: visible;
+  }
+
+  .printable-map-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Hide Leaflet controls during print */
+  .leaflet-control-container {
+    display: none !important;
+  }
+  
+  /* Ensure background graphics (map tiles) are printed */
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Additional print fixes for map elements */
+@media print {
+  .leaflet-container {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .leaflet-tile {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .leaflet-overlay-pane svg {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

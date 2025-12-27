@@ -19,11 +19,6 @@ interface UseLocalFirstQueryOptions<
   dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
-  /**
-   * If true, attempts to fetch from network on component mount.
-   * If false, relies solely on local data until refetch() is called manually.
-   * Default: false (Offline-first, manual sync)
-   */
   autoSync?: boolean; 
 }
 
@@ -38,13 +33,12 @@ export function useLocalFirstQuery<
   localQueryDeps = [],
   dexieTable,
   enabled = true,
-  staleTime = Infinity, // Default to Infinity to prevent background refetches
-  autoSync = false,     // Default to Manual Sync
+  staleTime = Infinity, 
+  autoSync = false,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
 
-  // 1. Fetch Local Data (Always available via Dexie)
-  // useLiveQuery returns undefined while loading, then the array
+  // 1. Fetch Local Data
   const localData = useLiveQuery(localQueryFn, localQueryDeps, "loading");
   
   // 2. Network Query Configuration
@@ -66,14 +60,10 @@ export function useLocalFirstQuery<
       }
       return onlineQueryFn();
     },
-    // Controls whether the query runs automatically
     enabled: shouldFetchOnMount, 
-    
-    // Strict Manual Mode Settings
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Do not refetch on mount if data exists
-    refetchOnReconnect: false, // Do not auto-refetch on reconnect
-    
+    refetchOnMount: false, 
+    refetchOnReconnect: false, 
     staleTime,
     retry: 1, 
   });
@@ -83,8 +73,27 @@ export function useLocalFirstQuery<
     if (networkData) {
       const syncToLocal = async () => {
         try {
-          // Bulk put updates existing records and inserts new ones
-          await dexieTable.bulkPut(networkData as unknown as TLocal[]);
+          // THE FIX: Safe Data Saving
+          // We check if the table schema has a primary key (usually 'id').
+          // If so, we filter out any records that have a null/undefined value for that key
+          // before saving to Dexie, as IndexedDB does not allow null primary keys.
+          const primaryKey = dexieTable.schema.primKey.name;
+          
+          let dataToSave = networkData as unknown as TLocal[];
+          
+          if (primaryKey) {
+             dataToSave = dataToSave.filter(item => {
+                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 const pkValue = (item as any)[primaryKey];
+                 return pkValue !== null && pkValue !== undefined;
+             });
+          }
+
+          if (dataToSave.length > 0) {
+            await dexieTable.bulkPut(dataToSave);
+          } else if (networkData.length > 0) {
+             console.warn(`[useLocalFirstQuery] Skipped syncing to ${dexieTable.name}: All ${networkData.length} records had invalid primary keys.`);
+          }
         } catch (e) {
           console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
         }
@@ -94,7 +103,6 @@ export function useLocalFirstQuery<
   }, [networkData, dexieTable]);
 
   // 4. Determine Loading State
-  // "loading" is the string identifier we passed to useLiveQuery default
   const isLocalLoading = localData === "loading";
   const hasLocalData = Array.isArray(localData) && localData.length > 0;
   
@@ -104,15 +112,13 @@ export function useLocalFirstQuery<
   const isLoading = isLocalLoading || ((isNetworkLoading && autoSync) && !hasLocalData);
 
   // 5. Determine Error State
-  // Suppress network errors if we have local data to show
   const isError = isNetworkError && !hasLocalData;
   const error = isError ? networkError : null;
 
   // 6. Indicators
   const isSyncing = isNetworkFetching;
-  const isStale = isNetworkError && hasLocalData; // We have data, but last sync failed
+  const isStale = isNetworkError && hasLocalData; 
   
-  // Safe data return
   const safeData = Array.isArray(localData) ? localData : [];
 
   return {

@@ -181,7 +181,8 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    this.version(34).stores({
+    // BUMP VERSION TO 35 to force schema refresh
+    this.version(35).stores({
       lookup_types: '&id, category, name, sort_order, status', 
       
       maintenance_areas: '&id, name, parent_id, area_type_id, status',
@@ -192,7 +193,6 @@ export class HNVTMDatabase extends Dexie {
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       systems: '&id, system_name, node_id, status',
       cable_segments: '&id, original_cable_id',
-      // THE FIX: Added ofc_cable_id as an index
       junction_closures: '&id, node_id, ofc_cable_id',
       fiber_splices: '&id, jc_id',
       system_connections: '&id, system_id, status',

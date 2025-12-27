@@ -21,6 +21,29 @@ export function haversineDistance(
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in kilometers
   }
-// // Usage
-// const minDist = haversineDistance(22.5726, 88.3639, 28.7041, 77.1025);
-// console.log(`Distance: ${minDist.toFixed(2)} km`);
+  
+// Calculate total length of a path (GeoJSON coordinates: [lng, lat])
+export function calculateGeoJsonLength(geometry: { type: string; coordinates: unknown }): number {
+  let totalKm = 0;
+
+  const calculateLineStringLength = (coords: number[][]) => {
+      let dist = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+          const [lon1, lat1] = coords[i];
+          const [lon2, lat2] = coords[i + 1];
+          dist += haversineDistance(lat1, lon1, lat2, lon2);
+      }
+      return dist;
+  };
+
+  if (geometry.type === 'LineString') {
+      totalKm += calculateLineStringLength(geometry.coordinates as number[][]);
+  } else if (geometry.type === 'MultiLineString') {
+      const multiCoords = geometry.coordinates as number[][][];
+      multiCoords.forEach(coords => {
+          totalKm += calculateLineStringLength(coords);
+      });
+  }
+
+  return totalKm * 1000; // Return in meters
+}
