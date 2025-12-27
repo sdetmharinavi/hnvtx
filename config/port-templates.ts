@@ -31,10 +31,12 @@ const PORT_TYPES = {
   FE: '14888b49-2f7d-4dbd-93c2-b19dcafbcd8c',
   GE_OPTICAL: '4b86eede-d502-4368-85c1-8e68d9b50282',
   GE_ELECTRICAL: 'bf63f1aa-0976-401a-8309-1ede374d0c54',
+  GE_OR_10_GE: '94d70d95-ad93-483c-add9-4f9d13de7b79',
+  PON: 'c362e3d1-51b5-4a67-82cf-a9f194e46e6a',
   TEN_GE: '6c9460cb-22dd-4457-82e3-0ccebe0f3afc',
   STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc',
   // New Type for C1 System (Ensure this UUID exists in lookup_types or replace with existing Ethernet UUID)
-  HUNDRED_GE: '8495033c-5353-4876-b605-65476a6a9787' 
+  HUNDRED_GE: 'f50ef056-24c8-4287-b9c0-99e91af68c59' 
 };
 
 export const PORT_TEMPLATES: Record<string, PortTemplate> = {
@@ -59,6 +61,132 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
       createPort('2.6', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
       // NMS
       createPort('NMS', PORT_TYPES.FE, 'FE')
+    ]
+  },
+  // GENEW(GX3108G) OLT Ports (System Capacity ID: cf38cdd5-8c5b-40ec-80b7-e5a0d0026db5)
+  "cf38cdd5-8c5b-40ec-80b7-e5a0d0026db5": {
+    name: "GENEW(GX3108G) OLT Ports Configuration",
+    description: "Configuration for GENEW(GX3108G) OLT systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OR_10_GE, '10GE/1GE'),
+      createPort('1.2', PORT_TYPES.GE_OR_10_GE, '10GE/1GE'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      // Slot 2
+      createPort('2.1', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.2', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.3', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.4', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.5', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.6', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.7', PORT_TYPES.PON, '2.5 Gbps'),
+      createPort('2.8', PORT_TYPES.PON, '2.5 Gbps'),
+      
+      // NMS
+      createPort('NMS', PORT_TYPES.FE, 'FE')
+    ]
+  },
+  // PON SPLITTER 1:2 Ports (System Capacity ID: b8edda5d-fb04-440e-95f1-6b09e9ca29e6)
+  "b8edda5d-fb04-440e-95f1-6b09e9ca29e6": {
+    name: "PON SPLITTER 1:2 Ports Configuration",
+    description: "Configuration for PON SPLITTER 1:2 systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, '1.25GE'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, '1.25GE'),
+    ]
+  },
+  // PON SPLITTER 1:4 Ports (System Capacity ID: ea748142-6f33-48a6-b847-deb202e61cef)
+  "ea748142-6f33-48a6-b847-deb202e61cef": {
+    name: "PON SPLITTER 1:4 Ports Configuration",
+    description: "Configuration for PON SPLITTER 1:4 systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, '625MB'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, '625MB'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, '625MB'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, '625MB'),
+    ]
+  },
+  // PON SPLITTER 1:8 Ports (System Capacity ID: f2aceb7b-2f1b-487f-b955-e02c788e4b04)
+  "f2aceb7b-2f1b-487f-b955-e02c788e4b04": {
+    name: "PON SPLITTER 1:8 Ports Configuration",
+    description: "Configuration for PON SPLITTER 1:8 systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.5', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.6', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.7', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+      createPort('1.8', PORT_TYPES.GE_OPTICAL, '312.5MB'),
+    ]
+  },
+  // PON SPLITTER 1:16 Ports (System Capacity ID: 443b8719-f85c-4fe6-b5bc-ae699bf7f1f4)
+  "443b8719-f85c-4fe6-b5bc-ae699bf7f1f4": {
+    name: "PON SPLITTER 1:16 Ports Configuration",
+    description: "Configuration for PON SPLITTER 1:16 systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.5', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.6', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.7', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.8', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.9', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.10', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.11', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.12', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.13', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.14', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.15', PORT_TYPES.GE_OPTICAL, '156MB'),
+      createPort('1.16', PORT_TYPES.GE_OPTICAL, '156MB'),
+    ]
+  },
+  // PON SPLITTER 1:132 Ports (System Capacity ID: 7f20455f-6783-44fc-b4c5-55090ad8e606)
+  "7f20455f-6783-44fc-b4c5-55090ad8e606": {
+    name: "PON SPLITTER 1:32 Ports Configuration",
+    description: "Configuration for PON SPLITTER 1:32 systems",
+    ports: [
+      // Slot 1
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.5', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.6', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.7', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.8', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.9', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.10', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.11', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.12', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.13', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.14', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.15', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.16', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.17', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.18', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.19', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.20', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.21', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.22', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.23', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.24', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.25', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.26', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.27', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.28', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.29', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.30', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.31', PORT_TYPES.GE_OPTICAL, '78MB'),
+      createPort('1.32', PORT_TYPES.GE_OPTICAL, '78MB')
     ]
   },
 
