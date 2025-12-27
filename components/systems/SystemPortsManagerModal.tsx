@@ -68,7 +68,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         filters.setFilters(prev => ({
             ...prev,
             // Default select GE(O), GE(E), and 10GE
-            port_type_code: ['GE(O)', 'GE(E)', '10GE']
+            port_type_code: ['GE(O)', 'GE(E)', '10GE', 'GE/10GE', 'PON']
         }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
