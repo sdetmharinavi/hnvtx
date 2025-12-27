@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-l
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
 import JSZip from 'jszip';
-import html2canvas from 'html2canvas'; // Import html2canvas
+import html2canvas from 'html2canvas'; 
 import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
 import { Maximize, Minimize, Printer, RotateCw, RotateCcw, Plus, Minus, Camera } from 'lucide-react';
@@ -18,21 +18,25 @@ interface KmlMapProps {
   kmlUrl: string | null;
 }
 
-// ... (RotatedDragOverlay, extractKmlStyles, and MapController components remain exactly the same) ...
 // --- ROTATION DRAG HANDLER ---
 const RotatedDragOverlay = ({ map, rotation }: { map: L.Map; rotation: number }) => {
   const isDragging = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
 
+  // Type assertion to handle the missing 'tap' property in @types/leaflet
+  const mapWithTap = map as L.Map & { tap?: L.Handler };
+
   useEffect(() => {
     if (rotation !== 0) {
       map.dragging.disable();
-      if (map.tap) map.tap.disable();
+      // Safely check and disable tap handler if it exists
+      if (mapWithTap.tap) mapWithTap.tap.disable();
     } else {
       map.dragging.enable();
-      if (map.tap) map.tap.enable();
+      // Safely check and enable tap handler if it exists
+      if (mapWithTap.tap) mapWithTap.tap.enable();
     }
-  }, [map, rotation]);
+  }, [map, rotation, mapWithTap]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (rotation === 0) return; 
@@ -81,7 +85,7 @@ const RotatedDragOverlay = ({ map, rotation }: { map: L.Map; rotation: number })
 
   return (
     <div
-      className="absolute inset-0 z-[1000] cursor-move"
+      className="absolute inset-0 z-1000 cursor-move"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -187,9 +191,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   const [rotation, setRotation] = useState(0); 
   const isMobile = useIsMobile();
   
-  // New state for image generation
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null); // Ref to the outer wrapper
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const mapRef = useRef<L.Map | null>(null);
   const defaultIconRef = useRef<L.Icon | null>(null);
@@ -381,7 +384,6 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     window.print();
   };
 
-  // --- SAVE IMAGE FUNCTIONALITY ---
   const handleSaveImage = async () => {
     if (!containerRef.current) return;
     
@@ -389,17 +391,15 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     const toastId = toast.loading("Generating High-Res Image...");
 
     try {
-      // Small delay to ensure any map interactions settle
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(containerRef.current, {
-        useCORS: true, // Critical for OSM tiles
+        useCORS: true, 
         allowTaint: true,
-        scale: 2, // High resolution (Retina quality)
+        scale: 2, 
         logging: false,
-        backgroundColor: '#f3f4f6', // Light gray background in case of gaps
+        backgroundColor: '#f3f4f6', 
         ignoreElements: (element) => {
-            // Do not capture the map controls overlay
             return element.classList.contains('no-print');
         }
       });
@@ -547,7 +547,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; OpenStreetMap contributors'
-                crossOrigin="anonymous" // IMPORTANT for html2canvas
+                crossOrigin="anonymous" 
               />
             </LayersControl.BaseLayer>
             
@@ -555,7 +555,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-                crossOrigin="anonymous" // IMPORTANT for html2canvas
+                crossOrigin="anonymous" 
               />
             </LayersControl.BaseLayer>
           </LayersControl>
