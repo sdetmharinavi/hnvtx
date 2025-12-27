@@ -85,7 +85,7 @@ const RotatedDragOverlay = ({ map, rotation }: { map: L.Map; rotation: number })
 
   return (
     <div
-      className="absolute inset-0 z-1000 cursor-move"
+      className="absolute inset-0 z-[1000] cursor-move"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -395,7 +395,8 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
 
       const canvas = await html2canvas(containerRef.current, {
         useCORS: true, 
-        allowTaint: true,
+        // THE FIX: Set allowTaint to false to allow data extraction
+        allowTaint: false,
         scale: 2, 
         logging: false,
         backgroundColor: '#f3f4f6', 
