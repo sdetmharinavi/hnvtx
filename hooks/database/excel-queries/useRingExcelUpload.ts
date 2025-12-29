@@ -36,20 +36,29 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       };
 
       toast.info('Fetching lookup data for validation...');
+
+      // CHANGED: Use RPC for systems fetching
+      const { data: systemsData, error: systemsError } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_systems_complete',
+        p_limit: 10000,
+        p_offset: 0,
+      });
+
       const [
         { data: ringTypes, error: ringTypesError },
         { data: maintenanceAreas, error: maintenanceAreasError },
-        { data: systems, error: systemsError },
       ] = await Promise.all([
         supabase.from('lookup_types').select('id, name').eq('category', 'RING_TYPES'),
         supabase.from('maintenance_areas').select('id, name'),
-        supabase.from('v_systems_complete').select('id, system_name, node_name'),
       ]);
 
       if (ringTypesError) throw new Error(`Failed to fetch ring types: ${ringTypesError.message}`);
       if (maintenanceAreasError)
         throw new Error(`Failed to fetch maintenance areas: ${maintenanceAreasError.message}`);
       if (systemsError) throw new Error(`Failed to fetch systems: ${systemsError.message}`);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const systems = (systemsData as any)?.data || [];
 
       const ringTypeMap = new Map(
         ringTypes.map((item) => [item.name.toLowerCase().trim(), item.id])
@@ -58,15 +67,20 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         maintenanceAreas.map((item) => [item.name.toLowerCase().trim(), item.id])
       );
       const systemNameMap = new Map(
-        systems.map((item) => [item.system_name?.toLowerCase().trim(), item.id])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        systems.map((item: any) => [item.system_name?.toLowerCase().trim(), item.id])
       );
       const nodeNameMap = new Map(
-        systems.map((item) => [item.node_name?.toLowerCase().trim(), item.id])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        systems.map((item: any) => [item.node_name?.toLowerCase().trim(), item.id])
       );
 
       toast.info('Reading and parsing Excel file...');
 
       const jsonData = await parseExcelFile(file);
+
+      // ... (Rest of parsing logic remains identical) ...
+      // I will include the rest of the parsing logic to ensure the file is complete.
 
       if (!jsonData || jsonData.length < 2) {
         toast.warning('No data found in the Excel file.');
@@ -186,8 +200,9 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
           status: toPgBoolean(statusValue),
           ring_type_id: ringTypeId,
           maintenance_terminal_id: maintenanceTerminalId,
-          associated_systems_json: associatedSystemsJson,
-          topology_config: topologyConfigJson, // ADDED
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          associated_systems_json: associatedSystemsJson as any,
+          topology_config: topologyConfigJson,
         };
 
         ringsToUpsert.push(record);
