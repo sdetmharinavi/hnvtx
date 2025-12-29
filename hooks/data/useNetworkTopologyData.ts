@@ -1,23 +1,31 @@
-// hooks/useNetworkTopologyData.ts
+// hooks/data/useNetworkTopologyData.ts
 import { useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { V_nodes_completeRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters } from '@/hooks/database';
 
 const supabase = createClient();
 
 export function useNetworkTopologyData(maintenanceAreaId: string | null) {
   
-  // 1. Nodes Query Configuration
+  // 1. Nodes Query Configuration (RPC)
   const nodesOnlineFn = useCallback(async () => {
-    let query = supabase.from('v_nodes_complete').select('*');
-    if (maintenanceAreaId) {
-      query = query.eq('maintenance_terminal_id', maintenanceAreaId);
-    }
-    const { data, error } = await query;
+    const filters = maintenanceAreaId ? { maintenance_terminal_id: maintenanceAreaId } : {};
+    
+    // THE FIX: Use RPC 'get_paged_data' instead of direct select
+    const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_nodes_complete',
+        p_limit: 10000,
+        p_offset: 0,
+        p_filters: buildRpcFilters(filters),
+        p_order_by: 'name'
+    });
+
     if (error) throw new Error(`Failed to fetch nodes: ${error.message}`);
-    return (data || []) as V_nodes_completeRowSchema[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data as any)?.data || []) as V_nodes_completeRowSchema[];
   }, [maintenanceAreaId]);
 
   const nodesLocalFn = useCallback(() => {
@@ -41,20 +49,26 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     onlineQueryFn: nodesOnlineFn,
     localQueryFn: nodesLocalFn,
     dexieTable: localDb.v_nodes_complete,
-    // Disable auto-sync to align with app-wide policy
     autoSync: false,
     localQueryDeps: [maintenanceAreaId]
   });
 
-  // 2. Cables Query Configuration
+  // 2. Cables Query Configuration (RPC)
   const cablesOnlineFn = useCallback(async () => {
-    let query = supabase.from('v_ofc_cables_complete').select('*');
-    if (maintenanceAreaId) {
-      query = query.eq('maintenance_terminal_id', maintenanceAreaId);
-    }
-    const { data, error } = await query;
+    const filters = maintenanceAreaId ? { maintenance_terminal_id: maintenanceAreaId } : {};
+
+    // THE FIX: Use RPC 'get_paged_data'
+    const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ofc_cables_complete',
+        p_limit: 10000,
+        p_offset: 0,
+        p_filters: buildRpcFilters(filters),
+        p_order_by: 'route_name'
+    });
+
     if (error) throw new Error(`Failed to fetch cables: ${error.message}`);
-    return (data || []) as V_ofc_cables_completeRowSchema[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((data as any)?.data || []) as V_ofc_cables_completeRowSchema[];
   }, [maintenanceAreaId]);
 
   const cablesLocalFn = useCallback(() => {

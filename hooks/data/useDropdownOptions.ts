@@ -6,12 +6,9 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { V_employeesRowSchema, V_systems_completeRowSchema, V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
 import { buildRpcFilters, PublicTableOrViewName } from '@/hooks/database';
 
 interface OptionsQuery {
-  // THE FIX: Use PublicTableOrViewName instead of a hardcoded union type
-  // This allows 'v_nodes_complete' and other views to be passed in.
   tableName: PublicTableOrViewName;
   valueField: string;
   labelField: string;
@@ -33,16 +30,27 @@ const cleanFilters = (filters: Record<string, any>) => {
 };
 
 export function useDropdownOptions({ tableName, valueField, labelField, filters = {}, orderBy = 'name' }: OptionsQuery) {
+  
+  // THE FIX: Switched from Direct Select to RPC 'get_paged_data'
+  // This ensures we bypass RLS issues on Views and get complete data (no nulls).
   const onlineQueryFn = async () => {
     const validFilters = cleanFilters(filters);
-    const { data, error } = await createClient()
-      .from(tableName)
-      .select('*') 
-      .match(validFilters)
-      .order(orderBy);
+    
+    // We fetch a large limit to simulate "all options" for a dropdown
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: tableName,
+      p_limit: 10000, 
+      p_offset: 0,
+      p_filters: buildRpcFilters(validFilters),
+      p_order_by: orderBy,
+      p_order_dir: 'asc'
+    });
 
     if (error) throw error;
-    return data || [];
+    
+    // The RPC returns { data: [...], count: ... }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.data || [];
   };
 
   const localQueryFn = () => {
@@ -55,7 +63,13 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
 
     return table
       .filter(item => {
-        return Object.entries(validFilters).every(([key, val]) => item[key] === val);
+        return Object.entries(validFilters).every(([key, val]) => {
+           const itemVal = item[key];
+           if (key === 'status' && typeof val === 'boolean') {
+             return String(itemVal) === String(val);
+           }
+           return itemVal === val;
+        });
       })
       .toArray()
       .then(result => {
@@ -89,11 +103,10 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     }));
   }, [data, valueField, labelField]);
 
-  // Return originalData to allow consumers to access other fields (like node_type_name)
   return { options, isLoading, originalData: data };
 }
 
-// --- Specialized Hooks ---
+// ... (Rest of the file exports remain the same) ...
 
 export const useLookupTypeOptions = (category: string) => {
   const { options, isLoading, originalData } = useDropdownOptions({
@@ -136,13 +149,18 @@ export const useActiveRingOptions = () => {
 
 export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
-    const { data, error } = await createClient()
-      .from('v_employees')
-      .select('*')
-      .eq('status', true)
-      .order('employee_name');
+    // THE FIX: Updated to RPC here as well for consistency
+    const { data, error } = await createClient().rpc('get_paged_data', {
+        p_view_name: 'v_employees',
+        p_limit: 10000,
+        p_offset: 0,
+        p_filters: { status: true },
+        p_order_by: 'employee_name'
+    });
+
     if (error) throw error;
-    return (data || []) as V_employeesRowSchema[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.data || [];
   };
 
   const localQueryFn = () => {
@@ -171,8 +189,6 @@ export function useEmployeeOptions() {
   return { options, isLoading };
 }
 
-// --- NEW RPC-BASED HOOKS FOR SYSTEM CONNECTION MODAL ---
-
 export function useSystemOptions() {
   const onlineQueryFn = async () => {
     const { data, error } = await createClient().rpc('get_paged_data', {
@@ -186,7 +202,7 @@ export function useSystemOptions() {
     
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [] as V_systems_completeRowSchema[];
+    return (data as any)?.data || [];
   };
 
   const localQueryFn = () => {
@@ -224,7 +240,7 @@ export function usePortOptions(systemId: string | null) {
     
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [] as V_ports_management_completeRowSchema[];
+    return (data as any)?.data || [];
   };
 
   const localQueryFn = () => {

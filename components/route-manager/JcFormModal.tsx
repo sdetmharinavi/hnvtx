@@ -70,6 +70,8 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     // If strict filtering returns nothing, show ALL nodes so the user isn't blocked.
     // Otherwise, show the filtered list.
     const finalNodes = filteredNodes.length > 0 ? filteredNodes : nodes;
+
+    console.log(finalNodes)
     
 
     return finalNodes.map(n => ({

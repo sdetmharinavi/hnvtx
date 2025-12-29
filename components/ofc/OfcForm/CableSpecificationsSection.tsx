@@ -104,7 +104,7 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
           error={errors.current_rkm}
           placeholder="Enter current RKM"
           type="number"
-          step="0.01"
+          step="0.001"
         />
 
         <FormInput
@@ -114,7 +114,7 @@ const CableSpecificationsSection: React.FC<CableSpecificationsSectionProps> = ({
           error={errors.transnet_rkm}
           placeholder="Enter transnet RKM"
           type="number"
-          step="0.01"
+          step="0.001"
         />
       </div>
 
