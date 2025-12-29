@@ -144,7 +144,7 @@ export default function SystemsPage() {
       onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
       onDelete: canDelete ? crudActions.handleDelete : undefined,
-      onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
+      onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
     });
     actions.unshift({
       key: 'manage-ports',

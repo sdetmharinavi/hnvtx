@@ -4,7 +4,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { Modal, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
+import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database'; // CHANGED: Imported useRpcRecord and usePagedData
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -13,6 +13,7 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import {
   V_system_connections_completeRowSchema,
   V_systems_completeRowSchema,
+  V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
@@ -48,11 +49,12 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const [connectionToAllocate, setConnectionToAllocate] =
     useState<V_system_connections_completeRowSchema | null>(null);
 
+  // CHANGED: Use useRpcRecord instead of useTableRecord
   const {
     data: connection,
     isLoading,
     refetch,
-  } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
+  } = useRpcRecord(supabase, 'v_system_connections_complete', connectionId);
 
   const allocatedFiberIds = useMemo(() => {
     if (!connection) return [];
@@ -64,13 +66,18 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
-    filters: {
-      id: { operator: 'in', value: allocatedFiberIds },
+  // CHANGED: Use usePagedData instead of useTableQuery for the view
+  const { data: ofcData } = usePagedData<V_ofc_connections_completeRowSchema>(
+    supabase,
+    'v_ofc_connections_complete',
+    {
+      filters: {
+        id: { operator: 'in', value: allocatedFiberIds },
+      },
+      limit: 100,
     },
-    enabled: allocatedFiberIds.length > 0,
-    limit: 100,
-  });
+    { enabled: allocatedFiberIds.length > 0 }
+  );
 
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {

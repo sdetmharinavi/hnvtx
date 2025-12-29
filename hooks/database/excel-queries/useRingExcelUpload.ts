@@ -26,8 +26,13 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
   return useMutation<EnhancedUploadResult, Error, RingUploadOptions>({
     mutationFn: async ({ file }): Promise<EnhancedUploadResult> => {
       const uploadResult: EnhancedUploadResult = {
-        successCount: 0, errorCount: 0, totalRows: 0, errors: [],
-        processingLogs: [], validationErrors: [], skippedRows: 0,
+        successCount: 0,
+        errorCount: 0,
+        totalRows: 0,
+        errors: [],
+        processingLogs: [],
+        validationErrors: [],
+        skippedRows: 0,
       };
 
       toast.info('Fetching lookup data for validation...');
@@ -38,20 +43,29 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       ] = await Promise.all([
         supabase.from('lookup_types').select('id, name').eq('category', 'RING_TYPES'),
         supabase.from('maintenance_areas').select('id, name'),
-        supabase.from('v_systems_complete').select('id, system_name, node_name'), 
+        supabase.from('v_systems_complete').select('id, system_name, node_name'),
       ]);
 
       if (ringTypesError) throw new Error(`Failed to fetch ring types: ${ringTypesError.message}`);
-      if (maintenanceAreasError) throw new Error(`Failed to fetch maintenance areas: ${maintenanceAreasError.message}`);
+      if (maintenanceAreasError)
+        throw new Error(`Failed to fetch maintenance areas: ${maintenanceAreasError.message}`);
       if (systemsError) throw new Error(`Failed to fetch systems: ${systemsError.message}`);
 
-      const ringTypeMap = new Map(ringTypes.map(item => [item.name.toLowerCase().trim(), item.id]));
-      const maintenanceAreaMap = new Map(maintenanceAreas.map(item => [item.name.toLowerCase().trim(), item.id]));
-      const systemNameMap = new Map(systems.map(item => [item.system_name?.toLowerCase().trim(), item.id]));
-      const nodeNameMap = new Map(systems.map(item => [item.node_name?.toLowerCase().trim(), item.id]));
+      const ringTypeMap = new Map(
+        ringTypes.map((item) => [item.name.toLowerCase().trim(), item.id])
+      );
+      const maintenanceAreaMap = new Map(
+        maintenanceAreas.map((item) => [item.name.toLowerCase().trim(), item.id])
+      );
+      const systemNameMap = new Map(
+        systems.map((item) => [item.system_name?.toLowerCase().trim(), item.id])
+      );
+      const nodeNameMap = new Map(
+        systems.map((item) => [item.node_name?.toLowerCase().trim(), item.id])
+      );
 
       toast.info('Reading and parsing Excel file...');
-      
+
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
@@ -59,7 +73,7 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         return uploadResult;
       }
 
-      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
       const headerMap = new Map(excelHeaders.map((h, i) => [h.toLowerCase(), i]));
       const dataRows = jsonData.slice(1);
       const ringsToUpsert: RingToUpsert[] = [];
@@ -71,9 +85,9 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         const row = dataRows[i] as unknown[];
         const rowValidationErrors: ValidationError[] = [];
 
-        if (row.every(cell => cell === null || String(cell).trim() === '')) {
-            uploadResult.skippedRows++;
-            continue;
+        if (row.every((cell) => cell === null || String(cell).trim() === '')) {
+          uploadResult.skippedRows++;
+          continue;
         }
 
         const ringTypeNameRaw = row[headerMap.get('ring_type_name') ?? -1];
@@ -82,65 +96,98 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
         const topologyConfigRaw = row[headerMap.get('topology_config') ?? -1]; // ADDED
         const statusValue = row[headerMap.get('status') ?? -1];
 
-        const ringTypeName = String(ringTypeNameRaw || '').toLowerCase().trim();
-        const maintenanceAreaName = String(maintenanceAreaNameRaw || '').toLowerCase().trim();
+        const ringTypeName = String(ringTypeNameRaw || '')
+          .toLowerCase()
+          .trim();
+        const maintenanceAreaName = String(maintenanceAreaNameRaw || '')
+          .toLowerCase()
+          .trim();
 
         const ringTypeId = ringTypeMap.get(ringTypeName);
         const maintenanceTerminalId = maintenanceAreaMap.get(maintenanceAreaName);
 
         if (!ringTypeId && ringTypeName) {
-            rowValidationErrors.push({ rowIndex: i, column: 'ring_type_name', value: ringTypeNameRaw, error: `Ring Type "${ringTypeNameRaw}" not found.` });
+          rowValidationErrors.push({
+            rowIndex: i,
+            column: 'ring_type_name',
+            value: ringTypeNameRaw,
+            error: `Ring Type "${ringTypeNameRaw}" not found.`,
+          });
         }
         if (!maintenanceTerminalId && maintenanceAreaName) {
-            rowValidationErrors.push({ rowIndex: i, column: 'maintenance_area_name', value: maintenanceAreaNameRaw, error: `Maintenance Area "${maintenanceAreaNameRaw}" not found.` });
+          rowValidationErrors.push({
+            rowIndex: i,
+            column: 'maintenance_area_name',
+            value: maintenanceAreaNameRaw,
+            error: `Maintenance Area "${maintenanceAreaNameRaw}" not found.`,
+          });
         }
 
         let associatedSystemsJson: Association[] = [];
         if (associatedSystemsRaw && typeof associatedSystemsRaw === 'string') {
-            try {
-                associatedSystemsJson = JSON.parse(associatedSystemsRaw);
-                if (!Array.isArray(associatedSystemsJson)) throw new Error("JSON is not an array.");
+          try {
+            associatedSystemsJson = JSON.parse(associatedSystemsRaw);
+            if (!Array.isArray(associatedSystemsJson)) throw new Error('JSON is not an array.');
 
-                for (const sys of associatedSystemsJson) {
-                    const sysName = (sys.system)?.toLowerCase().trim();
-                    if (!sysName || (!systemNameMap.has(sysName) && !nodeNameMap.has(sysName))) {
-                        rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: sys.system, error: `System or Node "${sys.system}" not found.` });
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-                rowValidationErrors.push({ rowIndex: i, column: 'associated_systems', value: associatedSystemsRaw, error: "Invalid JSON format." });
+            for (const sys of associatedSystemsJson) {
+              const sysName = sys.system?.toLowerCase().trim();
+              if (!sysName || (!systemNameMap.has(sysName) && !nodeNameMap.has(sysName))) {
+                rowValidationErrors.push({
+                  rowIndex: i,
+                  column: 'associated_systems',
+                  value: sys.system,
+                  error: `System or Node "${sys.system}" not found.`,
+                });
+              }
             }
+          } catch (e) {
+            console.error(e);
+            rowValidationErrors.push({
+              rowIndex: i,
+              column: 'associated_systems',
+              value: associatedSystemsRaw,
+              error: 'Invalid JSON format.',
+            });
+          }
         }
 
         // ADDED: Parse Topology Config
         let topologyConfigJson: Json | null = null;
-        if (topologyConfigRaw && typeof topologyConfigRaw === 'string' && topologyConfigRaw.trim() !== '') {
-            try {
-                topologyConfigJson = JSON.parse(topologyConfigRaw);
-            } catch (e) {
-                console.error("Topology Config JSON Error:", e);
-                // Non-blocking error, but log it
-                rowValidationErrors.push({ rowIndex: i, column: 'topology_config', value: topologyConfigRaw, error: "Invalid JSON format for topology config." });
-            }
+        if (
+          topologyConfigRaw &&
+          typeof topologyConfigRaw === 'string' &&
+          topologyConfigRaw.trim() !== ''
+        ) {
+          try {
+            topologyConfigJson = JSON.parse(topologyConfigRaw);
+          } catch (e) {
+            console.error('Topology Config JSON Error:', e);
+            // Non-blocking error, but log it
+            rowValidationErrors.push({
+              rowIndex: i,
+              column: 'topology_config',
+              value: topologyConfigRaw,
+              error: 'Invalid JSON format for topology config.',
+            });
+          }
         }
 
         if (rowValidationErrors.length > 0) {
-            allValidationErrors.push(...rowValidationErrors);
-            uploadResult.errorCount++;
-            continue;
+          allValidationErrors.push(...rowValidationErrors);
+          uploadResult.errorCount++;
+          continue;
         }
 
         const record: RingToUpsert = {
-            id: row[headerMap.get('id') ?? -1] as string || undefined,
-            name: row[headerMap.get('name') ?? -1] as string,
-            description: row[headerMap.get('description') ?? -1] as string || null,
-            total_nodes: Number(row[headerMap.get('total_nodes') ?? -1]) || 0,
-            status: toPgBoolean(statusValue),
-            ring_type_id: ringTypeId,
-            maintenance_terminal_id: maintenanceTerminalId,
-            associated_systems_json: associatedSystemsJson,
-            topology_config: topologyConfigJson, // ADDED
+          id: (row[headerMap.get('id') ?? -1] as string) || undefined,
+          name: row[headerMap.get('name') ?? -1] as string,
+          description: (row[headerMap.get('description') ?? -1] as string) || null,
+          total_nodes: Number(row[headerMap.get('total_nodes') ?? -1]) || 0,
+          status: toPgBoolean(statusValue),
+          ring_type_id: ringTypeId,
+          maintenance_terminal_id: maintenanceTerminalId,
+          associated_systems_json: associatedSystemsJson,
+          topology_config: topologyConfigJson, // ADDED
         };
 
         ringsToUpsert.push(record);
@@ -148,10 +195,10 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       if (ringsToUpsert.length === 0) {
         if (uploadResult.errorCount > 0) {
-            toast.error(`${uploadResult.errorCount} rows had validation errors.`);
-            console.error("Ring Upload Validation Errors:", allValidationErrors);
+          toast.error(`${uploadResult.errorCount} rows had validation errors.`);
+          console.error('Ring Upload Validation Errors:', allValidationErrors);
         } else {
-            toast.warning("No valid records to upload.");
+          toast.warning('No valid records to upload.');
         }
         return uploadResult;
       }
@@ -160,7 +207,10 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const ringsPayload = ringsToUpsert.map(({ associated_systems_json, ...rest }) => rest);
 
-      const { data: upsertedRings, error: upsertError } = await supabase.from('rings').upsert(ringsPayload, { onConflict: 'id' }).select('id, name');
+      const { data: upsertedRings, error: upsertError } = await supabase
+        .from('rings')
+        .upsert(ringsPayload, { onConflict: 'id' })
+        .select('id, name');
 
       if (upsertError) {
         toast.error(`Ring Upload Failed: ${upsertError.message}`);
@@ -169,17 +219,19 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
 
       toast.info(`Updating system associations for ${upsertedRings.length} rings...`);
       for (const ring of upsertedRings) {
-          const originalRecord = ringsToUpsert.find(r => r.id === ring.id || r.name === ring.name);
-          if (originalRecord && originalRecord.associated_systems_json) {
-              const { error: assocError } = await supabase.rpc('upsert_ring_associations_from_json', {
-                  p_ring_id: ring.id,
-                  p_associations: originalRecord.associated_systems_json as unknown as Json,
-              });
-              if (assocError) {
-                  toast.warning(`Failed to update associations for ring "${ring.name}": ${assocError.message}`);
-                  uploadResult.errorCount++;
-              }
+        const originalRecord = ringsToUpsert.find((r) => r.id === ring.id || r.name === ring.name);
+        if (originalRecord && originalRecord.associated_systems_json) {
+          const { error: assocError } = await supabase.rpc('upsert_ring_associations_from_json', {
+            p_ring_id: ring.id,
+            p_associations: originalRecord.associated_systems_json as unknown as Json,
+          });
+          if (assocError) {
+            toast.warning(
+              `Failed to update associations for ring "${ring.name}": ${assocError.message}`
+            );
+            uploadResult.errorCount++;
           }
+        }
       }
 
       uploadResult.successCount = ringsToUpsert.length - uploadResult.errorCount;
@@ -188,13 +240,15 @@ export function useRingExcelUpload(supabase: SupabaseClient<Database>) {
     },
     onSuccess: (result) => {
       if (result.successCount > 0) {
-        toast.success(`Successfully processed ${result.successCount} of ${result.totalRows} ring records.`);
+        toast.success(
+          `Successfully processed ${result.successCount} of ${result.totalRows} ring records.`
+        );
       }
       queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
       queryClient.invalidateQueries({ queryKey: ['systems-data'] });
     },
     onError: (error) => {
-        toast.error(`An unexpected error occurred during upload: ${error.message}`);
-    }
+      toast.error(`An unexpected error occurred during upload: ${error.message}`);
+    },
   });
 }

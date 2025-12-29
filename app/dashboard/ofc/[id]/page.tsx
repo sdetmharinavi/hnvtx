@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ConfirmModal, Input, Button } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { Row, useTableQuery } from '@/hooks/database';
+import { Row, usePagedData, useTableQuery } from '@/hooks/database'; // CHANGED: Added usePagedData
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS, buildUploadConfig } from '@/constants/table-column-keys';
@@ -38,6 +38,7 @@ import {
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
   Ofc_cablesRowSchema,
+  V_cable_utilizationRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { StatProps } from '@/components/common/page-header/StatCard';
@@ -100,7 +101,8 @@ export default function OfcCableDetailsPage() {
   } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  const { data: utilResult, isLoading: isLoadingUtil } = useTableQuery(
+  // CHANGED: Use usePagedData RPC call instead of direct useTableQuery for view
+  const { data: utilResult, isLoading: isLoadingUtil } = usePagedData<V_cable_utilizationRowSchema>(
     supabase,
     'v_cable_utilization',
     {
@@ -139,6 +141,7 @@ export default function OfcCableDetailsPage() {
     record?: V_ofc_connections_completeRowSchema;
   } | null>(null);
 
+  // Table query safe here
   const { data: cableSegments } = useTableQuery(createClient(), 'cable_segments', {
     filters: { original_cable_id: cableId as string },
     orderBy: [{ column: 'segment_order', ascending: true }],
@@ -329,7 +332,6 @@ export default function OfcCableDetailsPage() {
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
       fileName: `${routeDetails?.route.route_name}_fibers`,
-      // THE FIX: Added useRpc: true to force RPC usage for export
       useRpc: true,
       filters: { ofc_id: cableId as string },
       orderBy: [{ column: 'fiber_no_sn', ascending: true }],

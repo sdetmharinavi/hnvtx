@@ -9,11 +9,10 @@ import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
-// THE FIX: Replaced useOfflineQuery with useLocalFirstQuery for automatic persistence
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useTableRecord, useTableUpdate } from '@/hooks/database';
+import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database'; // CHANGED: Imported useRpcRecord
 import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
@@ -24,14 +23,12 @@ const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
-// Extended type for the new column
 type ExtendedRingDetails = V_ringsRowSchema & {
   topology_config?: {
-    disabled_segments?: string[]; // Array of "idA-idB" strings
+    disabled_segments?: string[];
   } | null;
 };
 
-// Local interface for Map Path Configuration
 interface PathConfigForMap {
   source?: string;
   sourcePort?: string;
@@ -72,11 +69,12 @@ export default function RingMapPage() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // 1. Fetch Ring Details
+  // CHANGED: Use useRpcRecord instead of useTableRecord
   const {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
     refetch: refetchRing,
-  } = useTableRecord(supabase, 'v_rings', ringId);
+  } = useRpcRecord(supabase, 'v_rings', ringId);
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
   // 2. Mutation
@@ -89,8 +87,7 @@ export default function RingMapPage() {
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
-  // 3. Fetch Nodes (UPDATED to useLocalFirstQuery)
-  // This ensures that when data is fetched online, it is automatically saved to localDb.v_ring_nodes
+  // 3. Fetch Nodes (useLocalFirstQuery handles RPC internally for online fetch)
   const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
     queryKey: ['ring-nodes-detail', ringId],
     onlineQueryFn: async () => {
@@ -109,7 +106,6 @@ export default function RingMapPage() {
     },
     localQueryFn: () => {
       if (!ringId) return Promise.resolve([]);
-      // Read from local DB if offline (or for initial optimistic load)
       return localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
     dexieTable: localDb.v_ring_nodes,
@@ -123,7 +119,7 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  // 4. Fetch Logical Path configurations for this ring (For Map Tooltips)
+  // 4. Fetch Logical Path configurations (Direct Table Access Allowed)
   const { data: pathConfigs } = useQuery({
     queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
@@ -163,7 +159,6 @@ export default function RingMapPage() {
         segments.push([hub, hubs[nextIndex]]);
       });
     } else {
-      // Fallback for no-hubs scenarios
       const allNodes = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );
@@ -190,7 +185,6 @@ export default function RingMapPage() {
     return { potentialSegments: segments, spurConnections: spurs };
   }, [mappedNodes]);
 
-  // 6. Filter Segments based on DB Config
   const activeSegments = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
     return potentialSegments.filter(([start, end]) => {
@@ -205,15 +199,12 @@ export default function RingMapPage() {
     [activeSegments, spurConnections]
   );
 
-  // 7. Transform path configs into a lookup map for ClientRingMap
   const segmentConfigMap = useMemo(() => {
     const map: Record<string, PathConfigForMap> = {};
     pathConfigs?.forEach((p) => {
-      // Create bidirectional keys
       const key1 = `${p.start_node_id}-${p.end_node_id}`;
       const key2 = `${p.end_node_id}-${p.start_node_id}`;
 
-      // Fix TS Error: Handle array return from Supabase join
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sourceSys = p.source_system as any;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -234,7 +225,6 @@ export default function RingMapPage() {
     return map;
   }, [pathConfigs]);
 
-  // 8. Handlers
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
     const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
@@ -264,7 +254,6 @@ export default function RingMapPage() {
   const handleBack = useCallback(() => router.back(), [router]);
 
   const renderContent = () => {
-    // If loading and we have no cached data yet
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
 

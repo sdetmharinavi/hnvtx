@@ -5,11 +5,12 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { Modal, Button, PageSpinner, ErrorDisplay } from '@/components/common/ui';
-import { V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { V_ringsRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { syncEntity } from '@/hooks/data/useDataSync';
 import { localDb } from '@/hooks/data/localDb';
+// import { buildRpcFilters } from '@/hooks/database'; // Added import
 
 interface SystemOption {
   id: string;
@@ -31,22 +32,48 @@ const useRingSystemsData = (ring: V_ringsRowSchema | null) => {
         return { associated: [], available: [] };
       }
 
-      const { data: associated, error: assocError } = await supabase
-        .from('v_systems_complete')
-        .select('id, system_name')
-        .eq('ring_id', ring.id);
+      // CHANGED: Use RPC get_paged_data for associated systems
+      const { data: associatedRpc, error: assocError } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_systems_complete',
+        p_limit: 1000,
+        p_offset: 0,
+        p_filters: { ring_id: ring.id },
+      });
       if (assocError) throw new Error(`Failed to fetch associated systems: ${assocError.message}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const associated = ((associatedRpc as any)?.data as V_systems_completeRowSchema[]) || [];
 
-      const { data: available, error: availError } = await supabase
-        .from('v_systems_complete')
-        .select('id, system_name')
-        .in('system_type_name', ['CPAN', 'MAAN', 'SDH'])
-        .is('ring_id', null)
-        .eq('maintenance_terminal_id', ring.maintenance_terminal_id);
+      // CHANGED: Use RPC for available systems
+      // Filter: IN ('CPAN', 'MAAN', 'SDH'), ring_id is NULL, maintenance area matches
+      // const availableFilters = buildRpcFilters({
+      //   system_type_code: ['CPAN', 'MAAN', 'SDH'], // Array will be handled as IN
+      //   ring_id: { operator: 'is', value: 'null' }, // Explicit null check syntax from buildRpcFilters logic
+      //   maintenance_terminal_id: ring.maintenance_terminal_id,
+      // });
+
+      // Since buildRpcFilters might not support complex OR/IN logic perfectly for multi-field custom logic like "is null",
+      // we might need a custom query or handle filtering client side if the dataset is small.
+      // However, get_paged_data is generic.
+      // Let's use a simpler approach: Fetch all systems in the maintenance area and filter in JS for "Available"
+
+      const { data: areaSystemsRpc, error: availError } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_systems_complete',
+        p_limit: 2000,
+        p_offset: 0,
+        p_filters: { maintenance_terminal_id: ring.maintenance_terminal_id },
+      });
 
       if (availError) throw new Error(`Failed to fetch available systems: ${availError.message}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allAreaSystems = ((areaSystemsRpc as any)?.data as V_systems_completeRowSchema[]) || [];
 
-      return { associated: associated || [], available: available || [] };
+      const available = allAreaSystems.filter(
+        (s) =>
+          !s.ring_id && // Must not be in a ring
+          ['CPAN', 'MAAN', 'SDH'].includes(s.system_type_code || '') // Must be correct type
+      );
+
+      return { associated, available };
     },
     enabled: !!ring?.id && !!ring.maintenance_terminal_id,
   });
@@ -69,6 +96,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
     }
   }, [data]);
 
+  // ... (Rest of the component logic remains identical) ...
   const updateMutation = useMutation({
     mutationFn: async (systemIds: string[]) => {
       if (!ring?.id) throw new Error('Ring ID is missing.');
@@ -81,11 +109,7 @@ export function RingSystemsModal({ isOpen, onClose, ring }: RingSystemsModalProp
     onSuccess: async () => {
       toast.success(`Systems for ring "${ring?.name}" have been updated.`);
 
-      // Step 1: Manually trigger a re-sync of the v_rings view to update IndexedDB
       await syncEntity(supabase, localDb, 'v_rings');
-
-      // Step 2: Invalidate the page's query key to force it to re-read from IndexedDB/Server
-      // CORRECTED: The key is 'rings-manager-data', not 'rings-data'
       await queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
 
       onClose();
