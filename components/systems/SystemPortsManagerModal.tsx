@@ -193,8 +193,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         onDelete: crudActions.handleDelete,
         onToggleStatus: (record) =>
           crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
   );
 
