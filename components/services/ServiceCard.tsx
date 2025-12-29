@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 interface ServiceCardProps {
   service: V_servicesRowSchema;
@@ -62,7 +63,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             className="font-bold text-gray-900 dark:text-gray-100 text-lg mb-3 line-clamp-2 leading-tight"
             title={service.name || ''}
           >
-            {service.name}
+            <TruncateTooltip text={service.name || ''} />
           </h3>
 
           {/* Badges */}
