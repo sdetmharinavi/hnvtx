@@ -1,3 +1,4 @@
+// hooks/data/useEFilesData.ts
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,12 +8,13 @@ import {
   InitiateFilePayload, 
   ForwardFilePayload,
   v_e_files_extendedRowSchema,
-  v_file_movements_extendedRowSchema
+  v_file_movements_extendedRowSchema,
 } from "@/schemas/efile-schemas";
 import { z } from "zod";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
 import { localDb } from "@/hooks/data/localDb";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { V_e_files_extendedRowSchema, V_file_movements_extendedRowSchema } from "@/schemas/zod-schemas";
 
 const supabase = createClient();
 
@@ -23,6 +25,52 @@ export interface UpdateFilePayload {
   category: string;
   priority: string;
 }
+
+// --- HELPER: SYNC SINGLE FILE TO LOCAL DB ---
+// This ensures that after a server mutation, the local DB is updated immediately
+// so the UI reflects changes without waiting for a full background sync.
+const syncFileToLocal = async (fileId: string) => {
+  try {
+    // 1. Fetch the fresh File Record
+    const { data: fileData, error: fileError } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_e_files_extended',
+      p_limit: 1,
+      p_offset: 0,
+      p_filters: { id: fileId }
+    });
+
+    if (fileError) throw fileError;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fileRecord = (fileData as any)?.data?.[0] as V_e_files_extendedRowSchema;
+
+    // 2. Fetch the fresh Movements History
+    const { data: movesData, error: movesError } = await supabase.rpc('get_paged_data', {
+      p_view_name: 'v_file_movements_extended',
+      p_limit: 100, // Reasonable limit for history
+      p_offset: 0,
+      p_filters: { file_id: fileId }
+    });
+
+    if (movesError) throw movesError;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const movementRecords = (movesData as any)?.data as V_file_movements_extendedRowSchema[];
+
+    // 3. Update Dexie Atomically
+    await localDb.transaction('rw', localDb.v_e_files_extended, localDb.v_file_movements_extended, async () => {
+      if (fileRecord) {
+        await localDb.v_e_files_extended.put(fileRecord);
+      }
+      if (movementRecords && movementRecords.length > 0) {
+        await localDb.v_file_movements_extended.bulkPut(movementRecords);
+      }
+    });
+
+  } catch (err) {
+    console.error("Failed to sync file to local DB:", err);
+    // Don't throw here, let the UI invalidate anyway so it might try to fetch online
+  }
+};
+
 
 // List Hook
 export function useEFiles(filters?: { status?: string; }) {
@@ -120,6 +168,7 @@ export function useEFileDetails(fileId: string) {
     queryFn: async () => {
        // 1. Try Local First
        const localFile = await localDb.v_e_files_extended.get(fileId);
+       
        if (localFile) {
           const localHistory = await localDb.v_file_movements_extended
              .where('file_id').equals(fileId)
@@ -134,9 +183,8 @@ export function useEFileDetails(fileId: string) {
        // 2. If no local data, force online
        return onlineQueryFn();
     },
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity
+    refetchOnMount: true, // Ensure we check for freshness when entering details
+    staleTime: 5 * 60 * 1000 // 5 minutes stale time for local reads
   });
 }
 
@@ -160,10 +208,14 @@ export function useInitiateFile() {
         p_initiator_employee_id: payload.initiator_employee_id
       });
       if (error) throw error;
-      return data;
+      return data; // Returns the new UUID
     },
-    onSuccess: () => {
+    onSuccess: async (newFileId) => {
       toast.success("E-File initiated successfully!");
+      if (newFileId) {
+          // Perform Write-Through to update local DB immediately
+          await syncFileToLocal(newFileId);
+      }
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
     },
     onError: (err) => toast.error(`Failed: ${err.message}`)
@@ -187,8 +239,11 @@ export function useUpdateFileDetails() {
       });
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
       toast.success("File details updated!");
+      // Write-Through
+      await syncFileToLocal(vars.file_id);
+      
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
       queryClient.invalidateQueries({ queryKey: ['e-file-details', vars.file_id] });
     },
@@ -212,8 +267,11 @@ export function useForwardFile() {
       });
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
       toast.success(`File ${vars.action_type} successfully!`);
+      // THE FIX: Write-Through to Local DB
+      await syncFileToLocal(vars.file_id);
+      
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
       queryClient.invalidateQueries({ queryKey: ['e-file-details', vars.file_id] });
     },
@@ -235,8 +293,11 @@ export function useCloseFile() {
       });
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
       toast.success("File closed successfully!");
+      // Write-Through
+      await syncFileToLocal(vars.fileId);
+
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
       queryClient.invalidateQueries({ queryKey: ['e-file-details', vars.fileId] });
     },
@@ -255,8 +316,12 @@ export function useDeleteFile() {
       const { error } = await supabase.rpc('delete_e_file_record', { p_file_id: fileId });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_, fileId) => {
       toast.success("File deleted successfully!");
+      // Local Cleanup
+      await localDb.v_e_files_extended.delete(fileId);
+      await localDb.v_file_movements_extended.where('file_id').equals(fileId).delete();
+      
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
     },
     onError: (err) => toast.error(`Failed to delete file: ${err.message}`)
