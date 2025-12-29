@@ -7,12 +7,12 @@ import { localDb } from '@/hooks/data/localDb';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { V_employeesRowSchema, V_systems_completeRowSchema, V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters } from '@/hooks/database';
-
-type TableName = 'lookup_types' | 'nodes' | 'maintenance_areas' | 'rings' | 'v_employees' | 'employee_designations';
+import { buildRpcFilters, PublicTableOrViewName } from '@/hooks/database';
 
 interface OptionsQuery {
-  tableName: TableName;
+  // THE FIX: Use PublicTableOrViewName instead of a hardcoded union type
+  // This allows 'v_nodes_complete' and other views to be passed in.
+  tableName: PublicTableOrViewName;
   valueField: string;
   labelField: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,7 +89,7 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     }));
   }, [data, valueField, labelField]);
 
-  // THE FIX: Return the raw data as well so consumers can check other fields
+  // Return originalData to allow consumers to access other fields (like node_type_name)
   return { options, isLoading, originalData: data };
 }
 
@@ -104,7 +104,6 @@ export const useLookupTypeOptions = (category: string) => {
     orderBy: 'sort_order'
   });
   const filteredOptions = useMemo(() => options.filter(o => o.label !== 'DEFAULT'), [options]);
-  // Pass through originalData (filtered to match options if needed, but usually raw is fine)
   return { options: filteredOptions, isLoading, originalData };
 };
 
@@ -176,10 +175,9 @@ export function useEmployeeOptions() {
 
 export function useSystemOptions() {
   const onlineQueryFn = async () => {
-    // Use RPC to avoid RLS view issues
     const { data, error } = await createClient().rpc('get_paged_data', {
         p_view_name: 'v_systems_complete',
-        p_limit: 10000, // Fetch ample amount for dropdown
+        p_limit: 10000,
         p_offset: 0,
         p_order_by: 'system_name',
         p_order_dir: 'asc',
