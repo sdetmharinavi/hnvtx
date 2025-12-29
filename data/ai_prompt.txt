@@ -135,5 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First we will fix bugs like in ports management form Port Type dropdown is empty and no options populated. We need to add remarks field in system connections form in general tab. in system connections form we need to change the label "Media Type" to "Media/Port Type". Also in details modal's Circuit Information. Earlier we were having additional options in the form for isRingBased systems which in current form not visible.
-Also I want an additional feature i.e. on offline button, on clicking that app will toggle offline/online regardless of internet status and I will be able to work in offline mode.
+Let's begin! First of all check if in any place direct call to any view table is done or not? Direct call is not allowed, views should always be called through rpc
