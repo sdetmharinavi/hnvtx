@@ -23,7 +23,7 @@ import {
 } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
 import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
-import { useTableBulkOperations, useTableQuery } from '@/hooks/database';
+import { useTableBulkOperations, usePagedData } from '@/hooks/database'; // CHANGED: Imported usePagedData, removed useTableQuery
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
@@ -40,7 +40,6 @@ import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
 import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 
-// Extended type to handle the new column before codegen updates
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
 };
@@ -91,12 +90,11 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     if (isOpen) {
       filters.setFilters((prev) => ({
         ...prev,
-        // Default select GE(O), GE(E), and 10GE
         port_type_code: ['GE(O)', 'GE(E)', '10GE', 'GE/10GE', 'PON'],
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]); // Run once when modal opens
+  }, [isOpen]);
 
   // 2. Fetch Port Types for Filter
   const { data: portTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
@@ -111,19 +109,24 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       .filter((t) => t.name !== 'DEFAULT' && t.code)
       .map((t) => ({
         value: t.name!,
-        // Coerce to string to satisfy Option['label'] which requires string
         label: t.code ?? t.name ?? '',
       }));
   }, [portTypesData]);
 
   // 3. Fetch Connections (Bi-Directional)
-  const { data: connectionsResult } = useTableQuery(supabase, 'v_system_connections_complete', {
-    filters: {
-      or: `system_id.eq.${systemId},en_id.eq.${systemId}`,
+  // CHANGED: Use usePagedData (RPC) with SQL filter syntax
+  const { data: connectionsResult } = usePagedData<V_system_connections_completeRowSchema>(
+    supabase,
+    'v_system_connections_complete',
+    {
+      filters: {
+        // SQL Syntax for the RPC 'or' handler
+        or: `system_id = '${systemId}' OR en_id = '${systemId}'`,
+      },
+      limit: 2000,
     },
-    enabled: !!systemId && isOpen,
-    limit: 2000,
-  });
+    { enabled: !!systemId && isOpen }
+  );
 
   // 4. Build Service Map (Bi-Directional)
   const portServicesMap = useMemo((): PortServiceMap => {
