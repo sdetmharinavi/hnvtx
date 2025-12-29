@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, ArrowRight, Network, Radio, Shield, X } from "lucide-react";
+import { AlertCircle, ArrowRight, Network, Radio, Shield, X } from 'lucide-react';
 import { TraceRoutes } from '@/hooks/database/trace-hooks';
 
 // Tracing Modal Component
@@ -11,20 +11,20 @@ const SystemFiberTraceModal: React.FC<{
 }> = ({ isOpen, onClose, traceData, isLoading = false }) => {
   if (!isOpen) return null;
 
-  const RouteDisplay = ({ 
-    title, 
+  const RouteDisplay = ({
+    title,
     route,
-    icon: Icon, 
-    color 
-  }: { 
-    title: string; 
-    route: string; 
+    icon: Icon,
+    color,
+  }: {
+    title: string;
+    route: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon: any; 
+    icon: any;
     color: string;
   }) => {
-    const segments = route.split(" → ");
-    const hasRoute = route !== "No route configured";
+    const segments = route.split(' → ');
+    const hasRoute = route !== 'No route configured';
 
     return (
       <div className="mb-6 last:mb-0">
@@ -32,7 +32,7 @@ const SystemFiberTraceModal: React.FC<{
           <Icon className={`w-5 h-5 ${color}`} />
           <h3 className="font-semibold text-gray-800 dark:text-white">{title}</h3>
         </div>
-        
+
         {hasRoute ? (
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
             <div className="flex flex-wrap items-center gap-2">
@@ -111,9 +111,11 @@ const SystemFiberTraceModal: React.FC<{
               <div>
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-purple-200 dark:border-purple-800">
                   <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">Protection Paths</h3>
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                    Protection Paths
+                  </h3>
                 </div>
-                 <RouteDisplay
+                <RouteDisplay
                   title="Tx (Transmit) Path"
                   route={traceData.protectionTx}
                   icon={ArrowRight}

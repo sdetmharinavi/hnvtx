@@ -1,19 +1,19 @@
 // path: app/doc/[slug]/page.tsx
-"use client";
+'use client';
 
-import { useParams } from "next/navigation";
-import { workflowSections } from "@/components/doc/data/workflowData";
-import { featuresData } from "@/components/doc/data/featuresData"; // Import features
-import WorkflowCard from "@/components/doc/WorkflowCard";
-import FeatureCard from "@/components/doc/FeatureCard"; // Import component
-import { AlertTriangle } from "lucide-react";
+import { useParams } from 'next/navigation';
+import { workflowSections } from '@/components/doc/data/workflowData';
+import { featuresData } from '@/components/doc/data/featuresData'; // Import features
+import WorkflowCard from '@/components/doc/WorkflowCard';
+import FeatureCard from '@/components/doc/FeatureCard'; // Import component
+import { AlertTriangle } from 'lucide-react';
 
 export default function ContentPage() {
   const params = useParams();
   const slug = params.slug as string;
 
   // 1. Check if it's a Feature
-  const feature = featuresData.find(f => f.id === slug);
+  const feature = featuresData.find((f) => f.id === slug);
   if (feature) {
     return <FeatureCard feature={feature} />;
   }
@@ -32,7 +32,8 @@ export default function ContentPage() {
       </div>
       <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Doc Not Found</h2>
       <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-        The documentation for &quot;{slug}&quot; could not be found. Please select a valid topic from the sidebar.
+        The documentation for &quot;{slug}&quot; could not be found. Please select a valid topic
+        from the sidebar.
       </p>
     </div>
   );

@@ -36,11 +36,13 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
       className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden"
     >
       {/* Status Indicator */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
-        cable.status 
-          ? 'bg-linear-to-b from-emerald-500 to-emerald-600' 
-          : 'bg-linear-to-b from-red-500 to-red-600'
-      }`} />
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
+          cable.status
+            ? 'bg-linear-to-b from-emerald-500 to-emerald-600'
+            : 'bg-linear-to-b from-red-500 to-red-600'
+        }`}
+      />
 
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20">
@@ -68,7 +70,6 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
 
       {/* Body */}
       <div className="px-5 py-4 space-y-3 flex-1">
-        
         {/* Route Visual */}
         <div className="bg-linear-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 rounded-lg p-4 border border-gray-200 dark:border-gray-700/50 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -77,7 +78,10 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
               <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
                 Start Node
               </div>
-              <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate" title={cable.sn_name || ''}>
+              <div
+                className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate"
+                title={cable.sn_name || ''}
+              >
                 {cable.sn_name || 'Unknown'}
               </div>
             </div>
@@ -98,7 +102,10 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
               <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
                 End Node
               </div>
-              <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate" title={cable.en_name || ''}>
+              <div
+                className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate"
+                title={cable.en_name || ''}
+              >
                 {cable.en_name || 'Unknown'}
               </div>
             </div>
@@ -111,21 +118,31 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
             <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
                 <FiActivity className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Asset No.</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Asset No.
+                </span>
               </div>
-              <div className="font-mono font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={cable.asset_no}>
+              <div
+                className="font-mono font-medium text-gray-900 dark:text-gray-100 text-sm truncate"
+                title={cable.asset_no}
+              >
                 {cable.asset_no}
               </div>
             </div>
           )}
-          
+
           {cable.transnet_id && (
             <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
                 <FiDatabase className="w-3.5 h-3.5 text-gray-400" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Transnet ID</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Transnet ID
+                </span>
               </div>
-              <div className="font-mono font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={cable.transnet_id}>
+              <div
+                className="font-mono font-medium text-gray-900 dark:text-gray-100 text-sm truncate"
+                title={cable.transnet_id}
+              >
                 {cable.transnet_id}
               </div>
             </div>
@@ -139,7 +156,9 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
               <FiMapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1.5">Area:</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1.5">
+                Area:
+              </span>
               <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                 {cable.maintenance_area_name || 'Unassigned Area'}
               </span>
@@ -151,8 +170,13 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
               <div className="flex items-start gap-2">
                 <FiInfo className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-0.5">Remarks</div>
-                  <div className="text-sm text-amber-900 dark:text-amber-200 line-clamp-2" title={cable.remark}>
+                  <div className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-0.5">
+                    Remarks
+                  </div>
+                  <div
+                    className="text-sm text-amber-900 dark:text-amber-200 line-clamp-2"
+                    title={cable.remark}
+                  >
                     {cable.remark}
                   </div>
                 </div>
@@ -167,10 +191,10 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
         className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <Button 
-          size="xs" 
-          variant="secondary" 
-          onClick={() => onView(cable)} 
+        <Button
+          size="xs"
+          variant="secondary"
+          onClick={() => onView(cable)}
           title="View Details"
           className="font-medium"
         >
@@ -179,10 +203,10 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
         </Button>
 
         {canEdit && (
-          <Button 
-            size="xs" 
-            variant="ghost" 
-            onClick={() => onEdit(cable)} 
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => onEdit(cable)}
             title="Edit Cable"
             className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >

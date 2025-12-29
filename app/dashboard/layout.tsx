@@ -1,26 +1,26 @@
 // path: app/dashboard/layout.tsx
-"use client";
+'use client';
 
-import useIsMobile from "@/hooks/useIsMobile";
+import useIsMobile from '@/hooks/useIsMobile';
 import {
   // useEffect,
   useState,
-} from "react";
-import { Protected } from "@/components/auth/Protected";
-import { RouteBasedUploadConfigProvider } from "@/hooks/UseRouteBasedUploadConfigOptions";
-import "leaflet/dist/leaflet.css";
-import { allowedRoles } from "@/constants/constants";
+} from 'react';
+import { Protected } from '@/components/auth/Protected';
+import { RouteBasedUploadConfigProvider } from '@/hooks/UseRouteBasedUploadConfigOptions';
+import 'leaflet/dist/leaflet.css';
+import { allowedRoles } from '@/constants/constants';
 import {
   UserProvider,
   // useUser
-} from "@/providers/UserProvider";
-import { ViewSettingsProvider } from "@/contexts/ViewSettingsContext";
-import Sidebar from "@/components/navigation/sidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { CommandMenu } from "@/components/common/CommandMenu";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { NetworkStatusBar } from "@/components/common/ui/NetworkStatusBar"; // IMPORTED
+} from '@/providers/UserProvider';
+import { ViewSettingsProvider } from '@/contexts/ViewSettingsContext';
+import Sidebar from '@/components/navigation/sidebar';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { CommandMenu } from '@/components/common/CommandMenu';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { NetworkStatusBar } from '@/components/common/ui/NetworkStatusBar'; // IMPORTED
 // import { useAuthStore } from "@/stores/authStore";
 
 // Inner component to safely use hooks inside providers
@@ -67,7 +67,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <NetworkStatusBar />
 
       {/* Sidebar - Fixed position */}
-      <div className='no-print'>
+      <div className="no-print">
         <Sidebar
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
@@ -77,16 +77,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
       {/* Main container that shifts with sidebar */}
       <div
-        className='flex min-h-screen flex-col transition-all duration-300 ease-in-out'
+        className="flex min-h-screen flex-col transition-all duration-300 ease-in-out"
         style={{
           marginLeft: `${marginValue}px`,
-        }}>
-        <div className='no-print'>
+        }}
+      >
+        <div className="no-print">
           <DashboardHeader onMenuClick={() => setIsCollapsed(!isCollapsed)} />
         </div>
 
         {/* Main Content WRAPPED in ErrorBoundary */}
-        <main className='flex-1'>
+        <main className="flex-1">
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>

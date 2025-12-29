@@ -330,7 +330,7 @@ export default function OfcCableDetailsPage() {
       tableName: 'v_ofc_connections_complete',
       fileName: `${routeDetails?.route.route_name}_fibers`,
       // THE FIX: Added useRpc: true to force RPC usage for export
-      useRpc: true, 
+      useRpc: true,
       filters: { ofc_id: cableId as string },
       orderBy: [{ column: 'fiber_no_sn', ascending: true }],
     },

@@ -40,18 +40,21 @@ export default function GlobalConnectionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSuperAdmin, role } = useUser();
 
-  const canEdit = !!isSuperAdmin || [
-    UserRole.ADMINPRO,
-    UserRole.ADMIN, 
-    UserRole.CPANADMIN, 
-    UserRole.MAANADMIN, 
-    UserRole.SDHADMIN
-  ].includes(role as UserRole);
+  const canEdit =
+    !!isSuperAdmin ||
+    [
+      UserRole.ADMINPRO,
+      UserRole.ADMIN,
+      UserRole.CPANADMIN,
+      UserRole.MAANADMIN,
+      UserRole.SDHADMIN,
+    ].includes(role as UserRole);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedConnection, setSelectedConnection] = useState<V_system_connections_completeRowSchema | null>(null);
+  const [selectedConnection, setSelectedConnection] =
+    useState<V_system_connections_completeRowSchema | null>(null);
 
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
@@ -78,33 +81,43 @@ export default function GlobalConnectionsPage() {
     searchColumn: ['service_name', 'system_name', 'connected_system_name'],
   });
 
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(
+    supabase,
+    {
+      onSuccess: (result) => {
+        if (result.successCount > 0) refetch();
+      },
     }
-  });
+  );
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
-  
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-       const uploadConfig = buildUploadConfig("v_system_connections_complete");
-       const customMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
-         { excelHeader: 'System Name', dbKey: 'system_name', required: true },
-         ...uploadConfig.columnMapping.filter(c => c.dbKey !== 'system_id')
-       ];
-       uploadConnections({ file, columns: customMapping });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [uploadConnections]);
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const uploadConfig = buildUploadConfig('v_system_connections_complete');
+        const customMapping: UploadColumnMapping<'v_system_connections_complete'>[] = [
+          { excelHeader: 'System Name', dbKey: 'system_name', required: true },
+          ...uploadConfig.columnMapping.filter((c) => c.dbKey !== 'system_id'),
+        ];
+        uploadConnections({ file, columns: customMapping });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    [uploadConnections]
+  );
 
   // THE FIX: Replaced useOfflineQuery with useLookupTypeOptions
   const { options: mediaOptions, isLoading: mediaLoading } = useLookupTypeOptions('MEDIA_TYPES');
-  const { options: linkTypeOptions, isLoading: linkTypeLoading } = useLookupTypeOptions('LINK_TYPES');
+  const { options: linkTypeOptions, isLoading: linkTypeLoading } =
+    useLookupTypeOptions('LINK_TYPES');
 
   const columns = SystemConnectionsTableColumns(connections, true);
-  const orderedColumns = useOrderedColumns(columns, ['system_name', ...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+  const orderedColumns = useOrderedColumns(columns, [
+    'system_name',
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
 
   const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
     setSelectedConnection(record);
@@ -132,22 +145,50 @@ export default function GlobalConnectionsPage() {
     }
   };
 
-  const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => [
-    { key: 'view-details', label: 'Full Details', icon: <FiMonitor />, onClick: handleViewDetails, variant: 'primary' },
-    { key: 'view-path', label: 'View Path', icon: <FiEye />, onClick: handleTracePath, variant: 'secondary', hidden: (record) => !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0) },
-    { key: 'go-to-system', label: 'Go to System', icon: <FiGitBranch />, onClick: handleGoToSystem, variant: 'secondary' },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [handleGoToSystem]);
+  const tableActions = useMemo(
+    (): TableAction<'v_system_connections_complete'>[] => [
+      {
+        key: 'view-details',
+        label: 'Full Details',
+        icon: <FiMonitor />,
+        onClick: handleViewDetails,
+        variant: 'primary',
+      },
+      {
+        key: 'view-path',
+        label: 'View Path',
+        icon: <FiEye />,
+        onClick: handleTracePath,
+        variant: 'secondary',
+        hidden: (record) =>
+          !(Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0),
+      },
+      {
+        key: 'go-to-system',
+        label: 'Go to System',
+        icon: <FiGitBranch />,
+        onClick: handleGoToSystem,
+        variant: 'secondary',
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleGoToSystem]
+  );
 
   const headerActions = useStandardHeaderActions({
     data: connections,
-    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed!');
+    },
     isLoading,
-    exportConfig: canEdit ? { 
-        tableName: 'v_system_connections_complete', 
-        fileName: 'Global_Connections_List',
-        useRpc: true 
-    } : undefined,
+    exportConfig: canEdit
+      ? {
+          tableName: 'v_system_connections_complete',
+          fileName: 'Global_Connections_List',
+          useRpc: true,
+        }
+      : undefined,
   });
 
   if (canEdit) {
@@ -157,7 +198,7 @@ export default function GlobalConnectionsPage() {
       variant: 'outline',
       leftIcon: <FiUpload />,
       disabled: isUploading || isLoading,
-      hideTextOnMobile: true
+      hideTextOnMobile: true,
     });
   }
 
@@ -166,61 +207,76 @@ export default function GlobalConnectionsPage() {
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
-  
-  const renderMobileItem = useCallback((record: Row<'v_system_connections_complete'>) => {
-     return (
-        <ConnectionCard 
-            connection={record as V_system_connections_completeRowSchema}
-            onViewDetails={handleViewDetails}
-            onViewPath={handleTracePath}
-            onGoToSystem={handleGoToSystem}
+
+  const renderMobileItem = useCallback(
+    (record: Row<'v_system_connections_complete'>) => {
+      return (
+        <ConnectionCard
+          connection={record as V_system_connections_completeRowSchema}
+          onViewDetails={handleViewDetails}
+          onViewPath={handleTracePath}
+          onGoToSystem={handleGoToSystem}
         />
-     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleGoToSystem]);
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleGoToSystem]
+  );
 
   const parentSystemForModal = useMemo((): V_systems_completeRowSchema | null => {
     if (!selectedConnection) return null;
-    
+
     return {
-        id: selectedConnection.system_id,
-        system_name: selectedConnection.system_name,
-        node_name: selectedConnection.sn_node_name,
-        ip_address: selectedConnection.sn_ip as string | null,
-        system_type_code: selectedConnection.system_type_name, 
-        system_type_name: selectedConnection.system_type_name,
-        commissioned_on: null,
-        created_at: null,
-        is_hub: null,
-        is_ring_based: null,
-        latitude: null,
-        longitude: null,
-        maan_node_id: null,
-        maintenance_terminal_id: null,
-        make: null,
-        node_id: selectedConnection.sn_node_id,
-        node_type_name: null,
-        order_in_ring: null,
-        remark: null,
-        ring_associations: null,
-        ring_id: null,
-        ring_logical_area_name: null,
-        s_no: null,
-        status: null,
-        system_capacity_id: null,
-        system_capacity_name: null,
-        system_category: null,
-        system_maintenance_terminal_name: null,
-        system_type_id: null,
-        updated_at: null
+      id: selectedConnection.system_id,
+      system_name: selectedConnection.system_name,
+      node_name: selectedConnection.sn_node_name,
+      ip_address: selectedConnection.sn_ip as string | null,
+      system_type_code: selectedConnection.system_type_name,
+      system_type_name: selectedConnection.system_type_name,
+      commissioned_on: null,
+      created_at: null,
+      is_hub: null,
+      is_ring_based: null,
+      latitude: null,
+      longitude: null,
+      maan_node_id: null,
+      maintenance_terminal_id: null,
+      make: null,
+      node_id: selectedConnection.sn_node_id,
+      node_type_name: null,
+      order_in_ring: null,
+      remark: null,
+      ring_associations: null,
+      ring_id: null,
+      ring_logical_area_name: null,
+      s_no: null,
+      status: null,
+      system_capacity_id: null,
+      system_capacity_name: null,
+      system_category: null,
+      system_maintenance_terminal_name: null,
+      system_type_id: null,
+      updated_at: null,
     };
   }, [selectedConnection]);
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
 
       <PageHeader
         title="Global Connection Explorer"
@@ -233,145 +289,178 @@ export default function GlobalConnectionsPage() {
       />
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search service, system, or ID..." 
-                value={search.searchQuery} 
-                onChange={(e) => search.setSearchQuery(e.target.value)}
-                leftIcon={<FiSearch className="text-gray-400" />}
-                fullWidth
-                clearable
+        <div className="w-full lg:w-96">
+          <Input
+            placeholder="Search service, system, or ID..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            leftIcon={<FiSearch className="text-gray-400" />}
+            fullWidth
+            clearable
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[160px]">
+            {/* THE FIX: Pass options from hook and isLoading */}
+            <SearchableSelect
+              placeholder="Link Type"
+              options={linkTypeOptions}
+              value={filters.filters.connected_link_type_id as string}
+              onChange={(v) =>
+                filters.setFilters((prev) => ({ ...prev, connected_link_type_id: v }))
+              }
+              clearable
+              isLoading={linkTypeLoading}
             />
           </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[160px]">
-                {/* THE FIX: Pass options from hook and isLoading */}
-                <SearchableSelect 
-                   placeholder="Link Type"
-                   options={linkTypeOptions}
-                   value={filters.filters.connected_link_type_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, connected_link_type_id: v}))}
-                   clearable
-                   isLoading={linkTypeLoading}
-                />
-             </div>
-             <div className="min-w-[160px]">
-                 <SearchableSelect 
-                   placeholder="Media Type"
-                   options={mediaOptions}
-                   value={filters.filters.media_type_id as string}
-                   onChange={(v) => filters.setFilters(prev => ({...prev, media_type_id: v}))}
-                   clearable
-                   isLoading={mediaLoading}
-                />
-             </div>
-             <div className="min-w-[120px]">
-                 <select
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters.filters.status as string || ''}
-                    onChange={(e) => filters.setFilters(prev => ({...prev, status: e.target.value}))}
-                 >
-                    <option value="">Status</option>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                 </select>
-             </div>
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><FiGrid /></button>
-                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><FiList /></button>
-             </div>
+          <div className="min-w-[160px]">
+            <SearchableSelect
+              placeholder="Media Type"
+              options={mediaOptions}
+              value={filters.filters.media_type_id as string}
+              onChange={(v) => filters.setFilters((prev) => ({ ...prev, media_type_id: v }))}
+              clearable
+              isLoading={mediaLoading}
+            />
           </div>
+          <div className="min-w-[120px]">
+            <select
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={(filters.filters.status as string) || ''}
+              onChange={(e) => filters.setFilters((prev) => ({ ...prev, status: e.target.value }))}
+            >
+              <option value="">Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <FiGrid />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <FiList />
+            </button>
+          </div>
+        </div>
       </div>
 
       {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-             {connections.map(conn => (
-                <ConnectionCard 
-                    key={conn.id} 
-                    connection={conn}
-                    onViewDetails={handleViewDetails}
-                    onViewPath={handleTracePath}
-                    onGoToSystem={handleGoToSystem}
-                />
-             ))}
-             {connections.length === 0 && !isLoading && (
-                 <div className="col-span-full py-16 text-center text-gray-500">
-                    <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No connections found matching your criteria.</p>
-                 </div>
-             )}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {connections.map((conn) => (
+            <ConnectionCard
+              key={conn.id}
+              connection={conn}
+              onViewDetails={handleViewDetails}
+              onViewPath={handleTracePath}
+              onGoToSystem={handleGoToSystem}
+            />
+          ))}
+          {connections.length === 0 && !isLoading && (
+            <div className="col-span-full py-16 text-center text-gray-500">
+              <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No connections found matching your criteria.</p>
+            </div>
+          )}
+        </div>
       ) : (
-           <DataTable
-            autoHideEmptyColumns={true}
-            tableName="v_system_connections_complete"
-            data={connections}
-            columns={orderedColumns}
-            loading={isLoading}
-            isFetching={isFetching}
-            actions={tableActions}
-            renderMobileItem={renderMobileItem}
-            pagination={{
-                current: pagination.currentPage,
-                pageSize: pagination.pageLimit,
-                total: totalCount,
-                showSizeChanger: true,
-                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
-            }}
-            customToolbar={
-              <SearchAndFilters
-                searchTerm={search.searchQuery}
-                onSearchChange={search.setSearchQuery}
-                showFilters={showFilters}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                onClearFilters={() => { search.setSearchQuery(''); filters.setFilters({}); }}
-                hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-                activeFilterCount={Object.keys(filters.filters).length}
-                searchPlaceholder="Search service, customer..."
-              >
-                 <SelectFilter
-                    label="Media Type"
-                    filterKey="media_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={mediaOptions}
-                    isLoading={mediaLoading}
-                 />
-                 <SelectFilter
-                    label="Link Type"
-                    filterKey="connected_link_type_id"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={linkTypeOptions}
-                    placeholder="Filter by Link Type"
-                    isLoading={linkTypeLoading}
-                 />
-                 <SelectFilter
-                    label="Status"
-                    filterKey="status"
-                    filters={filters.filters}
-                    setFilters={filters.setFilters}
-                    options={[
-                        { value: 'true', label: 'Active' },
-                        { value: 'false', label: 'Inactive' }
-                    ]}
-                 />
-              </SearchAndFilters>
-            }
-          />
+        <DataTable
+          autoHideEmptyColumns={true}
+          tableName="v_system_connections_complete"
+          data={connections}
+          columns={orderedColumns}
+          loading={isLoading}
+          isFetching={isFetching}
+          actions={tableActions}
+          renderMobileItem={renderMobileItem}
+          pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            showSizeChanger: true,
+            onChange: (p, s) => {
+              pagination.setCurrentPage(p);
+              pagination.setPageLimit(s);
+            },
+          }}
+          customToolbar={
+            <SearchAndFilters
+              searchTerm={search.searchQuery}
+              onSearchChange={search.setSearchQuery}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters(!showFilters)}
+              onClearFilters={() => {
+                search.setSearchQuery('');
+                filters.setFilters({});
+              }}
+              hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
+              activeFilterCount={Object.keys(filters.filters).length}
+              searchPlaceholder="Search service, customer..."
+            >
+              <SelectFilter
+                label="Media Type"
+                filterKey="media_type_id"
+                filters={filters.filters}
+                setFilters={filters.setFilters}
+                options={mediaOptions}
+                isLoading={mediaLoading}
+              />
+              <SelectFilter
+                label="Link Type"
+                filterKey="connected_link_type_id"
+                filters={filters.filters}
+                setFilters={filters.setFilters}
+                options={linkTypeOptions}
+                placeholder="Filter by Link Type"
+                isLoading={linkTypeLoading}
+              />
+              <SelectFilter
+                label="Status"
+                filterKey="status"
+                filters={filters.filters}
+                setFilters={filters.setFilters}
+                options={[
+                  { value: 'true', label: 'Active' },
+                  { value: 'false', label: 'Inactive' },
+                ]}
+              />
+            </SearchAndFilters>
+          }
+        />
       )}
 
       <SystemConnectionDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => {
-            setIsDetailsModalOpen(false);
-            setSelectedConnection(null);
+          setIsDetailsModalOpen(false);
+          setSelectedConnection(null);
         }}
         connectionId={selectedConnection?.id ?? null}
         parentSystem={parentSystemForModal}
       />
-      <SystemFiberTraceModal isOpen={isTraceModalOpen} onClose={() => setIsTraceModalOpen(false)} traceData={traceModalData} isLoading={isTracing} />
+      <SystemFiberTraceModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        traceData={traceModalData}
+        isLoading={isTracing}
+      />
     </div>
   );
 }

@@ -148,7 +148,7 @@ export default function DesignationManagerPage() {
     onClick: toggleDuplicates,
     variant: showDuplicates ? 'secondary' : 'outline',
     leftIcon: <Copy className="w-4 h-4" />,
-    hideTextOnMobile: true
+    hideTextOnMobile: true,
   });
 
   const headerStats = [

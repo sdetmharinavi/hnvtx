@@ -1,5 +1,5 @@
 // components/systems/PortTemplateModal.tsx
-"use client";
+'use client';
 
 import React, { useMemo } from 'react';
 import { Modal } from '@/components/common/ui';
@@ -14,13 +14,18 @@ interface PortTemplateModalProps {
   isLoading: boolean;
 }
 
-export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({ isOpen, onClose, onSubmit, isLoading }) => {
+export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  isLoading,
+}) => {
   const { control, handleSubmit, watch } = useForm<{ templateKey: string }>();
-  
+
   const templateOptions = useMemo(() => {
     return Object.entries(PORT_TEMPLATES).map(([key, template]) => ({
       value: key,
-      label: template.name
+      label: template.name,
     }));
   }, []);
 
@@ -51,15 +56,16 @@ export const PortTemplateModal: React.FC<PortTemplateModalProps> = ({ isOpen, on
             placeholder="Choose a configuration..."
             required
           />
-          
+
           {selectedDescription && (
-             <div className="p-3 bg-blue-50 text-blue-800 rounded-md text-sm border border-blue-100">
-                <strong>Description:</strong> {selectedDescription}
-             </div>
+            <div className="p-3 bg-blue-50 text-blue-800 rounded-md text-sm border border-blue-100">
+              <strong>Description:</strong> {selectedDescription}
+            </div>
           )}
 
           <div className="p-3 bg-yellow-50 text-yellow-800 rounded-md text-xs border border-yellow-100">
-            <strong>Warning:</strong> Applying a template will create new ports. If ports with the same name already exist, they will be updated (upsert).
+            <strong>Warning:</strong> Applying a template will create new ports. If ports with the
+            same name already exist, they will be updated (upsert).
           </div>
         </div>
       </FormCard>

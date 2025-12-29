@@ -66,11 +66,7 @@ function LoginForm() {
 
   return (
     <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-lg rounded-lg">
-      <OAuthProviders
-        variant="login"
-        providers={['google']}
-        className="mb-6"
-      />
+      <OAuthProviders variant="login" providers={['google']} className="mb-6" />
       <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
         <div>
           <label
@@ -87,9 +83,7 @@ function LoginForm() {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
             placeholder="Enter your email"
           />
-          {errors.email && (
-            <p className="text-red-500 text-sm">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
         </div>
         <div>
           <label
@@ -106,11 +100,7 @@ function LoginForm() {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 dark:bg-gray-700 dark:text-white"
             placeholder="Enter your password"
           />
-          {errors.password && (
-            <p className="text-red-500 text-sm">
-              {errors.password.message}
-            </p>
-          )}
+          {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
         </div>
         <div className="flex items-center justify-between">
           <div className="text-sm">

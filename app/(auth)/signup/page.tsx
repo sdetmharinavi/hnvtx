@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { passwordWithConfirmationSchema } from '@/schemas/custom-schemas';
 import { authUsersRowSchema } from '@/schemas/zod-schemas';
 
-
 // THE FIX: Use the central, reusable password schema and correct field names.
 const signupSchema = authUsersRowSchema
   .pick({ email: true }) // Only pick email from login schema
@@ -70,7 +69,7 @@ export default function SignUpPage() {
       router.push('/verify-email');
     }
 
-    if(error){
+    if (error) {
       toast.error(error.message);
     }
   };
@@ -112,9 +111,7 @@ export default function SignUpPage() {
                   placeholder="First name"
                 />
                 {errors.firstName && (
-                  <p className="text-red-500 text-sm">
-                    {errors.firstName.message}
-                  </p>
+                  <p className="text-red-500 text-sm">{errors.firstName.message}</p>
                 )}
               </div>
 
@@ -134,9 +131,7 @@ export default function SignUpPage() {
                   placeholder="Last name"
                 />
                 {errors.lastName && (
-                  <p className="text-red-500 text-sm">
-                    {errors.lastName.message}
-                  </p>
+                  <p className="text-red-500 text-sm">{errors.lastName.message}</p>
                 )}
               </div>
             </div>
@@ -156,9 +151,7 @@ export default function SignUpPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Enter your email"
               />
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
             </div>
 
             <div>
@@ -176,11 +169,7 @@ export default function SignUpPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Create a password"
               />
-              {errors.password && (
-                <p className="text-red-500 text-sm">
-                  {errors.password.message}
-                </p>
-              )}
+              {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
             </div>
 
             <div>
@@ -199,9 +188,7 @@ export default function SignUpPage() {
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && (
-                <p className="text-red-500 text-sm">
-                  {errors.confirmPassword.message}
-                </p>
+                <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>
               )}
             </div>
 

@@ -48,7 +48,7 @@ import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { SystemCard } from '@/components/systems/SystemCard';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; 
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 
 export default function SystemsPage() {
   const router = useRouter();

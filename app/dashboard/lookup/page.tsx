@@ -1,38 +1,38 @@
 // path: app/dashboard/lookup/page.tsx
-"use client";
+'use client';
 
-import { PageHeader, useStandardHeaderActions } from "@/components/common/page-header";
-import { ConfirmModal, ErrorDisplay } from "@/components/common/ui";
-import { Card } from "@/components/common/ui/card";
-import { LookupModal } from "@/components/lookup/LookupModal";
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { Card } from '@/components/common/ui/card';
+import { LookupModal } from '@/components/lookup/LookupModal';
 import {
   ErrorState,
   LoadingState,
   NoCategoriesState,
   SelectCategoryPrompt,
-} from "@/components/lookup/LookupTypesEmptyStates";
-import { LookupTypesFilters } from "@/components/lookup/LookupTypesFilters";
-import { LookupTypesTable } from "@/components/lookup/LookupTypesTable";
-import { useSorting } from "@/hooks/useSorting";
-import { useMemo, useCallback, useEffect } from "react";
-import { FiList } from "react-icons/fi";
-import { toast } from "sonner";
-import { useCrudManager } from "@/hooks/useCrudManager";
-import { Lookup_typesRowSchema, Lookup_typesInsertSchema } from "@/schemas/zod-schemas";
-import { useLookupTypesData } from "@/hooks/data/useLookupTypesData";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
-import { createClient } from "@/utils/supabase/client";
-import { localDb } from "@/hooks/data/localDb";
-import { useLookupActions } from "@/components/lookup/lookup-hooks";
-import { useUser } from "@/providers/UserProvider";
-import { UserRole } from "@/types/user-roles";
+} from '@/components/lookup/LookupTypesEmptyStates';
+import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
+import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
+import { useSorting } from '@/hooks/useSorting';
+import { useMemo, useCallback, useEffect } from 'react';
+import { FiList } from 'react-icons/fi';
+import { toast } from 'sonner';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { Lookup_typesRowSchema, Lookup_typesInsertSchema } from '@/schemas/zod-schemas';
+import { useLookupTypesData } from '@/hooks/data/useLookupTypesData';
+import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { useLookupActions } from '@/components/lookup/lookup-hooks';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 export default function LookupTypesPage() {
   const {
     handlers: { handleCategoryChange },
     selectedCategory,
   } = useLookupActions();
-  
+
   const { isSuperAdmin, role } = useUser();
 
   // --- PERMISSIONS ---
@@ -53,10 +53,10 @@ export default function LookupTypesPage() {
     editModal,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<"lookup_types", Lookup_typesRowSchema>({
-    tableName: "lookup_types",
+  } = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
+    tableName: 'lookup_types',
     dataQueryHook: useLookupTypesData,
-    displayNameField: "name",
+    displayNameField: 'name',
   });
 
   const {
@@ -65,9 +65,9 @@ export default function LookupTypesPage() {
     error: categoriesError,
     refetch: refetchCategories,
   } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["unique-categories-v2"],
+    ['unique-categories-v2'],
     async () => {
-      const { data, error: dbError } = await createClient().from("lookup_types").select("*");
+      const { data, error: dbError } = await createClient().from('lookup_types').select('*');
       if (dbError) throw dbError;
       const unique = Array.from(new Map(data.map((item) => [item.category, item])).values());
       return unique.sort((a, b) => a.category.localeCompare(b.category));
@@ -91,13 +91,13 @@ export default function LookupTypesPage() {
     getSortDirection,
   } = useSorting({
     data: lookupTypes,
-    defaultSortKey: "sort_order",
-    defaultDirection: "asc", // Ensure explicit ascending order
+    defaultSortKey: 'sort_order',
+    defaultDirection: 'asc', // Ensure explicit ascending order
   });
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([refetch(), refetchCategories()]);
-    toast.success("Data refreshed successfully");
+    toast.success('Data refreshed successfully');
   }, [refetch, refetchCategories]);
 
   const hasCategories = categories.length > 0;
@@ -108,26 +108,30 @@ export default function LookupTypesPage() {
     data: lookupTypes,
     onRefresh: handleRefresh,
     // Gate Add New button
-    onAddNew: canManage 
-      ? (hasSelectedCategory ? editModal.openAdd : () => toast.error("Please select a category first."))
+    onAddNew: canManage
+      ? hasSelectedCategory
+        ? editModal.openAdd
+        : () => toast.error('Please select a category first.')
       : undefined,
     isLoading: isLoading,
-    exportConfig: canManage ?  {
-      tableName: "lookup_types",
-      filterOptions: [
-        {
-          label: "selected lookups",
-          filters: { category: selectedCategory },
-          fileName: `selected_lookups.xlsx`,
-        },
-      ],
-    } : undefined,
+    exportConfig: canManage
+      ? {
+          tableName: 'lookup_types',
+          filterOptions: [
+            {
+              label: 'selected lookups',
+              filters: { category: selectedCategory },
+              fileName: `selected_lookups.xlsx`,
+            },
+          ],
+        }
+      : undefined,
   });
 
   const headerStats = [
-    { value: totalCount, label: "Total Types" }, // Count is already accurate from hook
-    { value: activeCount, label: "Active", color: "success" as const },
-    { value: inactiveCount, label: "Inactive", color: "danger" as const },
+    { value: totalCount, label: 'Total Types' }, // Count is already accurate from hook
+    { value: activeCount, label: 'Active', color: 'success' as const },
+    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
   const handleToggleStatusAdapter = (id: string, currentStatus: boolean) => {
@@ -145,16 +149,16 @@ export default function LookupTypesPage() {
     return (
       <ErrorDisplay
         error={categoriesError.message}
-        actions={[{ label: "Retry", onClick: handleRefresh, variant: "primary" }]}
+        actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]}
       />
     );
   }
 
   return (
-    <div className='space-y-6 p-6'>
+    <div className="space-y-6 p-6">
       <PageHeader
-        title='Lookup Types'
-        description='Manage lookup types for various categories.'
+        title="Lookup Types"
+        description="Manage lookup types for various categories."
         icon={<FiList />}
         stats={hasSelectedCategory ? headerStats : []}
         actions={headerActions}
@@ -178,11 +182,11 @@ export default function LookupTypesPage() {
       {isLoading && hasSelectedCategory && <LoadingState selectedCategory={selectedCategory} />}
 
       {hasSelectedCategory && !isLoading && !error && (
-        <Card className='overflow-hidden'>
-          <div className='border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4'>
-            <p className='text-sm text-gray-600 dark:text-gray-400'>
-              Showing {lookupTypes.length} lookup types for category:{" "}
-              <strong className='text-gray-900 dark:text-gray-100'>{`"${selectedCategory}"`}</strong>
+        <Card className="overflow-hidden">
+          <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {lookupTypes.length} lookup types for category:{' '}
+              <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
             </p>
           </div>
           <LookupTypesTable
@@ -215,9 +219,9 @@ export default function LookupTypesPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteModal.message}
-        type='danger'
+        type="danger"
         loading={deleteModal.loading}
       />
     </div>

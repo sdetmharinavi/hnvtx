@@ -32,9 +32,16 @@ export default function MaintenanceAreasPage() {
 
   const {
     data: allAreas,
-    totalCount, activeCount, inactiveCount,
-    isLoading, isMutating, isFetching, error, refetch,
-    search, filters,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    isLoading,
+    isMutating,
+    isFetching,
+    error,
+    refetch,
+    search,
+    filters,
   } = useCrudManager<'maintenance_areas', MaintenanceAreaWithRelations>({
     tableName: 'maintenance_areas',
     dataQueryHook: useMaintenanceAreasData,
@@ -45,12 +52,18 @@ export default function MaintenanceAreasPage() {
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  const selectedEntity = useMemo(() => allAreas.find(a => a.id === selectedAreaId) || null, [allAreas, selectedAreaId]);
+  const selectedEntity = useMemo(
+    () => allAreas.find((a) => a.id === selectedAreaId) || null,
+    [allAreas, selectedAreaId]
+  );
   const isInitialLoad = isLoading && allAreas.length === 0;
 
-  const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } = useMaintenanceAreasMutations(supabase, () => {
-    refetch(); setFormOpen(false); setEditingArea(null);
-  });
+  const { createAreaMutation, updateAreaMutation, toggleStatusMutation, handleFormSubmit } =
+    useMaintenanceAreasMutations(supabase, () => {
+      refetch();
+      setFormOpen(false);
+      setEditingArea(null);
+    });
 
   const deleteManager = useDeleteManager({
     tableName: 'maintenance_areas',
@@ -62,17 +75,26 @@ export default function MaintenanceAreasPage() {
     },
   });
 
-  const handleOpenCreateForm = () => { setEditingArea(null); setFormOpen(true); };
-  const handleOpenEditForm = (area: MaintenanceAreaWithRelations) => { setEditingArea(area); setFormOpen(true); };
-  
+  const handleOpenCreateForm = () => {
+    setEditingArea(null);
+    setFormOpen(true);
+  };
+  const handleOpenEditForm = (area: MaintenanceAreaWithRelations) => {
+    setEditingArea(area);
+    setFormOpen(true);
+  };
+
   const headerActions = useStandardHeaderActions({
     data: allAreas as Row<'maintenance_areas'>[],
-    onRefresh: async () => { await refetch(); toast.success('Refreshed successfully!'); },
-    onAddNew: canEdit ? handleOpenCreateForm : undefined, 
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed successfully!');
+    },
+    onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
     exportConfig: canEdit ? { tableName: 'maintenance_areas' } : undefined,
   });
-  
+
   const headerStats = [
     { value: totalCount, label: 'Total Areas' },
     { value: activeCount, label: 'Active', color: 'success' as const },
@@ -80,32 +102,44 @@ export default function MaintenanceAreasPage() {
   ];
 
   if (error && isInitialLoad) {
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
   }
-  
+
   const areasQuery: UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error> = {
     data: { data: allAreas, count: totalCount },
-    isLoading, isFetching, error, isError: !!error, refetch,
+    isLoading,
+    isFetching,
+    error,
+    isError: !!error,
+    refetch,
   } as UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error>;
-  
+
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
-      <PageHeader 
-        title="Maintenance Areas" 
-        description="Manage maintenance areas, zones, and terminals." 
-        icon={<FiMapPin />} 
-        stats={headerStats} 
-        actions={headerActions} 
+      <PageHeader
+        title="Maintenance Areas"
+        description="Manage maintenance areas, zones, and terminals."
+        icon={<FiMapPin />}
+        stats={headerStats}
+        actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
-        className="mb-4" 
+        className="mb-4"
       />
-      
+
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
         entitiesQuery={areasQuery}
         isFetching={isFetching || isMutating}
-        toggleStatusMutation={{ mutate: toggleStatusMutation.mutate, isPending: toggleStatusMutation.isPending }}
+        toggleStatusMutation={{
+          mutate: toggleStatusMutation.mutate,
+          isPending: toggleStatusMutation.isPending,
+        }}
         onEdit={canEdit ? () => handleOpenEditForm(selectedEntity!) : undefined}
         onDelete={canDelete ? deleteManager.deleteSingle : undefined}
         onCreateNew={canEdit ? handleOpenCreateForm : () => {}}
@@ -124,19 +158,32 @@ export default function MaintenanceAreasPage() {
 
       {isFormOpen && (
         <AreaFormModal
-          isOpen={isFormOpen} onClose={() => setFormOpen(false)}
+          isOpen={isFormOpen}
+          onClose={() => setFormOpen(false)}
           onSubmit={(data: Maintenance_areasInsertSchema) => handleFormSubmit(data, editingArea)}
-          area={editingArea} allAreas={allAreas}
+          area={editingArea}
+          allAreas={allAreas}
           isLoading={createAreaMutation.isPending || updateAreaMutation.isPending}
         />
       )}
 
-      <MaintenanceAreaDetailsModal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} area={selectedEntity} />
-      
+      <MaintenanceAreaDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        area={selectedEntity}
+      />
+
       <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen} onConfirm={deleteManager.handleConfirm} onCancel={deleteManager.handleCancel}
-        title="Confirm Deletion" message={deleteManager.confirmationMessage} confirmText="Delete" cancelText="Cancel"
-        type="danger" showIcon loading={deleteManager.isPending}
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
+        title="Confirm Deletion"
+        message={deleteManager.confirmationMessage}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        showIcon
+        loading={deleteManager.isPending}
       />
     </div>
   );

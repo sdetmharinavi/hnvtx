@@ -4,7 +4,13 @@
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import { ConfirmModal, ErrorDisplay, PageSpinner, RoleBadge, StatusBadge } from '@/components/common/ui';
+import {
+  ConfirmModal,
+  ErrorDisplay,
+  PageSpinner,
+  RoleBadge,
+  StatusBadge,
+} from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { UserFilters } from '@/components/users/UserFilters';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
@@ -201,7 +207,7 @@ const AdminUsersPage = () => {
   if (isUserLoading) {
     return <PageSpinner text="Verifying permissions..." />;
   }
-  
+
   const allowedRoles = [UserRole.ADMINPRO];
   if (!isSuperAdmin && !allowedRoles.includes(role as UserRole)) {
     return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;

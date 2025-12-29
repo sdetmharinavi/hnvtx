@@ -12,7 +12,18 @@ import {
 } from '@/components/efile/ActionModals';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { useRouter } from 'next/navigation';
-import { FileText, Eye, Plus, Send, Edit, Trash2, Database, Grid, List, Search } from 'lucide-react';
+import {
+  FileText,
+  Eye,
+  Plus,
+  Send,
+  Edit,
+  Trash2,
+  Database,
+  Grid,
+  List,
+  Search,
+} from 'lucide-react';
 import { EFileRow } from '@/schemas/efile-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { formatDate } from '@/utils/formatters';
@@ -34,9 +45,9 @@ import { ActionButton } from '@/components/common/page-header';
 
 // Hardcoded categories to match the form options
 const CATEGORY_OPTIONS = [
-    { value: 'administrative', label: 'Administrative' },
-    { value: 'technical', label: 'Technical' },
-    { value: 'other', label: 'Other' }
+  { value: 'administrative', label: 'Administrative' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'other', label: 'Other' },
 ];
 
 export default function EFilesPage() {
@@ -45,8 +56,8 @@ export default function EFilesPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
-  const [searchQuery, setSearchQuery] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [filters, setFilters] = useState<Record<string, any>>({ status: 'active' });
 
@@ -86,9 +97,9 @@ export default function EFilesPage() {
     if (deleteModal.fileId) {
       deleteFile(deleteModal.fileId, {
         onSuccess: () => {
-             setDeleteModal({ isOpen: false, fileId: null });
-             refetch();
-        }
+          setDeleteModal({ isOpen: false, fileId: null });
+          refetch();
+        },
       });
     }
   };
@@ -106,34 +117,35 @@ export default function EFilesPage() {
           p_offset: 0,
           p_order_by: 'updated_at',
           p_order_dir: 'desc',
-          p_filters: { status: filters.status }
+          p_filters: { status: filters.status },
         },
       },
     });
   };
 
   const filteredFiles = useMemo(() => {
-     let result = files;
+    let result = files;
 
-     if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        result = result.filter(f => 
-            f.subject?.toLowerCase().includes(q) || 
-            f.file_number?.toLowerCase().includes(q) ||
-            f.description?.toLowerCase().includes(q) ||
-            f.current_holder_name?.toLowerCase().includes(q)
-        );
-     }
-     if (filters.priority) {
-        result = result.filter(f => f.priority === filters.priority);
-     }
-     if (filters.category) {
-        result = result.filter(f => f.category === filters.category);
-     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (f) =>
+          f.subject?.toLowerCase().includes(q) ||
+          f.file_number?.toLowerCase().includes(q) ||
+          f.description?.toLowerCase().includes(q) ||
+          f.current_holder_name?.toLowerCase().includes(q)
+      );
+    }
+    if (filters.priority) {
+      result = result.filter((f) => f.priority === filters.priority);
+    }
+    if (filters.category) {
+      result = result.filter((f) => f.category === filters.category);
+    }
 
-     return result;
+    return result;
   }, [files, searchQuery, filters]);
-  
+
   // THE FIX: Conditionally build the header actions array
   const headerActions = useMemo((): ActionButton[] => {
     const actions: ActionButton[] = [
@@ -153,9 +165,21 @@ export default function EFilesPage() {
         'data-dropdown': true,
         hideTextOnMobile: true,
         dropdownoptions: [
-          { label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup', onClick: () => exportBackup(), disabled: isBackingUp },
-          { label: isRestoring ? 'Restoring...' : 'Restore from Backup', onClick: () => backupInputRef.current?.click(), disabled: isRestoring },
-          { label: isExportingList ? 'Exporting List...' : 'Export Current View Only', onClick: handleExportList, disabled: isExportingList },
+          {
+            label: isBackingUp ? 'Generating Backup...' : 'Download Full Backup',
+            onClick: () => exportBackup(),
+            disabled: isBackingUp,
+          },
+          {
+            label: isRestoring ? 'Restoring...' : 'Restore from Backup',
+            onClick: () => backupInputRef.current?.click(),
+            disabled: isRestoring,
+          },
+          {
+            label: isExportingList ? 'Exporting List...' : 'Export Current View Only',
+            onClick: handleExportList,
+            disabled: isExportingList,
+          },
         ],
       });
       actions.push({
@@ -165,11 +189,20 @@ export default function EFilesPage() {
         leftIcon: <Plus />,
       });
     }
-    
-    return actions;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refetch, canEdit, isLoading, isRestoring, isBackingUp, isExportingList, exportBackup, importBackup, handleExportList]);
 
+    return actions;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    refetch,
+    canEdit,
+    isLoading,
+    isRestoring,
+    isBackingUp,
+    isExportingList,
+    exportBackup,
+    importBackup,
+    handleExportList,
+  ]);
 
   const columns: Column<EFileRow>[] = [
     {
@@ -202,7 +235,9 @@ export default function EFilesPage() {
       title: 'Category',
       dataIndex: 'category',
       width: 100,
-      render: (val) => <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{val as string}</span>
+      render: (val) => (
+        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{val as string}</span>
+      ),
     },
     {
       key: 'priority',
@@ -274,11 +309,23 @@ export default function EFilesPage() {
     },
   ];
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <input type="file" ref={backupInputRef} onChange={handleBackupRestore} className="hidden" accept=".xlsx" />
+      <input
+        type="file"
+        ref={backupInputRef}
+        onChange={handleBackupRestore}
+        className="hidden"
+        accept=".xlsx"
+      />
 
       <PageHeader
         title="E-File Tracking"
@@ -290,126 +337,179 @@ export default function EFilesPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search subject, number, holder..." 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="text-gray-400" />}
-                fullWidth
-                clearable
-            />
-          </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[140px]">
-                 <select
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters.status}
-                    onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
-                 >
-                    <option value="active">Active Files</option>
-                    <option value="closed">Closed / Archived</option>
-                    <option value="">All Files</option>
-                 </select>
-             </div>
-             
-             {/* Category Filter */}
-             <div className="min-w-[140px]">
-                 <select
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters.category || ''}
-                    onChange={(e) => setFilters(prev => ({...prev, category: e.target.value || undefined}))}
-                 >
-                    <option value="">All Categories</option>
-                    {CATEGORY_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                 </select>
-             </div>
+        <div className="w-full lg:w-96">
+          <Input
+            placeholder="Search subject, number, holder..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search className="text-gray-400" />}
+            fullWidth
+            clearable
+          />
+        </div>
 
-             <div className="min-w-[140px]">
-                 <select
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters.priority || ''}
-                    onChange={(e) => setFilters(prev => ({...prev, priority: e.target.value || undefined}))}
-                 >
-                    <option value="">All Priorities</option>
-                    <option value="immediate">Immediate</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="normal">Normal</option>
-                 </select>
-             </div>
-             {/* View Toggle */}
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Grid View"><Grid size={16} /></button>
-                <button onClick={() => setViewMode('table')} className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700'}`} title="Table View"><List size={16} /></button>
-             </div>
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[140px]">
+            <select
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+            >
+              <option value="active">Active Files</option>
+              <option value="closed">Closed / Archived</option>
+              <option value="">All Files</option>
+            </select>
           </div>
+
+          {/* Category Filter */}
+          <div className="min-w-[140px]">
+            <select
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.category || ''}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, category: e.target.value || undefined }))
+              }
+            >
+              <option value="">All Categories</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="min-w-[140px]">
+            <select
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={filters.priority || ''}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, priority: e.target.value || undefined }))
+              }
+            >
+              <option value="">All Priorities</option>
+              <option value="immediate">Immediate</option>
+              <option value="urgent">Urgent</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          {/* View Toggle */}
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Grid View"
+            >
+              <Grid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-md transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              title="Table View"
+            >
+              <List size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
       {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-             {filteredFiles.map(file => (
-                <EFileCard 
-                   key={file.id} 
-                   file={file} 
-                   onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
-                   onForward={(f) => setForwardModal({ isOpen: true, fileId: f.id! })}
-                   onEdit={(f) => setEditModal({ isOpen: true, file: f })}
-                   onDelete={(f) => setDeleteModal({ isOpen: true, fileId: f.id! })}
-                   canEdit={canEdit}
-                   canDelete={canDelete}
-                   canForward={canEdit}
-                />
-             ))}
-             {filteredFiles.length === 0 && !isLoading && (
-                 <div className="col-span-full">
-                    <FancyEmptyState 
-                        title="No files found"
-                        description="Try adjusting your filters or initiate a new file."
-                        icon={FileText}
-                    />
-                 </div>
-             )}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredFiles.map((file) => (
+            <EFileCard
+              key={file.id}
+              file={file}
+              onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
+              onForward={(f) => setForwardModal({ isOpen: true, fileId: f.id! })}
+              onEdit={(f) => setEditModal({ isOpen: true, file: f })}
+              onDelete={(f) => setDeleteModal({ isOpen: true, fileId: f.id! })}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              canForward={canEdit}
+            />
+          ))}
+          {filteredFiles.length === 0 && !isLoading && (
+            <div className="col-span-full">
+              <FancyEmptyState
+                title="No files found"
+                description="Try adjusting your filters or initiate a new file."
+                icon={FileText}
+              />
+            </div>
+          )}
+        </div>
       ) : (
-           <DataTable
-            autoHideEmptyColumns={true}
-            tableName="v_e_files_extended"
-            data={filteredFiles}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            columns={columns as any}
-            loading={isLoading}
-            searchable={false}
-            pagination={{ current: 1, pageSize: 20, total: filteredFiles.length, onChange: () => {} }}
-            customToolbar={<></>}
-            actions={[
-              {
-                key: 'view', label: 'Details', icon: <Eye className="w-4 h-4" />, onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`), variant: 'secondary',
-              },
-              {
-                key: 'forward', label: 'Forward', icon: <Send className="w-4 h-4" />, onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }), variant: 'primary', 
-                hidden: (rec) => rec.status !== 'active' || !canEdit, 
-              },
-              {
-                key: 'edit', label: 'Edit Info', icon: <Edit className="w-4 h-4" />,
-                onClick: (rec) => setEditModal({ isOpen: true, file: rec }),
-                variant: 'secondary', hidden: (rec) => rec.status !== 'active' || !canEdit,
-              },
-              {
-                key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }), variant: 'danger', 
-                hidden: !canDelete,
-              },
-            ]}
-          />
+        <DataTable
+          autoHideEmptyColumns={true}
+          tableName="v_e_files_extended"
+          data={filteredFiles}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          columns={columns as any}
+          loading={isLoading}
+          searchable={false}
+          pagination={{ current: 1, pageSize: 20, total: filteredFiles.length, onChange: () => {} }}
+          customToolbar={<></>}
+          actions={[
+            {
+              key: 'view',
+              label: 'Details',
+              icon: <Eye className="w-4 h-4" />,
+              onClick: (rec) => router.push(`/dashboard/e-files/${rec.id}`),
+              variant: 'secondary',
+            },
+            {
+              key: 'forward',
+              label: 'Forward',
+              icon: <Send className="w-4 h-4" />,
+              onClick: (rec) => setForwardModal({ isOpen: true, fileId: rec.id }),
+              variant: 'primary',
+              hidden: (rec) => rec.status !== 'active' || !canEdit,
+            },
+            {
+              key: 'edit',
+              label: 'Edit Info',
+              icon: <Edit className="w-4 h-4" />,
+              onClick: (rec) => setEditModal({ isOpen: true, file: rec }),
+              variant: 'secondary',
+              hidden: (rec) => rec.status !== 'active' || !canEdit,
+            },
+            {
+              key: 'delete',
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: (rec) => setDeleteModal({ isOpen: true, fileId: rec.id }),
+              variant: 'danger',
+              hidden: !canDelete,
+            },
+          ]}
+        />
       )}
 
       {/* Modals */}
       <InitiateFileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      {forwardModal.isOpen && forwardModal.fileId && <ForwardFileModal isOpen={forwardModal.isOpen} onClose={() => setForwardModal({ isOpen: false, fileId: null })} fileId={forwardModal.fileId} />}
-      {editModal.isOpen && editModal.file && <EditFileModal isOpen={editModal.isOpen} onClose={() => setEditModal({ isOpen: false, file: null })} file={editModal.file} />}
+      {forwardModal.isOpen && forwardModal.fileId && (
+        <ForwardFileModal
+          isOpen={forwardModal.isOpen}
+          onClose={() => setForwardModal({ isOpen: false, fileId: null })}
+          fileId={forwardModal.fileId}
+        />
+      )}
+      {editModal.isOpen && editModal.file && (
+        <EditFileModal
+          isOpen={editModal.isOpen}
+          onClose={() => setEditModal({ isOpen: false, file: null })}
+          file={editModal.file}
+        />
+      )}
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

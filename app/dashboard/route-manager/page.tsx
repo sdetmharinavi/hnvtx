@@ -34,7 +34,11 @@ export default function RouteManagerPage() {
   const { isSuperAdmin, role } = useUser();
 
   // Permissions
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO || role === UserRole.ASSETADMIN;
+  const canEdit =
+    !!isSuperAdmin ||
+    role === UserRole.ADMIN ||
+    role === UserRole.ADMINPRO ||
+    role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const {
@@ -116,61 +120,58 @@ export default function RouteManagerPage() {
     [allJointBoxesOnRoute, deleteManager]
   );
 
-  const headerActions = useMemo(
-    (): ActionButton[] => {
-      const actions: ActionButton[] = [
-        {
-          label: 'Refresh',
-          onClick: () => {
-            refetchRouteDetails();
-            toast.success('Route details refreshed!');
-          },
-          variant: 'outline',
-          leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
-          disabled: isLoadingRouteDetails,
+  const headerActions = useMemo((): ActionButton[] => {
+    const actions: ActionButton[] = [
+      {
+        label: 'Refresh',
+        onClick: () => {
+          refetchRouteDetails();
+          toast.success('Route details refreshed!');
         },
-        {
-          label: isExporting ? 'Exporting...' : 'Export Topology',
-          onClick: handleExportClick,
-          variant: 'outline',
-          leftIcon: <FiDownload />,
-          disabled: isExporting || !selectedRouteId,
-          hideTextOnMobile: true,
-        },
-      ];
+        variant: 'outline',
+        leftIcon: <FiRefreshCw className={isLoadingRouteDetails ? 'animate-spin' : ''} />,
+        disabled: isLoadingRouteDetails,
+      },
+      {
+        label: isExporting ? 'Exporting...' : 'Export Topology',
+        onClick: handleExportClick,
+        variant: 'outline',
+        leftIcon: <FiDownload />,
+        disabled: isExporting || !selectedRouteId,
+        hideTextOnMobile: true,
+      },
+    ];
 
-      if (canEdit) {
-        actions.push({
-          label: isUploading ? 'Importing...' : 'Import Topology',
-          onClick: handleUploadClick,
-          variant: 'outline',
-          leftIcon: <FiUpload />,
-          disabled: isUploading || !selectedRouteId,
-          hideTextOnMobile: true,
-        });
+    if (canEdit) {
+      actions.push({
+        label: isUploading ? 'Importing...' : 'Import Topology',
+        onClick: handleUploadClick,
+        variant: 'outline',
+        leftIcon: <FiUpload />,
+        disabled: isUploading || !selectedRouteId,
+        hideTextOnMobile: true,
+      });
 
-        actions.push({
-          label: 'Add Junction Closure',
-          onClick: handleAddJunctionClosure,
-          variant: 'primary',
-          leftIcon: <FiPlus />,
-          disabled: !selectedRouteId || isLoadingRouteDetails,
-        });
-      }
-      return actions;
-    },
-    [
-      isLoadingRouteDetails,
-      isExporting,
-      isUploading,
-      selectedRouteId,
-      handleAddJunctionClosure,
-      refetchRouteDetails,
-      handleExportClick,
-      handleUploadClick,
-      canEdit
-    ]
-  );
+      actions.push({
+        label: 'Add Junction Closure',
+        onClick: handleAddJunctionClosure,
+        variant: 'primary',
+        leftIcon: <FiPlus />,
+        disabled: !selectedRouteId || isLoadingRouteDetails,
+      });
+    }
+    return actions;
+  }, [
+    isLoadingRouteDetails,
+    isExporting,
+    isUploading,
+    selectedRouteId,
+    handleAddJunctionClosure,
+    refetchRouteDetails,
+    handleExportClick,
+    handleUploadClick,
+    canEdit,
+  ]);
 
   return (
     <div className="p-4 md:p-6 space-y-6 min-h-[calc(100vh-64px)] flex flex-col">
@@ -181,7 +182,7 @@ export default function RouteManagerPage() {
         className="hidden"
         accept=".xlsx, .xls"
       />
-      
+
       {/* Route Selection Header */}
       <RouteSelection
         selectedRouteId={selectedRouteId}
@@ -193,74 +194,81 @@ export default function RouteManagerPage() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {routeDetailsIsError ? (
-          <ErrorDisplay 
-            error={routeDetailsError?.message} 
+          <ErrorDisplay
+            error={routeDetailsError?.message}
             title="Failed to load route details"
-            actions={[{ label: "Retry", onClick: () => refetchRouteDetails(), variant: "primary" }]}
+            actions={[{ label: 'Retry', onClick: () => refetchRouteDetails(), variant: 'primary' }]}
           />
         ) : isLoadingRouteDetails ? (
-           <div className="flex-1 flex items-center justify-center min-h-[400px]">
-             <PageSpinner text="Loading route topology..." />
-           </div>
+          <div className="flex-1 flex items-center justify-center min-h-[400px]">
+            <PageSpinner text="Loading route topology..." />
+          </div>
         ) : !selectedRouteId ? (
-           <div className="flex-1 flex items-center justify-center min-h-[400px]">
-              <FancyEmptyState 
-                icon={Map}
-                title="No Route Selected"
-                description="Please select an Optical Fiber Cable route from the dropdown above to manage its topology, junction closures, and splicing."
-              />
-           </div>
+          <div className="flex-1 flex items-center justify-center min-h-[400px]">
+            <FancyEmptyState
+              icon={Map}
+              title="No Route Selected"
+              description="Please select an Optical Fiber Cable route from the dropdown above to manage its topology, junction closures, and splicing."
+            />
+          </div>
         ) : (
           <div className="flex-1 flex flex-col space-y-4">
-             {/* If route is selected but no data returned (unlikely due to schema validation, but safe to handle) */}
-             {!routeDetails ? (
-                 <ErrorDisplay error="Route data is empty or invalid." />
-             ) : (
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
-                  <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
-                    <TabsList className="bg-transparent p-0">
-                      <TabsTrigger 
-                        value="visualization"
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2"
-                      >
-                        <FiMap className="mr-2" /> Route Visualization
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="splicing" 
-                        disabled={!selectedJc}
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2 disabled:opacity-50"
-                      >
-                        <FiGitMerge className="mr-2" /> 
-                        Splice Management {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
+            {/* If route is selected but no data returned (unlikely due to schema validation, but safe to handle) */}
+            {!routeDetails ? (
+              <ErrorDisplay error="Route data is empty or invalid." />
+            ) : (
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full flex-1 flex flex-col"
+              >
+                <div className="border-b border-gray-200 dark:border-gray-700 mb-4">
+                  <TabsList className="bg-transparent p-0">
+                    <TabsTrigger
+                      value="visualization"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2"
+                    >
+                      <FiMap className="mr-2" /> Route Visualization
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="splicing"
+                      disabled={!selectedJc}
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2 disabled:opacity-50"
+                    >
+                      <FiGitMerge className="mr-2" />
+                      Splice Management {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-                  <div className="flex-1">
-                    <TabsContent value="visualization" className="h-full mt-0 focus-visible:outline-none">
-                      <RouteVisualization
-                        routeDetails={{
-                          ...routeDetails,
-                          jointBoxes: allJointBoxesOnRoute,
-                          segments: currentSegments,
-                        }}
-                        onJcClick={handleJcClick}
-                        onEditJc={handleOpenEditJcModal}
-                        onDeleteJc={handleRemoveJc}
-                        canEdit={canEdit}
-                        canDelete={canDelete}
-                      />
-                    </TabsContent>
-                    
-                    <TabsContent value="splicing" className="h-full mt-0 focus-visible:outline-none">
-                      <FiberSpliceManager 
-                        junctionClosureId={selectedJc?.id ?? null} 
-                        canEdit={canEdit}
-                      />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-             )}
+                <div className="flex-1">
+                  <TabsContent
+                    value="visualization"
+                    className="h-full mt-0 focus-visible:outline-none"
+                  >
+                    <RouteVisualization
+                      routeDetails={{
+                        ...routeDetails,
+                        jointBoxes: allJointBoxesOnRoute,
+                        segments: currentSegments,
+                      }}
+                      onJcClick={handleJcClick}
+                      onEditJc={handleOpenEditJcModal}
+                      onDeleteJc={handleRemoveJc}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="splicing" className="h-full mt-0 focus-visible:outline-none">
+                    <FiberSpliceManager
+                      junctionClosureId={selectedJc?.id ?? null}
+                      canEdit={canEdit}
+                    />
+                  </TabsContent>
+                </div>
+              </Tabs>
+            )}
           </div>
         )}
       </div>

@@ -15,31 +15,31 @@ export default function DocLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-      <UserProvider>
+    <UserProvider>
       <Protected allowedRoles={allowedRoles}>
-      <div className="flex min-h-[calc(100vh-64px)] bg-gray-50 dark:bg-gray-950">
-        <DocSidebar 
-            sections={workflowSections} 
+        <div className="flex min-h-[calc(100vh-64px)] bg-gray-50 dark:bg-gray-950">
+          <DocSidebar
+            sections={workflowSections}
             features={featuresData} // PASS DATA
-        />
-        <main className="flex-1 overflow-y-auto h-screen">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="p-6 md:p-12 max-w-7xl mx-auto"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          />
+          <main className="flex-1 overflow-y-auto h-screen">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="p-6 md:p-12 max-w-7xl mx-auto"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
 
-          <ScrollToTopButton />
-        </main>
-      </div>
-    </Protected>
+            <ScrollToTopButton />
+          </main>
+        </div>
+      </Protected>
     </UserProvider>
   );
 }
@@ -85,7 +85,12 @@ function ScrollToTopButton() {
           aria-label="Scroll to top"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M5 10l7-7m0 0l7 7m-7-7v18"
+            />
           </svg>
         </motion.button>
       )}

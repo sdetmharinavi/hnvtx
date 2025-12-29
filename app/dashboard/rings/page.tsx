@@ -79,7 +79,7 @@ export default function RingsPage() {
   // --- REFACTORED: Use Centralized, Offline-First Hooks ---
   const { options: ringTypeOptions } = useLookupTypeOptions('RING_TYPES');
   const { options: maintenanceAreaOptions } = useMaintenanceAreaOptions();
-  
+
   const { stats, totalNodesAcrossRings } = useMemo(() => {
     const s = {
       spec: { issued: 0, pending: 0 },
@@ -189,7 +189,7 @@ export default function RingsPage() {
         isFetching={isFetching}
         className="mb-4"
       />
-      
+
       <DataTable
         autoHideEmptyColumns={true}
         tableName="v_rings"

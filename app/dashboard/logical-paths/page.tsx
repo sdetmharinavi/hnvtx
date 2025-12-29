@@ -30,7 +30,7 @@ const useLogicalPathsData = (params: {
 }): DataQueryHookReturn<LogicalPathView> => {
   const { currentPage, pageLimit, searchQuery } = params;
   const supabase = createClient();
-  
+
   const searchFilters = useMemo(() => {
     if (!searchQuery) return {};
     const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
@@ -82,7 +82,6 @@ export default function LogicalPathsPage() {
   const [showFilters, setShowFilters] = useState(false); // Kept for consistency, though unused
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
-
 
   const {
     data: logicalPaths,

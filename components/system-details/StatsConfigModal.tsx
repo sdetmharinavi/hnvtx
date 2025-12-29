@@ -1,5 +1,5 @@
 // path: components/system-details/StatsConfigModal.tsx
-"use client";
+'use client';
 
 import React, { useMemo } from 'react';
 import { Modal, Button } from '@/components/common/ui';
@@ -9,7 +9,7 @@ import { Check } from 'lucide-react';
 export interface StatsFilterState {
   includeAdminDown: boolean;
   selectedCapacities: string[]; // Empty means ALL
-  selectedTypes: string[];      // Empty means ALL
+  selectedTypes: string[]; // Empty means ALL
 }
 
 interface StatsConfigModalProps {
@@ -25,7 +25,7 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
   onClose,
   ports,
   filters,
-  onApply
+  onApply,
 }) => {
   const [localFilters, setLocalFilters] = React.useState<StatsFilterState>(filters);
 
@@ -39,40 +39,36 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
     const caps = new Set<string>();
     const types = new Set<string>();
 
-    ports.forEach(p => {
+    ports.forEach((p) => {
       if (p.port_capacity) caps.add(p.port_capacity);
-      const typeLabel = p.port_type_code || p.port_type_name || "Unknown";
+      const typeLabel = p.port_type_code || p.port_type_name || 'Unknown';
       types.add(typeLabel);
     });
 
     return {
       capacities: Array.from(caps).sort(),
-      types: Array.from(types).sort()
+      types: Array.from(types).sort(),
     };
   }, [ports]);
 
   const toggleCapacity = (cap: string) => {
-    setLocalFilters(prev => {
+    setLocalFilters((prev) => {
       const current = prev.selectedCapacities;
       const exists = current.includes(cap);
       return {
         ...prev,
-        selectedCapacities: exists
-          ? current.filter(c => c !== cap)
-          : [...current, cap]
+        selectedCapacities: exists ? current.filter((c) => c !== cap) : [...current, cap],
       };
     });
   };
 
   const toggleType = (type: string) => {
-    setLocalFilters(prev => {
+    setLocalFilters((prev) => {
       const current = prev.selectedTypes;
       const exists = current.includes(type);
       return {
         ...prev,
-        selectedTypes: exists
-          ? current.filter(t => t !== type)
-          : [...current, type]
+        selectedTypes: exists ? current.filter((t) => t !== type) : [...current, type],
       };
     });
   };
@@ -86,7 +82,7 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
     setLocalFilters({
       includeAdminDown: true,
       selectedCapacities: [],
-      selectedTypes: []
+      selectedTypes: [],
     });
   };
 
@@ -94,7 +90,8 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Configure Statistics Calculation" size="md">
       <div className="space-y-6 p-4">
         <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-800 text-sm text-blue-800 dark:text-blue-200">
-          Select which ports to include in the utilization and count statistics. Unchecked items will be ignored in calculations.
+          Select which ports to include in the utilization and count statistics. Unchecked items
+          will be ignored in calculations.
         </div>
 
         {/* 1. Status Filter */}
@@ -103,22 +100,30 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
             Operational Status
           </h4>
           <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-            <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-              localFilters.includeAdminDown
-                ? 'bg-blue-600 border-blue-600 text-white'
-                : 'border-gray-400 bg-white dark:bg-gray-700'
-            }`}>
+            <div
+              className={`w-5 h-5 rounded border flex items-center justify-center ${
+                localFilters.includeAdminDown
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'border-gray-400 bg-white dark:bg-gray-700'
+              }`}
+            >
               {localFilters.includeAdminDown && <Check size={14} />}
             </div>
             <input
               type="checkbox"
               className="hidden"
               checked={localFilters.includeAdminDown}
-              onChange={(e) => setLocalFilters(prev => ({ ...prev, includeAdminDown: e.target.checked }))}
+              onChange={(e) =>
+                setLocalFilters((prev) => ({ ...prev, includeAdminDown: e.target.checked }))
+              }
             />
             <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Include Admin Down</span>
-              <span className="text-xs text-gray-500">Ports that are administratively disabled</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                Include Admin Down
+              </span>
+              <span className="text-xs text-gray-500">
+                Ports that are administratively disabled
+              </span>
             </div>
           </label>
         </div>
@@ -130,11 +135,13 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
               Port Capacity
             </h4>
             <span className="text-xs text-gray-500">
-              {localFilters.selectedCapacities.length === 0 ? "Including All" : `${localFilters.selectedCapacities.length} Selected`}
+              {localFilters.selectedCapacities.length === 0
+                ? 'Including All'
+                : `${localFilters.selectedCapacities.length} Selected`}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {options.capacities.map(cap => {
+            {options.capacities.map((cap) => {
               const isActive = localFilters.selectedCapacities.includes(cap);
 
               return (
@@ -154,7 +161,9 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
             })}
           </div>
           {localFilters.selectedCapacities.length === 0 && (
-             <p className="text-xs text-gray-400 italic">Select specific capacities to filter, otherwise all are included.</p>
+            <p className="text-xs text-gray-400 italic">
+              Select specific capacities to filter, otherwise all are included.
+            </p>
           )}
         </div>
 
@@ -165,11 +174,13 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
               Port Type
             </h4>
             <span className="text-xs text-gray-500">
-              {localFilters.selectedTypes.length === 0 ? "Including All" : `${localFilters.selectedTypes.length} Selected`}
+              {localFilters.selectedTypes.length === 0
+                ? 'Including All'
+                : `${localFilters.selectedTypes.length} Selected`}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {options.types.map(type => {
+            {options.types.map((type) => {
               const isActive = localFilters.selectedTypes.includes(type);
               return (
                 <button
@@ -191,13 +202,17 @@ export const StatsConfigModal: React.FC<StatsConfigModalProps> = ({
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-           <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
-              Reset to Default
-           </Button>
-           <div className="flex gap-2">
-             <Button variant="outline" onClick={onClose}>Cancel</Button>
-             <Button variant="primary" onClick={handleSave}>Apply Filters</Button>
-           </div>
+          <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
+            Reset to Default
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleSave}>
+              Apply Filters
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

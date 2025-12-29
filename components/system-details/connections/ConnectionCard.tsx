@@ -1,7 +1,16 @@
 // path: components/system-details/connections/ConnectionCard.tsx
 import React, { useMemo } from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiEye, FiMonitor, FiServer, FiEdit2, FiTrash2, FiMapPin, FiChevronsRight } from 'react-icons/fi';
+import {
+  FiActivity,
+  FiEye,
+  FiMonitor,
+  FiServer,
+  FiEdit2,
+  FiTrash2,
+  FiMapPin,
+  FiChevronsRight,
+} from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
@@ -15,7 +24,7 @@ type ExtendedConnection = V_system_connections_completeRowSchema & {
 
 interface ConnectionCardProps {
   connection: ExtendedConnection;
-  parentSystemId?: string; 
+  parentSystemId?: string;
   onViewDetails: (conn: V_system_connections_completeRowSchema) => void;
   onViewPath: (conn: V_system_connections_completeRowSchema) => void;
   onGoToSystem?: (conn: V_system_connections_completeRowSchema) => void;
@@ -27,75 +36,91 @@ interface ConnectionCardProps {
 }
 
 export const ConnectionCard: React.FC<ConnectionCardProps> = ({
-  connection, 
+  connection,
   parentSystemId,
-  onViewDetails, 
-  onViewPath, 
-  onGoToSystem, 
+  onViewDetails,
+  onViewPath,
+  onGoToSystem,
   onEdit,
   onDelete,
   canEdit = false,
   canDelete = false,
-  isSystemContext = false
+  isSystemContext = false,
 }) => {
-  
-  const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
-  
+  const hasPath =
+    Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
+
   const { endA, endB } = useMemo(() => {
     const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
 
     const endAData = {
-        name: isFlipped ? connection.en_name : (connection.sn_name || connection.system_name),
-        ip: formatIP(isFlipped ? connection.en_ip : (connection.sn_ip || connection.services_ip)),
-        location: isFlipped ? connection.en_node_name : connection.sn_node_name,
-        workingPort: isFlipped ? connection.en_interface : (connection.system_working_interface || connection.sn_interface),
-        protectionPort: isFlipped ? connection.en_protection_interface : connection.system_protection_interface,
+      name: isFlipped ? connection.en_name : connection.sn_name || connection.system_name,
+      ip: formatIP(isFlipped ? connection.en_ip : connection.sn_ip || connection.services_ip),
+      location: isFlipped ? connection.en_node_name : connection.sn_node_name,
+      workingPort: isFlipped
+        ? connection.en_interface
+        : connection.system_working_interface || connection.sn_interface,
+      protectionPort: isFlipped
+        ? connection.en_protection_interface
+        : connection.system_protection_interface,
     };
-    
+
     const endBData = {
-        name: isFlipped ? (connection.system_name || connection.sn_name) : connection.en_name,
-        ip: formatIP(isFlipped ? (connection.sn_ip || connection.services_ip) : connection.en_ip),
-        location: isFlipped ? connection.sn_node_name : connection.en_node_name,
-        workingPort: isFlipped ? (connection.system_working_interface || connection.sn_interface) : connection.en_interface,
-        protectionPort: isFlipped ? connection.system_protection_interface : connection.en_protection_interface,
+      name: isFlipped ? connection.system_name || connection.sn_name : connection.en_name,
+      ip: formatIP(isFlipped ? connection.sn_ip || connection.services_ip : connection.en_ip),
+      location: isFlipped ? connection.sn_node_name : connection.en_node_name,
+      workingPort: isFlipped
+        ? connection.system_working_interface || connection.sn_interface
+        : connection.en_interface,
+      protectionPort: isFlipped
+        ? connection.system_protection_interface
+        : connection.en_protection_interface,
     };
 
     return { endA: endAData, endB: endBData };
   }, [connection, isSystemContext, parentSystemId]);
 
   return (
-    <div 
+    <div
       onClick={() => onViewDetails(connection)}
       className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden"
     >
-                    {/* Service Route Section */}
-       {(connection.service_node_name || connection.service_end_node_name) && (
-          <div className="bg-linear-to-r from-blue-50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-900/40">
-            <div className="flex items-center gap-3 text-xs">
-              <span className="font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide shrink-0">
-                Service Route:
-              </span>
-              <div className="flex items-center gap-1 flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100" text={connection.service_node_name || 'N/A'} />
-                </div>
-                <FiChevronsRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                  <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100" text={connection.service_end_node_name || 'N/A'} />
-                </div>
+      {/* Service Route Section */}
+      {(connection.service_node_name || connection.service_end_node_name) && (
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-900/40">
+          <div className="flex items-center gap-3 text-xs">
+            <span className="font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide shrink-0">
+              Service Route:
+            </span>
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <TruncateTooltip
+                  className="font-medium text-gray-900 dark:text-gray-100"
+                  text={connection.service_node_name || 'N/A'}
+                />
+              </div>
+              <FiChevronsRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                <TruncateTooltip
+                  className="font-medium text-gray-900 dark:text-gray-100"
+                  text={connection.service_end_node_name || 'N/A'}
+                />
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
       {/* Status Indicator Bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
-        connection.status 
-          ? 'bg-linear-to-b from-emerald-500 to-emerald-600' 
-          : 'bg-linear-to-b from-red-500 to-red-600'
-      }`} />
-      
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
+          connection.status
+            ? 'bg-linear-to-b from-emerald-500 to-emerald-600'
+            : 'bg-linear-to-b from-red-500 to-red-600'
+        }`}
+      />
+
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20">
         <div className="flex justify-between items-start gap-3">
@@ -114,9 +139,13 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
               )}
             </div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug cursor-text">
-              <TruncateTooltip 
-                text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} 
-                copyOnDoubleClick={true} 
+              <TruncateTooltip
+                text={
+                  connection.service_name ||
+                  connection.connected_system_name ||
+                  'Unnamed Connection'
+                }
+                copyOnDoubleClick={true}
               />
             </h3>
           </div>
@@ -130,28 +159,30 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
       {/* Content */}
       <div className="px-5 py-4 space-y-4 flex-1">
-         
-
-
         {/* Physical Link Section */}
         <div className="bg-linear-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 rounded-lg p-4 border border-gray-200 dark:border-gray-700/50 shadow-sm">
           <div className="flex items-start justify-between gap-4">
-            
             {/* End A */}
             <div className="flex-1 min-w-0">
               <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-700/50">
                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {isSystemContext ? "This End" : "End A"}
+                  {isSystemContext ? 'This End' : 'End A'}
                 </span>
               </div>
-              
+
               <div className="space-y-2">
-                <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate" title={endA.name || ''}>
+                <div
+                  className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate"
+                  title={endA.name || ''}
+                >
                   {endA.name}
                 </div>
-                
+
                 {endA.location && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate" title={endA.location}>
+                  <div
+                    className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate"
+                    title={endA.location}
+                  >
                     <FiMapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                     <span className="truncate">{endA.location}</span>
                   </div>
@@ -160,7 +191,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 inline-block">
                   {endA.ip}
                 </div>
-                
+
                 <div className="inline-flex items-center justify-center font-mono font-semibold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 shadow-sm">
                   {endA.workingPort || 'N/A'}
                 </div>
@@ -178,26 +209,32 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             <div className="flex-1 min-w-0 text-right">
               <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-700/50">
                 <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {isSystemContext ? "Far End" : "End B"}
+                  {isSystemContext ? 'Far End' : 'End B'}
                 </span>
               </div>
-              
+
               <div className="space-y-2 flex flex-col items-end">
-                <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate w-full" title={endB.name || ''}>
+                <div
+                  className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate w-full"
+                  title={endB.name || ''}
+                >
                   {endB.name}
                 </div>
 
                 {endB.location && (
-                  <div className="flex items-center justify-end gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate w-full" title={endB.location}>
+                  <div
+                    className="flex items-center justify-end gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate w-full"
+                    title={endB.location}
+                  >
                     <span className="truncate">{endB.location}</span>
                     <FiMapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                   </div>
                 )}
-                
+
                 <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 inline-block">
                   {endB.ip}
                 </div>
-                 
+
                 <div className="inline-flex items-center justify-center font-mono font-semibold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 shadow-sm">
                   {endB.workingPort || 'N/A'}
                 </div>
@@ -211,51 +248,90 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
           <div className="grid grid-cols-2 gap-3">
             {connection.vlan && (
               <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">VLAN ID</div>
-                <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{connection.vlan}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                  VLAN ID
+                </div>
+                <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                  {connection.vlan}
+                </div>
               </div>
             )}
             {connection.media_type_name && (
               <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Media Type</div>
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{connection.media_type_name}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                  Media Type
+                </div>
+                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {connection.media_type_name}
+                </div>
               </div>
             )}
           </div>
         )}
       </div>
-      
-      
+
       {/* Footer Actions */}
-      <div className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
         {onGoToSystem && !isSystemContext && (
-          <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => onGoToSystem(connection)}
+            title="Go To Host System"
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
             <FiServer className="w-4 h-4" />
           </Button>
         )}
         <div className="flex-1" />
-        <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details" className="font-medium">
+        <Button
+          size="xs"
+          variant="secondary"
+          onClick={() => onViewDetails(connection)}
+          title="Full Details"
+          className="font-medium"
+        >
           <FiMonitor className="w-4 h-4" />
           <span className="ml-1.5">Details</span>
         </Button>
         {hasPath && (
-          <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => onViewPath(connection)}
+            title="Trace Fiber Path"
+            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium"
+          >
             <FiEye className="w-4 h-4" />
             <span className="ml-1.5">Path</span>
           </Button>
         )}
         {canEdit && onEdit && (
-          <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => onEdit(connection)}
+            title="Edit Connection"
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
             <FiEdit2 className="w-4 h-4" />
           </Button>
         )}
         {canDelete && onDelete && (
-          <Button size="xs" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
+          <Button
+            size="xs"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+            onClick={() => onDelete(connection)}
+            title="Delete Connection"
+          >
             <FiTrash2 className="w-4 h-4" />
           </Button>
         )}
       </div>
-
     </div>
   );
 };

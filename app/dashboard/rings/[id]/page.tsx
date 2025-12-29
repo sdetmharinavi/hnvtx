@@ -67,26 +67,26 @@ export default function RingMapPage() {
   const router = useRouter();
   const ringId = params.id as string;
   const supabase = createClient();
-  
+
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // 1. Fetch Ring Details
-  const { data: ringDetailsData, isLoading: isLoadingRingDetails, refetch: refetchRing } = useTableRecord(
-    supabase,
-    'v_rings',
-    ringId
-  );
+  const {
+    data: ringDetailsData,
+    isLoading: isLoadingRingDetails,
+    refetch: refetchRing,
+  } = useTableRecord(supabase, 'v_rings', ringId);
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
   // 2. Mutation
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
     onSuccess: () => {
-      toast.success("Topology configuration saved");
+      toast.success('Topology configuration saved');
       refetchRing();
       setIsConfigModalOpen(false);
     },
-    onError: (err) => toast.error(`Failed to save: ${err.message}`)
+    onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
   // 3. Fetch Nodes (UPDATED to useLocalFirstQuery)
@@ -115,9 +115,9 @@ export default function RingMapPage() {
     dexieTable: localDb.v_ring_nodes,
     enabled: !!ringId,
     staleTime: 5 * 60 * 1000,
-    localQueryDeps: [ringId]
+    localQueryDeps: [ringId],
   });
-  
+
   const mappedNodes = useMemo((): RingMapNode[] => {
     if (!rawNodes) return [];
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
@@ -129,19 +129,21 @@ export default function RingMapPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('logical_paths')
-        .select(`
+        .select(
+          `
            start_node_id, 
            end_node_id, 
            source_system:source_system_id(system_name), 
            source_port, 
            destination_system:destination_system_id(system_name), 
            destination_port
-        `)
+        `
+        )
         .eq('ring_id', ringId);
       if (error) return [];
       return data;
     },
-    enabled: !!ringId
+    enabled: !!ringId,
   });
 
   // 5. Calculate Potential Segments
@@ -151,29 +153,33 @@ export default function RingMapPage() {
     const hubs = mappedNodes
       .filter((node) => node.is_hub)
       .sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-    
+
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
-    
+
     if (hubs.length > 1) {
       hubs.forEach((hub, index) => {
         const nextIndex = (index + 1) % hubs.length;
         segments.push([hub, hubs[nextIndex]]);
       });
     } else {
-       // Fallback for no-hubs scenarios
-       const allNodes = [...mappedNodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
-       if (allNodes.length > 1) {
-         allNodes.forEach((node, index) => {
-            const nextIndex = (index + 1) % allNodes.length;
-            segments.push([node, allNodes[nextIndex]]);
-         });
-       }
+      // Fallback for no-hubs scenarios
+      const allNodes = [...mappedNodes].sort(
+        (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
+      );
+      if (allNodes.length > 1) {
+        allNodes.forEach((node, index) => {
+          const nextIndex = (index + 1) % allNodes.length;
+          segments.push([node, allNodes[nextIndex]]);
+        });
+      }
     }
 
     const spurs: Array<[RingMapNode, RingMapNode]> = [];
     const hubMapByOrder = new Map<number, RingMapNode>();
-    hubs.forEach(h => { if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h); });
+    hubs.forEach((h) => {
+      if (h.order_in_ring !== null) hubMapByOrder.set(Math.floor(h.order_in_ring), h);
+    });
 
     spokes.forEach((spoke) => {
       const parentOrder = Math.floor(spoke.order_in_ring || 0);
@@ -194,50 +200,61 @@ export default function RingMapPage() {
     });
   }, [potentialSegments, ringDetails]);
 
-  const allConnections = useMemo(() => [...activeSegments, ...spurConnections], [activeSegments, spurConnections]);
+  const allConnections = useMemo(
+    () => [...activeSegments, ...spurConnections],
+    [activeSegments, spurConnections]
+  );
 
   // 7. Transform path configs into a lookup map for ClientRingMap
   const segmentConfigMap = useMemo(() => {
-     const map: Record<string, PathConfigForMap> = {};
-     pathConfigs?.forEach(p => {
-         // Create bidirectional keys
-         const key1 = `${p.start_node_id}-${p.end_node_id}`;
-         const key2 = `${p.end_node_id}-${p.start_node_id}`;
-         
-         // Fix TS Error: Handle array return from Supabase join
-         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-         const sourceSys = p.source_system as any;
-         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-         const destSys = p.destination_system as any;
+    const map: Record<string, PathConfigForMap> = {};
+    pathConfigs?.forEach((p) => {
+      // Create bidirectional keys
+      const key1 = `${p.start_node_id}-${p.end_node_id}`;
+      const key2 = `${p.end_node_id}-${p.start_node_id}`;
 
-         const config: PathConfigForMap = {
-            source: (Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name) ?? undefined,
-            sourcePort: p.source_port ?? undefined,
-            dest: (Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name) ?? undefined,
-            destPort: p.destination_port ?? undefined,
-        };
-       map[key1] = config;
-       map[key2] = config;
-     });
-     return map;
+      // Fix TS Error: Handle array return from Supabase join
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sourceSys = p.source_system as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const destSys = p.destination_system as any;
+
+      const config: PathConfigForMap = {
+        source:
+          (Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name) ??
+          undefined,
+        sourcePort: p.source_port ?? undefined,
+        dest:
+          (Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name) ?? undefined,
+        destPort: p.destination_port ?? undefined,
+      };
+      map[key1] = config;
+      map[key2] = config;
+    });
+    return map;
   }, [pathConfigs]);
 
   // 8. Handlers
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
     const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
-    const isCurrentlyDisabled = currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
+    const isCurrentlyDisabled =
+      currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
 
     let newDisabled = [...currentDisabled];
     if (isCurrentlyDisabled) {
-      newDisabled = newDisabled.filter(k => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`);
+      newDisabled = newDisabled.filter(
+        (k) => k !== `${startId}-${endId}` && k !== `${endId}-${startId}`
+      );
     } else {
       newDisabled.push(key);
     }
 
-    const newConfig = { 
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' ? ringDetails.topology_config : {}), 
-      disabled_segments: newDisabled 
+    const newConfig = {
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object'
+        ? ringDetails.topology_config
+        : {}),
+      disabled_segments: newDisabled,
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
@@ -250,7 +267,7 @@ export default function RingMapPage() {
     // If loading and we have no cached data yet
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
     if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
-    
+
     if (mappedNodes.length === 0) {
       return (
         <div className="text-center py-12">
@@ -258,14 +275,21 @@ export default function RingMapPage() {
         </div>
       );
     }
-    
+
     if (viewMode === 'schematic') {
-      return <MeshDiagram nodes={mappedNodes} connections={allConnections} ringName={ringName} onBack={handleBack} />;
+      return (
+        <MeshDiagram
+          nodes={mappedNodes}
+          connections={allConnections}
+          ringName={ringName}
+          onBack={handleBack}
+        />
+      );
     }
 
-    const mapNodes = mappedNodes.filter(n => n.lat != null && n.long != null);
+    const mapNodes = mappedNodes.filter((n) => n.lat != null && n.long != null);
     if (mapNodes.length === 0) {
-       return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
+      return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
     }
 
     return (
@@ -293,11 +317,11 @@ export default function RingMapPage() {
               onClick: () => setIsConfigModalOpen(true),
               variant: 'primary',
               leftIcon: <FiSettings />,
-              disabled: isLoadingRingDetails || isUpdating
+              disabled: isLoadingRingDetails || isUpdating,
             },
             {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
-              onClick: () => setViewMode(prev => prev === 'map' ? 'schematic' : 'map'),
+              onClick: () => setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
               variant: 'secondary',
               leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
@@ -310,43 +334,50 @@ export default function RingMapPage() {
           ]}
         />
       </div>
-      
+
       <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
 
-      <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Configure Ring Connections">
+      <Modal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        title="Configure Ring Connections"
+      >
         <div className="p-4 space-y-4 z-50">
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Toggle the switches below to enable or disable specific connections between hubs.
           </p>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {potentialSegments.map(([start, end], idx) => {
-               const key = `${start.id}-${end.id}`;
-               const reverseKey = `${end.id}-${start.id}`;
-               const disabledList = ringDetails?.topology_config?.disabled_segments || [];
-               const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
+              const key = `${start.id}-${end.id}`;
+              const reverseKey = `${end.id}-${start.id}`;
+              const disabledList = ringDetails?.topology_config?.disabled_segments || [];
+              const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
 
-               return (
-                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
-                    <div className="flex flex-col">
-                      <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
-                        {start.name} ↔ {end.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                         Order: {start.order_in_ring} ↔ {end.order_in_ring}
-                      </span>
-                    </div>
-                    <Button
-                        size="xs"
-                        variant={isActive ? 'success' : 'secondary'}
-                        onClick={() => handleToggleSegment(start.id!, end.id!)}
-                        disabled={isUpdating}
-                    >
-                        {isActive ? 'Connected' : 'Disconnected'}
-                    </Button>
-                 </div>
-               );
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
+                      {start.name} ↔ {end.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Order: {start.order_in_ring} ↔ {end.order_in_ring}
+                    </span>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant={isActive ? 'success' : 'secondary'}
+                    onClick={() => handleToggleSegment(start.id!, end.id!)}
+                    disabled={isUpdating}
+                  >
+                    {isActive ? 'Connected' : 'Disconnected'}
+                  </Button>
+                </div>
+              );
             })}
           </div>
           <div className="flex justify-end pt-4">

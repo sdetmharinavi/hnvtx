@@ -1,9 +1,9 @@
 // components/auth/OnboardingPromptModal.tsx
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import { FiUserCheck, FiArrowRight } from "react-icons/fi";
-import { Button } from "@/components/common/ui";
+import { motion } from 'framer-motion';
+import { FiUserCheck, FiArrowRight } from 'react-icons/fi';
+import { Button } from '@/components/common/ui';
 
 interface OnboardingPromptModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
         initial={{ opacity: 0, y: 50, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 50, scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="relative w-full max-w-sm p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl"
       >
         <div className="flex items-start gap-4">
@@ -53,11 +53,7 @@ export const OnboardingPromptModal: React.FC<OnboardingPromptModalProps> = ({
           >
             Update Profile
           </Button>
-          <Button
-            onClick={onClose}
-            className="w-full sm:flex-1"
-            variant="outline"
-          >
+          <Button onClick={onClose} className="w-full sm:flex-1" variant="outline">
             Maybe Later
           </Button>
         </div>

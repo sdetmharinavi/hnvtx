@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useMemo } from "react";
-import { Modal } from "@/components/common/ui/Modal";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { useForm, SubmitHandler, Resolver } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/form/FormCard";
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { Modal } from '@/components/common/ui/Modal';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { useForm, SubmitHandler, Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormCard } from '@/components/common/form/FormCard';
 import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
-  FormSelect 
-} from "@/components/common/form/FormControls";
-import { ringsInsertSchema, RingsInsertSchema, V_ringsRowSchema } from "@/schemas/zod-schemas";
-import { DynamicStatusBuilder } from "@/components/common/form/DynamicStatusBuilder";
+  FormSelect,
+} from '@/components/common/form/FormControls';
+import { ringsInsertSchema, RingsInsertSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
+import { DynamicStatusBuilder } from '@/components/common/form/DynamicStatusBuilder';
 
 interface RingModalProps {
   isOpen: boolean;
@@ -27,21 +27,21 @@ interface RingModalProps {
 }
 
 const STATUS_OPTIONS = {
-    OFC: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Partial Ready', label: 'Partial Ready' },
-        { value: 'Ready', label: 'Ready' }
-    ],
-    SPEC: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Survey', label: 'Survey' },
-        { value: 'Issued', label: 'Issued' }
-    ],
-    BTS: [
-        { value: 'Pending', label: 'Pending' },
-        { value: 'Configured', label: 'Configured' },
-        { value: 'On-Air', label: 'On-Air' }
-    ]
+  OFC: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Partial Ready', label: 'Partial Ready' },
+    { value: 'Ready', label: 'Ready' },
+  ],
+  SPEC: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Survey', label: 'Survey' },
+    { value: 'Issued', label: 'Issued' },
+  ],
+  BTS: [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Configured', label: 'Configured' },
+    { value: 'On-Air', label: 'On-Air' },
+  ],
 };
 
 export function RingModal({
@@ -62,7 +62,7 @@ export function RingModal({
   } = useForm<RingsInsertSchema>({
     resolver: zodResolver(ringsInsertSchema) as Resolver<RingsInsertSchema>,
     defaultValues: {
-      name: "",
+      name: '',
       description: null,
       ring_type_id: null,
       maintenance_terminal_id: null,
@@ -77,10 +77,12 @@ export function RingModal({
 
   const ringTypeOptions: Option[] = useMemo(
     () =>
-      (ringTypes || []).filter((rt) => rt.name !== "DEFAULT").map((rt) => ({
-        value: rt.id,
-        label: `${rt.name}${rt.code ? ` (${rt.code})` : ""}`,
-      })),
+      (ringTypes || [])
+        .filter((rt) => rt.name !== 'DEFAULT')
+        .map((rt) => ({
+          value: rt.id,
+          label: `${rt.name}${rt.code ? ` (${rt.code})` : ''}`,
+        })),
     [ringTypes]
   );
 
@@ -88,7 +90,7 @@ export function RingModal({
     () =>
       (maintenanceAreas || []).map((a) => ({
         value: a.id,
-        label: `${a.name}${a.code ? ` (${a.code})` : ""}`,
+        label: `${a.name}${a.code ? ` (${a.code})` : ''}`,
       })),
     [maintenanceAreas]
   );
@@ -100,12 +102,12 @@ export function RingModal({
         // This fixes race conditions where select inputs might not catch the update
         const timer = setTimeout(() => {
           reset({
-            name: editingRing.name ?? "",
+            name: editingRing.name ?? '',
             description: editingRing.description ?? null,
             status: editingRing.status ?? true,
             ring_type_id: editingRing.ring_type_id ?? null,
             maintenance_terminal_id: editingRing.maintenance_terminal_id ?? null,
-            
+
             // Explicitly map these fields. If null/undefined in DB, force 'Pending'.
             ofc_status: editingRing.ofc_status || 'Pending',
             spec_status: editingRing.spec_status || 'Pending',
@@ -115,7 +117,7 @@ export function RingModal({
         return () => clearTimeout(timer);
       } else {
         reset({
-          name: "",
+          name: '',
           description: null,
           status: true,
           ring_type_id: null,
@@ -142,82 +144,83 @@ export function RingModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEdit ? "Edit Ring" : "Add Ring"}
+      title={isEdit ? 'Edit Ring' : 'Add Ring'}
       visible={false}
-      className='transparent bg-gray-700 rounded-2xl'>
+      className="transparent bg-gray-700 rounded-2xl"
+    >
       <FormCard
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onSubmit={handleSubmit(onValidSubmit as any)}
-        heightClass='min-h-calc(90vh - 100px)'
-        title={isEdit ? "Edit Ring" : "Add Ring"}
+        heightClass="min-h-calc(90vh - 100px)"
+        title={isEdit ? 'Edit Ring' : 'Add Ring'}
         onCancel={onClose}
         isLoading={isLoading}
-        standalone={true}>
-        
+        standalone={true}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-            name='name'
-            label='Name'
+          <FormInput
+            name="name"
+            label="Name"
             register={register}
             error={errors.name}
             disabled={isLoading}
-            placeholder='Enter ring name'
-            />
-            <FormSearchableSelect
+            placeholder="Enter ring name"
+          />
+          <FormSearchableSelect
             key={`ring-type-${formKey}`} // Force re-mount on change
-            name='ring_type_id'
-            label='Ring Type'
+            name="ring_type_id"
+            label="Ring Type"
             control={control}
             error={errors.ring_type_id}
             disabled={isLoading}
-            placeholder='Select ring type'
+            placeholder="Select ring type"
             options={ringTypeOptions}
-            />
+          />
         </div>
 
         <FormSearchableSelect
           key={`ma-${formKey}`} // Force re-mount on change
-          name='maintenance_terminal_id'
-          label='Maintenance Terminal'
+          name="maintenance_terminal_id"
+          label="Maintenance Terminal"
           control={control}
           error={errors.maintenance_terminal_id}
           disabled={isLoading}
-          placeholder='Select maintenance terminal'
+          placeholder="Select maintenance terminal"
           options={maintenanceAreaOptions}
         />
 
         {/* STATUS DROPDOWNS */}
         <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 mt-4">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Phase Status</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormSelect 
-                    key={`spec-${formKey}`} // Force re-mount ensures default value is picked up from control
-                    name="spec_status" 
-                    label="SPEC Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.SPEC} 
-                    error={errors.spec_status}
-                    placeholder="Select Status"
-                />
-                <FormSelect 
-                    key={`ofc-${formKey}`}
-                    name="ofc_status" 
-                    label="OFC Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.OFC} 
-                    error={errors.ofc_status}
-                    placeholder="Select Status"
-                />
-                <FormSelect 
-                    key={`bts-${formKey}`}
-                    name="bts_status" 
-                    label="Working Status" 
-                    control={control} 
-                    options={STATUS_OPTIONS.BTS} 
-                    error={errors.bts_status}
-                    placeholder="Select Status"
-                />
-            </div>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Phase Status</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormSelect
+              key={`spec-${formKey}`} // Force re-mount ensures default value is picked up from control
+              name="spec_status"
+              label="SPEC Status"
+              control={control}
+              options={STATUS_OPTIONS.SPEC}
+              error={errors.spec_status}
+              placeholder="Select Status"
+            />
+            <FormSelect
+              key={`ofc-${formKey}`}
+              name="ofc_status"
+              label="OFC Status"
+              control={control}
+              options={STATUS_OPTIONS.OFC}
+              error={errors.ofc_status}
+              placeholder="Select Status"
+            />
+            <FormSelect
+              key={`bts-${formKey}`}
+              name="bts_status"
+              label="Working Status"
+              control={control}
+              options={STATUS_OPTIONS.BTS}
+              error={errors.bts_status}
+              placeholder="Select Status"
+            />
+          </div>
         </div>
 
         <DynamicStatusBuilder
@@ -227,13 +230,13 @@ export function RingModal({
           control={control}
           error={errors.description}
         />
-        
+
         <FormSwitch
-          name='status'
-          label='Active Record'
+          name="status"
+          label="Active Record"
           control={control}
           error={errors.status}
-          className='my-4'
+          className="my-4"
         />
       </FormCard>
     </Modal>

@@ -26,8 +26,10 @@ export default function GlobalOfcConnectionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSuperAdmin, role } = useUser();
 
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
-  
+  const canEdit =
+    !!isSuperAdmin ||
+    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
+
   // THE FIX: Use Filters type instead of Record<string, string>
   const [filters, setFilters] = useState<Filters>({});
 
@@ -54,35 +56,46 @@ export default function GlobalOfcConnectionsPage() {
   const { mutate: uploadFibers, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
-    }
+    },
   });
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
-  
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-       const uploadConfig = buildUploadConfig("v_ofc_connections_complete");
-       uploadFibers({ file, columns: uploadConfig.columnMapping });
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [uploadFibers]);
 
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const uploadConfig = buildUploadConfig('v_ofc_connections_complete');
+        uploadFibers({ file, columns: uploadConfig.columnMapping });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    },
+    [uploadFibers]
+  );
 
   const columns = OfcDetailsTableColumns(fibers);
-  const orderedColumns = useOrderedColumns(columns, ['ofc_route_name', 'fiber_no_sn', ...TABLE_COLUMN_KEYS.v_ofc_connections_complete]);
+  const orderedColumns = useOrderedColumns(columns, [
+    'ofc_route_name',
+    'fiber_no_sn',
+    ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
+  ]);
 
   const headerActions = useStandardHeaderActions({
     data: fibers,
-    onRefresh: async () => { await refetch(); toast.success('Refreshed!'); },
+    onRefresh: async () => {
+      await refetch();
+      toast.success('Refreshed!');
+    },
     isLoading,
-    exportConfig: canEdit ? { 
-        tableName: 'v_ofc_connections_complete', 
-        fileName: 'All_Physical_Fibers',
-        useRpc: true,
-        orderBy: [{ column: 'ofc_route_name', ascending: true }],
-        maxRows: 50000 
-    } : undefined,
+    exportConfig: canEdit
+      ? {
+          tableName: 'v_ofc_connections_complete',
+          fileName: 'All_Physical_Fibers',
+          useRpc: true,
+          orderBy: [{ column: 'ofc_route_name', ascending: true }],
+          maxRows: 50000,
+        }
+      : undefined,
   });
 
   if (canEdit) {
@@ -92,7 +105,7 @@ export default function GlobalOfcConnectionsPage() {
       variant: 'outline',
       leftIcon: <FiUpload />,
       disabled: isUploading || isLoading,
-      hideTextOnMobile: true
+      hideTextOnMobile: true,
     });
   }
 
@@ -102,11 +115,23 @@ export default function GlobalOfcConnectionsPage() {
     { value: inactiveCount, label: 'Inactive/Faulty', color: 'danger' as const },
   ];
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]} />;
+  if (error)
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
+      />
+    );
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        accept=".xlsx, .xls, .csv"
+      />
 
       <PageHeader
         title="Physical Fiber Inventory"
@@ -120,37 +145,40 @@ export default function GlobalOfcConnectionsPage() {
 
       {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
-          <div className="w-full lg:w-96">
-            <Input 
-                placeholder="Search route, system, node..." 
-                value={search.searchQuery} 
-                onChange={(e) => search.setSearchQuery(e.target.value)}
-                leftIcon={<FiSearch className="text-gray-400" />}
-                fullWidth
-                clearable
+        <div className="w-full lg:w-96">
+          <Input
+            placeholder="Search route, system, node..."
+            value={search.searchQuery}
+            onChange={(e) => search.setSearchQuery(e.target.value)}
+            leftIcon={<FiSearch className="text-gray-400" />}
+            fullWidth
+            clearable
+          />
+        </div>
+
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[120px]">
+            <SelectFilter
+              label=""
+              filterKey="status"
+              filters={filters}
+              setFilters={setFilters}
+              options={[
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
+              ]}
+              placeholder="All Status"
             />
           </div>
-          
-          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-             <div className="min-w-[120px]">
-                 <SelectFilter
-                    label=""
-                    filterKey="status"
-                    filters={filters}
-                    setFilters={setFilters}
-                    options={[
-                        { value: 'true', label: 'Active' },
-                        { value: 'false', label: 'Inactive' }
-                    ]}
-                    placeholder="All Status"
-                 />
-             </div>
-             <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
-                <button className={`p-2 rounded-md transition-all bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400`} title="Table View">
-                    <FiList size={16} />
-                </button>
-             </div>
+          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+            <button
+              className={`p-2 rounded-md transition-all bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400`}
+              title="Table View"
+            >
+              <FiList size={16} />
+            </button>
           </div>
+        </div>
       </div>
 
       <DataTable
@@ -162,11 +190,14 @@ export default function GlobalOfcConnectionsPage() {
         isFetching={isFetching}
         searchable={false}
         pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); },
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
         }}
         customToolbar={<></>}
       />

@@ -1,9 +1,9 @@
 // app/(auth)/forgot-password/page.tsx
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
-import Link from 'next/link'
+import { motion } from 'framer-motion';
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
   return (
@@ -31,5 +31,5 @@ export default function ForgotPasswordPage() {
         <ForgotPasswordForm />
       </motion.div>
     </div>
-  )
+  );
 }

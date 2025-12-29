@@ -8,7 +8,6 @@ interface PortHeatmapProps {
 }
 
 export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
-  
   // Sort ports naturally (1, 2, 10 instead of 1, 10, 2)
   const sortedPorts = useMemo(() => {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -22,10 +21,10 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
   };
 
   const formatPortLabel = (name: string | null) => {
-      if (!name) return '?';
-      // Remove common prefixes like 'ETH-', 'Gi', etc. and keep the numbers
-      // e.g. "ETH-1-1-10" -> "1-1-10", "Gi0/1" -> "0/1"
-      return name.replace(/^(ETH-|Gi|Te|Fa|Eth|TenGig|Gig)[a-zA-Z]*[-]?/i, '');
+    if (!name) return '?';
+    // Remove common prefixes like 'ETH-', 'Gi', etc. and keep the numbers
+    // e.g. "ETH-1-1-10" -> "1-1-10", "Gi0/1" -> "0/1"
+    return name.replace(/^(ETH-|Gi|Te|Fa|Eth|TenGig|Gig)[a-zA-Z]*[-]?/i, '');
   };
 
   if (ports.length === 0) return null;
@@ -34,21 +33,21 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
     <div className="bg-white dark:bg-gray-800 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Port Status Map</h4>
-        
+
         {/* Legend */}
         <div className="flex gap-4 text-xs font-medium">
-            <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-green-500 rounded-sm"></div> 
-                <span className="text-gray-600 dark:text-gray-400">Available</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div> 
-                <span className="text-gray-600 dark:text-gray-400">Allocated</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-red-500 rounded-sm"></div> 
-                <span className="text-gray-600 dark:text-gray-400">Admin Down</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+            <span className="text-gray-600 dark:text-gray-400">Available</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+            <span className="text-gray-600 dark:text-gray-400">Allocated</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+            <span className="text-gray-600 dark:text-gray-400">Admin Down</span>
+          </div>
         </div>
       </div>
 
@@ -65,7 +64,9 @@ export const PortHeatmap = ({ ports, onPortClick }: PortHeatmapProps) => {
               hover:scale-105 hover:shadow-md focus:ring-2 focus:ring-offset-1 focus:outline-none
               ${getPortStatusColor(port)}
             `}
-            title={`Port: ${port.port}\nStatus: ${port.port_admin_status ? 'UP' : 'DOWN'}\nUtilized: ${port.port_utilization ? 'Yes' : 'No'}`}
+            title={`Port: ${port.port}\nStatus: ${
+              port.port_admin_status ? 'UP' : 'DOWN'
+            }\nUtilized: ${port.port_utilization ? 'Yes' : 'No'}`}
           >
             {formatPortLabel(port.port)}
           </button>

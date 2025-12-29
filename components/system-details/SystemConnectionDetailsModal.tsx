@@ -1,21 +1,24 @@
 // path: components/system-details/SystemConnectionDetailsModal.tsx
-"use client";
+'use client';
 
-import React, { useMemo, useCallback, useState } from "react";
-import { Modal, PageSpinner } from "@/components/common/ui";
-import { DataTable } from "@/components/table";
-import { useTableRecord, useTableUpdate, useTableQuery } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { Row } from "@/hooks/database";
-import TruncateTooltip from "@/components/common/TruncateTooltip";
-import { V_system_connections_completeRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
-import { FiberAllocationModal } from "@/components/system-details/FiberAllocationModal";
-import { PathDisplay } from "@/components/system-details/PathDisplay";
-import { OfcDetailsTableColumns } from "@/config/table-columns/OfcDetailsTableColumns";
-import { FiServer } from "react-icons/fi";
-import { formatIP } from "@/utils/formatters";
+import React, { useMemo, useCallback, useState } from 'react';
+import { Modal, PageSpinner } from '@/components/common/ui';
+import { DataTable } from '@/components/table';
+import { useTableRecord, useTableUpdate, useTableQuery } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { Row } from '@/hooks/database';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
+import {
+  V_system_connections_completeRowSchema,
+  V_systems_completeRowSchema,
+} from '@/schemas/zod-schemas';
+import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
+import { PathDisplay } from '@/components/system-details/PathDisplay';
+import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
+import { FiServer } from 'react-icons/fi';
+import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
   isOpen: boolean;
@@ -25,10 +28,10 @@ interface SystemConnectionDetailsModalProps {
 }
 
 const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
-  <div className='flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0'>
-    <div className='flex items-center gap-3'>
-      <div className='w-1 h-6 bg-blue-600 rounded-full'></div>
-      <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{title}</h3>
+  <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0">
+    <div className="flex items-center gap-3">
+      <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
     </div>
     {action}
   </div>
@@ -49,7 +52,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     data: connection,
     isLoading,
     refetch,
-  } = useTableRecord(supabase, "v_system_connections_complete", connectionId);
+  } = useTableRecord(supabase, 'v_system_connections_complete', connectionId);
 
   const allocatedFiberIds = useMemo(() => {
     if (!connection) return [];
@@ -61,17 +64,17 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  const { data: ofcData } = useTableQuery(supabase, "v_ofc_connections_complete", {
+  const { data: ofcData } = useTableQuery(supabase, 'v_ofc_connections_complete', {
     filters: {
-      id: { operator: "in", value: allocatedFiberIds },
+      id: { operator: 'in', value: allocatedFiberIds },
     },
     enabled: allocatedFiberIds.length > 0,
     limit: 100,
   });
 
-  const { mutate: updateConnection } = useTableUpdate(supabase, "system_connections", {
+  const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
-      toast.success("Field updated successfully");
+      toast.success('Field updated successfully');
       refetch();
     },
     onError: (err) => toast.error(`Update failed: ${err.message}`),
@@ -87,37 +90,37 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const handleAllocationSave = useCallback(() => {
     refetch();
     setIsAllocationModalOpen(false);
-    toast.success("Allocation updated successfully");
+    toast.success('Allocation updated successfully');
   }, [refetch]);
 
   const circuitColumns = useMemo(
-    (): Column<Row<"v_system_connections_complete">>[] => [
+    (): Column<Row<'v_system_connections_complete'>>[] => [
       {
-        key: "service_name",
-        title: "Service Name",
-        dataIndex: "service_name" as keyof Row<"v_system_connections_complete">,
+        key: 'service_name',
+        title: 'Service Name',
+        dataIndex: 'service_name' as keyof Row<'v_system_connections_complete'>,
         editable: true,
         width: 200,
         render: (val, record) => {
           return (
-            <span className='font-medium text-gray-900 dark:text-white'>
+            <span className="font-medium text-gray-900 dark:text-white">
               {(val as string) ||
                 (record as V_system_connections_completeRowSchema).connected_system_name ||
-                "N/A"}
+                'N/A'}
             </span>
           );
         },
       },
       {
-        key: "connected_link_type_name",
-        title: "Category",
-        dataIndex: "connected_link_type_name",
+        key: 'connected_link_type_name',
+        title: 'Category',
+        dataIndex: 'connected_link_type_name',
         width: 120,
       },
       {
-        key: "media_type_name",
-        title: "Media/Port Type",
-        dataIndex: "media_type_name",
+        key: 'media_type_name',
+        title: 'Media/Port Type',
+        dataIndex: 'media_type_name',
         width: 150,
         render: (val) =>
           val ? (
@@ -127,9 +130,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           ),
       },
       {
-        key: "services_ip",
-        title: "Service IP",
-        dataIndex: "services_ip",
+        key: 'services_ip',
+        title: 'Service IP',
+        dataIndex: 'services_ip',
         editable: true,
         width: 130,
         render: (val) =>
@@ -142,9 +145,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           ),
       },
       {
-        key: "services_interface",
-        title: "Service Port",
-        dataIndex: "services_interface",
+        key: 'services_interface',
+        title: 'Service Port',
+        dataIndex: 'services_interface',
         editable: true,
         width: 120,
         render: (val) =>
@@ -154,17 +157,17 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             <span className="text-gray-400 italic text-xs">-</span>
           ),
       },
-      { key: "bandwidth", title: "Capacity", dataIndex: "bandwidth", editable: true, width: 100 },
+      { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', editable: true, width: 100 },
       {
-        key: "bandwidth_allocated",
-        title: "Allocated",
-        dataIndex: "bandwidth_allocated",
+        key: 'bandwidth_allocated',
+        title: 'Allocated',
+        dataIndex: 'bandwidth_allocated',
         editable: true,
         width: 100,
       },
-      { key: "lc_id", title: "LC ID", dataIndex: "lc_id", editable: true, width: 100 },
-      { key: "unique_id", title: "Unique ID", dataIndex: "unique_id", editable: true, width: 150 },
-      { key: "vlan", title: "VLAN", dataIndex: "vlan", editable: true, width: 80 },
+      { key: 'lc_id', title: 'LC ID', dataIndex: 'lc_id', editable: true, width: 100 },
+      { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', editable: true, width: 150 },
+      { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', editable: true, width: 80 },
     ],
     []
   );
@@ -185,29 +188,30 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
     const endA: Endpoint = {
       id: `${connection.id}-A`,
-      end: "End A",
+      end: 'End A',
       node_ip:
         connection.sn_ip ||
-        (connection as V_system_connections_completeRowSchema & {services_ip: unknown}).services_ip ||
+        (connection as V_system_connections_completeRowSchema & { services_ip: unknown })
+          .services_ip ||
         parentSystem?.ip_address,
-      system_name: connection.sn_name || connection.system_name || "Unknown System",
+      system_name: connection.sn_name || connection.system_name || 'Unknown System',
       interface: connection.sn_interface || connection.system_working_interface,
       protection_interface: connection.system_protection_interface,
       realId: connection.id,
-      fieldMap: { interface: "sn_interface", protection_interface: "system_protection_interface" },
+      fieldMap: { interface: 'sn_interface', protection_interface: 'system_protection_interface' },
     };
 
     const endB: Endpoint = {
       id: `${connection.id}-B`,
-      end: "End B",
+      end: 'End B',
       node_ip: connection.en_ip,
-      system_name: connection.en_name || "",
+      system_name: connection.en_name || '',
       interface: connection.en_interface,
       protection_interface: (
         connection as V_system_connections_completeRowSchema & { en_protection_interface?: string }
       ).en_protection_interface,
       realId: connection.id,
-      fieldMap: { interface: "en_interface", protection_interface: "en_protection_interface" },
+      fieldMap: { interface: 'en_interface', protection_interface: 'en_protection_interface' },
     };
 
     return [endA, endB];
@@ -216,37 +220,37 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endPointColumns: Column<any>[] = [
     {
-      key: "end",
-      title: "End Info",
-      dataIndex: "end",
+      key: 'end',
+      title: 'End Info',
+      dataIndex: 'end',
       width: 80,
       render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
     },
     {
-      key: "node_ip",
-      title: "Node IP",
-      dataIndex: "node_ip",
+      key: 'node_ip',
+      title: 'Node IP',
+      dataIndex: 'node_ip',
       width: 120,
       render: (val) => formatIP(val),
     },
     {
-      key: "system_name",
-      title: "System Name",
-      dataIndex: "system_name",
+      key: 'system_name',
+      title: 'System Name',
+      dataIndex: 'system_name',
       width: 250,
       render: (val) => <TruncateTooltip text={val as string} />,
     },
     {
-      key: "interface",
-      title: "Working Port",
-      dataIndex: "interface",
+      key: 'interface',
+      title: 'Working Port',
+      dataIndex: 'interface',
       editable: true,
       width: 150,
     },
     {
-      key: "protection_interface",
-      title: "Protection Port",
-      dataIndex: "protection_interface",
+      key: 'protection_interface',
+      title: 'Protection Port',
+      dataIndex: 'protection_interface',
       editable: true,
       width: 150,
       render: (val: unknown) =>
@@ -280,10 +284,10 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             Service Name / Customer
           </div>
           <div className="font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight">
-            {record.service_name || record.customer_name || "N/A"}
+            {record.service_name || record.customer_name || 'N/A'}
           </div>
           <div className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-            {record.connected_link_type_name || "Link"}
+            {record.connected_link_type_name || 'Link'}
           </div>
         </div>
       </div>
@@ -300,7 +304,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
               {record.end}
             </span>
             <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300">
-              {record.node_ip || "No IP"}
+              {record.node_ip || 'No IP'}
             </span>
           </div>
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -311,14 +315,14 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         <div className="text-right">
           <div className="text-[10px] text-gray-400 uppercase mb-0.5">Interface</div>
           <div className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
-            {record.interface || "-"}
+            {record.interface || '-'}
           </div>
         </div>
       </div>
     );
   }, []);
 
-  const renderFiberMobile = useCallback((record: Row<"v_ofc_connections_complete">) => {
+  const renderFiberMobile = useCallback((record: Row<'v_ofc_connections_complete'>) => {
     return (
       <div className="flex flex-col gap-1.5">
         <div className="flex justify-between items-center">
@@ -332,8 +336,8 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           </div>
         </div>
         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
-          <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : "-"}</span>
-          <span>Loss: {record.route_loss_db || "-"} dB</span>
+          <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
+          <span>Loss: {record.route_loss_db || '-'} dB</span>
         </div>
       </div>
     );
@@ -345,7 +349,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={connection?.service_name || connection?.system_name || "Connection Details"}
+      title={connection?.service_name || connection?.system_name || 'Connection Details'}
       size="full"
       className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
     >
@@ -380,7 +384,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
               <DataTable
                 autoHideEmptyColumns={true}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                tableName={"v_system_connections_complete" as any}
+                tableName={'v_system_connections_complete' as any}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 data={endPointData as any[]}
                 columns={endPointColumns}
@@ -405,7 +409,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                   onClick={handleOpenAllocationModal}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
                 >
-                  {allocatedFiberIds.length > 0 ? "Modify Allocation" : "Map OFC"}
+                  {allocatedFiberIds.length > 0 ? 'Modify Allocation' : 'Map OFC'}
                 </button>
               }
             />

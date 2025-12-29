@@ -1,8 +1,8 @@
 // path: app/doc/page.tsx
-"use client";
+'use client';
 
-import BackgroundElements from "@/components/doc/BackgroundElements";
-import HeaderSection from "@/components/doc/HeaderSection";
+import BackgroundElements from '@/components/doc/BackgroundElements';
+import HeaderSection from '@/components/doc/HeaderSection';
 
 export default function Workflows() {
   return (

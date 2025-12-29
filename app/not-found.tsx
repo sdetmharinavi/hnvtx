@@ -37,7 +37,8 @@ export default function NotFound() {
           transition={{ delay: 0.3 }}
           className="text-gray-600 dark:text-gray-400 mb-8 text-lg"
         >
-          The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+          The page you are looking for might have been removed, had its name changed, or is
+          temporarily unavailable.
         </motion.p>
 
         <motion.div
