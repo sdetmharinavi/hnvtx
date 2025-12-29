@@ -26,79 +26,141 @@ export const SystemCard: React.FC<SystemCardProps> = ({
   return (
     <div 
       onClick={() => onView(system)}
-      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group cursor-pointer relative"
+      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden"
     >
+      {/* Status Indicator */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
+        system.status 
+          ? 'bg-linear-to-b from-emerald-500 to-emerald-600' 
+          : 'bg-linear-to-b from-red-500 to-red-600'
+      }`} />
+
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-start gap-3">
-        <div className="min-w-0 flex-1">
-             <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-                    {system.system_type_code || system.system_type_name}
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50">
+                {system.system_type_code || system.system_type_name}
+              </span>
+              {system.is_hub && (
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50">
+                  HUB
                 </span>
-                {system.is_hub && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">
-                        HUB
-                    </span>
-                )}
-             </div>
-             <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate text-base" title={system.system_name || ''}>
-                {system.system_name}
-             </h3>
+              )}
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug" title={system.system_name || ''}>
+              <TruncateTooltip text={system.system_name} copyOnDoubleClick={true} />
+            </h3>
+          </div>
+          <StatusBadge status={system.status ?? false} />
         </div>
-        <StatusBadge status={system.status ?? false} />
       </div>
 
       {/* Body */}
-      <div className="p-4 space-y-3 flex-1 text-sm">
+      <div className="px-5 py-4 space-y-3 flex-1">
          
-         <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700 space-y-2">
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <FiMapPin className="w-4 h-4 shrink-0 text-gray-400" />
-                <span className="truncate font-medium"><TruncateTooltip text={system.node_name || 'Unknown Location'} /></span>
+        {/* Location & IP Section */}
+        <div className="bg-linear-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 rounded-lg p-3.5 border border-gray-200 dark:border-gray-700/50 space-y-2.5 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <FiMapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-mono text-xs">
-                <FiActivity className="w-4 h-4 shrink-0 text-gray-400" />
-                <span>{displayIP}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">Location</div>
+              <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate" title={system.node_name || 'Unknown Location'}>
+                {system.node_name || 'Unknown Location'}
+              </div>
             </div>
-         </div>
+          </div>
+          
+          <div className="h-px bg-linear-to-r from-transparent via-gray-200 to-transparent dark:via-gray-700" />
+          
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <FiActivity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-0.5">IP Address</div>
+              <div className="font-mono font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                {displayIP}
+              </div>
+            </div>
+          </div>
+        </div>
 
-         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
-             <div className="flex items-center gap-1.5">
-                 <FiCpu className="w-3.5 h-3.5" />
-                 <span>{system.system_capacity_name || 'Unknown Cap'}</span>
-             </div>
-             {system.s_no && (
-                 <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                    S/N: {system.s_no}
-                 </span>
-             )}
-         </div>
+        {/* System Details */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <FiCpu className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Capacity</span>
+            </div>
+            <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={system.system_capacity_name || 'Unknown'}>
+              {system.system_capacity_name || 'Unknown'}
+            </div>
+          </div>
+          
+          {system.s_no && (
+            <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Serial Number</div>
+              <div className="font-mono font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={system.s_no}>
+                {system.s_no}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer / Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
          
-         <Button size="xs" variant="secondary" onClick={() => onManagePorts(system)} title="Manage Ports">
-            <FiGrid className="w-3.5 h-3.5 mr-1" /> Ports
-         </Button>
+        <Button 
+          size="xs" 
+          variant="secondary" 
+          onClick={() => onManagePorts(system)} 
+          title="Manage Ports"
+          className="font-medium"
+        >
+          <FiGrid className="w-4 h-4" />
+          <span className="ml-1.5">Ports</span>
+        </Button>
 
-         <div className="flex-1"></div>
-
-         <Button size="xs" variant="ghost" onClick={() => onView(system)} title="View Details">
+        <div className="flex items-center gap-2">
+          <Button 
+            size="xs" 
+            variant="ghost" 
+            onClick={() => onView(system)} 
+            title="View Details"
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
             <FiInfo className="w-4 h-4" />
-         </Button>
+          </Button>
 
-         {canEdit && (
-            <Button size="xs" variant="ghost" onClick={() => onEdit(system)} title="Edit System">
-                <FiEdit2 className="w-4 h-4" />
+          {canEdit && (
+            <Button 
+              size="xs" 
+              variant="ghost" 
+              onClick={() => onEdit(system)} 
+              title="Edit System"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              <FiEdit2 className="w-4 h-4" />
             </Button>
-         )}
+          )}
          
-         {canDelete && (
-            <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(system)} title="Delete System">
-                <FiTrash2 className="w-4 h-4" />
+          {canDelete && (
+            <Button 
+              size="xs" 
+              variant="ghost" 
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" 
+              onClick={() => onDelete(system)} 
+              title="Delete System"
+            >
+              <FiTrash2 className="w-4 h-4" />
             </Button>
-         )}
+          )}
+        </div>
       </div>
     </div>
   );

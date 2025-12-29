@@ -1,13 +1,11 @@
 // path: components/system-details/connections/ConnectionCard.tsx
 import React, { useMemo } from 'react';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiActivity, FiArrowRight, FiEye, FiMonitor, FiServer, FiShield, FiEdit2, FiTrash2, FiMapPin, FiChevronsRight } from 'react-icons/fi';
+import { FiActivity, FiEye, FiMonitor, FiServer, FiEdit2, FiTrash2, FiMapPin, FiChevronsRight } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
 
-// Extend the schema type to include the new fields from the migration
-// This prevents TS errors before you run your codegen script
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   service_end_node_name?: string | null;
   service_node_name?: string | null;
@@ -44,13 +42,11 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   const hasPath = Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
   
   const { endA, endB } = useMemo(() => {
-    // If we are in a specific system's context, ensure "End A" is always the current system
     const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
 
     const endAData = {
         name: isFlipped ? connection.en_name : (connection.sn_name || connection.system_name),
         ip: formatIP(isFlipped ? connection.en_ip : (connection.sn_ip || connection.services_ip)),
-        // Map the correct node name
         location: isFlipped ? connection.en_node_name : connection.sn_node_name,
         workingPort: isFlipped ? connection.en_interface : (connection.system_working_interface || connection.sn_interface),
         protectionPort: isFlipped ? connection.en_protection_interface : connection.system_protection_interface,
@@ -59,188 +55,207 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
     const endBData = {
         name: isFlipped ? (connection.system_name || connection.sn_name) : connection.en_name,
         ip: formatIP(isFlipped ? (connection.sn_ip || connection.services_ip) : connection.en_ip),
-        // Map the correct node name
         location: isFlipped ? connection.sn_node_name : connection.en_node_name,
         workingPort: isFlipped ? (connection.system_working_interface || connection.sn_interface) : connection.en_interface,
         protectionPort: isFlipped ? connection.system_protection_interface : connection.en_protection_interface,
     };
 
-    return {
-        endA: endAData,
-        endB: endBData,
-    };
+    return { endA: endAData, endB: endBData };
   }, [connection, isSystemContext, parentSystemId]);
 
   return (
     <div 
       onClick={() => onViewDetails(connection)}
-      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col h-full group cursor-pointer relative"
+      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden"
     >
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${connection.status ? 'bg-green-500' : 'bg-red-500'}`} />
+                    {/* Service Route Section */}
+       {(connection.service_node_name || connection.service_end_node_name) && (
+          <div className="bg-linear-to-r from-blue-50 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-900/40">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide shrink-0">
+                Service Route:
+              </span>
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100" text={connection.service_node_name || 'N/A'} />
+                </div>
+                <FiChevronsRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100" text={connection.service_end_node_name || 'N/A'} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      {/* Status Indicator Bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
+        connection.status 
+          ? 'bg-linear-to-b from-emerald-500 to-emerald-600' 
+          : 'bg-linear-to-b from-red-500 to-red-600'
+      }`} />
       
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 pl-5 flex justify-between items-start gap-2">
-        <div className="min-w-0 flex-1">
-             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                {connection.connected_link_type_name && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-                        {connection.connected_link_type_name}
-                    </span>
-                )}
-                {connection.bandwidth_allocated && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800 flex items-center gap-1">
-                        <FiActivity className="w-3 h-3" /> {connection.bandwidth_allocated}
-                    </span>
-                )}
-             </div>
-             <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight cursor-text">
-                <TruncateTooltip 
-                  text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} 
-                  copyOnDoubleClick={true} 
-                />
-             </h3>
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {connection.connected_link_type_name && (
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50">
+                  {connection.connected_link_type_name}
+                </span>
+              )}
+              {connection.bandwidth_allocated && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50">
+                  <FiActivity className="w-3.5 h-3.5" />
+                  {connection.bandwidth_allocated}
+                </span>
+              )}
+            </div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug cursor-text">
+              <TruncateTooltip 
+                text={connection.service_name || connection.connected_system_name || 'Unnamed Connection'} 
+                copyOnDoubleClick={true} 
+              />
+            </h3>
+          </div>
+          {!connection.status && (
+            <span className="inline-flex items-center text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-md border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800">
+              INACTIVE
+            </span>
+          )}
         </div>
-        {!connection.status && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded uppercase">Inactive</span>}
       </div>
 
-      <div className="p-4 space-y-4 flex-1 text-sm pl-5">
+      {/* Content */}
+      <div className="px-5 py-4 space-y-4 flex-1">
          
-         {/* LOGICAL SERVICE ROUTE (New Section) */}
-         {(connection.service_node_name || connection.service_end_node_name) && (
-           <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-             <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-               Service Route
-             </div>
-             <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2.5">
-                   <div className="w-2 h-2 rounded-full bg-green-500 ring-2 ring-green-100 dark:ring-green-900/30 shrink-0" title="Start Node" />
-                   <div className="text-xs">
-                      <span className="text-gray-500 dark:text-gray-400 font-medium mr-1.5">START</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {connection.service_node_name || 'N/A'}
-                      </span>
-                   </div>
+
+
+        {/* Physical Link Section */}
+        <div className="bg-linear-to-br from-gray-50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/30 rounded-lg p-4 border border-gray-200 dark:border-gray-700/50 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            
+            {/* End A */}
+            <div className="flex-1 min-w-0">
+              <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-700/50">
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {isSystemContext ? "This End" : "End A"}
+                </span>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate" title={endA.name || ''}>
+                  {endA.name}
                 </div>
                 
-                {/* Vertical Connector Line */}
-                <div className="ml-[3px] w-0.5 h-2 bg-gray-200 dark:bg-gray-700 -my-1"></div>
+                {endA.location && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate" title={endA.location}>
+                    <FiMapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                    <span className="truncate">{endA.location}</span>
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2.5">
-                   <div className="w-2 h-2 rounded-full bg-red-500 ring-2 ring-red-100 dark:ring-red-900/30 shrink-0" title="End Node" />
-                   <div className="text-xs">
-                      <span className="text-gray-500 dark:text-gray-400 font-medium mr-1.5">END</span>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
-                        {connection.service_end_node_name || 'N/A'}
-                      </span>
-                   </div>
+                <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 inline-block">
+                  {endA.ip}
                 </div>
-             </div>
-           </div>
-         )}
-
-         {/* PHYSICAL LINK DETAILS */}
-         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800 relative">
-            <div className="flex justify-between items-start relative z-10">
                 
-                {/* END A */}
-                <div className="flex flex-col items-start max-w-[45%]">
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider mb-1">
-                      {isSystemContext ? "THIS END" : "END A"}
-                    </div>
-                    
-                    <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-0.5" title={endA.name || ''}>
-                      {endA.name}
-                    </div>
-                    
-                    {endA.location && (
-                       <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mb-1 truncate w-full" title={endA.location}>
-                          <FiMapPin className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{endA.location}</span>
-                       </div>
-                    )}
-
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-mono">{endA.ip}</div>
-                    
-                    <div className="inline-flex items-center justify-center font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-[10px] shadow-sm min-w-12">
-                        {endA.workingPort || 'N/A'}
-                    </div>
+                <div className="inline-flex items-center justify-center font-mono font-semibold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 shadow-sm">
+                  {endA.workingPort || 'N/A'}
                 </div>
-
-                {/* Arrow */}
-                <div className="flex flex-col items-center justify-center px-1 pt-6 text-gray-300 dark:text-gray-700">
-                     <FiChevronsRight className="w-4 h-4" />
-                </div>
-
-                {/* END B */}
-                <div className="flex flex-col items-end max-w-[45%] text-right">
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider mb-1">
-                       {isSystemContext ? "FAR END" : "END B"}
-                    </div>
-                    
-                    <div className="font-bold text-gray-800 dark:text-gray-200 truncate w-full text-sm mb-0.5" title={endB.name || ''}>
-                      {endB.name}
-                    </div>
-
-                    {endB.location && (
-                       <div className="flex items-center justify-end gap-1 text-[11px] text-gray-500 dark:text-gray-400 mb-1 truncate w-full" title={endB.location}>
-                          <span className="truncate">{endB.location}</span>
-                          <FiMapPin className="w-3 h-3 shrink-0" />
-                       </div>
-                    )}
-                    
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-mono">{endB.ip}</div>
-                     
-                    <div className="inline-flex items-center justify-center font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100/50 dark:bg-blue-900/30 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-[10px] shadow-sm min-w-12">
-                        {endB.workingPort || 'N/A'}
-                     </div>
-                </div>
+              </div>
             </div>
-         </div>
 
-         {/* Technical Info Row */}
-         <div className="grid grid-cols-2 gap-2 text-xs">
-            {connection.vlan && (
-                <div className="bg-white dark:bg-gray-700/30 px-2.5 py-1.5 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
-                    <span className="text-[10px] text-gray-400 uppercase font-semibold">VLAN</span>
-                    <span className="font-mono font-medium text-gray-900 dark:text-gray-200">{connection.vlan}</span>
+            {/* Connection Arrow */}
+            <div className="flex items-center justify-center pt-12">
+              <div className="p-2 rounded-full bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 shadow-sm">
+                <FiChevronsRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              </div>
+            </div>
+
+            {/* End B */}
+            <div className="flex-1 min-w-0 text-right">
+              <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-700/50">
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {isSystemContext ? "Far End" : "End B"}
+                </span>
+              </div>
+              
+              <div className="space-y-2 flex flex-col items-end">
+                <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate w-full" title={endB.name || ''}>
+                  {endB.name}
                 </div>
+
+                {endB.location && (
+                  <div className="flex items-center justify-end gap-1.5 text-xs text-gray-600 dark:text-gray-400 truncate w-full" title={endB.location}>
+                    <span className="truncate">{endB.location}</span>
+                    <FiMapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                  </div>
+                )}
+                
+                <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/50 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 inline-block">
+                  {endB.ip}
+                </div>
+                 
+                <div className="inline-flex items-center justify-center font-mono font-semibold text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 shadow-sm">
+                  {endB.workingPort || 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Technical Information */}
+        {(connection.vlan || connection.media_type_name) && (
+          <div className="grid grid-cols-2 gap-3">
+            {connection.vlan && (
+              <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">VLAN ID</div>
+                <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{connection.vlan}</div>
+              </div>
             )}
             {connection.media_type_name && (
-                <div className="bg-white dark:bg-gray-700/30 px-2.5 py-1.5 rounded border border-gray-100 dark:border-gray-700 flex flex-col">
-                    <span className="text-[10px] text-gray-400 uppercase font-semibold">Media</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-200 truncate">{connection.media_type_name}</span>
-                </div>
+              <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Media Type</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{connection.media_type_name}</div>
+              </div>
             )}
-         </div>
+          </div>
+        )}
       </div>
       
+      
       {/* Footer Actions */}
-      <div className="p-3 bg-gray-50/50 dark:bg-gray-900/20 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-1 pl-5" onClick={(e) => e.stopPropagation()}>
-         {onGoToSystem && !isSystemContext && (
-             <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System">
-                <FiServer className="w-4 h-4" />
-             </Button>
-         )}
-         <div className="flex-1"></div>
-         <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details">
-            <FiMonitor className="w-3.5 h-3.5" />
-         </Button>
-         {hasPath && (
-            <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 dark:hover:bg-blue-900/20">
-                <FiEye className="w-3.5 h-3.5" />
-            </Button>
-         )}
-         {canEdit && onEdit && (
-            <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection">
-                <FiEdit2 className="w-3.5 h-3.5" />
-            </Button>
-         )}
-         {canDelete && onDelete && (
-            <Button size="xs" variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
-                <FiTrash2 className="w-3.5 h-3.5" />
-            </Button>
-         )}
+      <div className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+        {onGoToSystem && !isSystemContext && (
+          <Button size="xs" variant="ghost" onClick={() => onGoToSystem(connection)} title="Go To Host System" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+            <FiServer className="w-4 h-4" />
+          </Button>
+        )}
+        <div className="flex-1" />
+        <Button size="xs" variant="secondary" onClick={() => onViewDetails(connection)} title="Full Details" className="font-medium">
+          <FiMonitor className="w-4 h-4" />
+          <span className="ml-1.5">Details</span>
+        </Button>
+        {hasPath && (
+          <Button size="xs" variant="outline" onClick={() => onViewPath(connection)} title="Trace Fiber Path" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium">
+            <FiEye className="w-4 h-4" />
+            <span className="ml-1.5">Path</span>
+          </Button>
+        )}
+        {canEdit && onEdit && (
+          <Button size="xs" variant="ghost" onClick={() => onEdit(connection)} title="Edit Connection" className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">
+            <FiEdit2 className="w-4 h-4" />
+          </Button>
+        )}
+        {canDelete && onDelete && (
+          <Button size="xs" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" onClick={() => onDelete(connection)} title="Delete Connection">
+            <FiTrash2 className="w-4 h-4" />
+          </Button>
+        )}
       </div>
+
     </div>
   );
 };
