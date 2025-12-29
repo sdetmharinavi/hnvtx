@@ -8,7 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 import ThemeToggle from "../common/ui/theme/ThemeToggle";
 import { useMutationQueue } from "@/hooks/data/useMutationQueue";
-import { Cloud, CloudOff, AlertTriangle, RefreshCw } from "lucide-react";
+import { Cloud, CloudOff, AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useDataSync } from "@/hooks/data/useDataSync";
 import { useCallback, useState, useRef, useEffect } from "react";
@@ -17,6 +17,7 @@ import { BiUser } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion";
 import { SyncStatusModal } from "./SyncStatusModal";
 import { FontSizeToggle } from "../common/ui/FontSizeToggle";
+import { useAppSettingsStore } from "@/stores/appSettingsStore";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -74,6 +75,7 @@ export default function DashboardHeader({
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const { isSimulatedOffline, toggleSimulatedOffline } = useAppSettingsStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleRefresh = useCallback(() => {
@@ -116,6 +118,18 @@ export default function DashboardHeader({
 
             {/* Right side - Actions and User Menu */}
             <div className="relative flex items-center space-x-2 sm:space-x-4">
+              {/* THE FIX: Offline Simulation Toggle */}
+              <button
+                onClick={toggleSimulatedOffline}
+                className={`p-2 rounded-full transition-colors ${
+                    isSimulatedOffline 
+                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                }`}
+                title={isSimulatedOffline ? "Go Online" : "Simulate Offline"}
+              >
+                {isSimulatedOffline ? <WifiOff size={18} /> : <Wifi size={18} />}
+              </button>
               <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
 
               <button

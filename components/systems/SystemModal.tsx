@@ -1,3 +1,4 @@
+// components/systems/SystemModal.tsx
 "use client";
 
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
@@ -13,7 +14,7 @@ import {
   FormSwitch,
   FormTextarea,
 } from "@/components/common/form";
-import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
+import { V_systems_completeRowSchema, Lookup_typesRowSchema } from "@/schemas/zod-schemas";
 import { systemFormValidationSchema, SystemFormData } from "@/schemas/system-schemas";
 import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -77,7 +78,9 @@ export const SystemModal: FC<SystemModalProps> = ({
   const [step, setStep] = useState(1);
 
   // --- Data Fetching ---
-  const { options: systemTypeOptions } = useLookupTypeOptions("SYSTEM_TYPES");
+  // THE FIX: Deconstruct originalData to access raw fields like is_ring_based
+  const { options: systemTypeOptions, originalData: systemTypesRaw } = useLookupTypeOptions("SYSTEM_TYPES");
+  
   const { options: capacityOptions } = useLookupTypeOptions("SYSTEM_CAPACITY");
   const { options: nodeOptions, isLoading: loadingNodes } = useActiveNodeOptions();
   const { options: maintenanceTerminalOptions } = useMaintenanceAreaOptions();
@@ -88,7 +91,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const {
     register,
     handleSubmit,
-    formState: { errors, isDirty }, // Extract isDirty
+    formState: { errors, isDirty },
     reset,
     control,
     watch,
@@ -103,26 +106,30 @@ export const SystemModal: FC<SystemModalProps> = ({
   const selectedSystemTypeId = watch("system_type_id");
   const selectedNodeId = watch("node_id");
 
+  // THE FIX: Determine isRingBased using the DB flag instead of string matching
+  const isRingBasedSystem = useMemo(() => {
+    if (!systemTypesRaw || !selectedSystemTypeId) return false;
+    
+    // We cast to Lookup_typesRowSchema because originalData is untyped in the generic hook return currently
+    // or we can use find on the array.
+    const typeRecord = (systemTypesRaw as unknown as Lookup_typesRowSchema[])
+        .find(t => t.id === selectedSystemTypeId);
+        
+    return typeRecord?.is_ring_based === true;
+  }, [systemTypesRaw, selectedSystemTypeId]);
+
   const selectedSystemTypeLabel = useMemo(
     () => systemTypeOptions.find((st) => st.value === selectedSystemTypeId)?.label || "",
     [systemTypeOptions, selectedSystemTypeId]
   );
-
-  const isRingBasedSystem = useMemo(() => {
-    const label = selectedSystemTypeLabel.toLowerCase();
-    return (
-      label.includes("maan") ||
-      label.includes("sdh") ||
-      label.includes("ring") ||
-      label.includes("cpan")
-    );
-  }, [selectedSystemTypeLabel]);
+  
 
   const isSdhSystem = useMemo(() => {
     const label = selectedSystemTypeLabel.toLowerCase();
     return label.includes("synchronous") || label.includes("sdh");
   }, [selectedSystemTypeLabel]);
 
+  // If it's ring based OR SDH, we need the extra config step
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   useEffect(() => {
@@ -192,7 +199,6 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
   }, [isOpen, isEditMode, rowData, reset]);
 
-  // --- THE FIX: Intercept Close Action ---
   const handleClose = useCallback(() => {
     if (isDirty) {
       if (!window.confirm("You have unsaved changes. Close anyway?")) return;
@@ -326,7 +332,7 @@ export const SystemModal: FC<SystemModalProps> = ({
                   error={errors.node_id}
                   required
                 />
-                {selectedSystemTypeLabel.includes("MAAN") && (
+                {(selectedSystemTypeLabel.includes("MAAN") || selectedSystemTypeLabel.includes("Multi-Access Aggregation Node")) && (
                   <FormInput
                     name='maan_node_id'
                     label='MAAN Node ID'

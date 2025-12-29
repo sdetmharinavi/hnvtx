@@ -1,16 +1,16 @@
-// path: components/systems/PortsFormModal.tsx
+// components/systems/PortsFormModal.tsx
 "use client";
 
-import { FC, useCallback, useEffect, useMemo } from "react";
+import { FC, useCallback, useEffect } from "react";
 import { useForm, SubmitErrorHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ports_managementInsertSchema, V_ports_management_completeRowSchema } from "@/schemas/zod-schemas";
-import { useTableQuery } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
 import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form"; // Added FormSwitch
+import { FormCard, FormInput, FormSearchableSelect, FormSwitch } from "@/components/common/form";
 import { z } from "zod";
 import { toast } from "sonner";
+// THE FIX: Use centralized offline hook
+import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
 
 type PortsFormValues = z.infer<typeof ports_managementInsertSchema>;
 
@@ -23,17 +23,16 @@ interface PortsFormModalProps {
     port_admin_status?: boolean | null; 
     services_count?: number | null; 
   }) | null;
-   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }
 
 export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, systemId, editingRecord, onSubmit, isLoading }) => {
-  const supabase = createClient();
   const isEditMode = !!editingRecord;
 
-  const { data: portTypesResult = { data: [] } } = useTableQuery(supabase, "lookup_types", { columns: "id, name", filters: { category: "PORT_TYPES" } });
-  const portTypeOptions = useMemo(() => portTypesResult.data.filter((t) => t.name !== "DEFAULT").map((t) => ({ value: t.id, label: t.name })), [portTypesResult]);
+  // THE FIX: Replaced useTableQuery with useLookupTypeOptions
+  const { options: portTypeOptions, isLoading: isLoadingTypes } = useLookupTypeOptions("PORT_TYPES");
 
   const {
     control,
@@ -85,8 +84,14 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({ isOpen, onClose, syste
   const modalTitle = isEditMode ? "Edit Port" : "Add New Port";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} className="w-o h-0 bg-transparent">
-      <FormCard onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} onCancel={onClose} isLoading={isLoading} title={modalTitle} standalone>
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} className="w-0 h-0 bg-transparent">
+      <FormCard 
+        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)} 
+        onCancel={onClose} 
+        isLoading={isLoading || isLoadingTypes} 
+        title={modalTitle} 
+        standalone
+      >
         <div className='space-y-6'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <FormInput name='port' label='Port Name/Number' register={register} error={errors.port} required placeholder="e.g., Gi0/1" />

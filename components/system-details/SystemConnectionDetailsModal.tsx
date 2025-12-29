@@ -116,7 +116,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       },
       {
         key: "media_type_name",
-        title: "Media Type",
+        title: "Media/Port Type",
         dataIndex: "media_type_name",
         width: 150,
         render: (val) =>

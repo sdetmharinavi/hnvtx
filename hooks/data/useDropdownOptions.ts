@@ -89,13 +89,14 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     }));
   }, [data, valueField, labelField]);
 
-  return { options, isLoading };
+  // THE FIX: Return the raw data as well so consumers can check other fields
+  return { options, isLoading, originalData: data };
 }
 
 // --- Specialized Hooks ---
 
 export const useLookupTypeOptions = (category: string) => {
-  const { options, isLoading } = useDropdownOptions({
+  const { options, isLoading, originalData } = useDropdownOptions({
     tableName: 'lookup_types',
     valueField: 'id',
     labelField: 'name',
@@ -103,7 +104,8 @@ export const useLookupTypeOptions = (category: string) => {
     orderBy: 'sort_order'
   });
   const filteredOptions = useMemo(() => options.filter(o => o.label !== 'DEFAULT'), [options]);
-  return { options: filteredOptions, isLoading };
+  // Pass through originalData (filtered to match options if needed, but usually raw is fine)
+  return { options: filteredOptions, isLoading, originalData };
 };
 
 export const useActiveNodeOptions = () => {

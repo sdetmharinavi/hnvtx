@@ -10,7 +10,7 @@ import TruncateTooltip from "@/components/common/TruncateTooltip";
 
 export const SystemConnectionsTableColumns = (
   data: Row<"v_system_connections_complete">[],
-  showSystemContext: boolean = false // NEW PARAMETER
+  showSystemContext: boolean = false
 ): Column<Row<"v_system_connections_complete">>[] => {
 
   const omitFields = [
@@ -57,7 +57,6 @@ export const SystemConnectionsTableColumns = (
     "service_node_name",
   ];
 
-  // If showing system context, do not omit system_name
   const finalOmit = showSystemContext
     ? omitFields.filter((f) => f !== "system_name")
     : [...omitFields, "system_name"];
@@ -66,7 +65,6 @@ export const SystemConnectionsTableColumns = (
     data: data,
     omit: finalOmit as (keyof Row<"v_system_connections_complete"> & string)[],
     overrides: {
-      // NEW: Definition for System Name column
       system_name: {
         title: "Host System",
         sortable: true,
@@ -118,11 +116,25 @@ export const SystemConnectionsTableColumns = (
         sortable: true,
         naturalSort: true,
       },
-      bandwidth: {
+            bandwidth: {
         title: "Capacity",
         sortable: true,
         width: 100,
         render: (value) => <span className='font-mono text-sm'>{value ? `${value}` : "N/A"}</span>,
+      },
+      media_type_name: {
+        // THE FIX: Changed Title
+        title: "Media/Port Type", 
+        sortable: true,
+        width: 120,
+        // THE FIX: Display media type name or fallback to bandwidth if needed, but 'media_type_name' is omitted in default setup.
+        // Actually, 'media_type_name' is in the omit list. We should probably use 'media_type_name' for "Media/Port Type".
+        // Let's change the field rendered here.
+        render: (value, record) => (
+             <span className='font-mono text-sm'>
+                 {record.media_type_name || (value ? `${value}` : "N/A")}
+             </span>
+        ),
       },
       en_name: {
         title: "End Node",
