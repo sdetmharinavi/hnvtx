@@ -1,7 +1,6 @@
-// components/system-details/SystemConnectionFormModal.tsx
+// path: components/system-details/SystemConnectionFormModal.tsx
 "use client";
 
-// ... (imports remain the same)
 import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import {
   useForm,
@@ -155,7 +154,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   onSubmit,
   isLoading,
 }) => {
-  // ... (setup code remains the same)
   const supabase = createClient();
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState("general");
@@ -172,7 +170,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     control,
     handleSubmit,
     register,
-    formState: { errors }, // removed isDirty from here to keep it simpler
+    // THE FIX: Restored isDirty here to track form state changes
+    formState: { errors, isDirty },
     reset,
     watch,
     setValue,
@@ -187,8 +186,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     },
   });
 
-  // ... (watchers and hooks remain the same)
-  
   const watchLinkTypeId = watch("link_type_id");
   const watchExistingServiceId = watch("existing_service_id");
   const watchSystemId = watch("system_id");
@@ -223,8 +220,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const { data: snPorts, isLoading: snPortsLoading } = usePortOptions(watchSnId || null);
   const { data: enPorts, isLoading: enPortsLoading } = usePortOptions(watchEnId || null);
 
-  // ... (helper functions mapPortsToOptions, getPortTypeDisplay remain the same)
-  
   const mapPortsToOptions = (
     portsData: { port: string | null; port_utilization: boolean | null }[] | undefined,
     currentValue?: string | null,
@@ -245,7 +240,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
 
     return options;
   };
-  
+
   const getPortTypeDisplay = useCallback(
     (portInterface: string | null | undefined, portsList: typeof mainSystemPorts) => {
       if (!portsList || !portInterface) return "";
@@ -265,7 +260,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       }),
     [systemsData]
   );
-  
+
   const serviceOptions = useMemo(() => {
     let filteredServices = servicesData;
     if (watchLinkTypeId) {
@@ -283,7 +278,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }));
   }, [servicesData, watchLinkTypeId]);
 
-  // ... (useEffect hooks for updating form state based on watchers remain the same)
   useEffect(() => {
     if (watchWorkingInterface && watchSnId === watchSystemId) {
       setValue("sn_interface", watchWorkingInterface);
@@ -332,7 +326,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const snPortType = getPortTypeDisplay(watchSnInterface, snPorts);
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
   const enProtectionPortType = getPortTypeDisplay(watchEnProtectionInterface, enPorts);
-
 
   useEffect(() => {
     if (isOpen) {
@@ -428,12 +421,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     }
   }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
 
+  // THE FIX: Intercept close to warn about unsaved changes using `isDirty`
   const handleClose = useCallback(() => {
     if (isDirty) {
       if (!window.confirm("You have unsaved changes. Close anyway?")) return;
     }
     onClose();
-  }, [onClose]);
+  }, [onClose, isDirty]);
 
   const onValidSubmit = useCallback(
     (formData: SystemConnectionFormValues) => {
@@ -495,8 +489,9 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       title={isEditMode ? "Edit Service Connection" : "New Service Connection"}
       size='full'
       closeOnOverlayClick={false}
-      // closeOnEscape={!isDirty} // isDirty not extracted above to keep it simpler
-      >
+      // THE FIX: Only allow Escape key to close if the form is NOT dirty.
+      closeOnEscape={!isDirty}
+    >
       <FormCard
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
@@ -552,7 +547,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                 />
 
                 <div className='space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700'>
-                  {/* ... (service selection logic same as before) ... */}
                   <div className='flex items-center justify-between mb-2'>
                     <div className='flex items-center gap-4'>
                       <label className='flex items-center gap-2 text-sm cursor-pointer'>
@@ -574,6 +568,11 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                         <span className='text-gray-700 dark:text-gray-300'>Create/Manual</span>
                       </label>
                     </div>
+                    {isEditMode && serviceMode === "manual" && (
+                      <span className='text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded border border-orange-200'>
+                        ⚠️ Service unlinked or deleted
+                      </span>
+                    )}
                   </div>
 
                   {serviceMode === "existing" ? (
@@ -625,7 +624,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
               <div className='grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t dark:border-gray-700'>
                 <FormSearchableSelect
                   name='media_type_id'
-                  // THE FIX: Updated Label
                   label='Media/Port Type'
                   control={control}
                   options={mediaTypeOptions}
@@ -650,7 +648,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                   error={errors.commissioned_on}
                 />
 
-                {/* THE FIX: Added Remark Field here */}
                 <div className="md:col-span-2">
                     <FormTextarea
                         name="remark"
@@ -662,7 +659,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
                     />
                 </div>
 
-                {/* Port Selectors */}
                 <div className='grid grid-cols-3 gap-4 col-span-full md:col-span-1'>
                   <div className='col-span-2'>
                     <FormSearchableSelect
