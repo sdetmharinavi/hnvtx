@@ -107,7 +107,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
          
          {/* LOGICAL SERVICE ROUTE (New Section) */}
          {(connection.service_node_name || connection.service_end_node_name) && (
-           <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+           <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
              <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                Service Route
              </div>
@@ -139,12 +139,12 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
          )}
 
          {/* PHYSICAL LINK DETAILS */}
-         <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30 relative">
+         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800 relative">
             <div className="flex justify-between items-start relative z-10">
                 
                 {/* END A */}
                 <div className="flex flex-col items-start max-w-[45%]">
-                    <div className="text-[10px] text-blue-400 dark:text-blue-500 uppercase font-bold tracking-wider mb-1">
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider mb-1">
                       {isSystemContext ? "THIS END" : "END A"}
                     </div>
                     
@@ -167,13 +167,13 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 </div>
 
                 {/* Arrow */}
-                <div className="flex flex-col items-center justify-center px-1 pt-6 text-blue-300 dark:text-blue-700">
+                <div className="flex flex-col items-center justify-center px-1 pt-6 text-gray-300 dark:text-gray-700">
                      <FiChevronsRight className="w-4 h-4" />
                 </div>
 
                 {/* END B */}
                 <div className="flex flex-col items-end max-w-[45%] text-right">
-                    <div className="text-[10px] text-blue-400 dark:text-blue-500 uppercase font-bold tracking-wider mb-1">
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider mb-1">
                        {isSystemContext ? "FAR END" : "END B"}
                     </div>
                     
