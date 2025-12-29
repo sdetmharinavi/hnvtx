@@ -27,6 +27,7 @@ export const useOfcData = (
       'sn_name',
       'en_name',
       'ofc_owner_name',
+      'remark'
     ] as (keyof V_ofc_cables_completeRowSchema)[],
     []
   );
