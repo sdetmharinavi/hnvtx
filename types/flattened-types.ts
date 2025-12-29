@@ -1805,6 +1805,8 @@ export type V_system_connections_completeRow = {
     sdh_b_slot: string | null;
     sdh_carrier: string | null;
     sdh_stm_no: string | null;
+    service_end_node_id: string | null;
+    service_end_node_name: string | null;
     service_id: string | null;
     service_name: string | null;
     service_node_id: string | null;

@@ -5070,6 +5070,8 @@ export type Database = {
           sdh_b_slot: string | null
           sdh_carrier: string | null
           sdh_stm_no: string | null
+          service_end_node_id: string | null
+          service_end_node_name: string | null
           service_id: string | null
           service_name: string | null
           service_node_id: string | null
@@ -5096,6 +5098,41 @@ export type Database = {
           working_fiber_out_ids: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["service_end_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["service_end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_nodes_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["service_end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["node_id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["service_end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["en_node_id"]
+          },
+          {
+            foreignKeyName: "services_end_node_id_fkey"
+            columns: ["service_end_node_id"]
+            isOneToOne: false
+            referencedRelation: "v_system_connections_complete"
+            referencedColumns: ["sn_node_id"]
+          },
           {
             foreignKeyName: "services_link_type_id_fkey"
             columns: ["connected_link_type_id"]

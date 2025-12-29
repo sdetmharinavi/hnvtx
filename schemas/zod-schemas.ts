@@ -1825,6 +1825,8 @@ export const v_system_connections_completeRowSchema = z.object({
   sdh_b_slot: z.string().nullable(),
   sdh_carrier: z.string().nullable(),
   sdh_stm_no: z.string().nullable(),
+  service_end_node_id: z.uuid().nullable(),
+  service_end_node_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   service_id: z.uuid().nullable(),
   service_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   service_node_id: z.uuid().nullable(),

@@ -97,8 +97,8 @@ SELECT
   lt_system.name AS system_type_name,
   
   -- Connection Specifics
-  sc.services_ip,         -- From system_connections
-  sc.services_interface,  -- From system_connections
+  sc.services_ip,
+  sc.services_interface,
   
   sc.sn_id,
   sc.en_id,
@@ -136,6 +136,10 @@ SELECT
   svc.name AS service_name, 
   svc.node_id AS service_node_id,
   svc_node.name AS service_node_name,
+  -- NEW FIELDS
+  svc.end_node_id AS service_end_node_id,
+  svc_end_node.name AS service_end_node_name,
+  
   svc.bandwidth_allocated,
   svc.vlan,
   svc.lc_id,
@@ -152,7 +156,7 @@ SELECT
   -- Interfaces
   sc.system_working_interface,
   sc.system_protection_interface,
-  sc.en_protection_interface, -- NEW COLUMN ADDED HERE
+  sc.en_protection_interface,
   
   -- SDH Details
   scs.stm_no AS sdh_stm_no, 
@@ -167,6 +171,9 @@ FROM public.system_connections sc
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
   LEFT JOIN public.services svc ON sc.service_id = svc.id
   LEFT JOIN public.nodes svc_node ON svc.node_id = svc_node.id
+  -- NEW JOIN
+  LEFT JOIN public.nodes svc_end_node ON svc.end_node_id = svc_end_node.id
+  
   LEFT JOIN public.lookup_types lt_link_type ON svc.link_type_id = lt_link_type.id
   LEFT JOIN public.systems s_sn ON sc.sn_id = s_sn.id
   LEFT JOIN public.nodes na ON s_sn.node_id = na.id
@@ -176,6 +183,9 @@ FROM public.system_connections sc
   LEFT JOIN public.lookup_types lt_en_type ON s_en.system_type_id = lt_en_type.id
   LEFT JOIN public.lookup_types lt_media ON sc.media_type_id = lt_media.id
   LEFT JOIN public.sdh_connections scs ON sc.id = scs.system_connection_id;
+
+-- Grant permissions to new view
+GRANT SELECT ON public.v_system_connections_complete TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
 
 
