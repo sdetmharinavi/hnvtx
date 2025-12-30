@@ -251,9 +251,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
                   VLAN ID
                 </div>
-                <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-                  {connection.vlan}
-                </div>
+                <TruncateTooltip text={connection.vlan} className="font-mono font-semibold text-gray-900 dark:text-gray-100" />
               </div>
             )}
             {connection.media_type_name && (

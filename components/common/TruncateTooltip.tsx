@@ -188,7 +188,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
               transition-all duration-200 ease-in-out
               ${isLocked 
                 ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto' 
-                : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-transparent pointer-events-none px-3 py-2'
+                : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-500 ring-2 ring-gray-500/20 pointer-events-none px-3 py-2'
               }
             `}
             style={{ 
