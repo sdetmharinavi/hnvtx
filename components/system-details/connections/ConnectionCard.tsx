@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
+import useIsMobile from '@/hooks/useIsMobile';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   service_end_node_name?: string | null;
@@ -49,6 +50,8 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 }) => {
   const hasPath =
     Array.isArray(connection.working_fiber_in_ids) && connection.working_fiber_in_ids.length > 0;
+
+  const isMobile = useIsMobile();
 
   const { endA, endB } = useMemo(() => {
     const isFlipped = isSystemContext && parentSystemId && connection.en_id === parentSystemId;
@@ -298,16 +301,19 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
           </Button>
         )}
         <div className="flex-1" />
-        <Button
-          size="xs"
-          variant="secondary"
-          onClick={() => onViewDetails(connection)}
-          title="Full Details"
-          className="font-medium"
-        >
-          <FiMonitor className="w-4 h-4" />
-          <span className="ml-1.5">Details</span>
-        </Button>
+        {!isMobile && (
+          <Button
+            size="xs"
+            variant="secondary"
+            onClick={() => onViewDetails(connection)}
+            title="Full Details"
+            className="font-medium"
+          >
+            <FiMonitor className="w-4 h-4" />
+            <span className="ml-1.5">Details</span>
+          </Button>
+        )}
+
         {hasPath && (
           <Button
             size="xs"
