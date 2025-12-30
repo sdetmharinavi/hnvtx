@@ -164,7 +164,24 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
               </span>
             </div>
           </div>
-
+          {cable.commissioned_on && (
+            <div className="bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-200 dark:border-green-800/50">
+              <div className="flex items-start gap-2">
+                <FiInfo className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-green-700 dark:text-green-400 font-medium mb-0.5">
+                    Commissioned On
+                  </div>
+                  <div
+                    className="text-sm text-green-900 dark:text-green-200 line-clamp-2"
+                    title={cable.commissioned_on}
+                  >
+                    {cable.commissioned_on}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {cable.remark && (
             <div className="bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800/50">
               <div className="flex items-start gap-2">
