@@ -29,7 +29,9 @@ export const useAllSystemConnectionsData = (
     'lc_id',
     'sn_ip',
     'en_ip',
-    'services_ip'
+    'services_ip',
+    'remark',
+    'vlan'
   ] as (keyof V_system_connections_completeRowSchema)[],
   []);
 
@@ -42,7 +44,9 @@ export const useAllSystemConnectionsData = (
     'lc_id',
     'sn_ip::text',
     'en_ip::text',
-    'services_ip::text'
+    'services_ip::text',
+    'remark',
+    'vlan::text'
   ], []);
 
   const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {

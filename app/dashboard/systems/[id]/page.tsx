@@ -583,6 +583,7 @@ export default function SystemConnectionsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
+            clearable
           />
         </div>
 

@@ -24,17 +24,17 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   onCopy,
 }) => {
   const displayText = text ?? '';
-  
+
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
-  
+
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  
+
   const textRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  
+
   const tooltipId = `tt-${id ?? Math.random().toString(36).slice(2)}`;
 
   const checkOverflow = useCallback(() => {
@@ -71,7 +71,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (textRef.current) {
       const rect = textRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
-      
+
       const top = rect.bottom + 8;
       let left = rect.left;
 
@@ -88,18 +88,16 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
 
   const doCopy = async () => {
     try {
-      const textToCopy = renderAsHtml 
-        ? displayText.replace(/<[^>]*>?/gm, '') 
-        : displayText;
-        
+      const textToCopy = renderAsHtml ? displayText.replace(/<[^>]*>?/gm, '') : displayText;
+
       await navigator.clipboard.writeText(textToCopy);
       setJustCopied(true);
-      toast.success("Copied to clipboard");
+      toast.success('Copied to clipboard');
       if (onCopy) onCopy();
       setTimeout(() => setJustCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      toast.error("Failed to copy");
+      toast.error('Failed to copy');
     }
   };
 
@@ -133,8 +131,10 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (!isLocked) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        tooltipRef.current && !tooltipRef.current.contains(e.target as Node) && 
-        textRef.current && !textRef.current.contains(e.target as Node)
+        tooltipRef.current &&
+        !tooltipRef.current.contains(e.target as Node) &&
+        textRef.current &&
+        !textRef.current.contains(e.target as Node)
       ) {
         setIsLocked(false);
       }
@@ -144,7 +144,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    document.addEventListener('scroll', updatePosition, true); 
+    document.addEventListener('scroll', updatePosition, true);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -162,7 +162,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       <span
         ref={textRef}
         className={`truncate block max-w-full overflow-hidden min-w-0 flex-1 cursor-default ${
-          isLocked ? 'text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/30 px-1 rounded -ml-1' : ''
+          isLocked
+            ? 'text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-900/30 px-1 rounded -ml-1'
+            : ''
         } ${className ?? ''}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -184,32 +186,44 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
             role="tooltip"
             className={`
               fixed z-9999 flex flex-col gap-2 rounded-lg shadow-xl border
-              text-sm wrap-wrap-break-word whitespace-normal
+              text-sm wrap-break-word whitespace-normal
               transition-all duration-200 ease-in-out
-              ${isLocked 
-                ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto' 
-                : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-500 ring-2 ring-gray-500/20 pointer-events-none px-3 py-2'
+              ${
+                isLocked
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-blue-500 ring-2 ring-blue-500/20 pointer-events-auto'
+                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-500 ring-2 ring-gray-500/20 pointer-events-none px-3 py-2'
               }
             `}
-            style={{ 
-              top: coords.top, 
-              left: coords.left, 
+            style={{
+              top: coords.top,
+              left: coords.left,
               maxWidth: maxWidth,
-              minWidth: '200px'
+              minWidth: '200px',
             }}
           >
-            <div className={`${isLocked ? 'p-3 max-h-[300px] overflow-y-auto custom-scrollbar' : ''} select-text`}>
-              {renderAsHtml ? <div dangerouslySetInnerHTML={{ __html: displayText }} /> : displayText}
+            <div
+              className={`${
+                isLocked ? 'p-3 max-h-[300px] overflow-y-auto custom-scrollbar' : ''
+              } select-text`}
+            >
+              {renderAsHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: displayText }} />
+              ) : (
+                displayText
+              )}
             </div>
 
             {isLocked && (
               <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
                 <div className="text-xs text-gray-800 italic">
-                  {copyOnDoubleClick ? "Double-click text to copy" : "Select text to copy"}
+                  {copyOnDoubleClick ? 'Double-click text to copy' : 'Select text to copy'}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={(e) => { e.stopPropagation(); doCopy(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      doCopy();
+                    }}
                     className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
                     title="Copy content"
                   >
