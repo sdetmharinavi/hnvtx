@@ -16,7 +16,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
       'link_type_id',
       'maintenance_area_name',
       'id',
-      'end_node_name' // Omit standalone column, we combine it below
+      'end_node_name', // Omit standalone column, we combine it below
     ],
     overrides: {
       name: {
@@ -26,7 +26,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         width: 250,
         render: (value, record) => {
           const strValue = String(value ?? '');
-          
+
           const namePart = strValue.trim().toLowerCase();
           const typePart = (record.link_type_name || '').trim().toLowerCase();
           const compositeKey = `${namePart}|${typePart}`;
@@ -42,11 +42,11 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
                 }`}
               />
               {isDuplicate && (
-                <div 
-                   className="shrink-0 cursor-help" 
-                   title={`Duplicate Entry: Another service exists with name "${strValue}" and type "${record.link_type_name}".`}
+                <div
+                  className="shrink-0 cursor-help"
+                  title={`Duplicate Entry: Another service exists with name "${strValue}" and type "${record.link_type_name}".`}
                 >
-                   <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
+                  <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
                 </div>
               )}
             </div>
@@ -60,20 +60,32 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         width: 280,
         // NEW RENDERER: Shows "Start -> End"
         render: (value, record) => {
-           const start = value as string;
-           const end = record.end_node_name;
-           
-           if (start && end) {
-               return (
-                   <div className="flex items-center gap-2 text-sm">
-                       <span className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={start}>{start}</span>
-                       <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
-                       <span className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]" title={end}>{end}</span>
-                   </div>
-               )
-           }
-           return <span className="text-gray-600 dark:text-gray-400">{start || 'Unknown Location'}</span>;
-        }
+          const start = value as string;
+          const end = record.end_node_name;
+
+          if (start && end) {
+            return (
+              <div className="flex items-center gap-2 text-sm">
+                <span
+                  className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]"
+                  title={start}
+                >
+                  {start}
+                </span>
+                <ArrowRight className="w-3 h-3 text-gray-400 shrink-0" />
+                <span
+                  className="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]"
+                  title={end}
+                >
+                  {end}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <span className="text-gray-600 dark:text-gray-400">{start || 'Unknown Location'}</span>
+          );
+        },
       },
       link_type_name: {
         title: 'Link Type',
