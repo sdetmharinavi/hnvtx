@@ -153,6 +153,17 @@ export const SystemCard: React.FC<SystemCardProps> = ({
               </span>
             </div>
           )}
+          {system.remark && (
+            <div className="bg-white dark:bg-amber-800/50 px-3 py-2.5 rounded-lg border border-amber-200 dark:border-amber-700 shadow-sm">
+              <div className="text-xs text-amber-500 dark:text-amber-400 font-medium mb-1">
+                Remarks
+              </div>
+              <TruncateTooltip
+                className="font-mono font-medium text-amber-900 dark:text-amber-100 text-sm truncate"
+                text={system.remark}
+              />
+            </div>
+          )}
         </div>
       </div>
 

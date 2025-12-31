@@ -25,7 +25,8 @@ export const useSystemsData = (
     'node_name',
     'make',
     's_no',
-    'ip_address' 
+    'ip_address',
+    'remark'
   ] as (keyof V_systems_completeRowSchema)[];
 
   // For server-side, we need to handle specific casts manually or pass strings
@@ -35,7 +36,8 @@ export const useSystemsData = (
     'node_name',
     'ip_address::text', // Special cast for INET
     'make',
-    's_no'
+    's_no',
+    'remark'
   ], []);
 
   // 1. Online Fetcher

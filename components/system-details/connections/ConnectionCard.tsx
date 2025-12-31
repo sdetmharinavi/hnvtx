@@ -280,6 +280,15 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 </div>
               </div>
             )}
+          {connection.remark && (
+              <div className="bg-white dark:bg-amber-800/50 px-3 py-2.5 rounded-lg border border-amber-200 dark:border-amber-700 shadow-sm">
+                <div className="text-xs text-amber-500 dark:text-amber-400 font-medium mb-1">
+                  Remarks
+                </div>
+                <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100 truncate" text={connection.remark} />
+                  
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -21,7 +21,7 @@ export const useServicesData = (
 
   // Search Config
   const searchFields = useMemo(
-    () => ['name', 'node_name', 'end_node_name', 'description', 'link_type_name'] as (keyof V_servicesRowSchema)[],
+    () => ['name', 'node_name', 'end_node_name', 'description', 'link_type_name', 'vlan'] as (keyof V_servicesRowSchema)[],
     []
   );
   const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
