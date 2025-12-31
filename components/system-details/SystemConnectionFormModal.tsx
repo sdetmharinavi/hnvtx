@@ -262,7 +262,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       (systemsData || []).map((s) => {
         const loc = s.node_name ? ` @ ${s.node_name}` : "";
         const ip = s.ip_address ? ` [${formatIP(s.ip_address)}]` : "";
-        return { value: s.id!, label: `${s.system_name}${loc}${ip}` };
+        const maan_id = s.maan_node_id ? ` (${s.maan_node_id})` : "";
+        return { value: s.id!, label: `${s.system_name}${loc}${ip}${maan_id}` };
       }),
     [systemsData]
   );
