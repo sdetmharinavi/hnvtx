@@ -43,7 +43,9 @@ export const useDiaryData = (currentDate: Date) => {
   const localQueryFn = useCallback(() => {
     return localDb.diary_notes
       .where('note_date')
-      .between(startOfMonth, endOfMonth)
+      // THE FIX: Pass `true` for both includeLower and includeUpper to ensure the last day of the month is included.
+      // Signature: between(lower, upper, includeLower, includeUpper)
+      .between(startOfMonth, endOfMonth, true, true)
       .toArray();
   }, [startOfMonth, endOfMonth]);
 
@@ -60,7 +62,8 @@ export const useDiaryData = (currentDate: Date) => {
   const entriesWithUsers = useMemo(() => {
     if (!notes || !userProfiles) return [];
     
-    const profileMap = new Map(userProfiles.map(p => [p.id, `${p.first_name} ${p.last_name}`]));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileMap = new Map(userProfiles.map((p: any) => [p.id, `${p.first_name} ${p.last_name}`]));
 
     return notes.map(note => ({
       ...note,
