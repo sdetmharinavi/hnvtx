@@ -135,4 +135,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all check if in any place direct call to any view table is done or not? Direct call is not allowed, views should always be called through rpc
+Let's begin! First of all it will be better if we can display system alloted to services as same service may be used in many systems connections
