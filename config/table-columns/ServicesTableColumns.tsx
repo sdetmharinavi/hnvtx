@@ -3,7 +3,14 @@ import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { AlertCircle, ArrowRight } from 'lucide-react';
+import { AlertCircle, ArrowRight, Server } from 'lucide-react';
+import React from 'react';
+
+// Define the shape of items in the allocated_systems array
+interface AllocatedSystem {
+  id: string;
+  name: string;
+}
 
 export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: Set<string>) => {
   return useDynamicColumnConfig('v_services', {
@@ -58,7 +65,6 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 280,
-        // NEW RENDERER: Shows "Start -> End"
         render: (value, record) => {
           const start = value as string;
           const end = record.end_node_name;
@@ -86,6 +92,43 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
             <span className="text-gray-600 dark:text-gray-400">{start || 'Unknown Location'}</span>
           );
         },
+      },
+      // NEW: Allocated Systems Column
+      allocated_systems: {
+        title: 'Allotted Systems',
+        width: 220,
+        render: (value) => {
+          const systems = value as AllocatedSystem[] | null;
+          
+          if (!systems || systems.length === 0) {
+            return <span className="text-xs text-gray-400 italic">Unassigned</span>;
+          }
+
+          if (systems.length === 1) {
+            return (
+              <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
+                <Server className="w-3.5 h-3.5" />
+                <span className="truncate max-w-[180px]" title={systems[0].name}>
+                  {systems[0].name}
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col gap-1">
+               {systems.slice(0, 2).map((sys) => (
+                  <div key={sys.id} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
+                     <Server className="w-3 h-3 text-blue-500" />
+                     <span className="truncate max-w-[180px]" title={sys.name}>{sys.name}</span>
+                  </div>
+               ))}
+               {systems.length > 2 && (
+                 <span className="text-[10px] text-gray-500 pl-4">+{systems.length - 2} more systems</span>
+               )}
+            </div>
+          );
+        }
       },
       link_type_name: {
         title: 'Link Type',

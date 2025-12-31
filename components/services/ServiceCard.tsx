@@ -1,5 +1,5 @@
 // components/services/ServiceCard.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import {
   FiActivity,
@@ -8,9 +8,11 @@ import {
   FiMapPin,
   FiTag,
   FiTrash2,
-  FiGlobe,
   FiArrowRight,
   FiAlertTriangle,
+  FiServer,
+  FiChevronDown,
+  FiChevronUp
 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
@@ -25,6 +27,12 @@ interface ServiceCardProps {
   isDuplicate?: boolean;
 }
 
+// Define the shape for allocated systems
+interface AllocatedSystem {
+    id: string;
+    name: string;
+}
+
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   service,
   onEdit,
@@ -33,8 +41,16 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   canDelete,
   isDuplicate,
 }) => {
+  // State to toggle the full list of systems
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Safe cast for the JSON field
+  const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) || [];
+
   return (
     <div
+      // Remove onClick here if it conflicts with inner interactive elements, 
+      // but usually the specific buttons stopPropagation so this is fine.
       className={`bg-white dark:bg-gray-800 rounded-xl border shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col h-full group relative overflow-hidden ${
         isDuplicate
           ? 'border-amber-400 dark:border-amber-600 ring-2 ring-amber-200 dark:ring-amber-900/50'
@@ -60,7 +76,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
         <div className="pr-20">
           <h3
-            className="font-bold text-gray-900 dark:text-gray-100 text-lg mb-3 line-clamp-2 leading-tight"
+            className="font-bold text-gray-900 dark:text-gray-100 text-lg mb-3 line-clamp-2 leading-tight cursor-default"
             title={service.name || ''}
           >
             <TruncateTooltip text={service.name || ''} />
@@ -180,21 +196,53 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             )}
           </div>
 
-          {/* LC ID */}
-          {service.lc_id && (
-            <div className="flex items-center gap-2.5 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-600">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                <FiGlobe className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase font-bold">
-                  LC ID
+          {/* Allocated Systems List with Expansion Logic */}
+          {allocatedSystems.length > 0 && (
+             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mt-2 transition-all duration-300">
+                <div className="flex justify-between items-center mb-1.5">
+                   <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase font-bold flex items-center gap-1">
+                      <FiServer className="w-3 h-3" /> Allotted Systems
+                   </div>
+                   {/* Only show toggle if there are more than 3 systems */}
+                   {allocatedSystems.length > 3 && (
+                     <button 
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setIsExpanded(!isExpanded);
+                       }}
+                       className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold focus:outline-none transition-colors"
+                     >
+                       {isExpanded ? 'Show Less' : 'Show All'}
+                       {isExpanded ? <FiChevronUp className="w-3 h-3" /> : <FiChevronDown className="w-3 h-3" />}
+                     </button>
+                   )}
                 </div>
-                <div className="font-mono font-medium text-xs text-gray-900 dark:text-gray-100 truncate">
-                  {service.lc_id}
+                
+                <div className="flex flex-wrap gap-1.5">
+                   {(isExpanded ? allocatedSystems : allocatedSystems.slice(0, 3)).map(sys => (
+                      <span 
+                        key={sys.id} 
+                        className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:border-blue-400 dark:hover:border-blue-500" 
+                        title={sys.name}
+                      >
+                         {sys.name}
+                      </span>
+                   ))}
+                   
+                   {/* Render the "+X more" badge if not expanded and count > 3 */}
+                   {!isExpanded && allocatedSystems.length > 3 && (
+                      <button 
+                        onClick={(e) => {
+                           e.stopPropagation();
+                           setIsExpanded(true);
+                        }}
+                        className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-medium hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                      >
+                        +{allocatedSystems.length - 3} more
+                      </button>
+                   )}
                 </div>
-              </div>
-            </div>
+             </div>
           )}
         </div>
       </div>

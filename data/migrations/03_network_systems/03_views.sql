@@ -68,9 +68,9 @@ SELECT
     s.name,
     s.node_id,
     n.name AS node_name,
-    s.end_node_id,                  -- NEW
-    n2.name AS end_node_name,       -- NEW
-    ma.name AS maintenance_area_name, -- Useful for regional filtering
+    s.end_node_id,
+    n2.name AS end_node_name,
+    ma.name AS maintenance_area_name,
     s.link_type_id,
     lt.name AS link_type_name,
     s.description,
@@ -80,12 +80,25 @@ SELECT
     s.unique_id,
     s.status,
     s.created_at,
-    s.updated_at
+    s.updated_at,
+    -- Aggregated list of systems serving this service
+    COALESCE(
+      (
+        SELECT jsonb_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.system_name))
+        FROM public.system_connections sc
+        JOIN public.systems sys ON sc.system_id = sys.id
+        WHERE sc.service_id = s.id
+      ),
+      '[]'::jsonb
+    ) AS allocated_systems
 FROM public.services s
 LEFT JOIN public.nodes n ON s.node_id = n.id
 LEFT JOIN public.nodes n2 ON s.end_node_id = n2.id
 LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt ON s.link_type_id = lt.id;
+
+-- Grant permissions (Re-applying to be safe after view replacement)
+GRANT SELECT ON public.v_services TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
 
 -- View for a complete picture of a system connection and its specific details.

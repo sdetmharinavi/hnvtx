@@ -1756,6 +1756,7 @@ export type V_ringsRow = {
 };
 
 export type V_servicesRow = {
+    allocated_systems: Json | null;
     bandwidth_allocated: string | null;
     created_at: string | null;
     description: string | null;

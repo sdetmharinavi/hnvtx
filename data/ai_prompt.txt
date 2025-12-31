@@ -101,6 +101,7 @@ CRITICAL: Throughout our entire conversation, please:
 ✅ Avoid repeating suggestions we've already implemented
 ✅ Consider dependencies and relationships between previously discussed components
 ✅ Build upon established patterns from our earlier discussions
+✅ Always remember that for view tables, rpc will be used otherwise there will be permission issues
 
 💬 Ongoing Collaboration
 After the initial analysis, I may:

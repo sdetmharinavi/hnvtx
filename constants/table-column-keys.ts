@@ -1094,6 +1094,7 @@ const TABLE_COLUMN_OBJECTS = {
     lc_id: "lc_id",
     unique_id: "unique_id",
     description: "description",
+    allocated_systems: "allocated_systems",
     maintenance_area_name: "maintenance_area_name",
     status: "status",
     created_at: "created_at",

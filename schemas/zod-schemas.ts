@@ -1776,6 +1776,7 @@ export const v_ringsRowSchema = z.object({
 });
 
 export const v_servicesRowSchema = z.object({
+  allocated_systems: JsonSchema.nullable(),
   bandwidth_allocated: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),

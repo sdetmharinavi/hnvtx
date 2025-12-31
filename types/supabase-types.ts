@@ -4934,6 +4934,7 @@ export type Database = {
       }
       v_services: {
         Row: {
+          allocated_systems: Json | null
           bandwidth_allocated: string | null
           created_at: string | null
           description: string | null
