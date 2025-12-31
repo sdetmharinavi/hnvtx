@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
-import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList, FiClock } from 'react-icons/fi';
+import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList, FiClock, FiPrinter } from 'react-icons/fi'; // Added FiPrinter
 import { toast } from 'sonner';
 import { useDebounce } from 'use-debounce';
 import { v4 as uuidv4 } from 'uuid';
@@ -225,11 +225,9 @@ export default function DiaryPage() {
     },
     onAddNew: canEdit ? openAddModal : undefined,
     isLoading,
-    // THE FIX: Conditionally provide exportConfig based on permissions
     exportConfig: canEdit ? { tableName: 'diary_notes', fileName: 'my_diary_notes' } : undefined,
   });
 
-  // THE FIX: Conditionally add the Upload button to the actions array
   if (canEdit) {
     headerActions.splice(1, 0, {
       label: isUploading ? 'Uploading...' : 'Upload',
@@ -240,6 +238,10 @@ export default function DiaryPage() {
       hideTextOnMobile: true,
     });
   }
+
+  const handlePrintFeed = () => {
+    window.print();
+  };
 
   if (error)
     return (
@@ -324,90 +326,106 @@ export default function DiaryPage() {
                 />
               </div>
 
-              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('day')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'day'
-                      ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                  }`}
-                >
-                  <FiClock className="w-4 h-4" /> Day
-                </button>
-                <button
-                  onClick={() => setViewMode('feed')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === 'feed'
-                      ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                  }`}
-                >
-                  <FiList className="w-4 h-4" /> Month Feed
-                </button>
+              <div className="flex items-center gap-2">
+                {viewMode === 'feed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePrintFeed}
+                    leftIcon={<FiPrinter className="w-4 h-4" />}
+                    title="Print this month's feed"
+                  >
+                    Print Feed
+                  </Button>
+                )}
+                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('day')}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'day'
+                        ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    }`}
+                  >
+                    <FiClock className="w-4 h-4" /> Day
+                  </button>
+                  <button
+                    onClick={() => setViewMode('feed')}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'feed'
+                        ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    }`}
+                  >
+                    <FiList className="w-4 h-4" /> Month Feed
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* List Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                {debouncedSearch ? (
-                  <>Search Results ({filteredNotes.length})</>
-                ) : viewMode === 'day' ? (
-                  <>{selectedDateString}</>
-                ) : (
-                  <>
-                    Activity Feed for{' '}
-                    {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                  </>
+            {/* WRAPPED IN PRINTABLE-CONTENT */}
+            <div className={viewMode === 'feed' ? 'printable-content' : ''}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  {debouncedSearch ? (
+                    <>Search Results ({filteredNotes.length})</>
+                  ) : viewMode === 'day' ? (
+                    <>{selectedDateString}</>
+                  ) : (
+                    <>
+                      Activity Feed for{' '}
+                      {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </>
+                  )}
+                </h2>
+                {!debouncedSearch && viewMode === 'day' && (
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                    {filteredNotes.length} entries
+                  </span>
                 )}
-              </h2>
-              {!debouncedSearch && viewMode === 'day' && (
-                <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
-                  {filteredNotes.length} entries
-                </span>
+              </div>
+
+              {/* Entries List */}
+              {filteredNotes.length === 0 ? (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="text-center py-12 px-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
+                      <FiBookOpen className="h-8 w-8 text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      {debouncedSearch ? 'No matching notes found' : 'No entries found'}
+                    </h3>
+                    <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">
+                      {debouncedSearch
+                        ? 'Try different keywords or tags.'
+                        : 'No logs recorded for this selection. Create a new entry to get started.'}
+                    </p>
+                    {canEdit && !debouncedSearch && viewMode === 'day' && (
+                      <button
+                        onClick={openAddModal}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
+                      >
+                        Create Entry
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {filteredNotes.map((note) => (
+                    <DiaryEntryCard
+                      key={note.id}
+                      entry={note}
+                      onEdit={openEditModal}
+                      onDelete={(item) => deleteManager.deleteSingle(item)}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
+                    />
+                  ))}
+                </div>
               )}
             </div>
-
-            {/* Entries List */}
-            {filteredNotes.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="text-center py-12 px-4">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
-                    <FiBookOpen className="h-8 w-8 text-blue-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    {debouncedSearch ? 'No matching notes found' : 'No entries found'}
-                  </h3>
-                  <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">
-                    {debouncedSearch
-                      ? 'Try different keywords or tags.'
-                      : 'No logs recorded for this selection. Create a new entry to get started.'}
-                  </p>
-                  {canEdit && !debouncedSearch && viewMode === 'day' && (
-                    <button
-                      onClick={openAddModal}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
-                    >
-                      Create Entry
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {filteredNotes.map((note) => (
-                  <DiaryEntryCard
-                    key={note.id}
-                    entry={note}
-                    onEdit={openEditModal}
-                    onDelete={(item) => deleteManager.deleteSingle(item)}
-                    canEdit={canEdit}
-                    canDelete={canDelete}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

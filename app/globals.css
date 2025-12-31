@@ -289,7 +289,7 @@ body {
     display: none !important;
   }
 
-  /* Make the map visible and fill the page */
+  /* 1. MAP PRINTING */
   .printable-map-container, 
   .printable-map-container * {
     visibility: visible;
@@ -309,6 +309,46 @@ body {
     border-radius: 0 !important;
   }
 
+  /* 2. GENERIC CONTENT PRINTING */
+  .printable-content,
+  .printable-content * {
+    visibility: visible;
+  }
+
+  .printable-content {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    z-index: 99999 !important;
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  /* Hide scrollbars/containers within printable content that shouldn't scroll in print */
+  .printable-content .overflow-y-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Reset text colors for print readability */
+  .printable-content .text-gray-900,
+  .printable-content .text-white,
+  .printable-content .dark\:text-white {
+    color: black !important;
+  }
+  
+  .printable-content .bg-white,
+  .printable-content .dark\:bg-gray-800 {
+    background: white !important;
+  }
+
   /* Hide Leaflet controls during print */
   .leaflet-control-container {
     display: none !important;
@@ -318,6 +358,12 @@ body {
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* Print specific overrides for Diagram page if needed */
+  .print-content {
+    box-shadow: none !important;
+    border: none !important;
   }
 }
 
