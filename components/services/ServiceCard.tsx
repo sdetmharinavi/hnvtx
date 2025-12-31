@@ -128,9 +128,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               <>
                 <div className="flex items-center justify-center py-1">
                   <div className="flex flex-col items-center gap-1">
-                    <div className="w-px h-4 bg-linear-to-b from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500" />
+                    {/* <div className="w-px h-4 bg-linear-to-b from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500" /> */}
                     <FiArrowRight className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-90" />
-                    <div className="w-px h-4 bg-linear-to-b from-gray-400 to-gray-300 dark:from-gray-500 dark:to-gray-600" />
+                    {/* <div className="w-px h-4 bg-linear-to-b from-gray-400 to-gray-300 dark:from-gray-500 dark:to-gray-600" /> */}
                   </div>
                 </div>
 
