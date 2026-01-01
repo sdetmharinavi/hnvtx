@@ -71,11 +71,17 @@ function TableRowBase<T extends TableOrViewName>({
 }: // isLoading,
 TableRowProps<T>) {
   const editInputRef = useRef<HTMLInputElement>(null);
+  const editSelectRef = useRef<HTMLSelectElement>(null); // Added ref for select
 
   useEffect(() => {
     if (editingCell && editingCell.rowIndex === rowIndex) {
-      editInputRef.current?.focus();
-      editInputRef.current?.select();
+      // Check which ref is active and focus it
+      if (editInputRef.current) {
+        editInputRef.current.focus();
+        editInputRef.current.select();
+      } else if (editSelectRef.current) {
+        editSelectRef.current.focus();
+      }
     }
   }, [editingCell, rowIndex]);
 
@@ -165,8 +171,7 @@ TableRowProps<T>) {
         return (
           <td
             key={column.key}
-            // THE FIX: Removed overflow-hidden from the TD class list
-            // This allows the absolute positioned edit box to extend beyond the cell boundaries
+            // Removed overflow-hidden from the TD class list
             className={`relative ${
               densityClasses[density ?? 'default']
             } text-sm text-gray-900 dark:text-white whitespace-nowrap ${
@@ -195,21 +200,43 @@ TableRowProps<T>) {
               // Edit Mode: Absolute overlay
               <div
                 className="absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-xl ring-2 ring-blue-500/20 dark:ring-blue-500/40"
-                // THE FIX: Ensure it is at least 100% width, but grows to fit content (buttons)
+                // Ensure it is at least 100% width, but grows to fit content (buttons)
                 style={{ width: 'auto', minWidth: '100%', minHeight: '100%' }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <input
-                  ref={editInputRef}
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveCellEdit();
-                    if (e.key === 'Escape') cancelCellEdit();
-                  }}
-                  className="min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                {column.editOptions ? (
+                  // Dropdown Edit
+                  <select
+                    ref={editSelectRef}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveCellEdit();
+                      if (e.key === 'Escape') cancelCellEdit();
+                    }}
+                    className="min-w-[120px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {column.editOptions.map((opt) => (
+                      <option key={String(opt.value)} value={String(opt.value)}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  // Text Edit
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveCellEdit();
+                      if (e.key === 'Escape') cancelCellEdit();
+                    }}
+                    className="min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                )}
+
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"

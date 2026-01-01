@@ -23,6 +23,8 @@ export interface Column<T> {
   excelHeader?: string;
   // NEW: Forces the column to stay visible even if autoHideEmptyColumns is true and data is empty
   alwaysVisible?: boolean;
+  // NEW: Options for dropdown editing
+  editOptions?: { label: string; value: string | number | boolean }[];
 }
 
 export interface RPCConfig<TParams = Record<string, unknown>> {

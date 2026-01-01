@@ -3,11 +3,7 @@
 import { useMemo, ReactNode } from 'react';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import {
-  inferDynamicColumnWidth,
-  inferExcelFormat,
-  toTitleCase,
-} from '@/config/helper-functions';
+import { inferDynamicColumnWidth, inferExcelFormat, toTitleCase } from '@/config/helper-functions';
 import { Row, PublicTableOrViewName } from '@/hooks/database';
 
 /**
@@ -42,8 +38,10 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   resizable?: boolean;
   editable?: boolean;
   excelHeader?: string;
-  // NEW: Propagate alwaysVisible
+  // Propagate alwaysVisible
   alwaysVisible?: boolean;
+  // Dropdown options for editing
+  editOptions?: { label: string; value: string | number | boolean }[];
 }
 
 type ColumnOverrides<T extends PublicTableOrViewName> = {
@@ -80,9 +78,7 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
     const widths: Record<string, number> = {};
     if (data.length > 0) {
       for (const colName of Object.keys(data[0] || {})) {
-        widths[colName] = dateColumns.has(colName)
-          ? 120
-          : inferDynamicColumnWidth(colName, data);
+        widths[colName] = dateColumns.has(colName) ? 120 : inferDynamicColumnWidth(colName, data);
       }
     }
     return widths;
@@ -93,9 +89,9 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
       return [];
     }
 
-    const keysToUse = TABLE_COLUMN_KEYS[
-      tableName as keyof typeof TABLE_COLUMN_KEYS
-    ] as unknown as (keyof Row<T> & string)[] | undefined;
+    const keysToUse = TABLE_COLUMN_KEYS[tableName as keyof typeof TABLE_COLUMN_KEYS] as unknown as
+      | (keyof Row<T> & string)[]
+      | undefined;
 
     if (!keysToUse) {
       console.warn(`No column keys found for table/view: ${tableName}`);
@@ -108,9 +104,8 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
       .filter((key) => !omitSet.has(key))
       .map((key) => {
         const columnOverride =
-          (key in overrides ? overrides[key as keyof typeof overrides] : {}) ||
-          {};
-        
+          (key in overrides ? overrides[key as keyof typeof overrides] : {}) || {};
+
         const defaultConfig: Column<Row<T>> = {
           title: toTitleCase(key),
           dataIndex: key,

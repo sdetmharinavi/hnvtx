@@ -16,7 +16,9 @@ const PhaseBadge = ({ value, type }: { value: unknown; type: 'spec' | 'ofc' | 'b
     status === 'Blowing' ||
     status === 'Splicing' ||
     status === 'Survey' ||
-    status === 'Integrated'
+    status === 'Integrated' ||
+    status === 'Configured' ||
+    status === 'Partial Ready'
   ) {
     color = 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
   }
@@ -28,7 +30,13 @@ const PhaseBadge = ({ value, type }: { value: unknown; type: 'spec' | 'ofc' | 'b
   );
 };
 
-export const RingsColumns = (data: V_ringsRowSchema[]) => {
+interface StatusOptions {
+  OFC: { value: string; label: string }[];
+  SPEC: { value: string; label: string }[];
+  BTS: { value: string; label: string }[];
+}
+
+export const RingsColumns = (data: V_ringsRowSchema[], statusOptions?: StatusOptions) => {
   return useDynamicColumnConfig('v_rings', {
     data: data,
     omit: [
@@ -75,20 +83,26 @@ export const RingsColumns = (data: V_ringsRowSchema[]) => {
           return <TruncateTooltip text={rel ?? 'N/A'} />;
         },
       },
-      // New Columns
+      // New Columns with Editable Dropdowns
       spec_status: {
         title: 'SPEC',
         width: 100,
+        editable: true,
+        editOptions: statusOptions?.SPEC,
         render: (val) => <PhaseBadge value={val} type="spec" />,
       },
       ofc_status: {
         title: 'OFC',
         width: 100,
+        editable: true,
+        editOptions: statusOptions?.OFC,
         render: (val) => <PhaseBadge value={val} type="ofc" />,
       },
       bts_status: {
         title: 'WORKING STATUS',
         width: 100,
+        editable: true,
+        editOptions: statusOptions?.BTS,
         render: (val) => <PhaseBadge value={val} type="bts" />,
       },
       status: {

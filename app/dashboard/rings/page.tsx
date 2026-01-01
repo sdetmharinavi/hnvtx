@@ -21,7 +21,6 @@ import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-// THIS IS THE FIX: Import the correct hooks
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 
 const STATUS_OPTIONS = {
@@ -76,7 +75,6 @@ export default function RingsPage() {
     role === UserRole.ADMINPRO;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- REFACTORED: Use Centralized, Offline-First Hooks ---
   const { options: ringTypeOptions } = useLookupTypeOptions('RING_TYPES');
   const { options: maintenanceAreaOptions } = useMaintenanceAreaOptions();
 
@@ -106,7 +104,8 @@ export default function RingsPage() {
     return { stats: s, totalNodesAcrossRings: nodesSum };
   }, [rings]);
 
-  const columns = RingsColumns(rings);
+  // THE FIX: Pass STATUS_OPTIONS to the columns generator
+  const columns = RingsColumns(rings, STATUS_OPTIONS);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
 
   const handleView = useCallback(
@@ -199,6 +198,8 @@ export default function RingsPage() {
         actions={tableActions}
         isFetching={isFetching || isMutating}
         renderMobileItem={renderMobileItem}
+        // Enable cell editing
+        onCellEdit={canEdit ? crudActions.handleCellEdit : undefined}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
