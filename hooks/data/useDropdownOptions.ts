@@ -1,5 +1,5 @@
 // hooks/data/useDropdownOptions.ts
-"use client";
+'use client';
 
 import { useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -21,7 +21,7 @@ interface OptionsQuery {
 const cleanFilters = (filters: Record<string, any>) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cleaned: Record<string, any> = {};
-  Object.keys(filters).forEach(key => {
+  Object.keys(filters).forEach((key) => {
     if (filters[key] !== undefined) {
       cleaned[key] = filters[key];
     }
@@ -29,25 +29,30 @@ const cleanFilters = (filters: Record<string, any>) => {
   return cleaned;
 };
 
-export function useDropdownOptions({ tableName, valueField, labelField, filters = {}, orderBy = 'name' }: OptionsQuery) {
-  
+export function useDropdownOptions({
+  tableName,
+  valueField,
+  labelField,
+  filters = {},
+  orderBy = 'name',
+}: OptionsQuery) {
   // THE FIX: Switched from Direct Select to RPC 'get_paged_data'
   // This ensures we bypass RLS issues on Views and get complete data (no nulls).
   const onlineQueryFn = async () => {
     const validFilters = cleanFilters(filters);
-    
+
     // We fetch a large limit to simulate "all options" for a dropdown
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: tableName,
-      p_limit: 10000, 
+      p_limit: 10000,
       p_offset: 0,
       p_filters: buildRpcFilters(validFilters),
       p_order_by: orderBy,
-      p_order_dir: 'asc'
+      p_order_dir: 'asc',
     });
 
     if (error) throw error;
-    
+
     // The RPC returns { data: [...], count: ... }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any)?.data || [];
@@ -56,30 +61,30 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
   const localQueryFn = () => {
     const table = localDb.table(tableName);
     const validFilters = cleanFilters(filters);
-    
+
     if (Object.keys(validFilters).length === 0) {
       return table.orderBy(orderBy).toArray();
     }
 
     return table
-      .filter(item => {
+      .filter((item) => {
         return Object.entries(validFilters).every(([key, val]) => {
-           const itemVal = item[key];
-           if (key === 'status' && typeof val === 'boolean') {
-             return String(itemVal) === String(val);
-           }
-           return itemVal === val;
+          const itemVal = item[key];
+          if (key === 'status' && typeof val === 'boolean') {
+            return String(itemVal) === String(val);
+          }
+          return itemVal === val;
         });
       })
       .toArray()
-      .then(result => {
+      .then((result) => {
         return result.sort((a, b) => {
-           const valA = a[orderBy];
-           const valB = b[orderBy];
-           if (typeof valA === 'string' && typeof valB === 'string') {
-               return valA.localeCompare(valB);
-           }
-           return (valA > valB ? 1 : -1);
+          const valA = a[orderBy];
+          const valB = b[orderBy];
+          if (typeof valA === 'string' && typeof valB === 'string') {
+            return valA.localeCompare(valB);
+          }
+          return valA > valB ? 1 : -1;
         });
       });
   };
@@ -90,8 +95,8 @@ export function useDropdownOptions({ tableName, valueField, labelField, filters 
     localQueryFn,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dexieTable: localDb.table(tableName) as any,
-    staleTime: 60 * 60 * 1000, 
-    autoSync: true 
+    staleTime: 60 * 60 * 1000,
+    autoSync: true,
   });
 
   const options: Option[] = useMemo(() => {
@@ -114,9 +119,9 @@ export const useLookupTypeOptions = (category: string) => {
     valueField: 'id',
     labelField: 'name',
     filters: { category, status: true },
-    orderBy: 'sort_order'
+    orderBy: 'sort_order',
   });
-  const filteredOptions = useMemo(() => options.filter(o => o.label !== 'DEFAULT'), [options]);
+  const filteredOptions = useMemo(() => options.filter((o) => o.label !== 'DEFAULT'), [options]);
   return { options: filteredOptions, isLoading, originalData };
 };
 
@@ -125,7 +130,7 @@ export const useActiveNodeOptions = () => {
     tableName: 'nodes',
     valueField: 'id',
     labelField: 'name',
-    filters: { status: true }
+    filters: { status: true },
   });
 };
 
@@ -134,7 +139,7 @@ export const useMaintenanceAreaOptions = () => {
     tableName: 'maintenance_areas',
     valueField: 'id',
     labelField: 'name',
-    filters: { status: true }
+    filters: { status: true },
   });
 };
 
@@ -143,7 +148,7 @@ export const useActiveRingOptions = () => {
     tableName: 'rings',
     valueField: 'id',
     labelField: 'name',
-    filters: { status: true }
+    filters: { status: true },
   });
 };
 
@@ -151,11 +156,11 @@ export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
     // THE FIX: Updated to RPC here as well for consistency
     const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_employees',
-        p_limit: 10000,
-        p_offset: 0,
-        p_filters: { status: true },
-        p_order_by: 'employee_name'
+      p_view_name: 'v_employees',
+      p_limit: 10000,
+      p_offset: 0,
+      p_filters: { status: true },
+      p_order_by: 'employee_name',
     });
 
     if (error) throw error;
@@ -165,9 +170,9 @@ export function useEmployeeOptions() {
 
   const localQueryFn = () => {
     return localDb.v_employees
-        .orderBy('employee_name')
-        .filter(e => e.status === true)
-        .toArray();
+      .orderBy('employee_name')
+      .filter((e) => e.status === true)
+      .toArray();
   };
 
   const { data, isLoading } = useLocalFirstQuery<'v_employees'>({
@@ -175,14 +180,16 @@ export function useEmployeeOptions() {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employees,
-    autoSync: true 
+    autoSync: true,
   });
 
   const options: Option[] = useMemo(() => {
     if (!data) return [];
-    return data.map(e => ({
+    return data.map((e) => ({
       value: e.id!,
-      label: `${e.employee_name} ${e.employee_designation_name ? `(${e.employee_designation_name})` : ''} ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ''}`
+      label: `${e.employee_name} ${
+        e.employee_designation_name ? `(${e.employee_designation_name})` : ''
+      } ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ''}`,
     }));
   }, [data]);
 
@@ -192,14 +199,14 @@ export function useEmployeeOptions() {
 export function useSystemOptions() {
   const onlineQueryFn = async () => {
     const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_systems_complete',
-        p_limit: 10000,
-        p_offset: 0,
-        p_order_by: 'system_name',
-        p_order_dir: 'asc',
-        p_filters: {}
+      p_view_name: 'v_systems_complete',
+      p_limit: 10000,
+      p_offset: 0,
+      p_order_by: 'system_name',
+      p_order_dir: 'asc',
+      p_filters: {},
     });
-    
+
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any)?.data || [];
@@ -214,7 +221,7 @@ export function useSystemOptions() {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_systems_complete,
-    autoSync: true
+    autoSync: true,
   });
 
   return { data: data || [], isLoading };
@@ -222,33 +229,34 @@ export function useSystemOptions() {
 
 export function usePortOptions(systemId: string | null) {
   const onlineQueryFn = async () => {
-    if(!systemId) return [];
-    
-    const rpcFilters = buildRpcFilters({ 
-        system_id: systemId,
-        port_admin_status: true 
+    if (!systemId) return [];
+
+    const rpcFilters = buildRpcFilters({
+      system_id: systemId,
+      port_admin_status: true,
     });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_ports_management_complete',
-        p_limit: 1000,
-        p_offset: 0,
-        p_order_by: 'port',
-        p_order_dir: 'asc',
-        p_filters: rpcFilters
+      p_view_name: 'v_ports_management_complete',
+      p_limit: 1000,
+      p_offset: 0,
+      p_order_by: 'port',
+      p_order_dir: 'asc',
+      p_filters: rpcFilters,
     });
-    
+
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (data as any)?.data || [];
   };
 
   const localQueryFn = () => {
-    if(!systemId) return Promise.resolve([]);
+    if (!systemId) return Promise.resolve([]);
     return localDb.v_ports_management_complete
-        .where('system_id').equals(systemId)
-        .filter(p => p.port_admin_status === true)
-        .toArray();
+      .where('system_id')
+      .equals(systemId)
+      .filter((p) => p.port_admin_status === true)
+      .toArray();
   };
 
   const { data, isLoading } = useLocalFirstQuery<'v_ports_management_complete'>({
@@ -257,7 +265,7 @@ export function usePortOptions(systemId: string | null) {
     localQueryFn,
     dexieTable: localDb.v_ports_management_complete,
     enabled: !!systemId,
-    localQueryDeps: [systemId]
+    localQueryDeps: [systemId],
   });
 
   return { data: data || [], isLoading };

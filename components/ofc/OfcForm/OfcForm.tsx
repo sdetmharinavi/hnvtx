@@ -35,13 +35,7 @@ interface OfcFormProps {
   isOpen: boolean;
 }
 
-const OfcForm: React.FC<OfcFormProps> = ({
-  ofcCable,
-  onSubmit,
-  onClose,
-  pageLoading,
-  isOpen,
-}) => {
+const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoading, isOpen }) => {
   const { form, isEdit } = useOfcFormData(ofcCable);
   const {
     handleSubmit,
@@ -61,15 +55,19 @@ const OfcForm: React.FC<OfcFormProps> = ({
   // --- DATA FETCHING (REFACTORED) ---
 
   // 1. Fetch Nodes using the existing useCrudManager setup
-  const { data: nodesData, isLoading: nodesLoading } = useCrudManager<'nodes', V_nodes_completeRowSchema>({
-      tableName: 'nodes',
-      dataQueryHook: useNodesData,
+  const { data: nodesData, isLoading: nodesLoading } = useCrudManager<
+    'nodes',
+    V_nodes_completeRowSchema
+  >({
+    tableName: 'nodes',
+    dataQueryHook: useNodesData,
   }).queryResult;
-  
+
   // 2. THIS IS THE FIX: Use centralized hooks that are offline-first
   const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions('OFC_TYPES');
   const { options: ownerOptions, isLoading: ownersLoading } = useLookupTypeOptions('OFC_OWNER');
-  const { options: maintenanceTerminalOptions, isLoading: maintenanceTerminalsLoading } = useMaintenanceAreaOptions();
+  const { options: maintenanceTerminalOptions, isLoading: maintenanceTerminalsLoading } =
+    useMaintenanceAreaOptions();
 
   // Custom hooks for complex logic
   const setValueWithType = useCallback(
@@ -82,16 +80,27 @@ const OfcForm: React.FC<OfcFormProps> = ({
     },
     [setValue]
   );
-  
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nodes = useMemo(() => (nodesData as any)?.data || [], [nodesData]);
 
-  const startingNodeName = useMemo(() => nodes.find((node: V_nodes_completeRowSchema) => node.id === startingNodeId)?.name || null, [nodes, startingNodeId]);
-  const endingNodeName = useMemo(() => nodes.find((node: V_nodes_completeRowSchema) => node.id === endingNodeId)?.name || null, [nodes, endingNodeId]);
+  const startingNodeName = useMemo(
+    () => nodes.find((node: V_nodes_completeRowSchema) => node.id === startingNodeId)?.name || null,
+    [nodes, startingNodeId]
+  );
+  const endingNodeName = useMemo(
+    () => nodes.find((node: V_nodes_completeRowSchema) => node.id === endingNodeId)?.name || null,
+    [nodes, endingNodeId]
+  );
 
   const { existingRoutes, isLoading: routeGenerationLoading } =
     useRouteGeneration<Ofc_cablesRowSchema>({
-      startingNodeId, endingNodeId, startingNodeName, endingNodeName, isEdit, setValue: setValueWithType,
+      startingNodeId,
+      endingNodeId,
+      startingNodeName,
+      endingNodeName,
+      isEdit,
+      setValue: setValueWithType,
     });
 
   const { isCapacityLocked } = useCapacityInference<Ofc_cablesInsertSchema>({
@@ -133,12 +142,14 @@ const OfcForm: React.FC<OfcFormProps> = ({
   };
 
   const onInvalidSubmit: SubmitErrorHandler<Ofc_cablesInsertSchema> = (errors, data) => {
-    console.log('Invalid form submission', errors, "Invalid form submission", data);
+    console.log('Invalid form submission', errors, 'Invalid form submission', data);
   };
 
   const handleClose = useCallback(() => {
     if (isDirty) {
-      const confirmClose = window.confirm("You have unsaved changes. Are you sure you want to close?");
+      const confirmClose = window.confirm(
+        'You have unsaved changes. Are you sure you want to close?'
+      );
       if (!confirmClose) return;
     }
     onClose();
@@ -164,9 +175,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
         isLoading={isLoading}
         onCancel={handleClose}
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        submitText={
-          isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'
-        }
+        submitText={isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'}
         standalone
       >
         <div className="p-6 relative">
@@ -182,7 +191,7 @@ const OfcForm: React.FC<OfcFormProps> = ({
               endingNodeOptions={endingNodeOptions}
               routeName={routeName}
             />
-            
+
             <FormSearchableSelect
               control={control}
               name="ofc_owner_id"
