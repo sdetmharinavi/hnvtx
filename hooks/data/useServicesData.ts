@@ -6,11 +6,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { 
-  buildServerSearchString, 
-  performClientSearch, 
-  performClientSort, 
-  performClientPagination 
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination,
 } from '@/hooks/database/search-utils';
 
 export const useServicesData = (
@@ -21,7 +21,15 @@ export const useServicesData = (
 
   // Search Config
   const searchFields = useMemo(
-    () => ['name', 'node_name', 'end_node_name', 'description', 'link_type_name', 'vlan'] as (keyof V_servicesRowSchema)[],
+    () =>
+      [
+        'name',
+        'node_name',
+        'end_node_name',
+        'description',
+        'link_type_name',
+        'vlan',
+      ] as (keyof V_servicesRowSchema)[],
     []
   );
   const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
@@ -36,14 +44,14 @@ export const useServicesData = (
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
-      p_order_dir: 'asc'
+      p_order_dir: 'asc',
     });
 
     if (error) throw error;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const resultList = (data as any)?.data || [];
     return resultList as V_servicesRowSchema[];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, filters, serverSearchFields]);
 
   const localQueryFn = useCallback(() => {
@@ -71,18 +79,18 @@ export const useServicesData = (
 
     // 2. Filters
     if (filters.link_type_id) {
-        filtered = filtered.filter(s => s.link_type_id === filters.link_type_id);
+      filtered = filtered.filter((s) => s.link_type_id === filters.link_type_id);
     }
     if (filters.status) {
-        const statusBool = filters.status === 'true';
-        filtered = filtered.filter(s => s.status === statusBool);
+      const statusBool = filters.status === 'true';
+      filtered = filtered.filter((s) => s.status === statusBool);
     }
 
     // 3. Sort
     filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
-    const activeCount = filtered.filter(s => s.status === true).length;
+    const activeCount = filtered.filter((s) => s.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
     // 4. Paginate
@@ -94,7 +102,7 @@ export const useServicesData = (
       activeCount,
       inactiveCount,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allServices, searchQuery, filters, currentPage, pageLimit]);
 
   return {
@@ -102,6 +110,6 @@ export const useServicesData = (
     isLoading,
     isFetching,
     error: error as Error | null,
-    refetch
+    refetch,
   };
 };

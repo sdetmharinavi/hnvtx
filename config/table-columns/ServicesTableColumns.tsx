@@ -99,7 +99,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         width: 220,
         render: (value) => {
           const systems = value as AllocatedSystem[] | null;
-          
+
           if (!systems || systems.length === 0) {
             return <span className="text-xs text-gray-400 italic">Unassigned</span>;
           }
@@ -117,18 +117,25 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
 
           return (
             <div className="flex flex-col gap-1">
-               {systems.slice(0, 2).map((sys) => (
-                  <div key={sys.id} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
-                     <Server className="w-3 h-3 text-blue-500" />
-                     <span className="truncate max-w-[180px]" title={sys.name}>{sys.name}</span>
-                  </div>
-               ))}
-               {systems.length > 2 && (
-                 <span className="text-[10px] text-gray-500 pl-4">+{systems.length - 2} more systems</span>
-               )}
+              {systems.slice(0, 2).map((sys) => (
+                <div
+                  key={sys.id}
+                  className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"
+                >
+                  <Server className="w-3 h-3 text-blue-500" />
+                  <span className="truncate max-w-[180px]" title={sys.name}>
+                    {sys.name}
+                  </span>
+                </div>
+              ))}
+              {systems.length > 2 && (
+                <span className="text-[10px] text-gray-500 pl-4">
+                  +{systems.length - 2} more systems
+                </span>
+              )}
             </div>
           );
-        }
+        },
       },
       link_type_name: {
         title: 'Link Type',

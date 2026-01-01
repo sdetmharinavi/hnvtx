@@ -136,4 +136,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all it will be better if we can display system alloted to services as same service may be used in many systems connections
+Let's begin! First of all in services page I want to add a filter for unallocated systems services. Also on clicking alloted system, I want to open a new tab with that systems details/connections page.
