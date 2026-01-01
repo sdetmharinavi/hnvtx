@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormInput, FormSearchableSelect } from '@/components/common/form';
 import { createClient } from '@/utils/supabase/client';
@@ -17,13 +17,20 @@ import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 interface JcFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void; 
+  onSave: () => void;
   routeId: string | null;
   editingJc: JointBox | null;
   rkm: number | null;
 }
 
-export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSave, routeId, editingJc, rkm }) => {
+export const JcFormModal: React.FC<JcFormModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  routeId,
+  editingJc,
+  rkm,
+}) => {
   const supabase = createClient();
   const isEditMode = !!editingJc;
 
@@ -33,7 +40,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     valueField: 'id',
     labelField: 'name',
     filters: { status: true },
-    orderBy: 'name'
+    orderBy: 'name',
   });
 
   const jcOptions: Option[] = useMemo(() => {
@@ -41,43 +48,42 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     const nodes = (allNodesRaw || []) as unknown as V_nodes_completeRowSchema[];
 
     // Debugging: Check what data is actually loaded
-    console.log("JcFormModal: Loaded Nodes:", nodes.length, nodes);
+    console.log('JcFormModal: Loaded Nodes:', nodes.length, nodes);
 
     if (nodes.length === 0) return [];
 
     // 2. Strict Filter: Look for specific types
-    const filteredNodes = nodes.filter(n => {
-        const typeName = n.node_type_name?.toLowerCase() || '';
-        const typeCode = n.node_type_code?.toUpperCase() || '';
-        const nodeName = n.name?.toLowerCase() || '';
-        
-        return (
-          typeCode === 'BJC' || 
-          typeCode === 'JC' ||
-          typeName.includes('joint') ||
-          typeName.includes('splice') ||
-          typeName.includes('closure') ||
-          typeName.includes('chamber') ||
-          typeName.includes('handhole') ||
-          typeName.includes('manhole') ||
-          // Fallback: If the node name itself suggests it's a joint
-          nodeName.includes('jc') ||
-          nodeName.includes('joint')
-        );
+    const filteredNodes = nodes.filter((n) => {
+      const typeName = n.node_type_name?.toLowerCase() || '';
+      const typeCode = n.node_type_code?.toUpperCase() || '';
+      const nodeName = n.name?.toLowerCase() || '';
+
+      return (
+        typeCode === 'BJC' ||
+        typeCode === 'JC' ||
+        typeName.includes('joint') ||
+        typeName.includes('splice') ||
+        typeName.includes('closure') ||
+        typeName.includes('chamber') ||
+        typeName.includes('handhole') ||
+        typeName.includes('manhole') ||
+        // Fallback: If the node name itself suggests it's a joint
+        nodeName.includes('jc') ||
+        nodeName.includes('joint')
+      );
     });
 
-    // 3. Fallback Strategy: 
+    // 3. Fallback Strategy:
     // If strict filtering returns nothing, show ALL nodes so the user isn't blocked.
     // Otherwise, show the filtered list.
     const finalNodes = filteredNodes.length > 0 ? filteredNodes : nodes;
 
-    console.log(finalNodes)
-    
+    console.log(finalNodes);
 
-    return finalNodes.map(n => ({
-        value: n.id!,
-        // Show type in label to help distinguish if we fallback to showing all
-        label: `${n.name} (${n.node_type_name || 'Unknown Type'})` 
+    return finalNodes.map((n) => ({
+      value: n.id!,
+      // Show type in label to help distinguish if we fallback to showing all
+      label: `${n.name} (${n.node_type_name || 'Unknown Type'})`,
     }));
   }, [allNodesRaw]);
 
@@ -93,7 +99,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
     handleSubmit,
     reset,
     control,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<JcFormValues>({
     resolver: zodResolver(junction_closuresFormSchema),
@@ -108,9 +113,10 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       if (editingJc) {
         reset({
           node_id: editingJc.node_id,
-          position_km: editingJc.attributes.position_on_route && rkm
-            ? Number(((editingJc.attributes.position_on_route / 100) * rkm).toFixed(3))
-            : (editingJc.position_km || null),
+          position_km:
+            editingJc.attributes.position_on_route && rkm
+              ? Number(((editingJc.attributes.position_on_route / 100) * rkm).toFixed(3))
+              : editingJc.position_km || null,
         });
       } else {
         reset({
@@ -123,12 +129,14 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
 
   const handleValidSubmit = async (formData: JcFormValues) => {
     if (!routeId) {
-      toast.error("No route selected to add the JC to.");
+      toast.error('No route selected to add the JC to.');
       return;
     }
 
     if (formData.position_km && rkm && Number(formData.position_km) > Number(rkm)) {
-      toast.error(`Position (${formData.position_km} km) cannot be greater than Cable length (${rkm} km).`);
+      toast.error(
+        `Position (${formData.position_km} km) cannot be greater than Cable length (${rkm} km).`
+      );
       return;
     }
 
@@ -145,12 +153,11 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .rpc('add_junction_closure', {
-            p_node_id: formData.node_id,
-            p_ofc_cable_id: routeId,
-            p_position_km: formData.position_km || 0
-          });
+        const { error } = await supabase.rpc('add_junction_closure', {
+          p_node_id: formData.node_id,
+          p_ofc_cable_id: routeId,
+          p_position_km: formData.position_km || 0,
+        });
 
         if (error) throw error;
       }
@@ -160,18 +167,21 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
       onClose();
     } catch (error) {
       console.error('Error in handleValidSubmit:', error);
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to ${isEditMode ? 'update' : 'create'} JC: ${message}`);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'} >
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
+    >
       <FormCard
         title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
-        onSubmit={handleSubmit(
-          handleValidSubmit,
-          () => toast.error('Please fix the highlighted fields')
+        onSubmit={handleSubmit(handleValidSubmit, () =>
+          toast.error('Please fix the highlighted fields')
         )}
         onCancel={onClose}
         isLoading={isSubmitting || isLoadingNodes}
@@ -186,7 +196,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({ isOpen, onClose, onSav
             options={jcOptions}
             error={errors.node_id}
             required
-            placeholder={isLoadingNodes ? "Loading options..." : "Select a Junction Closure"}
+            placeholder={isLoadingNodes ? 'Loading options...' : 'Select a Junction Closure'}
             isLoading={isLoadingNodes}
             searchPlaceholder="Search Nodes..."
           />
