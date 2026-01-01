@@ -2,11 +2,9 @@
 // Main OfcForm component
 import React, { useCallback, useMemo } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { createClient } from '@/utils/supabase/client';
 import { Modal } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form/FormCard';
 import { useOfcFormData } from './hooks/useOfcFormData';
-import { OFC_FORM_CONFIG } from '@/constants/ofcFormConfig';
 import { useRouteGeneration } from '@/components/ofc/OfcForm/hooks/useRouteGeneration';
 import { useCapacityInference } from '@/components/ofc/OfcForm/hooks/useCapacityInference';
 import LoadingOverlay from '@/components/ofc/OfcForm/LoadingOverlay';
@@ -20,7 +18,6 @@ import {
   Ofc_cablesRowSchema,
   V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { DEFAULTS } from '@/constants/constants';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useNodesData } from '@/hooks/data/useNodesData';
 // THIS IS THE FIX: Import the correct hooks for dropdown data
@@ -64,7 +61,11 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
   }).queryResult;
 
   // 2. THIS IS THE FIX: Use centralized hooks that are offline-first
-  const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions('OFC_TYPES');
+  // Request descending order for OFC Types
+  const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions(
+    'OFC_TYPES',
+    'desc'
+  );
   const { options: ownerOptions, isLoading: ownersLoading } = useLookupTypeOptions('OFC_OWNER');
   const { options: maintenanceTerminalOptions, isLoading: maintenanceTerminalsLoading } =
     useMaintenanceAreaOptions();

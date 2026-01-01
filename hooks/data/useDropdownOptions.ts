@@ -15,6 +15,7 @@ interface OptionsQuery {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filters?: Record<string, any>;
   orderBy?: string;
+  orderDir?: 'asc' | 'desc'; // Added orderDir support
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +36,7 @@ export function useDropdownOptions({
   labelField,
   filters = {},
   orderBy = 'name',
+  orderDir = 'asc',
 }: OptionsQuery) {
   // THE FIX: Switched from Direct Select to RPC 'get_paged_data'
   // This ensures we bypass RLS issues on Views and get complete data (no nulls).
@@ -48,7 +50,7 @@ export function useDropdownOptions({
       p_offset: 0,
       p_filters: buildRpcFilters(validFilters),
       p_order_by: orderBy,
-      p_order_dir: 'asc',
+      p_order_dir: orderDir, // Use the dynamic direction
     });
 
     if (error) throw error;
@@ -63,7 +65,11 @@ export function useDropdownOptions({
     const validFilters = cleanFilters(filters);
 
     if (Object.keys(validFilters).length === 0) {
-      return table.orderBy(orderBy).toArray();
+      // Local Dexie sorting is simple, manual sort below handles direction
+      return table
+        .orderBy(orderBy)
+        .toArray()
+        .then((result) => sortResult(result));
     }
 
     return table
@@ -77,20 +83,29 @@ export function useDropdownOptions({
         });
       })
       .toArray()
-      .then((result) => {
-        return result.sort((a, b) => {
-          const valA = a[orderBy];
-          const valB = b[orderBy];
-          if (typeof valA === 'string' && typeof valB === 'string') {
-            return valA.localeCompare(valB);
-          }
-          return valA > valB ? 1 : -1;
-        });
-      });
+      .then((result) => sortResult(result));
+  };
+
+  // Helper to sort local results based on direction
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sortResult = (result: any[]) => {
+    return result.sort((a, b) => {
+      const valA = a[orderBy];
+      const valB = b[orderBy];
+      let comparison = 0;
+
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      } else {
+        comparison = valA > valB ? 1 : valA < valB ? -1 : 0;
+      }
+
+      return orderDir === 'asc' ? comparison : -comparison;
+    });
   };
 
   const { data, isLoading } = useLocalFirstQuery({
-    queryKey: ['dropdown-options', tableName, filters],
+    queryKey: ['dropdown-options', tableName, filters, orderBy, orderDir],
     onlineQueryFn,
     localQueryFn,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,15 +126,15 @@ export function useDropdownOptions({
   return { options, isLoading, originalData: data };
 }
 
-// ... (Rest of the file exports remain the same) ...
-
-export const useLookupTypeOptions = (category: string) => {
+// Updated to accept orderDir
+export const useLookupTypeOptions = (category: string, orderDir: 'asc' | 'desc' = 'asc') => {
   const { options, isLoading, originalData } = useDropdownOptions({
     tableName: 'lookup_types',
     valueField: 'id',
     labelField: 'name',
     filters: { category, status: true },
     orderBy: 'sort_order',
+    orderDir,
   });
   const filteredOptions = useMemo(() => options.filter((o) => o.label !== 'DEFAULT'), [options]);
   return { options: filteredOptions, isLoading, originalData };
@@ -154,7 +169,6 @@ export const useActiveRingOptions = () => {
 
 export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
-    // THE FIX: Updated to RPC here as well for consistency
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_employees',
       p_limit: 10000,

@@ -24,7 +24,6 @@ import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { Input, SearchableSelect } from '@/components/common/ui';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
 import { UserRole } from '@/types/user-roles';
-// THIS IS THE FIX: Import the correct, centralized hook
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 
 const OfcPage = () => {
@@ -66,7 +65,8 @@ const OfcPage = () => {
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
-  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES');
+  // Requested change: Sort OFC Types in descending order
+  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES', 'desc');
   const { options: ofcOwnerOptions } = useLookupTypeOptions('OFC_OWNER');
 
   const columns = OfcTableColumns(ofcData);
