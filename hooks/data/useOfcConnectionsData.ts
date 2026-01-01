@@ -6,31 +6,34 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { 
-  buildServerSearchString, 
-  performClientSearch, 
-  performClientPagination 
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientPagination,
 } from '@/hooks/database/search-utils';
 
-export const useOfcConnectionsData = (
-  cableId: string | null
-) => {
-  return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
+export const useOfcConnectionsData = (cableId: string | null) => {
+  return function useData(
+    params: DataQueryHookParams
+  ): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
     // Search Config
     const searchFields = [
-      'system_name', 'connection_type', 'updated_sn_name', 'updated_en_name'
+      'system_name',
+      'connection_type',
+      'updated_sn_name',
+      'updated_en_name',
     ] as (keyof V_ofc_connections_completeRowSchema)[];
-    
+
     // Server search needs specific casts for numbers
     const serverSearchFields = [
-      'system_name', 
-      'connection_type', 
-      'updated_sn_name', 
+      'system_name',
+      'connection_type',
+      'updated_sn_name',
       'updated_en_name',
       'fiber_no_sn::text',
-      'fiber_no_en::text'
+      'fiber_no_en::text',
     ];
 
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
@@ -54,7 +57,7 @@ export const useOfcConnectionsData = (
 
       if (error) throw error;
       return (data as { data: V_ofc_connections_completeRowSchema[] })?.data || [];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery, filters, cableId, serverSearchFields]);
 
     const localQueryFn = useCallback(() => {
@@ -62,9 +65,10 @@ export const useOfcConnectionsData = (
         return localDb.v_ofc_connections_complete.limit(0).toArray();
       }
       return localDb.v_ofc_connections_complete
-        .where('ofc_id').equals(cableId)
+        .where('ofc_id')
+        .equals(cableId)
         .sortBy('fiber_no_sn');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cableId]);
 
     const {
@@ -91,25 +95,25 @@ export const useOfcConnectionsData = (
       // 1. Search
       if (searchQuery) {
         filtered = performClientSearch(filtered, searchQuery, searchFields);
-        
+
         // Manual Numeric Filtering addition
         const lowerQ = searchQuery.toLowerCase();
         if (searchQuery && !isNaN(Number(searchQuery))) {
-            const numericMatches = allConnections.filter(c => 
-                String(c.fiber_no_sn).includes(lowerQ) || String(c.fiber_no_en).includes(lowerQ)
-            );
-            // Union of results
-            const ids = new Set(filtered.map(f => f.id));
-            numericMatches.forEach(m => {
-                if(!ids.has(m.id)) filtered.push(m);
-            });
+          const numericMatches = allConnections.filter(
+            (c) => String(c.fiber_no_sn).includes(lowerQ) || String(c.fiber_no_en).includes(lowerQ)
+          );
+          // Union of results
+          const ids = new Set(filtered.map((f) => f.id));
+          numericMatches.forEach((m) => {
+            if (!ids.has(m.id)) filtered.push(m);
+          });
         }
       }
 
       // 2. Filters
       if (filters.status) {
-         const statusBool = filters.status === 'true';
-         filtered = filtered.filter(c => c.status === statusBool);
+        const statusBool = filters.status === 'true';
+        filtered = filtered.filter((c) => c.status === statusBool);
       }
 
       // 3. Sort (Manual numeric sort for fibers)
@@ -128,7 +132,7 @@ export const useOfcConnectionsData = (
         activeCount,
         inactiveCount,
       };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allConnections, searchQuery, filters, currentPage, pageLimit, cableId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
