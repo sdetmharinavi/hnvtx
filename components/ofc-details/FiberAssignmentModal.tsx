@@ -9,12 +9,13 @@ import { FormCard, FormSearchableSelect } from '@/components/common/form';
 import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { useAssignFiberToConnection } from '@/hooks/database/fiber-assignment-hooks';
 import { createClient } from '@/utils/supabase/client';
-import { useEffect, useMemo } from 'react';
-import { ArrowRight, GitMerge, Radio } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, GitMerge, Radio, Filter, X } from 'lucide-react';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { useRpcRecord } from '@/hooks/database'; // Correct import for record fetching
-import { buildRpcFilters } from '@/hooks/database/utility-functions'; // Import helper
+import { useRpcRecord } from '@/hooks/database';
+import { buildRpcFilters } from '@/hooks/database/utility-functions';
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
 
 interface FiberAssignmentModalProps {
   isOpen: boolean;
@@ -38,6 +39,8 @@ type ConnectionOptionData = {
   connected_system_name: string | null;
   status: boolean | null;
   connected_link_type_name: string | null;
+  connected_link_type_id: string | null; // Needed for filtering
+  media_type_id: string | null; // Needed for filtering
   bandwidth_allocated: string | null;
   vlan: string | null;
   sn_name: string | null;
@@ -51,6 +54,14 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
 }) => {
   const supabase = createClient();
   const { mutate: assignFiber, isPending } = useAssignFiberToConnection();
+
+  // Local Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterLinkType, setFilterLinkType] = useState<string>('');
+  const [filterMediaType, setFilterMediaType] = useState<string>('');
+
+  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
+  const { options: mediaTypeOptions } = useLookupTypeOptions('MEDIA_TYPES');
 
   const {
     control,
@@ -128,9 +139,21 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
   );
 
   const connectionOptions = useMemo(() => {
+    let filtered = connectionsData || [];
+
+    // Filter by Link Type if selected
+    if (filterLinkType) {
+      filtered = filtered.filter((c) => c.connected_link_type_id === filterLinkType);
+    }
+
+    // Filter by Media Type if selected
+    if (filterMediaType) {
+      filtered = filtered.filter((c) => c.media_type_id === filterMediaType);
+    }
+
     return (
-      (connectionsData || [])
-        // FIX: Relax filter to allow connections without a service_name (pure infrastructure links)
+      filtered
+        // Relax filter to allow connections without a service_name (pure infrastructure links)
         .filter((conn) => conn.service_name || conn.system_name || conn.connected_system_name)
         .map((conn) => {
           // Construct a descriptive label
@@ -155,7 +178,7 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
           };
         })
     );
-  }, [connectionsData]);
+  }, [connectionsData, filterLinkType, filterMediaType]);
 
   const onSubmit = (data: FormValues) => {
     if (!fiber?.id) return;
@@ -174,6 +197,11 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
         },
       }
     );
+  };
+
+  const clearFilters = () => {
+    setFilterLinkType('');
+    setFilterMediaType('');
   };
 
   if (!fiber) return null;
@@ -200,6 +228,70 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
         standalone={false} // Embedded in Modal
       >
         <div className="space-y-6">
+          {/* Filters Section */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              >
+                <Filter className="w-4 h-4" />
+                {showFilters ? 'Hide Filters' : 'Filter Services'}
+                {(filterLinkType || filterMediaType) && (
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">
+                    Active
+                  </span>
+                )}
+              </button>
+
+              {(filterLinkType || filterMediaType) && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-xs flex items-center gap-1 text-gray-500 hover:text-red-500"
+                >
+                  <X className="w-3 h-3" /> Clear Filters
+                </button>
+              )}
+            </div>
+
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Link Type</label>
+                  <select
+                    value={filterLinkType}
+                    onChange={(e) => setFilterLinkType(e.target.value)}
+                    className="w-full text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">All Types</option>
+                    {linkTypeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Media Type</label>
+                  <select
+                    value={filterMediaType}
+                    onChange={(e) => setFilterMediaType(e.target.value)}
+                    className="w-full text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">All Media</option>
+                    {mediaTypeOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Connection Selection */}
           <FormSearchableSelect
             name="connection_id"

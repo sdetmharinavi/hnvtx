@@ -12,6 +12,7 @@ interface FiberConnectionCardProps {
 
 export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber, actions }) => {
   const isAllocated = !!fiber.system_name;
+  const isFaulty = !fiber.status; // Check if fiber is inactive/faulty
 
   const startNodeName = fiber.updated_sn_name || fiber.sn_name || 'Start Node';
   const endNodeName = fiber.updated_en_name || fiber.en_name || 'End Node';
@@ -38,7 +39,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
       <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20">
         <div className="flex justify-between items-center gap-3">
           <div className="flex items-center gap-3">
-            {/* Restored: Full Fiber Number Display (Range if different) */}
+            {/* Full Fiber Number Display (Range if different) */}
             <div className="font-mono font-bold text-base bg-linear-to-r from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-900/20 border border-blue-200 dark:border-blue-800/50 px-3 py-1.5 rounded-md text-blue-700 dark:text-blue-300 shadow-sm min-w-16 flex items-center gap-2">
               <span>F-{startFiberNo}</span>
               {startFiberNo !== endFiberNo && (
@@ -49,6 +50,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
               )}
             </div>
 
+            {/* Allocation Status Badge */}
             {isAllocated ? (
               <div className="grid grid-flow-row">
                 <span className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider mb-0.5">
@@ -59,6 +61,10 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                   text={fiber.system_name || ''}
                 />
               </div>
+            ) : isFaulty ? (
+              <span className="inline-flex items-center text-xs font-semibold text-red-700 dark:text-red-300 bg-linear-to-r from-red-50 to-red-100 dark:from-red-900/40 dark:to-red-900/20 px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800/50">
+                Faulty / Inactive
+              </span>
             ) : (
               <span className="inline-flex items-center text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-linear-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/40 dark:to-emerald-900/20 px-3 py-1.5 rounded-md border border-emerald-200 dark:border-emerald-800/50">
                 Available
@@ -185,6 +191,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
 
         {/* Shared Metrics & Remarks */}
         <div className="space-y-2.5">
+          {/* Enhanced Loss Badge */}
           <div className="flex items-center justify-between text-sm bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800/50 shadow-sm">
             <div className="flex items-center gap-2">
               <FiZap className="w-4 h-4 text-amber-600 dark:text-amber-400" />

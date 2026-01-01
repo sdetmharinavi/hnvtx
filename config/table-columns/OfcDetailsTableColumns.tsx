@@ -27,7 +27,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
       'fiber_no_sn',
       'fiber_no_en',
       'logical_path_id',
-      'status',
+      'status', // Status is shown via row styling or separate badge usually, but we omit raw column
       'maintenance_area_name',
       'updated_sn_id',
       'updated_en_id',
@@ -39,7 +39,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         excelHeader: 'System Name',
         sortable: true,
         searchable: true,
-        width: 300,
+        width: 250,
         render: (value) => (
           <div className="flex flex-col justify-center">
             {value ? (
@@ -57,18 +57,20 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         title: 'Type',
         excelHeader: 'Connection Type',
         sortable: true,
+        width: 100,
       },
       fiber_role: {
         title: 'Role',
         excelHeader: 'Fiber Role',
         sortable: true,
+        width: 100,
       },
       updated_sn_name: {
         title: 'End A Node',
         sortable: true,
         searchable: true,
-        // THE FIX: Set alwaysVisible to true so it shows up even if all DB values are null
         alwaysVisible: true,
+        width: 180,
         render: (value, record) => (
           <TruncateTooltip
             text={(value as string) || record.sn_name || '—'}
@@ -80,8 +82,8 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         title: 'End B Node',
         sortable: true,
         searchable: true,
-        // THE FIX: Set alwaysVisible to true
         alwaysVisible: true,
+        width: 180,
         render: (value, record) => (
           <TruncateTooltip
             text={(value as string) || record.en_name || '—'}
@@ -90,76 +92,108 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         ),
       },
       updated_fiber_no_sn: {
-        title: 'End A Fiber',
-        width: 100,
+        title: 'F-A',
+        width: 70,
         sortable: true,
         searchable: true,
         excelFormat: 'integer',
         alwaysVisible: true,
-        render: (value, record) => <span>{(value as number) || record.fiber_no_sn}</span>,
+        render: (value, record) => (
+          <span className="font-mono font-bold">{(value as number) || record.fiber_no_sn}</span>
+        ),
       },
       updated_fiber_no_en: {
-        title: 'End B Fiber',
-        width: 100,
+        title: 'F-B',
+        width: 70,
         sortable: true,
         searchable: true,
         excelFormat: 'integer',
         alwaysVisible: true,
-        render: (value, record) => <span>{(value as number) || record.fiber_no_en}</span>,
+        render: (value, record) => (
+          <span className="font-mono font-bold">{(value as number) || record.fiber_no_en}</span>
+        ),
       },
       otdr_distance_sn_km: {
-        title: 'End A OTDR (km)',
+        title: 'RKM (End A)',
         editable: true,
         sortable: true,
-        searchable: true,
+        width: 110,
+        render: (value) => (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+            {value ? `${value}` : '-'}
+          </span>
+        ),
       },
       otdr_distance_en_km: {
-        title: 'End B OTDR (km)',
+        title: 'RKM (End B)',
         editable: true,
         sortable: true,
-        searchable: true,
+        width: 110,
+        render: (value) => (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800">
+            {value ? `${value}` : '-'}
+          </span>
+        ),
       },
-      updated_sn_id: {
-        title: 'End A Node ID',
-        excelFormat: 'text',
-        render(value, record) {
-          return (
-            <TruncateTooltip
-              text={record.updated_sn_name || record.sn_name || (value as string) || '—'}
-            />
-          );
-        },
-      },
-      updated_en_id: {
-        title: 'End B Node ID',
-        excelFormat: 'text',
-        render(value, record) {
-          return (
-            <TruncateTooltip
-              text={record.updated_en_name || record.en_name || (value as string) || '—'}
-            />
-          );
-        },
-      },
-      en_dom: {
-        title: 'End B D.O.M.',
+      route_loss_db: {
+        title: 'Loss (dB)',
+        editable: true,
         sortable: true,
-        width: 120,
-        searchable: true,
-        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
+        width: 100,
+        render: (value) => (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+            {value ? `${value}` : '-'}
+          </span>
+        ),
+      },
+      sn_power_dbm: {
+        title: 'Pwr A (dBm)',
+        editable: true,
+        sortable: true,
+        width: 110,
+      },
+      en_power_dbm: {
+        title: 'Pwr B (dBm)',
+        editable: true,
+        sortable: true,
+        width: 110,
       },
       sn_dom: {
-        title: 'End A D.O.M.',
+        title: 'DOM A',
         sortable: true,
-        width: 120,
-        searchable: true,
-        render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
+        width: 100,
+        render: (value) =>
+          value ? (
+            <span className="text-xs text-gray-600 dark:text-amber-50">
+              {formatDate(value as string, { format: 'dd-mm-yyyy' })}
+            </span>
+          ) : (
+            '-'
+          ),
       },
-      sn_power_dbm: { title: 'End A (dBm)', editable: true, sortable: true },
-      en_power_dbm: { title: 'End B (dBm)', editable: true, sortable: true },
-      route_loss_db: { title: 'Loss (dB)', editable: true, sortable: true },
+      en_dom: {
+        title: 'DOM B',
+        sortable: true,
+        width: 100,
+        render: (value) =>
+          value ? (
+            <span className="text-xs text-gray-600 dark:text-amber-50">
+              {formatDate(value as string, { format: 'dd-mm-yyyy' })}
+            </span>
+          ) : (
+            '-'
+          ),
+      },
       remark: {
         editable: true,
+        title: 'Remarks',
+        width: 200,
+        render: (value) => (
+          <TruncateTooltip
+            text={value as string}
+            className="text-xs text-gray-800 dark:text-amber-50 italic"
+          />
+        ),
       },
     },
   });
