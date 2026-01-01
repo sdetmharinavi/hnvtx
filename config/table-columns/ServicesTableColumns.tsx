@@ -3,7 +3,7 @@ import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { AlertCircle, ArrowRight, Server } from 'lucide-react';
+import { AlertCircle, ArrowRight, Server, ExternalLink } from 'lucide-react';
 import React from 'react';
 
 // Define the shape of items in the allocated_systems array
@@ -93,10 +93,10 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
           );
         },
       },
-      // NEW: Allocated Systems Column
+      // MODIFIED: Allocated Systems Column with Links
       allocated_systems: {
         title: 'Allotted Systems',
-        width: 220,
+        width: 250,
         render: (value) => {
           const systems = value as AllocatedSystem[] | null;
 
@@ -106,27 +106,39 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
 
           if (systems.length === 1) {
             return (
-              <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
+              <a
+                href={`/dashboard/systems/${systems[0].id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()} // Stop row click
+                className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline group"
+              >
                 <Server className="w-3.5 h-3.5" />
-                <span className="truncate max-w-[180px]" title={systems[0].name}>
+                <span className="truncate max-w-[160px]" title={systems[0].name}>
                   {systems[0].name}
                 </span>
-              </div>
+                <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </a>
             );
           }
 
           return (
             <div className="flex flex-col gap-1">
               {systems.slice(0, 2).map((sys) => (
-                <div
+                <a
                   key={sys.id}
-                  className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300"
+                  href={`/dashboard/systems/${sys.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline group"
                 >
                   <Server className="w-3 h-3 text-blue-500" />
                   <span className="truncate max-w-[180px]" title={sys.name}>
                     {sys.name}
                   </span>
-                </div>
+                  <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
               ))}
               {systems.length > 2 && (
                 <span className="text-[10px] text-gray-500 pl-4">

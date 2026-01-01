@@ -52,8 +52,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
   return (
     <div
-      // Remove onClick here if it conflicts with inner interactive elements,
-      // but usually the specific buttons stopPropagation so this is fine.
       className={`bg-white dark:bg-gray-800 rounded-xl border shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col h-full group relative overflow-hidden ${
         isDuplicate
           ? 'border-amber-400 dark:border-amber-600 ring-2 ring-amber-200 dark:ring-amber-900/50'
@@ -94,7 +92,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </span>
             )}
             {service.bandwidth_allocated && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-linear-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-linear-to-r from-purple-50 to-purple-600 text-white shadow-sm">
                 <FiActivity className="w-3.5 h-3.5" />
                 {service.bandwidth_allocated}
               </span>
@@ -199,14 +197,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             )}
           </div>
 
-          {/* Allocated Systems List with Expansion Logic */}
+          {/* Allocated Systems List with Links */}
           {allocatedSystems.length > 0 && (
             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mt-2 transition-all duration-300">
               <div className="flex justify-between items-center mb-1.5">
                 <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase font-bold flex items-center gap-1">
                   <FiServer className="w-3 h-3" /> Allotted Systems
                 </div>
-                {/* Only show toggle if there are more than 3 systems */}
                 {allocatedSystems.length > 3 && (
                   <button
                     onClick={(e) => {
@@ -228,19 +225,22 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               <div className="flex flex-wrap gap-1.5">
                 {(isExpanded ? allocatedSystems : allocatedSystems.slice(0, 3)).map((sys, i) => {
                   return (
-                    <span
+                    <a
                       key={sys.id + i}
-                      className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:border-blue-400 dark:hover:border-blue-500"
-                      title={
-                        sys.ip_address ? `${formatIP(sys.ip_address)}/${sys.interface}` : sys.name
-                      }
+                      href={`/dashboard/systems/${sys.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()} // Stop propagation so card click doesn't trigger
+                      className="text-xs bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer flex items-center gap-1"
+                      title={`${sys.name} - ${
+                        sys.ip_address ? `${formatIP(sys.ip_address)}` : ''
+                      } / ${sys.interface || ''}`}
                     >
                       {sys.name}
-                    </span>
+                    </a>
                   );
                 })}
 
-                {/* Render the "+X more" badge if not expanded and count > 3 */}
                 {!isExpanded && allocatedSystems.length > 3 && (
                   <button
                     onClick={(e) => {
@@ -272,7 +272,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               className="group/btn hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400"
               title="Edit Service"
             >
-              <FiEdit2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+              <FiEdit2 className="w-4 h-4 mr-1.5 group-hover/btn:scale-110 transition-transform" />
             </Button>
           )}
 

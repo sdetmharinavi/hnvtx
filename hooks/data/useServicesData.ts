@@ -38,11 +38,16 @@ export const useServicesData = (
     const searchString = buildServerSearchString(searchQuery, serverSearchFields);
     const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
 
+    // Remove client-side specific filters from RPC call to avoid SQL errors
+    // allocation_status is handled on the client side because checking array length in dynamic RPC SQL is complex
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { allocation_status, ...cleanRpcFilters } = rpcFilters as Record<string, unknown>;
+
     const { data, error } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_services',
       p_limit: 5000,
       p_offset: 0,
-      p_filters: rpcFilters,
+      p_filters: cleanRpcFilters,
       p_order_by: 'name',
       p_order_dir: 'asc',
     });
@@ -86,14 +91,31 @@ export const useServicesData = (
       filtered = filtered.filter((s) => s.status === statusBool);
     }
 
-    // 3. Sort
+    // 3. Allocation Status Filter (New)
+    if (filters.allocation_status) {
+      filtered = filtered.filter((s) => {
+        // Safe cast as array, assuming the view returns a JSON array
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const systems = s.allocated_systems as any[];
+        const hasSystems = Array.isArray(systems) && systems.length > 0;
+
+        if (filters.allocation_status === 'allocated') {
+          return hasSystems;
+        } else if (filters.allocation_status === 'unallocated') {
+          return !hasSystems;
+        }
+        return true;
+      });
+    }
+
+    // 4. Sort
     filtered = performClientSort(filtered, 'name');
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((s) => s.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    // 4. Paginate
+    // 5. Paginate
     const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
