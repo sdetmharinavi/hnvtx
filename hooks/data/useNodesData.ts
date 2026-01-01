@@ -11,7 +11,7 @@ import {
   buildServerSearchString,
   performClientSearch,
   performClientSort,
-  performClientPagination
+  performClientPagination,
 } from '@/hooks/database/search-utils';
 
 export const useNodesData = (
@@ -21,21 +21,22 @@ export const useNodesData = (
 
   // Search Config
   // THE FIX: Added latitude and longitude
-  const searchFields = useMemo(() => [
-      'name', 
-      'node_type_code', 
-      'remark', 
-      'latitude', 
-      'longitude'
-  ] as (keyof V_nodes_completeRowSchema)[], []);
+  const searchFields = useMemo(
+    () =>
+      [
+        'name',
+        'node_type_code',
+        'remark',
+        'latitude',
+        'longitude',
+      ] as (keyof V_nodes_completeRowSchema)[],
+    []
+  );
 
-  const serverSearchFields = useMemo(() => [
-    'name',
-    'node_type_code',
-    'remark',
-    'latitude::text',
-    'longitude::text'
-  ], []);
+  const serverSearchFields = useMemo(
+    () => ['name', 'node_type_code', 'remark', 'latitude::text', 'longitude::text'],
+    []
+  );
 
   // 1. Online Fetcher
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
@@ -43,7 +44,7 @@ export const useNodesData = (
 
     const rpcFilters = buildRpcFilters({
       ...filters,
-      or: searchString
+      or: searchString,
     });
 
     const { data, error } = await createClient().rpc('get_paged_data', {
@@ -52,7 +53,7 @@ export const useNodesData = (
       p_offset: 0,
       p_filters: rpcFilters,
       p_order_by: 'name',
-      p_order_dir: 'asc'
+      p_order_dir: 'asc',
     });
 
     if (error) throw error;
@@ -87,13 +88,15 @@ export const useNodesData = (
 
     // Filters
     if (filters.node_type_id) {
-        filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
+      filtered = filtered.filter((node) => node.node_type_id === filters.node_type_id);
     }
     if (filters.maintenance_terminal_id) {
-        filtered = filtered.filter((node) => node.maintenance_terminal_id === filters.maintenance_terminal_id);
+      filtered = filtered.filter(
+        (node) => node.maintenance_terminal_id === filters.maintenance_terminal_id
+      );
     }
     if (filters.status) {
-         filtered = filtered.filter((node) => String(node.status) === filters.status);
+      filtered = filtered.filter((node) => String(node.status) === filters.status);
     }
 
     // Sort
@@ -107,12 +110,12 @@ export const useNodesData = (
     const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {
-        data: paginatedData,
-        totalCount,
-        activeCount,
-        inactiveCount
+      data: paginatedData,
+      totalCount,
+      activeCount,
+      inactiveCount,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allNodes, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
