@@ -20,7 +20,6 @@ export const useNodesData = (
   const { currentPage, pageLimit, filters, searchQuery } = params;
 
   // Search Config
-  // THE FIX: Added latitude and longitude
   const searchFields = useMemo(
     () =>
       [
@@ -42,8 +41,12 @@ export const useNodesData = (
   const onlineQueryFn = useCallback(async (): Promise<V_nodes_completeRowSchema[]> => {
     const searchString = buildServerSearchString(searchQuery, serverSearchFields);
 
+    // Filter out client-side only filters (like coordinates_status) before sending to RPC
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { coordinates_status, ...serverFilters } = filters;
+
     const rpcFilters = buildRpcFilters({
-      ...filters,
+      ...serverFilters,
       or: searchString,
     });
 
@@ -97,6 +100,27 @@ export const useNodesData = (
     }
     if (filters.status) {
       filtered = filtered.filter((node) => String(node.status) === filters.status);
+    }
+
+    // NEW: Coordinates Status Filter
+    if (filters.coordinates_status) {
+      if (filters.coordinates_status === 'with_coords') {
+        filtered = filtered.filter(
+          (node) =>
+            node.latitude !== null &&
+            node.latitude !== undefined &&
+            node.longitude !== null &&
+            node.longitude !== undefined
+        );
+      } else if (filters.coordinates_status === 'without_coords') {
+        filtered = filtered.filter(
+          (node) =>
+            node.latitude === null ||
+            node.latitude === undefined ||
+            node.longitude === null ||
+            node.longitude === undefined
+        );
+      }
     }
 
     // Sort

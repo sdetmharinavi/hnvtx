@@ -168,6 +168,21 @@ const NodesPage = () => {
         </div>
 
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          {/* NEW: Coordinates Filter */}
+          <div className="min-w-[160px]">
+            <select
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={(filters.filters.coordinates_status as string) || ''}
+              onChange={(e) =>
+                filters.setFilters((prev) => ({ ...prev, coordinates_status: e.target.value }))
+              }
+            >
+              <option value="">All Locations</option>
+              <option value="with_coords">With Coordinates</option>
+              <option value="without_coords">Without Coordinates</option>
+            </select>
+          </div>
+
           <div className="min-w-[180px]">
             <SearchableSelect
               placeholder="Node Type"
