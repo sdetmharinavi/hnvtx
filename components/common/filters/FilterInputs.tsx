@@ -58,9 +58,7 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
       <SearchableSelect
         options={options}
         value={valueAsString}
@@ -101,9 +99,7 @@ export const InputFilter: React.FC<InputFilterProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        {label}
-      </label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
       <Input
         type="text"
         value={valueAsString}
