@@ -13,6 +13,7 @@ import {
   FiServer,
   FiChevronDown,
   FiChevronUp,
+  FiInfo,
 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
@@ -92,7 +93,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               </span>
             )}
             {service.bandwidth_allocated && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-linear-to-r from-purple-50 to-purple-600 text-white shadow-sm">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-linear-to-r from-purple-500 to-purple-600 text-white shadow-sm">
                 <FiActivity className="w-3.5 h-3.5" />
                 {service.bandwidth_allocated}
               </span>
@@ -129,9 +130,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               <>
                 <div className="flex items-center justify-center py-1">
                   <div className="flex flex-col items-center gap-1">
-                    {/* <div className="w-px h-4 bg-linear-to-b from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500" /> */}
                     <FiArrowRight className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-90" />
-                    {/* <div className="w-px h-4 bg-linear-to-b from-gray-400 to-gray-300 dark:from-gray-500 dark:to-gray-600" /> */}
                   </div>
                 </div>
 
@@ -230,7 +229,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                       href={`/dashboard/systems/${sys.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()} // Stop propagation so card click doesn't trigger
+                      onClick={(e) => e.stopPropagation()} // Stop row click
                       className="text-xs bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer flex items-center gap-1"
                       title={`${sys.name} - ${
                         sys.ip_address ? `${formatIP(sys.ip_address)}` : ''
@@ -252,6 +251,23 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
                     +{allocatedSystems.length - 3} more
                   </button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Remarks Section */}
+          {service.description && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 px-3 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800/50 mt-2">
+              <div className="flex items-start gap-2">
+                <FiInfo className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] uppercase text-amber-700 dark:text-amber-400 font-bold tracking-wider mb-0.5">
+                    Remarks
+                  </div>
+                  <div className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed line-clamp-3">
+                    {service.description}
+                  </div>
+                </div>
               </div>
             </div>
           )}
