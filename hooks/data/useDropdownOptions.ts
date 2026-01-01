@@ -126,14 +126,20 @@ export function useDropdownOptions({
   return { options, isLoading, originalData: data };
 }
 
-// Updated to accept orderDir
-export const useLookupTypeOptions = (category: string, orderDir: 'asc' | 'desc' = 'asc') => {
+// ... (Rest of the file exports) ...
+
+// Updated to accept orderBy
+export const useLookupTypeOptions = (
+  category: string,
+  orderDir: 'asc' | 'desc' = 'asc',
+  orderBy: string = 'sort_order' // Added orderBy parameter with default
+) => {
   const { options, isLoading, originalData } = useDropdownOptions({
     tableName: 'lookup_types',
     valueField: 'id',
     labelField: 'name',
     filters: { category, status: true },
-    orderBy: 'sort_order',
+    orderBy,
     orderDir,
   });
   const filteredOptions = useMemo(() => options.filter((o) => o.label !== 'DEFAULT'), [options]);
