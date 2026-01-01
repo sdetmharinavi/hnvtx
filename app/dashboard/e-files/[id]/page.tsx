@@ -92,8 +92,8 @@ export default function EFileDetailsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-11 gap-6">
+        <div className="space-y-6 xl:col-span-6">
           <Card className="p-0 overflow-hidden border-blue-200 dark:border-blue-800 shadow-sm">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 border-b border-blue-100 dark:border-blue-800">
               <h3 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
@@ -169,7 +169,7 @@ export default function EFileDetailsPage() {
           </Card>
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-5">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 border-b dark:border-gray-700 pb-2">
               Movement History
