@@ -40,8 +40,13 @@ export const useOfcConnectionsData = (cableId: string | null) => {
       if (!cableId) return [];
 
       const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+
+      // Filter out client-side filters (like allocation_status) from RPC params
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { allocation_status, ...serverFilters } = filters;
+
       const rpcFilters = buildRpcFilters({
-        ...filters,
+        ...serverFilters,
         ofc_id: cableId,
         or: searchString,
       });
@@ -114,6 +119,15 @@ export const useOfcConnectionsData = (cableId: string | null) => {
       if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter((c) => c.status === statusBool);
+      }
+
+      // NEW: Allocation Status Filter
+      if (filters.allocation_status) {
+        if (filters.allocation_status === 'available') {
+          filtered = filtered.filter((c) => !c.system_id && !c.logical_path_id);
+        } else if (filters.allocation_status === 'allocated') {
+          filtered = filtered.filter((c) => !!c.system_id || !!c.logical_path_id);
+        }
       }
 
       // 3. Sort (Manual numeric sort for fibers)

@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { PageSpinner, ConfirmModal, Input, Button } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { Row, usePagedData, useTableQuery } from '@/hooks/database'; // CHANGED: Added usePagedData
+import { Row, usePagedData, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS, buildUploadConfig } from '@/constants/table-column-keys';
@@ -433,6 +433,21 @@ export default function OfcCableDetailsPage() {
         </div>
 
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          {/* NEW: Allocation Status Filter */}
+          <div className="min-w-[150px]">
+            <SelectFilter
+              label=""
+              filterKey="allocation_status"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'available', label: 'Available' },
+                { value: 'allocated', label: 'Allocated' },
+              ]}
+              placeholder="All Allocation"
+            />
+          </div>
+
           <div className="min-w-[150px]">
             <SelectFilter
               label=""
