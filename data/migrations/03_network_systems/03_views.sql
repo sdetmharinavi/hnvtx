@@ -84,7 +84,12 @@ SELECT
     -- Aggregated list of systems serving this service
     COALESCE(
       (
-        SELECT jsonb_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.system_name))
+        SELECT jsonb_agg(DISTINCT jsonb_build_object(
+            'id', sys.id, 
+            'name', sys.system_name, 
+            'ip_address', sys.ip_address::text,
+            'interface', sc.system_working_interface
+        ))
         FROM public.system_connections sc
         JOIN public.systems sys ON sc.system_id = sys.id
         WHERE sc.service_id = s.id
@@ -97,7 +102,7 @@ LEFT JOIN public.nodes n2 ON s.end_node_id = n2.id
 LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt ON s.link_type_id = lt.id;
 
--- Grant permissions (Re-applying to be safe after view replacement)
+-- Grant permissions
 GRANT SELECT ON public.v_services TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
 

@@ -12,11 +12,12 @@ import {
   FiAlertTriangle,
   FiServer,
   FiChevronDown,
-  FiChevronUp
+  FiChevronUp,
 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { formatIP } from '@/utils/formatters';
 
 interface ServiceCardProps {
   service: V_servicesRowSchema;
@@ -29,8 +30,10 @@ interface ServiceCardProps {
 
 // Define the shape for allocated systems
 interface AllocatedSystem {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
+  ip_address: string;
+  interface: string;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -49,7 +52,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
   return (
     <div
-      // Remove onClick here if it conflicts with inner interactive elements, 
+      // Remove onClick here if it conflicts with inner interactive elements,
       // but usually the specific buttons stopPropagation so this is fine.
       className={`bg-white dark:bg-gray-800 rounded-xl border shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col h-full group relative overflow-hidden ${
         isDuplicate
@@ -198,51 +201,59 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
           {/* Allocated Systems List with Expansion Logic */}
           {allocatedSystems.length > 0 && (
-             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mt-2 transition-all duration-300">
-                <div className="flex justify-between items-center mb-1.5">
-                   <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase font-bold flex items-center gap-1">
-                      <FiServer className="w-3 h-3" /> Allotted Systems
-                   </div>
-                   {/* Only show toggle if there are more than 3 systems */}
-                   {allocatedSystems.length > 3 && (
-                     <button 
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         setIsExpanded(!isExpanded);
-                       }}
-                       className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold focus:outline-none transition-colors"
-                     >
-                       {isExpanded ? 'Show Less' : 'Show All'}
-                       {isExpanded ? <FiChevronUp className="w-3 h-3" /> : <FiChevronDown className="w-3 h-3" />}
-                     </button>
-                   )}
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mt-2 transition-all duration-300">
+              <div className="flex justify-between items-center mb-1.5">
+                <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase font-bold flex items-center gap-1">
+                  <FiServer className="w-3 h-3" /> Allotted Systems
                 </div>
-                
-                <div className="flex flex-wrap gap-1.5">
-                   {(isExpanded ? allocatedSystems : allocatedSystems.slice(0, 3)).map(sys => (
-                      <span 
-                        key={sys.id} 
-                        className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:border-blue-400 dark:hover:border-blue-500" 
-                        title={sys.name}
-                      >
-                         {sys.name}
-                      </span>
-                   ))}
-                   
-                   {/* Render the "+X more" badge if not expanded and count > 3 */}
-                   {!isExpanded && allocatedSystems.length > 3 && (
-                      <button 
-                        onClick={(e) => {
-                           e.stopPropagation();
-                           setIsExpanded(true);
-                        }}
-                        className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-medium hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
-                      >
-                        +{allocatedSystems.length - 3} more
-                      </button>
-                   )}
-                </div>
-             </div>
+                {/* Only show toggle if there are more than 3 systems */}
+                {allocatedSystems.length > 3 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="text-[10px] flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold focus:outline-none transition-colors"
+                  >
+                    {isExpanded ? 'Show Less' : 'Show All'}
+                    {isExpanded ? (
+                      <FiChevronUp className="w-3 h-3" />
+                    ) : (
+                      <FiChevronDown className="w-3 h-3" />
+                    )}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {(isExpanded ? allocatedSystems : allocatedSystems.slice(0, 3)).map((sys, i) => {
+                  return (
+                    <span
+                      key={sys.id + i}
+                      className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-700 shadow-xs truncate max-w-[140px] transition-all hover:border-blue-400 dark:hover:border-blue-500"
+                      title={
+                        sys.ip_address ? `${formatIP(sys.ip_address)}/${sys.interface}` : sys.name
+                      }
+                    >
+                      {sys.name}
+                    </span>
+                  );
+                })}
+
+                {/* Render the "+X more" badge if not expanded and count > 3 */}
+                {!isExpanded && allocatedSystems.length > 3 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(true);
+                    }}
+                    className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-medium hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                  >
+                    +{allocatedSystems.length - 3} more
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
