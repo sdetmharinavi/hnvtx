@@ -1,7 +1,7 @@
 // path: hooks/database/excel-queries/excel-helpers.ts
-import * as ExcelJS from "exceljs";
-import { Filters, UploadResult } from "@/hooks/database";
-import { TableOrViewName, Row } from "@/hooks/database";
+import * as ExcelJS from 'exceljs';
+import { Filters, UploadResult } from '@/hooks/database';
+import { TableOrViewName, Row } from '@/hooks/database';
 
 export interface Column<T> {
   key: string;
@@ -13,16 +13,16 @@ export interface Column<T> {
   filterable?: boolean;
   editable?: boolean;
   render?: (value: unknown, record: T, index: number) => React.ReactNode;
-  transform?: (value: unknown, record?: T) => unknown; 
+  transform?: (value: unknown, record?: T) => unknown;
   filterOptions?: { label: string; value: unknown }[];
-  align?: "left" | "center" | "right";
+  align?: 'left' | 'center' | 'right';
   hidden?: boolean;
-  excelFormat?: "text" | "number" | "integer" | "date" | "currency" | "percentage" | "json";
+  excelFormat?: 'text' | 'number' | 'integer' | 'date' | 'currency' | 'percentage' | 'json';
   excludeFromExport?: boolean;
-  naturalSort?: boolean; 
+  naturalSort?: boolean;
   excelHeader?: string;
   // NEW: Forces the column to stay visible even if autoHideEmptyColumns is true and data is empty
-  alwaysVisible?: boolean; 
+  alwaysVisible?: boolean;
 }
 
 export interface RPCConfig<TParams = Record<string, unknown>> {
@@ -81,13 +81,16 @@ export interface EnhancedUploadResult extends UploadResult {
 }
 
 export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
-  type: "pattern",
-  pattern: "solid",
+  type: 'pattern',
+  pattern: 'solid',
   fgColor: { argb: color },
 });
 
-export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, record?: T): unknown => {
-
+export const formatCellValue = <T = unknown>(
+  value: unknown,
+  column: Column<T>,
+  record?: T
+): unknown => {
   if (column.transform) {
     return column.transform(value, record);
   }
@@ -97,22 +100,22 @@ export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, 
   }
 
   switch (column.excelFormat) {
-    case "date":
+    case 'date':
       const date = new Date(value as string | number | Date);
       return isNaN(date.getTime()) ? null : date;
-    case "number":
+    case 'number':
       const num = parseFloat(String(value));
       return isNaN(num) ? null : num;
-    case "integer":
+    case 'integer':
       const int = parseInt(String(value), 10);
       return isNaN(int) ? null : int;
-    case "currency":
-      const currencyNum = parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+    case 'currency':
+      const currencyNum = parseFloat(String(value).replace(/[^0-9.-]/g, ''));
       return isNaN(currencyNum) ? null : currencyNum;
-    case "percentage":
+    case 'percentage':
       const percNum = parseFloat(String(value));
       return isNaN(percNum) ? null : percNum / 100;
-    case "json":
+    case 'json':
       if (typeof value === 'object') {
         return JSON.stringify(value, null, 2);
       }
@@ -126,27 +129,26 @@ export const formatCellValue = <T = unknown>(value: unknown, column: Column<T>, 
   }
 };
 
-
 export const applyCellFormatting = <T = unknown>(cell: ExcelJS.Cell, column: Column<T>): void => {
   switch (column.excelFormat) {
-    case "date":
-      cell.numFmt = "mm/dd/yyyy";
+    case 'date':
+      cell.numFmt = 'mm/dd/yyyy';
       break;
-    case "currency":
+    case 'currency':
       cell.numFmt = '"$"#,##0.00';
       break;
-    case "percentage":
-      cell.numFmt = "0.00%";
+    case 'percentage':
+      cell.numFmt = '0.00%';
       break;
-    case "number":
-      cell.numFmt = "#,##0.00";
+    case 'number':
+      cell.numFmt = '#,##0.00';
       break;
-    case "integer":
-      cell.numFmt = "0";
+    case 'integer':
+      cell.numFmt = '0';
       break;
-    case "text":
-    case "json":
-      cell.numFmt = "@";
+    case 'text':
+    case 'json':
+      cell.numFmt = '@';
       break;
   }
   if (column.align) {
@@ -160,33 +162,33 @@ export const removeSubnet = (value: unknown): string | null => {
 };
 
 export const getDefaultStyles = (): ExcelStyles => ({
-  headerFont: { bold: true, color: { argb: "FFFFFFFF" }, size: 12 },
-  headerFill: createFillPattern("FF2563EB"),
+  headerFont: { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 },
+  headerFill: createFillPattern('FF2563EB'),
   dataFont: { size: 11 },
-  alternateRowFill: createFillPattern("FFF8F9FA"),
+  alternateRowFill: createFillPattern('FFF8F9FA'),
   borderStyle: {
-    top: { style: "thin" },
-    left: { style: "thin" },
-    bottom: { style: "thin" },
-    right: { style: "thin" },
+    top: { style: 'thin' },
+    left: { style: 'thin' },
+    bottom: { style: 'thin' },
+    right: { style: 'thin' },
   },
 });
 export const sanitizeFileName = (fileName: string): string =>
-  fileName.replace(/[^a-z0-9.-]/gi, "_").replace(/_{2,}/g, "_");
+  fileName.replace(/[^a-z0-9.-]/gi, '_').replace(/_{2,}/g, '_');
 export const convertFiltersToRPCParams = (filters?: Filters): Record<string, unknown> => {
   if (!filters) return {};
   const rpcParams: Record<string, unknown> = {};
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") rpcParams[key] = value;
+    if (value !== undefined && value !== null && value !== '') rpcParams[key] = value;
   });
   return rpcParams;
 };
 export const generateUUID = (): string => {
   const g = globalThis as { crypto?: { randomUUID?: () => string } };
-  if (g && g.crypto && typeof g.crypto.randomUUID === "function") return g.crypto.randomUUID();
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+  if (g && g.crypto && typeof g.crypto.randomUUID === 'function') return g.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0,
-      v = c === "x" ? r : (r & 0x3) | 0x8;
+      v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 };
@@ -226,7 +228,7 @@ export const validateValue = (
 ): ValidationError | null => {
   if (isRequired) {
     const isEmpty =
-      value === null || value === undefined || (typeof value === "string" && value.trim() === "");
+      value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
     if (isEmpty)
       return {
         rowIndex: -1,
@@ -235,12 +237,16 @@ export const validateValue = (
         error: `Required field "${columnName}" is empty`,
       };
   }
-  if (value !== null && value !== undefined && value !== "") {
-    if ((columnName === "id" || columnName.endsWith("_id")) && columnName !== "transnet_id" && columnName !== "maan_node_id") {
+  if (value !== null && value !== undefined && value !== '') {
+    if (
+      (columnName === 'id' || columnName.endsWith('_id')) &&
+      columnName !== 'transnet_id' &&
+      columnName !== 'maan_node_id'
+    ) {
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const strValue = String(value).trim();
-      if (strValue && !uuidRegex.test(strValue) && strValue !== "")
+      if (strValue && !uuidRegex.test(strValue) && strValue !== '')
         return {
           rowIndex: -1,
           column: columnName,
@@ -248,7 +254,7 @@ export const validateValue = (
           error: `Invalid UUID format for "${columnName}": ${strValue}`,
         };
     }
-    if (columnName.toLowerCase().includes("email")) {
+    if (columnName.toLowerCase().includes('email')) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const strValue = String(value).trim();
       if (strValue && !emailRegex.test(strValue))
@@ -260,7 +266,7 @@ export const validateValue = (
         };
     }
     const isIPField =
-      columnName === "ip_address" || columnName.endsWith("_ip") || columnName.includes("ipaddr");
+      columnName === 'ip_address' || columnName.endsWith('_ip') || columnName.includes('ipaddr');
     if (isIPField) {
       const ipRegex =
         /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
