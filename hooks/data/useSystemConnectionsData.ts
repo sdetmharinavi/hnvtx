@@ -67,7 +67,6 @@ export const useSystemConnectionsData = (
       'services_ip',
       'remark',
       'vlan',
-      'en_interface',
       'sn_interface'
     ] as (keyof V_system_connections_completeRowSchema)[],
     []);
@@ -85,7 +84,6 @@ export const useSystemConnectionsData = (
       'services_ip::text',
       'remark',
       'vlan::text',
-      'en_interface',
       'sn_interface'
     ], []);
 
