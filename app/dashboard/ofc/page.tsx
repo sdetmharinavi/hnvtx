@@ -25,6 +25,7 @@ import { Input, SearchableSelect } from '@/components/common/ui';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { SelectFilter } from '@/components/common/filters/FilterInputs';
 
 const OfcPage = () => {
   const router = useRouter();
@@ -65,8 +66,9 @@ const OfcPage = () => {
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
-  // Requested change: Sort OFC Types in descending order
-  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES', 'desc');
+  // Requested change: Sort OFC Types in descending order by name
+  // We specify 'name' as the orderBy column to ensure "24F" > "12F" > "6F" logic works with localeCompare
+  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES', 'desc', 'name');
   const { options: ofcOwnerOptions } = useLookupTypeOptions('OFC_OWNER');
 
   const columns = OfcTableColumns(ofcData);
@@ -149,12 +151,15 @@ const OfcPage = () => {
 
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
           <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Cable Type"
+            {/* THE FIX: Use SelectFilter with sortOptions={false} to preserve descending order from hook */}
+            <SelectFilter
+              label=""
+              filterKey="ofc_type_id"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
               options={ofcTypeOptions}
-              value={filters.filters.ofc_type_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, ofc_type_id: v }))}
-              clearable
+              placeholder="Cable Type"
+              sortOptions={false}
             />
           </div>
           <div className="min-w-[160px]">
