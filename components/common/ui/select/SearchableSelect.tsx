@@ -69,6 +69,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (serverSide) return options;
     const processedOptions = [...options];
 
+    // Client-side natural sort
     if (sortOptions) {
       processedOptions.sort((a, b) =>
         a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true })
@@ -115,13 +116,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         top: shouldFlip ? 'auto' : `${rect.bottom + 4}px`,
         bottom: shouldFlip ? `${viewportHeight - rect.top + 4}px` : 'auto',
         left: `${rect.left}px`,
-        width: `${rect.width}px`,
+        // Use minWidth instead of strict width to allow expansion for long text
+        minWidth: `${rect.width}px`,
+        maxWidth: '90vw', // Prevent going off-screen on small devices
         zIndex: 99999,
       });
     }
   }, [isOpen, maxHeight]);
 
-  // THE FIX: Enhanced Event Listeners for Scrolling
   useEffect(() => {
     if (!isOpen) return;
 
@@ -136,16 +138,13 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       }
     };
 
-    // Close on any scroll event (window or containers) to prevent detachment
     const handleScroll = (event: Event) => {
-      // Ignore scroll events coming from inside the dropdown itself
       if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
         return;
       }
       setIsOpen(false);
     };
 
-    // Use 'true' for capture phase to catch scroll events from any child container
     window.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleScroll);

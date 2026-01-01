@@ -59,7 +59,7 @@ export const SelectFilter: React.FC<SelectFilterProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div>
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
       <SearchableSelect
         options={options}
