@@ -24,8 +24,8 @@ import { useOnlineStatus } from './useOnlineStatus';
 import { addMutationToQueue } from './data/useMutationQueue';
 import { getTable } from '@/hooks/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
-import { UseQueryResult } from '@tanstack/react-query';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { UseQueryResult } from '@tanstack/react-query';
 
 export type RecordWithId = {
   id: string | number | null;
@@ -70,6 +70,7 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   displayNameField?: (keyof V & string) | (keyof V & string)[];
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
   idType?: 'string' | 'number';
+  initialFilters?: Filters; // ADDED: Allow setting default filters on init
 }
 
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
@@ -80,6 +81,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   displayNameField = 'name',
   processDataForSave,
   idType = 'string',
+  initialFilters = {}, // ADDED: Default to empty object
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -89,7 +91,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [currentPage, _setCurrentPage] = useState(1);
   const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, _setSearchQuery] = useState('');
-  const [filters, _setFilters] = useState<Filters>({});
+
+  // MODIFIED: Initialize state with the passed initialFilters
+  const [filters, _setFilters] = useState<Filters>(initialFilters);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
@@ -141,12 +146,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   });
 
   // --- SMART SYNC HELPER (Write-Through Cache) ---
-  // If the record was just updated online, fetch it via RPC (to get View computed fields)
-  // and write immediately to Dexie.
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
       const targetTable = localTableName || tableName;
-      // We use the view name if available, otherwise table name, to get full data structure
       const viewName = localTableName || tableName;
 
       try {
@@ -165,11 +167,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           const record = records[0];
           const table = getTable(targetTable);
           await table.put(record);
-          // console.log(`[useCrudManager] Write-Through: Synced record ${id} to ${targetTable}`);
         }
       } catch (err) {
         console.error('[useCrudManager] Failed to sync single record:', err);
-        // Fallback: Just trigger a standard refetch
         refetch();
       }
     },
@@ -177,12 +177,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
-    optimisticUpdate: false, // We handle our own optimistic update via Dexie
+    optimisticUpdate: false,
     onSuccess: async (data) => {
       toast.success('Record created successfully.');
       closeModal();
 
-      // Write-Through: If we got data back, sync it to Dexie immediately
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newId = (data[0] as any).id;
@@ -200,7 +199,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       toast.success('Record updated successfully.');
       closeModal();
 
-      // Write-Through
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatedId = (data[0] as any).id;
@@ -217,7 +215,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Status updated successfully.');
 
-      // Write-Through
       if (data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = (data as any).id;
@@ -242,9 +239,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await table.bulkDelete(idsToDelete as any);
-        console.log(
-          `[useCrudManager] Locally deleted ${idsToDelete.length} items from ${targetTable}`
-        );
       } catch (e) {
         console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
       }
@@ -255,9 +249,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const deleteManager = useDeleteManager({
     tableName,
     onSuccess: async (deletedIds) => {
-      // Clean up Dexie immediately
       await handleLocalCleanup(deletedIds);
-      // Then trigger network refetch to be safe
       refetch();
       handleClearSelection();
     },
@@ -345,7 +337,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               payload: newRecord,
             });
           }
-          refetch(); // This will pull the new local data immediately
+          refetch();
           closeModal();
           toast.info('Saved offline. Will sync when online.');
         } catch (err) {
@@ -367,7 +359,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     ]
   );
 
-  // --- DELETE HANDLER ---
   const handleDelete = useCallback(
     async (record: RecordWithId) => {
       if (!record.id) {
@@ -381,7 +372,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (isOnline) {
         deleteManager.deleteSingle(itemToDelete);
       } else {
-        // Offline custom delete handler
         deleteManager.deleteSingle(itemToDelete, async (ids) => {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(ids[0]) : ids[0];

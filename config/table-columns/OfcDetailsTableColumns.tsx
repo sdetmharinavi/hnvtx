@@ -93,7 +93,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
       },
       updated_fiber_no_sn: {
         title: 'F-A',
-        width: 70,
+        width: 40,
         sortable: true,
         searchable: true,
         excelFormat: 'integer',
@@ -104,7 +104,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
       },
       updated_fiber_no_en: {
         title: 'F-B',
-        width: 70,
+        width: 40,
         sortable: true,
         searchable: true,
         excelFormat: 'integer',

@@ -54,6 +54,8 @@ const OfcPage = () => {
     localTableName: 'v_ofc_cables_complete',
     dataQueryHook: useOfcData,
     displayNameField: 'route_name',
+    // ADDED: Set default owner to BSNL (UUID provided)
+    initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
   });
 
   const isInitialLoad = isLoading && ofcData.length === 0;
