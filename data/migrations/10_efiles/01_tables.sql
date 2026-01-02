@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.file_movements (
     performed_by_user_id UUID NOT NULL REFERENCES auth.users(id) DEFAULT auth.uid(),
     
     action_type TEXT NOT NULL CHECK (action_type IN ('initiated', 'forwarded', 'returned', 'closed')),
+    action_date TIMESTAMPTZ DEFAULT NOW(),
     remarks TEXT,
     
     created_at TIMESTAMPTZ DEFAULT NOW()

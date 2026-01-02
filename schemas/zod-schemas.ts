@@ -378,6 +378,7 @@ export const fiber_splicesUpdateSchema = z.object({
 });
 
 export const file_movementsRowSchema = z.object({
+  action_date: z.iso.datetime().nullable(),
   action_type: z.string(),
   created_at: z.iso.datetime().nullable(),
   file_id: z.uuid(),
@@ -389,6 +390,7 @@ export const file_movementsRowSchema = z.object({
 });
 
 export const file_movementsInsertSchema = z.object({
+  action_date: z.iso.datetime().nullable().optional(),
   action_type: z.string(),
   created_at: z.iso.datetime().nullable().optional(),
   file_id: z.uuid(),
@@ -400,6 +402,7 @@ export const file_movementsInsertSchema = z.object({
 });
 
 export const file_movementsUpdateSchema = z.object({
+  action_date: z.iso.datetime().nullable().optional(),
   action_type: z.string().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   file_id: z.uuid().optional(),
@@ -1530,6 +1533,7 @@ export const v_end_to_end_pathsRowSchema = z.object({
 });
 
 export const v_file_movements_extendedRowSchema = z.object({
+  action_date: z.iso.datetime().nullable(),
   action_type: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
   file_id: z.uuid().nullable(),

@@ -1,7 +1,7 @@
 // components/employee/EmployeeCard.tsx
 import React from 'react';
 import { V_employeesRowSchema } from '@/schemas/zod-schemas';
-import { FiPhone, FiMail, FiMapPin, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import { FiPhone, FiMail, FiMapPin, FiTrash2, FiEdit2, FiMessageSquare } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui';
 import { Button } from '@/components/common/ui/Button';
 
@@ -130,6 +130,28 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
             )}
           </div>
 
+          {/* Remark Section */}
+          {employee.remark && (
+            <div className="mb-4 p-3 rounded-lg bg-linear-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800/50">
+              <div className="flex items-start gap-2">
+                <div className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  <FiMessageSquare className="w-3 h-3" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                    Note
+                  </div>
+                  <p
+                    className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed line-clamp-3"
+                    title={employee.remark}
+                  >
+                    {employee.remark}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           {canEdit && (
             <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -212,6 +234,26 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
             <span className="text-gray-700 dark:text-gray-300 truncate">
               {employee.maintenance_area_name}
             </span>
+          </div>
+        )}
+
+        {/* Remark Section - List View */}
+        {employee.remark && (
+          <div className="p-2.5 rounded-lg bg-linear-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800/50">
+            <div className="flex items-start gap-2">
+              <FiMessageSquare className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">
+                  Note
+                </div>
+                <p
+                  className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed line-clamp-2"
+                  title={employee.remark}
+                >
+                  {employee.remark}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

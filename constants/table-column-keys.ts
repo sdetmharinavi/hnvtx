@@ -985,6 +985,7 @@ const TABLE_COLUMN_OBJECTS = {
   },
   file_movements: {
     action_type: "action_type",
+    action_date: "action_date",
     created_at: "created_at",
     file_id: "file_id",
     from_employee_id: "from_employee_id",
@@ -1127,6 +1128,7 @@ const TABLE_COLUMN_OBJECTS = {
   },
   v_file_movements_extended: {
     action_type: "action_type",
+    action_date: "action_date",
     created_at: "created_at",
     file_id: "file_id",
     from_employee_designation: "from_employee_designation",

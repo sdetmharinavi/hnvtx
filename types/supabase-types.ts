@@ -1344,6 +1344,7 @@ export type Database = {
       }
       file_movements: {
         Row: {
+          action_date: string | null
           action_type: string
           created_at: string | null
           file_id: string
@@ -1354,6 +1355,7 @@ export type Database = {
           to_employee_id: string
         }
         Insert: {
+          action_date?: string | null
           action_type: string
           created_at?: string | null
           file_id: string
@@ -1364,6 +1366,7 @@ export type Database = {
           to_employee_id: string
         }
         Update: {
+          action_date?: string | null
           action_type?: string
           created_at?: string | null
           file_id?: string
@@ -3963,6 +3966,7 @@ export type Database = {
       }
       v_file_movements_extended: {
         Row: {
+          action_date: string | null
           action_type: string | null
           created_at: string | null
           file_id: string | null
@@ -5582,15 +5586,26 @@ export type Database = {
           route_name: string
         }[]
       }
-      forward_e_file: {
-        Args: {
-          p_action_type?: string
-          p_file_id: string
-          p_remarks: string
-          p_to_employee_id: string
-        }
-        Returns: undefined
-      }
+      forward_e_file:
+        | {
+            Args: {
+              p_action_type?: string
+              p_file_id: string
+              p_remarks: string
+              p_to_employee_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_action_date?: string
+              p_action_type?: string
+              p_file_id: string
+              p_remarks: string
+              p_to_employee_id: string
+            }
+            Returns: undefined
+          }
       generate_ring_connection_paths: {
         Args: { p_ring_id: string }
         Returns: {
@@ -5819,18 +5834,32 @@ export type Database = {
           value: Json
         }[]
       }
-      initiate_e_file: {
-        Args: {
-          p_category: string
-          p_description: string
-          p_file_number: string
-          p_initiator_employee_id: string
-          p_priority: string
-          p_remarks: string
-          p_subject: string
-        }
-        Returns: string
-      }
+      initiate_e_file:
+        | {
+            Args: {
+              p_category: string
+              p_description: string
+              p_file_number: string
+              p_initiator_employee_id: string
+              p_priority: string
+              p_remarks: string
+              p_subject: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_action_date?: string
+              p_category: string
+              p_description: string
+              p_file_number: string
+              p_initiator_employee_id: string
+              p_priority: string
+              p_remarks: string
+              p_subject: string
+            }
+            Returns: string
+          }
       is_super_admin: { Args: never; Returns: boolean }
       issue_inventory_item: {
         Args: {
@@ -5952,6 +5981,14 @@ export type Database = {
           p_file_id: string
           p_priority: string
           p_subject: string
+        }
+        Returns: undefined
+      }
+      update_file_movement: {
+        Args: {
+          p_action_date: string
+          p_movement_id: string
+          p_remarks: string
         }
         Returns: undefined
       }

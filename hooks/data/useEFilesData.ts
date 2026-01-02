@@ -9,6 +9,7 @@ import {
   ForwardFilePayload,
   v_e_files_extendedRowSchema,
   v_file_movements_extendedRowSchema,
+  UpdateMovementPayload
 } from "@/schemas/efile-schemas";
 import { z } from "zod";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
@@ -27,11 +28,8 @@ export interface UpdateFilePayload {
 }
 
 // --- HELPER: SYNC SINGLE FILE TO LOCAL DB ---
-// This ensures that after a server mutation, the local DB is updated immediately
-// so the UI reflects changes without waiting for a full background sync.
 const syncFileToLocal = async (fileId: string) => {
   try {
-    // 1. Fetch the fresh File Record
     const { data: fileData, error: fileError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_e_files_extended',
       p_limit: 1,
@@ -43,10 +41,9 @@ const syncFileToLocal = async (fileId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fileRecord = (fileData as any)?.data?.[0] as V_e_files_extendedRowSchema;
 
-    // 2. Fetch the fresh Movements History
     const { data: movesData, error: movesError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_file_movements_extended',
-      p_limit: 100, // Reasonable limit for history
+      p_limit: 100,
       p_offset: 0,
       p_filters: { file_id: fileId }
     });
@@ -55,7 +52,6 @@ const syncFileToLocal = async (fileId: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const movementRecords = (movesData as any)?.data as V_file_movements_extendedRowSchema[];
 
-    // 3. Update Dexie Atomically
     await localDb.transaction('rw', localDb.v_e_files_extended, localDb.v_file_movements_extended, async () => {
       if (fileRecord) {
         await localDb.v_e_files_extended.put(fileRecord);
@@ -67,7 +63,6 @@ const syncFileToLocal = async (fileId: string) => {
 
   } catch (err) {
     console.error("Failed to sync file to local DB:", err);
-    // Don't throw here, let the UI invalidate anyway so it might try to fetch online
   }
 };
 
@@ -144,7 +139,8 @@ export function useEFileDetails(fileId: string) {
         p_filters: { file_id: fileId },
         p_limit: 100,
         p_offset: 0,
-        p_order_by: 'created_at',
+        // Sort by action_date instead of created_at
+        p_order_by: 'action_date',
         p_order_dir: 'desc'
       });
 
@@ -170,21 +166,28 @@ export function useEFileDetails(fileId: string) {
        const localFile = await localDb.v_e_files_extended.get(fileId);
        
        if (localFile) {
+          // Sort local history by action_date if available
           const localHistory = await localDb.v_file_movements_extended
              .where('file_id').equals(fileId)
-             .reverse().sortBy('created_at'); 
+             .toArray();
+             
+          localHistory.sort((a, b) => {
+              const dateA = new Date(a.action_date || a.created_at || 0).getTime();
+              const dateB = new Date(b.action_date || b.created_at || 0).getTime();
+              return dateB - dateA; // Descending
+          });
           
           return {
              file: localFile,
-             history: localHistory
+             history: localHistory as z.infer<typeof v_file_movements_extendedRowSchema>[]
           };
        }
 
        // 2. If no local data, force online
        return onlineQueryFn();
     },
-    refetchOnMount: true, // Ensure we check for freshness when entering details
-    staleTime: 5 * 60 * 1000 // 5 minutes stale time for local reads
+    refetchOnMount: true, 
+    staleTime: 5 * 60 * 1000 
   });
 }
 
@@ -205,15 +208,16 @@ export function useInitiateFile() {
         p_category: payload.category,
         p_priority: payload.priority,
         p_remarks: payload.remarks || 'File initiated',
-        p_initiator_employee_id: payload.initiator_employee_id
+        p_initiator_employee_id: payload.initiator_employee_id,
+        // Added action_date
+        p_action_date: payload.action_date || new Date().toISOString()
       });
       if (error) throw error;
-      return data; // Returns the new UUID
+      return data; 
     },
     onSuccess: async (newFileId) => {
       toast.success("E-File initiated successfully!");
       if (newFileId) {
-          // Perform Write-Through to update local DB immediately
           await syncFileToLocal(newFileId);
       }
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
@@ -241,7 +245,6 @@ export function useUpdateFileDetails() {
     },
     onSuccess: async (_, vars) => {
       toast.success("File details updated!");
-      // Write-Through
       await syncFileToLocal(vars.file_id);
       
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
@@ -263,19 +266,46 @@ export function useForwardFile() {
         p_file_id: payload.file_id,
         p_to_employee_id: payload.to_employee_id,
         p_remarks: payload.remarks,
-        p_action_type: payload.action_type
+        p_action_type: payload.action_type,
+        // Added action_date
+        p_action_date: payload.action_date || new Date().toISOString()
       });
       if (error) throw error;
     },
     onSuccess: async (_, vars) => {
       toast.success(`File ${vars.action_type} successfully!`);
-      // THE FIX: Write-Through to Local DB
       await syncFileToLocal(vars.file_id);
       
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
       queryClient.invalidateQueries({ queryKey: ['e-file-details', vars.file_id] });
     },
     onError: (err) => toast.error(`Failed: ${err.message}`)
+  });
+}
+
+// NEW: Update Movement Hook
+export function useUpdateMovement() {
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+
+  return useMutation({
+    mutationFn: async (payload: UpdateMovementPayload & { fileId: string }) => {
+      if (!isOnline) throw new Error("Editing movements requires an online connection.");
+
+      const { error } = await supabase.rpc('update_file_movement', {
+        p_movement_id: payload.movement_id,
+        p_remarks: payload.remarks,
+        p_action_date: payload.action_date
+      });
+      if (error) throw error;
+    },
+    onSuccess: async (_, vars) => {
+      toast.success("Movement updated successfully!");
+      // We sync the whole file to refresh the timeline
+      await syncFileToLocal(vars.fileId);
+      queryClient.invalidateQueries({ queryKey: ['e-file-details', vars.fileId] });
+    },
+    onError: (err) => toast.error(`Update failed: ${err.message}`)
   });
 }
 
@@ -295,7 +325,6 @@ export function useCloseFile() {
     },
     onSuccess: async (_, vars) => {
       toast.success("File closed successfully!");
-      // Write-Through
       await syncFileToLocal(vars.fileId);
 
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
@@ -318,7 +347,6 @@ export function useDeleteFile() {
     },
     onSuccess: async (_, fileId) => {
       toast.success("File deleted successfully!");
-      // Local Cleanup
       await localDb.v_e_files_extended.delete(fileId);
       await localDb.v_file_movements_extended.where('file_id').equals(fileId).delete();
       

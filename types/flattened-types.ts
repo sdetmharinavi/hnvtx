@@ -356,6 +356,7 @@ export type Fiber_splicesUpdate = {
 };
 
 export type File_movementsRow = {
+    action_date: string | null;
     action_type: string;
     created_at: string | null;
     file_id: string;
@@ -367,6 +368,7 @@ export type File_movementsRow = {
 };
 
 export type File_movementsInsert = {
+    action_date?: string | null;
     action_type: string;
     created_at?: string | null;
     file_id: string;
@@ -378,6 +380,7 @@ export type File_movementsInsert = {
 };
 
 export type File_movementsUpdate = {
+    action_date?: string | null;
     action_type?: string;
     created_at?: string | null;
     file_id?: string;
@@ -1510,6 +1513,7 @@ export type V_end_to_end_pathsRow = {
 };
 
 export type V_file_movements_extendedRow = {
+    action_date: string | null;
     action_type: string | null;
     created_at: string | null;
     file_id: string | null;

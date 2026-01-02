@@ -35,6 +35,8 @@ export const v_file_movements_extendedRowSchema = z.object({
   action_type: z.enum(['initiated', 'forwarded', 'returned', 'closed']),
   remarks: z.string().nullable(),
   created_at: z.string(),
+  // ADDED: Action Date
+  action_date: z.string().optional().nullable(),
   
   from_employee_id: z.uuid().nullable(),
   from_employee_name: z.string().nullable(),
@@ -58,6 +60,8 @@ export const initiateFileSchema = z.object({
   priority: z.enum(['normal', 'urgent', 'immediate']),
   remarks: z.string().optional(),
   initiator_employee_id: z.string().uuid("Initiator employee is required"),
+  // ADDED: Optional date
+  action_date: z.string().optional().nullable(),
 });
 export type InitiateFilePayload = z.infer<typeof initiateFileSchema>;
 
@@ -66,5 +70,15 @@ export const forwardFileSchema = z.object({
   to_employee_id: z.string().uuid("Recipient employee is required"),
   remarks: z.string().min(1, "Remarks are required"),
   action_type: z.enum(['forwarded', 'returned']).default('forwarded'),
+  // ADDED: Optional date
+  action_date: z.string().optional().nullable(),
 });
 export type ForwardFilePayload = z.infer<typeof forwardFileSchema>;
+
+// ADDED: Schema for editing an existing movement
+export const updateMovementSchema = z.object({
+  movement_id: z.uuid(),
+  remarks: z.string().min(1, "Remarks are required"),
+  action_date: z.string().min(1, "Date is required"),
+});
+export type UpdateMovementPayload = z.infer<typeof updateMovementSchema>;
