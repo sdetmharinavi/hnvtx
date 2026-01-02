@@ -215,7 +215,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!disabled) setIsOpen(!isOpen);
   };
 
-  const baseClasses = `relative w-full rounded-md border px-3 py-2 transition-all duration-200 cursor-pointer
+  // THE FIX: Changed 'rounded-md' to 'rounded-lg' and added 'text-sm' to match standard select inputs.
+  const baseClasses = `relative w-full rounded-lg border px-3 py-2 transition-all duration-200 cursor-pointer text-sm
     ${
       error
         ? 'border-red-300 dark:border-red-600 focus-within:ring-red-500'
@@ -234,6 +235,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
+      // THE FIX: Changed to rounded-lg
       className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
     >
       <div className="p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
