@@ -153,7 +153,7 @@ function NavItems() {
           },
           {
             id: 'ofc-connections',
-            label: 'Fiber Inventory',
+            label: 'Fiber Connections',
             href: '/dashboard/ofc/connections',
             icon: <FiActivity className="h-5 w-5" />,
             roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes

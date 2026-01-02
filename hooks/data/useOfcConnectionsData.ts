@@ -24,6 +24,9 @@ export const useOfcConnectionsData = (cableId: string | null) => {
       'connection_type',
       'updated_sn_name',
       'updated_en_name',
+      'remark',
+      'updated_fiber_no_en',
+      'updated_fiber_no_sn',
     ] as (keyof V_ofc_connections_completeRowSchema)[];
 
     // Server search needs specific casts for numbers
@@ -32,8 +35,9 @@ export const useOfcConnectionsData = (cableId: string | null) => {
       'connection_type',
       'updated_sn_name',
       'updated_en_name',
-      'fiber_no_sn::text',
-      'fiber_no_en::text',
+      'remark::text',
+      'updated_fiber_no_en::text',
+      'updated_fiber_no_sn::text',
     ];
 
     const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
