@@ -20,7 +20,7 @@ export const useAllOfcConnectionsData = (
 
   // Search Config
   const searchFields = useMemo(
-    () => ['ofc_route_name', 'system_name', 'sn_name', 'en_name', 'maintenance_area_name'] as (keyof V_ofc_connections_completeRowSchema)[],
+    () => ['ofc_route_name', 'system_name', 'sn_name', 'en_name', 'maintenance_area_name', 'remark'] as (keyof V_ofc_connections_completeRowSchema)[],
     []
   );
   const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);

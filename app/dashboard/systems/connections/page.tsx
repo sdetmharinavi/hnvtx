@@ -4,7 +4,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { DebouncedInput, ErrorDisplay } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -20,7 +20,6 @@ import { SystemConnectionDetailsModal } from '@/components/system-details/System
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { useRouter } from 'next/navigation';
-import { Input } from '@/components/common/ui/Input';
 import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
 import { Row } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
@@ -290,13 +289,14 @@ export default function GlobalConnectionsPage() {
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
         <div className="w-full lg:w-96">
-          <Input
+          <DebouncedInput
             placeholder="Search service, system, or ID..."
             value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
+            onChange={(value) => search.setSearchQuery(value)}
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
+            debounce={300}
           />
         </div>
 

@@ -4,7 +4,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ErrorDisplay, DebouncedInput } from '@/components/common/ui'; // IMPORT DebouncedInput
 import { DataTable } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
@@ -14,12 +14,11 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { FiActivity, FiUpload, FiList, FiSearch } from 'react-icons/fi';
 import { useAllOfcConnectionsData } from '@/hooks/data/useAllOfcConnectionsData';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { Input } from '@/components/common/ui/Input';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { Filters } from '@/hooks/database'; // THE FIX: Import Filters type
+import { Filters } from '@/hooks/database';
 
 export default function GlobalOfcConnectionsPage() {
   const supabase = createClient();
@@ -30,7 +29,6 @@ export default function GlobalOfcConnectionsPage() {
     !!isSuperAdmin ||
     [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
 
-  // THE FIX: Use Filters type instead of Record<string, string>
   const [filters, setFilters] = useState<Filters>({});
 
   const {
@@ -52,7 +50,6 @@ export default function GlobalOfcConnectionsPage() {
     searchColumn: ['ofc_route_name', 'system_name'],
   });
 
-  // --- UPLOAD LOGIC ---
   const { mutate: uploadFibers, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
@@ -143,16 +140,17 @@ export default function GlobalOfcConnectionsPage() {
         isFetching={isFetching}
       />
 
-      {/* Sticky Filter Bar */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
         <div className="w-full lg:w-96">
-          <Input
+          {/* THE FIX: Replaced Input with DebouncedInput */}
+          <DebouncedInput
             placeholder="Search route, system, node..."
             value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
+            onChange={(value) => search.setSearchQuery(value)}
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
+            debounce={300} // Optional customization
           />
         </div>
 

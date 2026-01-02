@@ -2,6 +2,7 @@
 export { Button } from './Button';
 export { Card, CardHeader, CardContent, CardFooter, CardTitle, CardDescription, CardAction } from './card';
 export { Input } from './Input';
+export { DebouncedInput } from './Input/DebouncedInput';
 export { LoadingSpinner, BlurLoader, ButtonSpinner, PageSpinner, CardSpinner } from './LoadingSpinner';
 export { ProgressBar } from './ProgressBar';
 export { PhoneInputWithCountry } from './phoneInput';
