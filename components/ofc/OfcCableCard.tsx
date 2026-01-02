@@ -9,6 +9,7 @@ import {
   FiInfo,
   FiLayers,
   FiDatabase,
+  FiClock,
 } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
@@ -30,6 +31,49 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
   canEdit,
   canDelete,
 }) => {
+  // Format updated_at timestamp
+  const formatUpdatedAt = (timestamp: string | null | undefined) => {
+    if (!timestamp) return null;
+
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+      // Less than a minute
+      if (diffInSeconds < 60) return 'Just now';
+
+      // Less than an hour
+      if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60);
+        return `${minutes}m ago`;
+      }
+
+      // Less than a day
+      if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600);
+        return `${hours}h ago`;
+      }
+
+      // Less than a week
+      if (diffInSeconds < 604800) {
+        const days = Math.floor(diffInSeconds / 86400);
+        return `${days}d ago`;
+      }
+
+      // Format as date
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const updatedAtText = formatUpdatedAt(cable.updated_at);
+
   return (
     <div
       onClick={() => onView(cable)}
@@ -205,43 +249,56 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
 
       {/* Footer / Actions */}
       <div
-        className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2"
+        className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50"
         onClick={(e) => e.stopPropagation()}
       >
-        <Button
-          size="xs"
-          variant="secondary"
-          onClick={() => onView(cable)}
-          title="View Details"
-          className="font-medium"
-        >
-          <FiInfo className="w-4 h-4" />
-          <span className="ml-1.5">Details</span>
-        </Button>
+        <div className="flex items-center justify-between gap-3">
+          {/* Updated At Timestamp */}
+          {updatedAtText && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <FiClock className="w-3.5 h-3.5" />
+              <span className="font-medium">Updated {updatedAtText}</span>
+            </div>
+          )}
 
-        {canEdit && (
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={() => onEdit(cable)}
-            title="Edit Cable"
-            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-          >
-            <FiEdit2 className="w-4 h-4" />
-          </Button>
-        )}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={() => onView(cable)}
+              title="View Details"
+              className="font-medium"
+            >
+              <FiInfo className="w-4 h-4" />
+              <span className="ml-1.5">Details</span>
+            </Button>
 
-        {canDelete && (
-          <Button
-            size="xs"
-            variant="ghost"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-            onClick={() => onDelete(cable)}
-            title="Delete Cable"
-          >
-            <FiTrash2 className="w-4 h-4" />
-          </Button>
-        )}
+            {canEdit && (
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => onEdit(cable)}
+                title="Edit Cable"
+                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                <FiEdit2 className="w-4 h-4" />
+              </Button>
+            )}
+
+            {canDelete && (
+              <Button
+                size="xs"
+                variant="ghost"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                onClick={() => onDelete(cable)}
+                title="Delete Cable"
+              >
+                <FiTrash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

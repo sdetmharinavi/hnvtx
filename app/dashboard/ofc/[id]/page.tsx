@@ -189,7 +189,7 @@ export default function OfcCableDetailsPage() {
             (isFree ? (
               <Button
                 size="xs"
-                variant="secondary"
+                variant="ghost"
                 onClick={() => setAssignFiber(record)}
                 title="Assign to Service"
                 className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
