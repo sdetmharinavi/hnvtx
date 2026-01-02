@@ -296,7 +296,7 @@ export default function GlobalConnectionsPage() {
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
-            debounce={300}
+            debounce={900}
           />
         </div>
 

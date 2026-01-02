@@ -51,17 +51,22 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     }, [value]);
 
     const handleClear = (e: React.MouseEvent) => {
-      e.stopPropagation(); // Prevent event bubbling issues
+      e.preventDefault(); // Prevent default to stop focus loss fighting
+      e.stopPropagation(); // Prevent event bubbling
 
-      // Create synthetic event
+      // Create synthetic event for onChange handlers expecting an event
       const syntheticEvent = {
         target: { value: '' },
         currentTarget: { value: '' },
       } as React.ChangeEvent<HTMLInputElement>;
 
+      // Trigger standard change handler
       props.onChange?.(syntheticEvent);
+
+      // Trigger custom clear handler
       onClear?.();
 
+      // Handle uncontrolled inputs
       if (innerRef.current) {
         innerRef.current.value = '';
         innerRef.current.focus();
@@ -78,7 +83,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       'placeholder:text-gray-400 dark:placeholder-gray-500',
       'px-4 py-2.5 text-base',
       leftIcon && 'pl-11',
-      shouldShowClear && 'pr-11',
+      shouldShowClear && 'pr-11', // Ensure padding for clear button
       className,
       error
         ? 'border-red-500 focus:ring-red-500 dark:border-red-600'
@@ -114,8 +119,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <button
             type="button"
             onClick={handleClear}
-            // THE FIX: Added z-10 to ensure it's clickable above the input's padding area
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10"
+            // Add onMouseDown preventDefault to ensure click registers before blur
+            onMouseDown={(e) => e.preventDefault()}
+            // Added z-10 and pointer-events-auto
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10 cursor-pointer pointer-events-auto"
             aria-label="Clear input"
           >
             <FiX />

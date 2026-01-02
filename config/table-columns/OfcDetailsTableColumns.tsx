@@ -39,13 +39,13 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         excelHeader: 'System Name',
         sortable: true,
         searchable: true,
-        width: 250,
+        width: 200,
         render: (value) => (
-          <div className="flex flex-col justify-center">
+          <div className="w-full overflow-hidden">
             {value ? (
               <TruncateTooltip
                 text={value as string}
-                className="font-medium text-gray-900 dark:text-gray-100 text-sm"
+                className="text-xs font-medium text-gray-800 dark:text-amber-50"
               />
             ) : (
               <span className="text-gray-400 text-xs italic">Unassigned</span>

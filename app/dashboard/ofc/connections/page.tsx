@@ -150,7 +150,7 @@ export default function GlobalOfcConnectionsPage() {
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
-            debounce={300} // Optional customization
+            debounce={900} // Optional customization
           />
         </div>
 
