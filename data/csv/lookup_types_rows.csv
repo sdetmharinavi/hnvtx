@@ -63,7 +63,7 @@ Protection (ring 1:1 or linear) takes reserved bandwidth",0,false,false,true,202
 4aec2199-d02e-42cf-af92-7fec40e82524,INVENTORY_STATUS,Working,wor,,0,false,false,true,2025-11-01 00:00:00+00,2025-11-27 00:00:00+00
 4b86eede-d502-4368-85c1-8e68d9b50282,PORT_TYPES,Gigabit Ethernet Port,GE(O),1 Gbps Ethernet.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 4d8318a9-4901-40f5-b50c-2f8edad7796d,OFC_TYPES,2F Unarmored,2F-U,Two-core unarmored optical fiber cable (for ducts/aerial).,0,false,false,true,2025-10-06 00:00:00+00,2025-11-27 00:00:00+00
-5207d6b0-10ff-4c8d-b5e0-0ce9cc2e5230,NODE_TYPES,Compact Passive Access Node,CPAN Node,Compact Passive Access Node (used in access networks for broadband/FTTH aggregation),0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+5207d6b0-10ff-4c8d-b5e0-0ce9cc2e5230,NODE_TYPES,CPAN Node,CPAN Node,Compact Passive Access Node: Compact Passive Access Node (used in access networks for broadband/FTTH aggregation),0,false,false,true,2025-08-10 00:00:00+00,2026-01-01 15:44:42.405193+00
 53df8996-fb6a-4257-afc8-a5269f23b585,OFC_TYPES,288F Unarmored,288F-U,Two-hundred eighty-eight core unarmored optical fiber cable.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 54d8861d-0df4-4eb6-ab79-21c5843fd12c,OFC_PATH_STATUS,inactive,INACTIVE,The logical path is not currently active.,0,false,false,true,2025-11-17 00:00:00+00,2025-11-27 00:00:00+00
 57d0e81e-7df8-47c5-9804-2e66d78b5e77,SYSTEM_TYPES,PON SPLITTER 1:4,SPL1:4,,0,false,false,true,2025-12-27 10:32:34.092503+00,2025-12-27 10:32:34.092503+00
@@ -116,7 +116,7 @@ Real-world usable	40–50 Gbps",0,false,false,true,2025-11-23 00:00:00+00,2025-1
 944f170d-da50-41e6-9040-dea5f7bf9dfa,SYSTEM_TYPES,BBU,BBU,"Baseband Unit(BBUs) are typically part of BSNL’s 4G/5G RAN (Radio Access Network), handling baseband processing for cellular signals. Their integration with CPAN/MAAN would align with BSNL’s shift toward IP-based aggregation",0,false,true,true,2025-08-10 00:00:00+00,2025-12-31 05:12:24.258083+00
 94d70d95-ad93-483c-add9-4f9d13de7b79,PORT_TYPES,GE OR 10 GE,GE/10GE,,0,false,false,true,2025-12-27 10:38:45.857327+00,2025-12-27 10:38:45.857327+00
 94f314d2-c022-4a67-b3c1-5c1044a3d4dc,RING_TYPES,BBU_RINGS,BBU_RINGS,,0,false,false,true,2025-12-15 00:00:00+00,2025-12-15 00:00:00+00
-95f63633-fd4e-4018-b2f0-dea8ad3a8494,NODE_TYPES,Metro Access Aggregation Node,MAAN,Aggregation node used in metro rings before reaching core/backbone.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+95f63633-fd4e-4018-b2f0-dea8ad3a8494,NODE_TYPES,MAAN,MAAN,Metro Access Aggregation Node: Aggregation node used in metro rings before reaching core/backbone.,0,false,false,true,2025-08-10 00:00:00+00,2026-01-01 15:45:36.832118+00
 96a1fb7a-2603-483b-8088-2d95755bda08,MEDIA_TYPES,Microwave Link,MW,Wireless line-of-sight telecom link.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 96ff54ab-c96f-470e-92d6-2f5780438e81,NODE_TYPES,Distribution Point / Street Cabinet,DP,Local distribution cabinet connecting feeder to drop cables.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 97102a3f-9fe3-40cd-84fe-8720d635e081,OFC_TYPES,4F Armored,4F-A,Four-core steel-armored optical fiber cable for underground routes.,0,false,false,true,2025-08-20 00:00:00+00,2025-11-27 00:00:00+00
@@ -141,7 +141,7 @@ abc937b6-bf1e-41a4-9a01-a21ea182e16e,SYSTEM_TYPES,Optical Transport Network,OTN,
 ac3a94a3-a131-4515-a7b6-9fa2cba1d97d,SYSTEM_TYPES,IP / MPLS Backbone,IPMPLS,BSNL’s IP-based core backbone for internet and enterprise traffic.,0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 acaae723-ebd1-40f8-a4ba-251d0f4c197d,MEDIA_TYPES,DEFAULT,default,Default entry for MEDIA_TYPES category,5,true,false,true,2025-08-10 00:00:00+00,2025-12-20 06:06:02.858976+00
 ad3477d5-de78-4b9f-9302-a4b5db326e9f,OFC_OWNER,BSNL,bsnl,,0,false,false,true,2025-08-22 00:00:00+00,2025-11-27 00:00:00+00
-ad56dd60-f014-464b-84b9-a090ed843fab,NODE_TYPES,Backhaul Hub / Block HQ,BHQ,Aggregation/backhaul hub or branch headquarters for operations & routing.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+ad56dd60-f014-464b-84b9-a090ed843fab,NODE_TYPES,Block Head Quarter,BHQ,Aggregation/backhaul hub or branch headquarters for operations & routing.,0,false,false,true,2025-08-10 00:00:00+00,2026-01-01 15:43:49.427909+00
 adf43a26-56e3-4d54-95d9-771c9e8cce68,SYSTEM_TYPES,PON SPLITTER 1:8,SPL1:8,,0,false,false,true,2025-12-27 10:32:57.498968+00,2025-12-27 10:32:57.498968+00
 ae89ad3a-b36e-46d4-9dbc-f9daefda236e,LINK_TYPES,MGMT,MGMT,,0,false,false,true,2025-12-22 07:00:15.451411+00,2025-12-22 07:00:15.451411+00
 ae96254a-dffe-4f72-84be-3b50d0929535,SFP_TYPES,1G SFP Multi Mode,SFP1GMM,1Gbps optical module for MMF.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -156,7 +156,7 @@ bef5b83a-47cc-4e95-9e36-fdb95c54de24,OFC_PATH_TYPE,point_to_point,pp,,0,false,fa
 bf63f1aa-0976-401a-8309-1ede374d0c54,PORT_TYPES,Gigabit Ethernet Electrical Port,GE(E),1 Gbps Ethernet Electrical.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 c0531e2c-81b2-4668-9aa2-b6edef24f7c4,OFC_PATH_TYPE,ring,ring,,0,false,false,true,2025-08-21 00:00:00+00,2025-11-27 00:00:00+00
 c362e3d1-51b5-4a67-82cf-a9f194e46e6a,PORT_TYPES,PON,PON,,0,false,false,true,2025-12-27 10:10:11.003234+00,2025-12-27 10:10:11.003234+00
-c3c10305-215a-4efa-8770-2d8846f4e888,NODE_TYPES,Digital Cross-Connect,DXC Node,Junction site with large cross-connections,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+c3c10305-215a-4efa-8770-2d8846f4e888,NODE_TYPES,DXC Node,DXC Node,Digital Cross-Connect: Junction site with large cross-connections,0,false,false,true,2025-08-10 00:00:00+00,2026-01-01 15:45:06.628343+00
 c65050fe-1337-4866-890b-398cd9b9a4d6,LINK_TYPES,MAAN EMS LOGIN,MAANEMSLOGIN,,0,false,false,true,2025-12-08 00:00:00+00,2025-12-08 00:00:00+00
 c973a682-b092-43f2-a438-a20835f6fd9c,INVENTORY_CATEGORY,DEFAULT,default,Default entry for Inventory Category category,0,true,false,true,2025-11-01 00:00:00+00,2025-12-20 06:06:02.858976+00
 c9b218dd-edd1-4be2-b904-e4d1abe94701,PORT_TYPES,NETWORK MANAGEMENT SYSTEM,NMS,,0,false,false,true,2025-12-22 06:59:34.275329+00,2025-12-22 06:59:34.275329+00
@@ -194,7 +194,7 @@ e91b0249-d30e-4df9-a0c2-b073f22d577e,INVENTORY_CATEGORY,SPILICING MACHINE,SM,,0,
 ea748142-6f33-48a6-b847-deb202e61cef,SYSTEM_CAPACITY,~625 Mbps per ONT,SPL1:4,INSERTION LOSS ≈ ~6–7 dB,0,false,false,true,2025-12-27 10:52:26.814241+00,2025-12-27 10:55:26.18264+00
 ef21f735-94e1-448f-9b17-54f0145004e0,LINK_TYPES,BTS 4G,4G,,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 f2aceb7b-2f1b-487f-b955-e02c788e4b04,SYSTEM_CAPACITY,~312.5 Mbps per ONT,SPL1:8,INSERTION LOSS ≈ ~9–10 dB,0,false,false,true,2025-12-27 10:52:44.673889+00,2025-12-27 10:55:42.782534+00
-f45e7454-2b12-4607-886b-f463b56fab98,NODE_TYPES,Base Transceiver Station,BTS,Mobile radio site / cell tower serving a cell area.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+f45e7454-2b12-4607-886b-f463b56fab98,NODE_TYPES,BTS,BTS,Base Transceiver Station: Mobile radio site / cell tower serving a cell area.,0,false,false,true,2025-08-10 00:00:00+00,2026-01-01 15:44:17.630341+00
 f4747aaa-75f3-4ac0-b950-57569e208189,BUSINESS_AREA_TYPE,IP Television,IPTV,Video streaming and IPTV services.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 f4c1f4d0-e9d0-426d-9fc1-ec34e3b80984,PORT_TYPES,STM-64 Port,STM64,10 Gbps optical interface.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 f50ef056-24c8-4287-b9c0-99e91af68c59,PORT_TYPES,100 Gigabit Ethernet Port,100GE,Ultra high-capacity Ethernet port.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
