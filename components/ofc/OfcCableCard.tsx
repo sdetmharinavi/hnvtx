@@ -14,6 +14,11 @@ import {
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 
+// Extended type to include the new view field not yet in Zod schema
+type ExtendedOfcCable = V_ofc_cables_completeRowSchema & {
+  last_activity_at?: string | null;
+};
+
 interface OfcCableCardProps {
   cable: V_ofc_cables_completeRowSchema;
   onView: (cable: V_ofc_cables_completeRowSchema) => void;
@@ -31,7 +36,13 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
   canEdit,
   canDelete,
 }) => {
-  // Format updated_at timestamp
+  // Cast to extended type to access new SQL field
+  const cableData = cable as ExtendedOfcCable;
+
+  // Use the new aggregate timestamp if available, otherwise fall back to cable update
+  const timestampToDisplay = cableData.last_activity_at || cableData.updated_at;
+
+  // Format timestamp logic
   const formatUpdatedAt = (timestamp: string | null | undefined) => {
     if (!timestamp) return null;
 
@@ -72,7 +83,7 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
     }
   };
 
-  const updatedAtText = formatUpdatedAt(cable.updated_at);
+  const updatedAtText = formatUpdatedAt(timestampToDisplay);
 
   return (
     <div
@@ -255,9 +266,16 @@ export const OfcCableCard: React.FC<OfcCableCardProps> = ({
         <div className="flex items-center justify-between gap-3">
           {/* Updated At Timestamp */}
           {updatedAtText && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <div
+              className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"
+              title={
+                cableData.last_activity_at
+                  ? 'Includes connection updates'
+                  : 'Cable metadata update only'
+              }
+            >
               <FiClock className="w-3.5 h-3.5" />
-              <span className="font-medium">Updated {updatedAtText}</span>
+              <span className="font-medium">Activity {updatedAtText}</span>
             </div>
           )}
 

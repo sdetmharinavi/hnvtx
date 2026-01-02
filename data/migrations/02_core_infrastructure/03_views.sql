@@ -81,7 +81,12 @@ SELECT
   
   -- Joined Area
   ma.name AS maintenance_area_name,
-  ma.code AS maintenance_area_code
+  ma.code AS maintenance_area_code,
+
+  -- [NEW] Last Activity Timestamp
+  -- Calculates the most recent timestamp between the cable record update 
+  -- and any updates to its underlying fiber connections.
+  GREATEST(ofc.updated_at, conn_stats.last_conn_update) as last_activity_at
 
 FROM public.ofc_cables ofc
 LEFT JOIN public.nodes sn ON ofc.sn_id = sn.id
@@ -90,7 +95,13 @@ LEFT JOIN public.lookup_types lt_ofc ON ofc.ofc_type_id = lt_ofc.id
 LEFT JOIN public.lookup_types lt_ofc_owner ON ofc.ofc_owner_id = lt_ofc_owner.id
 LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt_sn_type ON sn.node_type_id = lt_sn_type.id
-LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id;
+LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id
+-- [NEW] Join to aggregate connection updates
+LEFT JOIN (
+  SELECT ofc_id, MAX(updated_at) as last_conn_update 
+  FROM public.ofc_connections 
+  GROUP BY ofc_id
+) conn_stats ON ofc.id = conn_stats.ofc_id;
 
 -- Grant Permissions
 GRANT SELECT ON public.v_ofc_cables_complete TO authenticated;

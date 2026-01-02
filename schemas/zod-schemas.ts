@@ -1657,6 +1657,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   en_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   en_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
+  last_activity_at: z.iso.datetime().nullable(),
   maintenance_area_code: z.string().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),

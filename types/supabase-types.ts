@@ -4395,6 +4395,7 @@ export type Database = {
           en_name: string | null
           en_node_type_name: string | null
           id: string | null
+          last_activity_at: string | null
           maintenance_area_code: string | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null

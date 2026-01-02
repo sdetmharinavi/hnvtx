@@ -713,6 +713,7 @@ const TABLE_COLUMN_OBJECTS = {
     current_rkm: "current_rkm",
     commissioned_on: "commissioned_on",
     remark: "remark",
+    last_activity_at: "last_activity_at",
     ofc_type_name: "ofc_type_name",
     ofc_type_code: "ofc_type_code",
     ofc_owner_name: "ofc_owner_name",

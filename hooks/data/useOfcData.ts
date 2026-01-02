@@ -6,11 +6,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { 
-  buildServerSearchString, 
-  performClientSearch, 
-  performClientSort, 
-  performClientPagination 
+import {
+  buildServerSearchString,
+  performClientSearch,
+  performClientSort,
+  performClientPagination,
 } from '@/hooks/database/search-utils';
 
 export const useOfcData = (
@@ -20,15 +20,16 @@ export const useOfcData = (
 
   // Search Config
   const searchFields = useMemo(
-    () => [
-      'route_name',
-      'asset_no',
-      'transnet_id',
-      'sn_name',
-      'en_name',
-      'ofc_owner_name',
-      'remark'
-    ] as (keyof V_ofc_cables_completeRowSchema)[],
+    () =>
+      [
+        'route_name',
+        'asset_no',
+        'transnet_id',
+        'sn_name',
+        'en_name',
+        'ofc_owner_name',
+        'remark',
+      ] as (keyof V_ofc_cables_completeRowSchema)[],
     []
   );
 
@@ -39,13 +40,13 @@ export const useOfcData = (
       or: searchString,
     });
 
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_ofc_cables_complete",
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_ofc_cables_complete',
       p_limit: 5000,
       p_offset: 0,
       p_filters: rpcFilters,
-      p_order_by: "route_name",
-      p_order_dir: "asc",
+      p_order_by: 'route_name',
+      p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: V_ofc_cables_completeRowSchema[] })?.data || [];
@@ -77,12 +78,13 @@ export const useOfcData = (
     // Filters
     if (filters.ofc_type_id)
       filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
-    if (filters.status) 
-      filtered = filtered.filter((c) => String(c.status) === filters.status);
+    if (filters.status) filtered = filtered.filter((c) => String(c.status) === filters.status);
     if (filters.ofc_owner_id)
       filtered = filtered.filter((c) => c.ofc_owner_id === filters.ofc_owner_id);
     if (filters.maintenance_terminal_id)
-      filtered = filtered.filter((c) => c.maintenance_terminal_id === filters.maintenance_terminal_id);
+      filtered = filtered.filter(
+        (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
+      );
 
     // Sort
     filtered = performClientSort(filtered, 'route_name');
@@ -100,7 +102,7 @@ export const useOfcData = (
       activeCount,
       inactiveCount,
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCables, searchQuery, filters, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
