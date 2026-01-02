@@ -141,7 +141,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   });
 
   // --- SMART SYNC HELPER (Write-Through Cache) ---
-  // If the record was just updated online, fetch it via RPC (to get View computed fields) 
+  // If the record was just updated online, fetch it via RPC (to get View computed fields)
   // and write immediately to Dexie.
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
@@ -181,7 +181,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Record created successfully.');
       closeModal();
-      
+
       // Write-Through: If we got data back, sync it to Dexie immediately
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,7 +199,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Record updated successfully.');
       closeModal();
-      
+
       // Write-Through
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,7 +216,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     optimisticUpdate: false,
     onSuccess: async (data) => {
       toast.success('Status updated successfully.');
-      
+
       // Write-Through
       if (data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -431,9 +431,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           const targetTable = getTable(localTableName || tableName);
           const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
           await targetTable
-          .where('id')
-          .anyOf(idsKey)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .where('id')
+            .anyOf(idsKey)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .modify({ status: newStatus } as any);
           for (const id of selectedRowIds) {
             await addMutationToQueue({

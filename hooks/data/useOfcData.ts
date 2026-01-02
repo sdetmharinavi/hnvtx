@@ -13,6 +13,11 @@ import {
   performClientPagination,
 } from '@/hooks/database/search-utils';
 
+// Extended type to include the new view field
+type ExtendedOfcCable = V_ofc_cables_completeRowSchema & {
+  last_activity_at?: string | null;
+};
+
 export const useOfcData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_ofc_cables_completeRowSchema> => {
@@ -35,8 +40,13 @@ export const useOfcData = (
 
   const onlineQueryFn = useCallback(async (): Promise<V_ofc_cables_completeRowSchema[]> => {
     const searchString = buildServerSearchString(searchQuery, searchFields);
+
+    // Extract sortBy from filters to prevent sending it as a WHERE clause to RPC
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { sortBy, ...serverFilters } = filters;
+
     const rpcFilters = buildRpcFilters({
-      ...filters,
+      ...serverFilters,
       or: searchString,
     });
 
@@ -70,12 +80,12 @@ export const useOfcData = (
   });
 
   const processedData = useMemo(() => {
-    let filtered = allCables || [];
+    let filtered = (allCables || []) as ExtendedOfcCable[];
 
-    // Search
+    // 1. Search
     filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // Filters
+    // 2. Filters
     if (filters.ofc_type_id)
       filtered = filtered.filter((c) => c.ofc_type_id === filters.ofc_type_id);
     if (filters.status) filtered = filtered.filter((c) => String(c.status) === filters.status);
@@ -86,14 +96,24 @@ export const useOfcData = (
         (c) => c.maintenance_terminal_id === filters.maintenance_terminal_id
       );
 
-    // Sort
-    filtered = performClientSort(filtered, 'route_name');
+    // 3. Sort
+    if (filters.sortBy === 'last_activity') {
+      // Sort by Last Activity (Descending)
+      filtered.sort((a, b) => {
+        const timeA = new Date(a.last_activity_at || a.updated_at || 0).getTime();
+        const timeB = new Date(b.last_activity_at || b.updated_at || 0).getTime();
+        return timeB - timeA;
+      });
+    } else {
+      // Default: Route Name (Ascending)
+      filtered = performClientSort(filtered, 'route_name');
+    }
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((c) => c.status === true).length;
     const inactiveCount = totalCount - activeCount;
 
-    // Paginate
+    // 4. Paginate
     const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
     return {

@@ -66,8 +66,6 @@ const OfcPage = () => {
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- REFACTORED: Use Centralized Dropdown Hooks ---
-  // Requested change: Sort OFC Types in descending order by name
-  // We specify 'name' as the orderBy column to ensure "24F" > "12F" > "6F" logic works with localeCompare
   const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES', 'desc', 'name');
   const { options: ofcOwnerOptions } = useLookupTypeOptions('OFC_OWNER');
 
@@ -150,8 +148,22 @@ const OfcPage = () => {
         </div>
 
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
+          <div className="min-w-[150px]">
+            {/* Sort Filter */}
+            <SelectFilter
+              label=""
+              filterKey="sortBy"
+              filters={filters.filters}
+              setFilters={filters.setFilters}
+              options={[
+                { value: 'name', label: 'Name (A-Z)' },
+                { value: 'last_activity', label: 'Last Activity' },
+              ]}
+              placeholder="Sort By"
+            />
+          </div>
+
           <div className="min-w-[160px]">
-            {/* THE FIX: Use SelectFilter with sortOptions={false} to preserve descending order from hook */}
             <SelectFilter
               label=""
               filterKey="ofc_type_id"
