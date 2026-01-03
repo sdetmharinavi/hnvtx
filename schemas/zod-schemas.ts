@@ -1466,6 +1466,8 @@ export const v_cable_utilizationRowSchema = z.object({
   available_fibers: z.number().nullable(),
   cable_id: z.uuid().nullable(),
   capacity: z.number().nullable(),
+  faulty_fibers: z.number().nullable(),
+  healthy_utilization_percent: z.number().min(0).max(100).nullable(),
   route_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   used_fibers: z.number().nullable(),
   utilization_percent: z.number().min(0).max(100).nullable(),

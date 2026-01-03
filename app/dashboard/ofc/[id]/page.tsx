@@ -27,6 +27,7 @@ import {
   Upload,
   GitBranch,
   RefreshCw,
+  Settings,
 } from 'lucide-react';
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
@@ -51,6 +52,12 @@ import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
+
+// Type extension for the new view fields
+type ExtendedUtilization = V_cable_utilizationRowSchema & {
+  faulty_fibers?: number;
+  healthy_utilization_percent?: number;
+};
 
 export default function OfcCableDetailsPage() {
   const { id: cableId } = useParams();
@@ -101,7 +108,7 @@ export default function OfcCableDetailsPage() {
   } = useRouteDetails(cableId as string);
   const { data: allCablesData } = useOfcRoutesForSelection();
 
-  // CHANGED: Use usePagedData RPC call instead of direct useTableQuery for view
+  // Fetch Utilization Stats
   const { data: utilResult, isLoading: isLoadingUtil } = usePagedData<V_cable_utilizationRowSchema>(
     supabase,
     'v_cable_utilization',
@@ -110,7 +117,8 @@ export default function OfcCableDetailsPage() {
       limit: 1,
     }
   );
-  const utilization = utilResult?.data?.[0];
+  // Cast to extended type to access new fields
+  const utilization = utilResult?.data?.[0] as ExtendedUtilization | undefined;
 
   const { mutate: uploadConnections, isPending: isUploading } = useOfcConnectionsExcelUpload(
     supabase,
@@ -222,9 +230,9 @@ export default function OfcCableDetailsPage() {
               size="xs"
               variant="ghost"
               onClick={() => editModal.openEdit(record)}
-              title="Edit Fiber"
+              title="Edit Fiber Properties"
             >
-              <Edit2 className="w-4 h-4" />
+              <Settings className="w-4 h-4" />
             </Button>
           )}
           {canDelete && (
@@ -293,7 +301,7 @@ export default function OfcCableDetailsPage() {
       ...createStandardActions({
         onEdit: canEdit ? editModal.openEdit : undefined,
         onDelete: canDelete ? crudActions.handleDelete : undefined,
-        onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
+        onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
       }),
     ],
     [
@@ -309,7 +317,10 @@ export default function OfcCableDetailsPage() {
   const handleVerifyAndCreateFibers = useCallback(() => {
     if (routeDetails?.route && utilization) {
       const expectedCount = routeDetails.route.capacity;
-      const existingCount = (utilization.used_fibers || 0) + (utilization.available_fibers || 0);
+      const existingCount =
+        (utilization.used_fibers || 0) +
+        (utilization.available_fibers || 0) +
+        (utilization.faulty_fibers || 0);
 
       if (expectedCount && existingCount < expectedCount) {
         createConnectionsMutation.mutate({ cable: routeDetails.route as Ofc_cablesRowSchema });
@@ -362,6 +373,8 @@ export default function OfcCableDetailsPage() {
 
   const headerStats: StatProps[] = useMemo(() => {
     const utilPercent = utilization?.utilization_percent ?? 0;
+    const healthyUtilPercent = utilization?.healthy_utilization_percent ?? 0;
+
     return [
       { value: utilization?.capacity ?? 0, label: 'Total Capacity', color: 'default' },
       { value: utilization?.used_fibers ?? 0, label: 'Utilized', color: 'primary' },
@@ -370,6 +383,11 @@ export default function OfcCableDetailsPage() {
         value: `${utilPercent}%`,
         label: 'Utilization',
         color: utilPercent > 80 ? 'warning' : 'default',
+      },
+      {
+        value: `${healthyUtilPercent}%`, // Changed to Healthy Util
+        label: 'Healthy Fiber Utilization', // Renamed Label
+        color: healthyUtilPercent > 80 ? 'warning' : 'default',
       },
     ];
   }, [utilization]);
@@ -433,7 +451,6 @@ export default function OfcCableDetailsPage() {
         </div>
 
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          {/* NEW: Allocation Status Filter */}
           <div className="min-w-[150px]">
             <SelectFilter
               label=""
@@ -443,7 +460,7 @@ export default function OfcCableDetailsPage() {
               options={[
                 { value: 'available', label: 'Spare (Available)' },
                 { value: 'allocated', label: 'Utilized' },
-                { value: 'faulty', label: 'Faulty' }, // NEW OPTION
+                { value: 'faulty', label: 'Faulty' },
               ]}
               placeholder="All Statuses"
             />
@@ -489,7 +506,7 @@ export default function OfcCableDetailsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {cableConnectionsData.map((fiber) => (

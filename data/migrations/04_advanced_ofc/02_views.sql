@@ -55,18 +55,38 @@ SELECT
   oc.id AS cable_id,
   oc.route_name,
   oc.capacity,
-  -- [THE FIX] A fiber is used if it's assigned to ANY logical path. Role doesn't matter.
-  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL) AS used_fibers,
-  -- This logic remains correct.
-  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NULL) AS available_fibers,
-  -- [THE FIX] The percentage now correctly reflects all used fibers.
+
+  -- Used Fibers: Assigned to a path or system (Any status)
+  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL OR conn.system_id IS NOT NULL) AS used_fibers,
+
+  -- Available Fibers: Not assigned AND Active (Healthy)
+  COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NULL AND conn.system_id IS NULL AND conn.status = true) AS available_fibers,
+
+  -- Faulty Fibers: Status is false
+  COUNT(conn.id) FILTER (WHERE conn.status = false) AS faulty_fibers,
+
+  -- Standard Utilization %: (All Used / Total Capacity) * 100
   ROUND(
-    (COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL)::DECIMAL / NULLIF(oc.capacity, 0)) * 100, 2
-  ) AS utilization_percent
+    (COUNT(conn.id) FILTER (WHERE conn.logical_path_id IS NOT NULL OR conn.system_id IS NOT NULL)::DECIMAL / NULLIF(oc.capacity, 0)) * 100, 2
+  ) AS utilization_percent,
+
+  -- Healthy Utilization %: (Used Healthy Fibers / Total Healthy Fibers) * 100
+  -- "How much of my working network is utilized?"
+  ROUND(
+    (
+        COUNT(conn.id) FILTER (WHERE (conn.logical_path_id IS NOT NULL OR conn.system_id IS NOT NULL) AND conn.status = true)::DECIMAL
+        /
+        NULLIF(COUNT(conn.id) FILTER (WHERE conn.status = true), 0)
+    ) * 100, 2
+  ) AS healthy_utilization_percent
+
 FROM public.ofc_cables oc
 LEFT JOIN public.ofc_connections conn ON oc.id = conn.ofc_id
 GROUP BY
   oc.id, oc.route_name, oc.capacity;
+
+-- Grant permissions
+GRANT SELECT ON public.v_cable_utilization TO authenticated;
 
 -- =================================================================
 -- This view is placed here because it depends on tables from modules 02, 03, and 04.

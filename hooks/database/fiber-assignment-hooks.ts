@@ -1,16 +1,15 @@
 // hooks/database/fiber-assignment-hooks.ts
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
-import { z } from "zod";
-
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AssignFiberSchema = z.object({
   fiber_id: z.uuid(),
-  connection_id: z.uuid("Please select a valid connection"),
+  connection_id: z.uuid('Please select a valid connection'),
   role: z.enum(['working', 'protection']),
   direction: z.enum(['tx', 'rx']),
 });
@@ -27,20 +26,20 @@ export function useAssignFiberToConnection() {
         p_fiber_id: payload.fiber_id,
         p_connection_id: payload.connection_id,
         p_role: payload.role,
-        p_direction: payload.direction
+        p_direction: payload.direction,
       });
 
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Fiber assigned successfully!");
+      toast.success('Fiber assigned successfully!');
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
       queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
     },
-    onError: (err) => toast.error(`Assignment failed: ${err.message}`)
+    onError: (err) => toast.error(`Assignment failed: ${err.message}`),
   });
 }
 
@@ -52,17 +51,17 @@ export function useReleaseFiber() {
   return useMutation({
     mutationFn: async (fiberId: string) => {
       const { error } = await supabase.rpc('release_fiber_from_connection', {
-        p_fiber_id: fiberId
+        p_fiber_id: fiberId,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Fiber unlinked successfully!");
+      toast.success('Fiber unlinked successfully!');
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
       queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
     },
-    onError: (err) => toast.error(`Unlink failed: ${err.message}`)
+    onError: (err) => toast.error(`Unlink failed: ${err.message}`),
   });
 }

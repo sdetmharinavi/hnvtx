@@ -692,6 +692,8 @@ const TABLE_COLUMN_OBJECTS = {
     used_fibers: "used_fibers",
     available_fibers: "available_fibers",
     utilization_percent: "utilization_percent",
+    healthy_utilization_percent: "healthy_utilization_percent",
+    faulty_fibers: "faulty_fibers",
   },
   v_end_to_end_paths: {
     path_id: "path_id",

@@ -3750,6 +3750,8 @@ export type Database = {
           available_fibers: number | null
           cable_id: string | null
           capacity: number | null
+          faulty_fibers: number | null
+          healthy_utilization_percent: number | null
           route_name: string | null
           used_fibers: number | null
           utilization_percent: number | null
