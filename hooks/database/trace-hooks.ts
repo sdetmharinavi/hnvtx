@@ -38,7 +38,7 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
           const validIds = ids.filter((id): id is string => id !== null);
           if (validIds.length === 0) return [];
 
-          // THE FIX: Query TABLE directly with explicit join
+          // Query the TABLE 'ofc_connections' directly with explicit join
           const { data, error } = await supabase
             .from("ofc_connections")
             .select(`
@@ -88,10 +88,8 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
                const startFib = f.updated_fiber_no_sn ?? f.fiber_no_sn;
                const endFib = f.updated_fiber_no_en ?? f.fiber_no_sn;
                
-               if (startFib !== endFib) {
-                 return `${f.ofc_route_name} (F${startFib}/${endFib})`;
-               }
-               return `${f.ofc_route_name} (F${startFib})`;
+               // THE FIX: Always show both start and end fiber numbers for clarity
+               return `${f.ofc_route_name} (F${startFib}/${endFib})`;
             })
             .join(" → ");
         };
