@@ -134,9 +134,8 @@ export const useOfcConnectionsData = (cableId: string | null) => {
           filtered = filtered.filter((c) => c.status && (!!c.system_id || !!c.logical_path_id));
         }
       }
-      // Note: We removed the generic 'status' filter check here if 'allocation_status' covers it,
-      // but keeping the generic 'status' filter alongside is fine for "Show all Inactive" vs "Show faulty specifically".
-      // Just ensure they don't conflict. The existing code:
+
+      // 2. Filters
       if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter((c) => c.status === statusBool);

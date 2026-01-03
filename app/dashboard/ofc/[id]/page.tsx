@@ -441,25 +441,25 @@ export default function OfcCableDetailsPage() {
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={[
-                { value: 'available', label: 'Available' },
-                { value: 'allocated', label: 'Allocated' },
+                { value: 'available', label: 'Spare (Available)' },
+                { value: 'allocated', label: 'Utilized' },
+                { value: 'faulty', label: 'Faulty' }, // NEW OPTION
               ]}
-              placeholder="All Allocation"
+              placeholder="All Statuses"
             />
           </div>
 
           <div className="min-w-[150px]">
             <SelectFilter
               label=""
-              filterKey="allocation_status"
+              filterKey="status"
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={[
-                { value: 'available', label: 'Spare (Available)' },
-                { value: 'allocated', label: 'Utilized' },
-                { value: 'faulty', label: 'Faulty' }, // NEW OPTION
+                { value: 'true', label: 'Active' },
+                { value: 'false', label: 'Inactive' },
               ]}
-              placeholder="All Statuses"
+              placeholder="All Active/Inactive"
             />
           </div>
           <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">

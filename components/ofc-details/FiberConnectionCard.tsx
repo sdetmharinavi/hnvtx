@@ -1,4 +1,3 @@
-// components/ofc-details/FiberConnectionCard.tsx
 import React from 'react';
 import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import {
@@ -22,6 +21,8 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
   const isFaulty = !fiber.status;
   // Check both direct system assignment AND logical path assignment
   const isAllocated = !isFaulty && (!!fiber.system_id || !!fiber.logical_path_id);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const isSpare = !isFaulty && !isAllocated;
 
   const startNodeName = fiber.updated_sn_name || fiber.sn_name || 'Start Node';
   const endNodeName = fiber.updated_en_name || fiber.en_name || 'End Node';
