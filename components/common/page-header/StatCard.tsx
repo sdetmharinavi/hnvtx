@@ -48,11 +48,7 @@ export const StatCard: React.FC<StatProps> = ({
         bgColors[color]
       )}
     >
-      {icon && (
-        <div className={`shrink-0 text-2xl ${statColors[color]}`}>
-          {icon}
-        </div>
-      )}
+      {icon && <div className={`shrink-0 text-2xl ${statColors[color]}`}>{icon}</div>}
       <div>
         {/* THE FIX: Conditionally render a skeleton for the value */}
         <div className={`text-2xl font-bold ${statColors[color]}`}>

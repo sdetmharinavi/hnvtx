@@ -4,12 +4,12 @@
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries'; 
+import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
-import { Filters, Row, PublicTableOrViewName, buildRpcFilters, OrderBy } from '@/hooks/database'; 
+import { Filters, Row, PublicTableOrViewName, buildRpcFilters, OrderBy } from '@/hooks/database';
 import { FiDownload, FiPlus, FiRefreshCw, FiWifiOff } from 'react-icons/fi';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
@@ -53,20 +53,13 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     data: data,
   });
 
-  const tableExcelDownload = useTableExcelDownload(
-    supabase,
-    exportConfig?.tableName as T,
-    {
-      onError: (err) => toast.error(`Export failed: ${err.message}`),
-    }
-  );
+  const tableExcelDownload = useTableExcelDownload(supabase, exportConfig?.tableName as T, {
+    onError: (err) => toast.error(`Export failed: ${err.message}`),
+  });
 
-  const rpcExcelDownload = useRPCExcelDownload<T>(
-    supabase,
-    {
-      onError: (err) => toast.error(`Export failed: ${err.message}`),
-    }
-  );
+  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
+    onError: (err) => toast.error(`Export failed: ${err.message}`),
+  });
 
   const handleExport = useCallback(
     (filterOption?: ExportFilterOption) => {
@@ -76,10 +69,10 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
       }
 
       if (!isOnline) {
-          toast.error('Export unavailable offline. Please connect to the internet.', {
-              icon: <FiWifiOff />
-          });
-          return;
+        toast.error('Export unavailable offline. Please connect to the internet.', {
+          icon: <FiWifiOff />,
+        });
+        return;
       }
 
       const filters = filterOption?.filters || exportConfig.filters;
@@ -104,9 +97,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
       const finalFileName = `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${fileName}.xlsx`;
       const columnsToExport = columns.filter((c) =>
-        exportConfig.columns
-          ? exportConfig.columns.includes(c.key as keyof Row<T> & string)
-          : true
+        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true
       );
 
       // Default sort logic if not provided
@@ -125,13 +116,13 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
             functionName: 'get_paged_data',
             parameters: {
               p_view_name: exportConfig.tableName,
-              p_limit: exportConfig.maxRows || 50000, 
+              p_limit: exportConfig.maxRows || 50000,
               p_offset: 0,
               p_filters: buildRpcFilters(filters || {}),
               p_order_by: primaryOrder.column,
-              p_order_dir: primaryOrder.ascending === false ? 'desc' : 'asc'
-            }
-          }
+              p_order_dir: primaryOrder.ascending === false ? 'desc' : 'asc',
+            },
+          },
         });
       } else {
         tableExcelDownload.mutate({
@@ -221,6 +212,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     isLoading,
     handleExport,
     tableExcelDownload.isPending,
-    rpcExcelDownload.isPending
+    rpcExcelDownload.isPending,
   ]);
 }
