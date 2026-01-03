@@ -138,7 +138,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500 dark:text-gray-400">Pwr</span>
                       <span className="font-mono text-gray-700 dark:text-gray-300">
-                        {fiber.sn_power_dbm}
+                        {fiber.sn_power_dbm} dBm
                       </span>
                     </div>
                   )}
@@ -199,7 +199,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500 dark:text-gray-400">Pwr</span>
                       <span className="font-mono text-gray-700 dark:text-gray-300">
-                        {fiber.en_power_dbm}
+                        {fiber.en_power_dbm} dBm
                       </span>
                     </div>
                   )}
