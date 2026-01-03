@@ -1,15 +1,15 @@
 // components/ofc-details/OfcConnectionsFormModal.tsx
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useMemo } from "react";
-import { Modal } from "@/components/common/ui/Modal";
-import { useForm, SubmitErrorHandler } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/form/FormCard";
-import { FormInput, FormTextarea, FormSwitch } from "@/components/common/form/FormControls";
-import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from "@/schemas/zod-schemas";
-import { toast } from "sonner";
-import { z } from "zod";
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { Modal } from '@/components/common/ui/Modal';
+import { useForm, SubmitErrorHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormCard } from '@/components/common/form/FormCard';
+import { FormInput, FormTextarea, FormSwitch } from '@/components/common/form/FormControls';
+import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 // Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
 const connectionFormSchema = ofc_connectionsInsertSchema.omit({
@@ -70,8 +70,8 @@ export function OfcConnectionsFormModal({
           route_loss_db: editingOfcConnections.route_loss_db,
           status: editingOfcConnections.status ?? true,
           remark: editingOfcConnections.remark,
-          connection_category: editingOfcConnections.connection_category || "SPLICE_TYPES",
-          connection_type: editingOfcConnections.connection_type || "straight",
+          connection_category: editingOfcConnections.connection_category || 'SPLICE_TYPES',
+          connection_type: editingOfcConnections.connection_type || 'straight',
           system_id: editingOfcConnections.system_id,
           logical_path_id: editingOfcConnections.logical_path_id,
           fiber_role: editingOfcConnections.fiber_role,
@@ -83,8 +83,8 @@ export function OfcConnectionsFormModal({
       } else {
         reset({
           status: true,
-          connection_category: "SPLICE_TYPES",
-          connection_type: "straight",
+          connection_category: 'SPLICE_TYPES',
+          connection_type: 'straight',
         });
       }
     }
@@ -93,7 +93,7 @@ export function OfcConnectionsFormModal({
   const handleClose = useCallback(() => {
     if (isLoading) return;
     if (isDirty) {
-      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
+      if (!window.confirm('You have unsaved changes. Close anyway?')) return;
     }
     onClose();
   }, [isLoading, onClose, isDirty]);
@@ -105,8 +105,8 @@ export function OfcConnectionsFormModal({
   };
 
   const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
-    console.error("Form Validation Errors:", errors);
-    const errorFields = Object.keys(errors).join(", ");
+    console.error('Form Validation Errors:', errors);
+    const errorFields = Object.keys(errors).join(', ');
     toast.error(`Validation error in: ${errorFields}`);
   };
 
@@ -114,82 +114,93 @@ export function OfcConnectionsFormModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose} // Use handleClose
-      title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"}
-      size='full'
+      title={isEdit ? 'Edit OFC Connection' : 'Add OFC Connection'}
+      size="full"
       visible={false}
-      className='h-screen w-screen transparent bg-gray-700 rounded-2xl'
+      className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
       closeOnOverlayClick={false}
-      closeOnEscape={!isDirty}>
+      closeOnEscape={!isDirty}
+    >
       <FormCard
-        title={isEdit ? "Edit OFC Connection" : "Add OFC Connection"}
+        title={isEdit ? 'Edit OFC Connection' : 'Add OFC Connection'}
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose} // Use handleClose
         isLoading={isLoading}
-        standalone>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        standalone
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormInput
-            name='fiber_no_sn'
-            label='Start Node Fiber No. *'
+            name="fiber_no_sn"
+            label="Start Node Fiber No. *"
             register={register}
             error={errors.fiber_no_sn}
             disabled
           />
           <FormInput
-            name='fiber_no_en'
-            label='End Node Fiber No.'
+            name="fiber_no_en"
+            label="End Node Fiber No."
             register={register}
             error={errors.fiber_no_en}
             disabled
           />
 
           <FormInput
-            name='otdr_distance_sn_km'
-            label='OTDR Distance SN (km)'
+            name="otdr_distance_sn_km"
+            label="OTDR Distance SN (km)"
             register={register}
-            type='number'
-            step='0.001'
+            type="number"
+            step="0.001"
             error={errors.otdr_distance_sn_km}
           />
           <FormInput
-            name='sn_power_dbm'
-            label='SN Power (dBm)'
+            name="sn_power_dbm"
+            label="SN Power (dBm)"
             register={register}
-            type='number'
-            step='any'
+            type="text"
+            inputMode="decimal"
+            placeholder="-12.5"
+            treatAsNumber={true} // Auto-convert to number
+            step="any"
             error={errors.sn_power_dbm}
           />
           <FormInput
-            name='otdr_distance_en_km'
-            label='OTDR Distance EN (km)'
+            name="otdr_distance_en_km"
+            label="OTDR Distance EN (km)"
             register={register}
-            type='number'
-            step='0.001'
+            type="number"
+            step="0.001"
             error={errors.otdr_distance_en_km}
           />
           <FormInput
-            name='en_power_dbm'
-            label='EN Power (dBm)'
+            name="en_power_dbm"
+            label="EN Power (dBm)"
             register={register}
-            type='number'
-            step='any'
+            type="text"
+            inputMode="decimal"
+            placeholder="-12.5"
+            treatAsNumber={true} // Auto-convert to number
+            step="any"
             error={errors.en_power_dbm}
           />
           <FormInput
-            name='route_loss_db'
-            label='Route Loss (dB)'
+            name="route_loss_db"
+            label="Route Loss (dB)"
             register={register}
-            type='number'
-            step='any'
+            type="text"
+            inputMode="decimal"
+            placeholder="-12.5"
+            treatAsNumber={true} // Auto-convert to number
+            step="any"
             error={errors.route_loss_db}
           />
         </div>
-        <div className='mt-4'>
-          <FormSwitch name='status' label='Active' control={control} error={errors.status} />
+        <div className="mt-4">
+          <FormSwitch name="status" label="Active" control={control} error={errors.status} />
         </div>
-        <div className='mt-4'>
+        <div className="mt-4">
           <FormTextarea
-            name='remark'
-            label='Remark'
+            name="remark"
+            label="Remark"
             control={control}
             error={errors.remark}
             rows={4}

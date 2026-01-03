@@ -44,6 +44,7 @@ interface FormInputProps<T extends FieldValues>
   extends BaseProps<T>,
     Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
   register: UseFormRegister<T>;
+  treatAsNumber?: boolean; // NEW PROP
 }
 
 export function FormInput<T extends FieldValues>({
@@ -54,6 +55,7 @@ export function FormInput<T extends FieldValues>({
   type = 'text',
   className,
   labelClassName,
+  treatAsNumber = false, // Default false
   ...props
 }: FormInputProps<T>) {
   return (
@@ -67,8 +69,8 @@ export function FormInput<T extends FieldValues>({
         error={typeof error?.message === 'string' ? error.message : undefined}
         {...props}
         {...register(name, {
-          // For number inputs, treat empty string as null and otherwise coerce to Number
-          ...(type === 'number' && {
+          // For number inputs OR if explicitly treated as number, coerce
+          ...((type === 'number' || treatAsNumber) && {
             setValueAs: (v) =>
               v === '' || v === null || typeof v === 'undefined' ? null : Number(v),
           }),
