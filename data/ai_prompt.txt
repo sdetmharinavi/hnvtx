@@ -136,4 +136,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to show updatedAtText in OfcCableCard as the most latest updated at fron connections of that cable.
+Let's begin! First of all I want to show status of ofc details/connections as spare(available)/Utilized/Faulty also accordingly status in cards.
