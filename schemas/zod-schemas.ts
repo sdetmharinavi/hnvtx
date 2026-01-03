@@ -183,7 +183,7 @@ export const cable_segmentsUpdateSchema = z.object({
 });
 
 export const diary_notesRowSchema = z.object({
-  content: z.string().max(10000, "Text is too long").nullable(),
+  content: z.string().max(500000, "Text is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   note_date: z.iso.date(),
@@ -193,7 +193,7 @@ export const diary_notesRowSchema = z.object({
 });
 
 export const diary_notesInsertSchema = z.object({
-  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  content: z.string().max(500000, "Text is too long").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   note_date: z.iso.date().optional(),
@@ -203,7 +203,7 @@ export const diary_notesInsertSchema = z.object({
 });
 
 export const diary_notesUpdateSchema = z.object({
-  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  content: z.string().max(500000, "Text is too long").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   note_date: z.iso.date().optional(),

@@ -154,6 +154,12 @@ export const defaultValidationConfig: ValidationConfig = {
       validation: 'z.number().int().positive()',
       description: 'Numeric ID validation',
     },
+    // Explicitly allow negative values for power and loss/gain
+    {
+      fieldPatterns: ['.*power_dbm', '.*loss_db', '.*loss', '.*gain'],
+      validation: 'z.number()',
+      description: 'Power/Loss measurements (allow negatives)',
+    },
   ],
 
   customRules: [
@@ -216,6 +222,13 @@ export const defaultValidationConfig: ValidationConfig = {
       tableName: 'systems',
       validation: 'z.string()',
       description: 'Ensures the node name is treated as a string',
+    },
+    // Specific rule for diary notes content to allow much larger text
+    {
+      fieldName: 'content',
+      tableName: 'diary_notes',
+      validation: 'z.string().max(500000, "Text is too long")',
+      description: 'Allow large rich text content for diary notes',
     },
   ],
 };

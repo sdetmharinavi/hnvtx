@@ -21,6 +21,7 @@ const diaryFormSchema = diary_notesInsertSchema
   .pick({ note_date: true, content: true, tags: true })
   .extend({
     tagString: z.string().optional(),
+    content: z.string().max(500000, "Note is too long").nullable().optional(),
   });
 
 type DiaryFormValues = z.infer<typeof diaryFormSchema>;
