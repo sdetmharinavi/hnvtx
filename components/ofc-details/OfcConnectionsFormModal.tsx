@@ -157,7 +157,7 @@ export function OfcConnectionsFormModal({
             label="SN Power (dBm)"
             register={register}
             type="text"
-            inputMode="decimal"
+            inputMode="text"
             placeholder="-12.5"
             treatAsNumber={true} // Auto-convert to number
             step="any"
@@ -176,7 +176,7 @@ export function OfcConnectionsFormModal({
             label="EN Power (dBm)"
             register={register}
             type="text"
-            inputMode="decimal"
+            inputMode="text"
             placeholder="-12.5"
             treatAsNumber={true} // Auto-convert to number
             step="any"
@@ -187,7 +187,7 @@ export function OfcConnectionsFormModal({
             label="Route Loss (dB)"
             register={register}
             type="text"
-            inputMode="decimal"
+            inputMode="text"
             placeholder="-12.5"
             treatAsNumber={true} // Auto-convert to number
             step="any"
