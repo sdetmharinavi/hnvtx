@@ -155,7 +155,7 @@ export function OfcConnectionsFormModal({
             label='SN Power (dBm)'
             register={register}
             type='number'
-            step='0.01'
+            step='any'
             error={errors.sn_power_dbm}
           />
           <FormInput
@@ -171,7 +171,7 @@ export function OfcConnectionsFormModal({
             label='EN Power (dBm)'
             register={register}
             type='number'
-            step='0.01'
+            step='any'
             error={errors.en_power_dbm}
           />
           <FormInput
@@ -179,7 +179,7 @@ export function OfcConnectionsFormModal({
             label='Route Loss (dB)'
             register={register}
             type='number'
-            step='0.01'
+            step='any'
             error={errors.route_loss_db}
           />
         </div>

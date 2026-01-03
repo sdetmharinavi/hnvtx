@@ -5,6 +5,29 @@ import { formatDate } from '@/utils/formatters';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import React from 'react';
 
+// Helper component for metric badges
+const MetricBadge = ({ 
+  value, 
+  suffix, 
+  colorClass = 'amber' 
+}: { 
+  value: string | number | null | undefined; 
+  suffix: string;
+  colorClass?: 'amber' | 'blue' | 'purple';
+}) => {
+  const colorMap = {
+    amber: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
+    blue: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+    purple: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold border ${colorMap[colorClass]}`}>
+      {value ? `${value} ${suffix}` : '-'}
+    </span>
+  );
+};
+
 export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]) => {
   return useDynamicColumnConfig('v_ofc_connections_complete', {
     data: data,
@@ -140,10 +163,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         editable: true,
         sortable: true,
         width: 100,
-        render: (value) => (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
-            {value ? `${value}` : '-'}
-          </span>
+        render: (value) => (<MetricBadge value={value as string} suffix="dBm" colorClass="amber" />
         ),
       },
       sn_power_dbm: {
@@ -151,12 +171,14 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         editable: true,
         sortable: true,
         width: 110,
+        render: (value) => (<MetricBadge value={value as string} suffix="dBm" colorClass="purple" />)
       },
       en_power_dbm: {
         title: 'Pwr B (dBm)',
         editable: true,
         sortable: true,
         width: 110,
+        render: (value) => (<MetricBadge value={value as string} suffix="dBm" colorClass="blue" />)
       },
       sn_dom: {
         title: 'DOM A',
