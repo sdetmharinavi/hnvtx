@@ -1,10 +1,10 @@
-// path: components/system-details/SystemConnectionDetailsModal.tsx
+// components/system-details/SystemConnectionDetailsModal.tsx
 'use client';
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { Modal, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database'; // CHANGED: Imported useRpcRecord and usePagedData
+import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -18,7 +18,7 @@ import {
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiServer } from 'react-icons/fi';
+import { FiServer, FiRefreshCw } from 'react-icons/fi'; // Added FiRefreshCw
 import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
@@ -49,7 +49,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const [connectionToAllocate, setConnectionToAllocate] =
     useState<V_system_connections_completeRowSchema | null>(null);
 
-  // CHANGED: Use useRpcRecord instead of useTableRecord
   const {
     data: connection,
     isLoading,
@@ -66,7 +65,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  // CHANGED: Use usePagedData instead of useTableQuery for the view
   const { data: ofcData } = usePagedData<V_ofc_connections_completeRowSchema>(
     supabase,
     'v_ofc_connections_complete',
@@ -406,12 +404,21 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
             <SectionHeader
               title="Optical Fiber Path"
               action={
-                <button
-                  onClick={handleOpenAllocationModal}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
-                >
-                  {allocatedFiberIds.length > 0 ? 'Modify Allocation' : 'Map OFC'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => refetch()}
+                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                    title="Refresh Connection Data"
+                  >
+                    <FiRefreshCw className={isLoading ? 'animate-spin' : ''} size={16} />
+                  </button>
+                  <button
+                    onClick={handleOpenAllocationModal}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
+                  >
+                    {allocatedFiberIds.length > 0 ? 'Modify Allocation' : 'Map OFC'}
+                  </button>
+                </div>
               }
             />
             <div className="p-4 space-y-6">

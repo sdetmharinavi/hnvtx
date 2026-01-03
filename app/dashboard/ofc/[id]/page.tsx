@@ -212,7 +212,7 @@ export default function OfcCableDetailsPage() {
                   onClick={() => setAssignFiber(record)}
                   title="Edit Link"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Settings className="w-4 h-4" />
                 </Button>
                 <Button
                   size="xs"
@@ -232,7 +232,7 @@ export default function OfcCableDetailsPage() {
               onClick={() => editModal.openEdit(record)}
               title="Edit Fiber Properties"
             >
-              <Settings className="w-4 h-4" />
+              <Edit2 className="w-4 h-4" />
             </Button>
           )}
           {canDelete && (

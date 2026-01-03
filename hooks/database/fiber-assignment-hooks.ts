@@ -38,6 +38,8 @@ export function useAssignFiberToConnection() {
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
       queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
+      // THE FIX: Invalidate individual record caches used by details modals
+      queryClient.invalidateQueries({ queryKey: ['rpc-record'] });
     },
     onError: (err) => toast.error(`Assignment failed: ${err.message}`),
   });
@@ -61,6 +63,8 @@ export function useReleaseFiber() {
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
       queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
+      // THE FIX: Invalidate individual record caches used by details modals
+      queryClient.invalidateQueries({ queryKey: ['rpc-record'] });
     },
     onError: (err) => toast.error(`Unlink failed: ${err.message}`),
   });
