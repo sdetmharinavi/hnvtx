@@ -11,10 +11,7 @@ import {
   Path,
   FieldValues,
 } from 'react-hook-form';
-import {
-  SearchableSelect,
-  Option,
-} from '@/components/common/ui/select/SearchableSelect';
+import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { Input } from '@/components/common/ui/Input';
 import { Textarea } from '@/components/common/ui/textarea/Textarea';
 import { Label, Switch } from '@/components/common/ui';
@@ -61,11 +58,7 @@ export function FormInput<T extends FieldValues>({
 }: FormInputProps<T>) {
   return (
     <div className={className}>
-      <Label
-        htmlFor={name}
-        required={props.required}
-        className={labelClassName}
-      >
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
         {label}
       </Label>
       <Input
@@ -93,10 +86,7 @@ export function FormInput<T extends FieldValues>({
 
 interface FormTextareaProps<T extends FieldValues>
   extends BaseProps<T>,
-    Omit<
-      React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-      'name' | 'value' | 'onChange'
-    > {
+    Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'name' | 'value' | 'onChange'> {
   register?: UseFormRegister<T>;
   control?: Control<T, any, any>;
 }
@@ -112,11 +102,7 @@ export function FormTextarea<T extends FieldValues>({
 }: FormTextareaProps<T>) {
   return (
     <div className={className}>
-      <Label
-        htmlFor={name}
-        required={props.required}
-        className={labelClassName}
-      >
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
         {label}
       </Label>
       {control ? (
@@ -130,9 +116,7 @@ export function FormTextarea<T extends FieldValues>({
               onChange={(_e, val) => field.onChange(val)}
               onBlur={field.onBlur}
               error={!!error}
-              errorMessage={
-                typeof error?.message === 'string' ? error.message : undefined
-              }
+              errorMessage={typeof error?.message === 'string' ? error.message : undefined}
               {...props}
             />
           )}
@@ -141,9 +125,7 @@ export function FormTextarea<T extends FieldValues>({
         <Textarea
           id={name}
           error={!!error}
-          errorMessage={
-            typeof error?.message === 'string' ? error.message : undefined
-          }
+          errorMessage={typeof error?.message === 'string' ? error.message : undefined}
           {...props}
         />
       )}
@@ -153,8 +135,7 @@ export function FormTextarea<T extends FieldValues>({
 
 // --- FORM SEARCHABLE SELECT COMPONENT ---
 
-interface FormSearchableSelectProps<T extends FieldValues>
-  extends BaseProps<T> {
+interface FormSearchableSelectProps<T extends FieldValues> extends BaseProps<T> {
   control: Control<T, any, any>;
   options: Option[];
   placeholder?: string;
@@ -176,14 +157,9 @@ export function FormSearchableSelect<T extends FieldValues>({
   labelClassName,
   ...props
 }: FormSearchableSelectProps<T>) {
-
   return (
     <div className={className}>
-      <Label
-        htmlFor={name}
-        required={props.required}
-        className={labelClassName}
-      >
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
         {label}
       </Label>
       <Controller
@@ -231,11 +207,7 @@ export function FormSelect<T extends FieldValues>({
 }: FormSelectProps<T>) {
   return (
     <div className={className}>
-      <Label
-        htmlFor={name}
-        required={props.required}
-        className={labelClassName}
-      >
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
         {label}
       </Label>
       <Controller
@@ -252,11 +224,7 @@ export function FormSelect<T extends FieldValues>({
             </SelectTrigger>
             <SelectContent>
               {options.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                >
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -277,10 +245,7 @@ export function FormSelect<T extends FieldValues>({
 
 export interface FormDateInputProps<T extends FieldValues>
   extends BaseProps<T>,
-    Omit<
-      React.InputHTMLAttributes<HTMLInputElement>,
-      'name' | 'type' | 'size'
-    > {
+    Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
   control: Control<T, any, any>;
   pickerProps?: Partial<
     Omit<
@@ -312,9 +277,7 @@ const DateTextInput = forwardRef<
           'dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700',
           'px-10 py-2 outline-none',
           'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-          errorText
-            ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-            : 'border-gray-300',
+          errorText ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300',
           className ?? '',
         ].join(' ')}
         readOnly
@@ -334,9 +297,7 @@ const DateTextInput = forwardRef<
         <line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
       </svg>
-      {errorText ? (
-        <p className="mt-1 text-sm text-red-600">{errorText}</p>
-      ) : null}
+      {errorText ? <p className="mt-1 text-sm text-red-600">{errorText}</p> : null}
     </div>
   );
 });
@@ -370,9 +331,7 @@ export function FormDateInput<T extends FieldValues>({
           const selected: Date | null =
             raw == null || (raw as any) === ''
               ? null
-              : typeof raw === 'object' &&
-                raw !== null &&
-                'getTime' in (raw as object)
+              : typeof raw === 'object' && raw !== null && 'getTime' in (raw as object)
               ? (raw as Date)
               : new Date(raw as any);
 
@@ -398,11 +357,7 @@ export function FormDateInput<T extends FieldValues>({
               portalId="__next"
               customInput={
                 <DateTextInput
-                  errorText={
-                    typeof error?.message === 'string'
-                      ? error.message
-                      : undefined
-                  }
+                  errorText={typeof error?.message === 'string' ? error.message : undefined}
                   placeholder={inputProps.placeholder ?? 'Select date'}
                 />
               }
@@ -444,9 +399,7 @@ export function FormSwitch<T extends FieldValues>({
             />
             <div>
               <Label htmlFor={name}>{label}</Label>
-              {description && (
-                <p className="text-xs text-gray-500">{description}</p>
-              )}
+              {description && <p className="text-xs text-gray-500">{description}</p>}
             </div>
           </div>
         )}
@@ -480,22 +433,14 @@ export function FormIPAddressInput<T extends FieldValues>({
 }: FormIPAddressInputProps<T>) {
   return (
     <div className={className}>
-      <Label
-        htmlFor={name}
-        required={props.required}
-        className={labelClassName}
-      >
+      <Label htmlFor={name} required={props.required} className={labelClassName}>
         {label}
       </Label>
       <Controller
         name={name}
         control={control}
         render={({ field }) => (
-          <IPAddressInput
-            {...props}
-            value={field.value || ''}
-            onChange={field.onChange}
-          />
+          <IPAddressInput {...props} value={field.value || ''} onChange={field.onChange} />
         )}
       />
       {error && (
@@ -531,7 +476,7 @@ export function FormRichTextEditor<T extends FieldValues>({
         render={({ field }) => (
           <RichTextEditor
             label={label}
-            value={field.value ?? ""}
+            value={field.value ?? ''}
             onChange={field.onChange}
             error={typeof error?.message === 'string' ? error.message : undefined}
             disabled={props.disabled}
