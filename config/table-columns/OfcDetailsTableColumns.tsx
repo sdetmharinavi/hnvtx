@@ -163,7 +163,7 @@ export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]
         editable: true,
         sortable: true,
         width: 100,
-        render: (value) => (<MetricBadge value={value as string} suffix="dBm" colorClass="amber" />
+        render: (value) => (<MetricBadge value={value as string} suffix="dB" colorClass="amber" />
         ),
       },
       sn_power_dbm: {
