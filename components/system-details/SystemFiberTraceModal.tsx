@@ -1,3 +1,4 @@
+// components/system-details/SystemFiberTraceModal.tsx
 import React from 'react';
 import { AlertCircle, ArrowRight, Network, Radio, Shield, X } from 'lucide-react';
 import { TraceRoutes } from '@/hooks/database/trace-hooks';
@@ -18,13 +19,14 @@ const SystemFiberTraceModal: React.FC<{
     color,
   }: {
     title: string;
-    route: string;
+    route: string | undefined;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     icon: any;
     color: string;
   }) => {
-    const segments = route.split(' → ');
-    const hasRoute = route !== 'No route configured';
+    // Check if route exists and is not the default empty message
+    const hasRoute = route && route !== 'No route configured';
+    const segments = hasRoute ? route.split(' → ') : [];
 
     return (
       <div className="mb-6 last:mb-0">
@@ -53,7 +55,9 @@ const SystemFiberTraceModal: React.FC<{
         ) : (
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
-            <span className="text-sm text-amber-700 dark:text-amber-300">{route}</span>
+            <span className="text-sm text-amber-700 dark:text-amber-300">
+              {route || 'No route configured'}
+            </span>
           </div>
         )}
       </div>
@@ -64,7 +68,6 @@ const SystemFiberTraceModal: React.FC<{
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        {/* FIX: Added bg-blue-600 as fallback */}
         <div className="bg-blue-600 bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Network className="w-6 h-6 text-white" />

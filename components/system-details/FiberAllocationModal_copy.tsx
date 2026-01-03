@@ -1,11 +1,11 @@
-// components/system-details/FiberAllocationModal.tsx
+// path: components/system-details/FiberAllocationModal.tsx
 'use client';
 
 import { FC, useMemo, useState, useEffect, useCallback } from 'react';
 import { useForm, Controller, useFieldArray, Control, UseFormWatch } from 'react-hook-form';
 import { Modal, Button, PageSpinner, SearchableSelect } from '@/components/common/ui';
 import { FormCard } from '@/components/common/form';
-import { usePagedData, useTableQuery } from '@/hooks/database'; // CHANGED: Re-imported usePagedData
+import { usePagedData, useTableQuery } from '@/hooks/database'; // CHANGED: Imported usePagedData
 import { createClient } from '@/utils/supabase/client';
 import {
   V_system_connections_completeRowSchema,
@@ -45,22 +45,14 @@ interface FiberAllocationModalProps {
 const useReconstructPath = (fiberIds: string[] | null | undefined) => {
   const supabase = createClient();
 
-  // THE FIX: Use RPC (usePagedData) to avoid permission issues with Views.
-  // Workaround for UUID mismatch: Manually construct an OR filter with casting.
-  const orFilter = useMemo(() => {
-    if (!fiberIds || fiberIds.length === 0) return undefined;
-    // Construct SQL: id::text IN ('uuid1', 'uuid2')
-    return `id::text IN ('${fiberIds.join("','")}')`;
-  }, [fiberIds]);
-
+  // CHANGED: Use usePagedData instead of useTableQuery
   return usePagedData<V_ofc_connections_completeRowSchema>(
     supabase,
     'v_ofc_connections_complete',
     {
       filters: {
-        or: orFilter,
+        id: { operator: 'in', value: fiberIds || [] },
       },
-      limit: 100,
     },
     { enabled: !!fiberIds && fiberIds.length > 0 }
   );
@@ -89,11 +81,11 @@ const PathCascadeRow: FC<{
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
   const supabase = createClient();
 
-  // Use useTableQuery here is fine because 'ofc_connections' is a TABLE, not a View.
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(
     supabase,
     'ofc_connections',
     {
+      // TABLE
       columns: 'id, fiber_no_sn, system_id',
       filters: {
         ofc_id: cableIdForThisRow || '',
@@ -305,7 +297,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
     return ids;
   }, [allPaths]);
 
-  // 2. Fetch Network Context (Using RPC for Views - Correct)
+  // 2. Fetch Network Context (CHANGED: Use usePagedData for Views)
   const { data: allCablesResult, isLoading: isLoadingCables } =
     usePagedData<V_ofc_cables_completeRowSchema>(supabase, 'v_ofc_cables_complete', {
       limit: 5000,
@@ -318,7 +310,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
       orderBy: 'name',
     });
 
-  // 3. Fetch Existing Allocation Data (RPC with custom OR filter logic applied in helper hook)
+  // 3. Fetch Existing Allocation Data
   const { data: workingInFibers, isLoading: load1 } = useReconstructPath(
     connection?.working_fiber_in_ids
   );
@@ -468,7 +460,6 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
           <PageSpinner text="Loading network configuration..." />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
-            {/* ... Path Building UI remains the same ... */}
             <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
               <h3 className="font-semibold text-lg flex items-center gap-2">
                 <GitBranch className="text-blue-500" /> Working Path

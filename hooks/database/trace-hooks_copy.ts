@@ -1,4 +1,3 @@
-// hooks/database/trace-hooks.ts
 import { useCallback } from "react";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
@@ -38,43 +37,15 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
           const validIds = ids.filter((id): id is string => id !== null);
           if (validIds.length === 0) return [];
 
-          // THE FIX: Query TABLE directly with explicit join
           const { data, error } = await supabase
-            .from("ofc_connections")
-            .select(`
-              id,
-              fiber_no_sn,
-              updated_fiber_no_sn,
-              updated_fiber_no_en,
-              ofc_cables (
-                route_name
-              )
-            `)
+            .from("v_ofc_connections_complete")
+            .select("id, ofc_route_name, fiber_no_sn, updated_fiber_no_sn, updated_fiber_no_en")
             .in("id", validIds);
 
-          if (error) {
-            console.error("Trace fetch error:", error);
-            throw error;
-          }
+          if (error) throw error;
 
-          if (!data || data.length === 0) {
-             console.warn("Trace fetch returned no data for IDs:", validIds);
-             return [];
-          }
-
-          // Map the nested join result to the flat structure expected
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const flattenedData = (data as any[]).map((item) => ({
-            id: item.id,
-            fiber_no_sn: item.fiber_no_sn,
-            updated_fiber_no_sn: item.updated_fiber_no_sn,
-            updated_fiber_no_en: item.updated_fiber_no_en,
-            // Handle the joined relationship safely
-            ofc_route_name: item.ofc_cables?.route_name || "Unknown Route"
-          }));
-
-          // Order the results based on the original ID array order (critical for path sequence)
-          const dataMap = new Map(flattenedData.map((item) => [item.id, item]));
+          // Order the results based on the original ID array order
+          const dataMap = new Map(data.map((item) => [item.id, item]));
           return validIds.map((id) => dataMap.get(id)).filter(Boolean) as FiberConnection[];
         };
 
@@ -83,16 +54,13 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
           if (fibers.length === 0) return "No route configured";
 
           return fibers
-            .map((f) => {
-               // Use updated fiber numbers (logical path) if available, else physical
-               const startFib = f.updated_fiber_no_sn ?? f.fiber_no_sn;
-               const endFib = f.updated_fiber_no_en ?? f.fiber_no_sn;
-               
-               if (startFib !== endFib) {
-                 return `${f.ofc_route_name} (F${startFib}/${endFib})`;
-               }
-               return `${f.ofc_route_name} (F${startFib})`;
-            })
+            .map((f) =>
+              f.updated_fiber_no_sn && f.updated_fiber_no_en
+                ? `${f.ofc_route_name || "Unknown Route"} (F${f.updated_fiber_no_sn}/${
+                    f.updated_fiber_no_en
+                  })`
+                : `${f.ofc_route_name || "Unknown Route"} (F${f.fiber_no_sn})`
+            )
             .join(" → ");
         };
 

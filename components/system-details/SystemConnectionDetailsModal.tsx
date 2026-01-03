@@ -4,7 +4,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { Modal, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database';
+import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database'; // CHANGED: Re-imported usePagedData
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -18,7 +18,7 @@ import {
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiServer, FiRefreshCw } from 'react-icons/fi'; // Added FiRefreshCw
+import { FiServer, FiRefreshCw } from 'react-icons/fi';
 import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
@@ -65,12 +65,20 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
+  // THE FIX: Use usePagedData (RPC) instead of useTableQuery.
+  // Construct a safe SQL 'OR' clause for the ID list to avoid UUID type mismatch error.
+  const fiberIdFilter = useMemo(() => {
+    if (allocatedFiberIds.length === 0) return undefined;
+    // Construct SQL: id::text IN ('uuid1', 'uuid2')
+    return `id::text IN ('${allocatedFiberIds.join("','")}')`;
+  }, [allocatedFiberIds]);
+
   const { data: ofcData } = usePagedData<V_ofc_connections_completeRowSchema>(
     supabase,
     'v_ofc_connections_complete',
     {
       filters: {
-        id: { operator: 'in', value: allocatedFiberIds },
+        or: fiberIdFilter, // Pass the raw SQL condition to the 'or' parameter
       },
       limit: 100,
     },
@@ -98,6 +106,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     toast.success('Allocation updated successfully');
   }, [refetch]);
 
+  // ... (Columns definitions and helper functions remain unchanged) ...
   const circuitColumns = useMemo(
     (): Column<Row<'v_system_connections_complete'>>[] => [
       {
