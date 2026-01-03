@@ -151,33 +151,44 @@ export const FiberAssignmentModal: React.FC<FiberAssignmentModalProps> = ({
       filtered = filtered.filter((c) => c.media_type_id === filterMediaType);
     }
 
-    return (
-      filtered
-        // Relax filter to allow connections without a service_name (pure infrastructure links)
-        .filter((conn) => conn.service_name || conn.system_name || conn.connected_system_name)
-        .map((conn) => {
-          // Construct a descriptive label
-          const name =
-            conn.service_name ||
-            conn.connected_system_name ||
-            conn.system_name ||
-            'Unknown Connection';
-          const details = [
-            conn.connected_link_type_name,
-            conn.sn_name ? `Start: ${conn.sn_name}` : null,
-            conn.sn_interface ? `Port: ${conn.sn_interface}` : null,
-            conn.bandwidth_allocated,
-            conn.vlan ? `VLAN: ${conn.vlan}` : null,
-          ]
-            .filter(Boolean)
-            .join(' | ');
+    // Map to options first
+    const mappedOptions = filtered
+      .filter((conn) => conn.service_name || conn.system_name || conn.connected_system_name)
+      .map((conn) => {
+        // Construct a descriptive label
+        const name =
+          conn.service_name ||
+          conn.connected_system_name ||
+          conn.system_name ||
+          'Unknown Connection';
+        const details = [
+          conn.connected_link_type_name,
+          conn.sn_name ? `Start: ${conn.sn_name}` : null,
+          conn.sn_interface ? `Port: ${conn.sn_interface}` : null,
+          conn.bandwidth_allocated,
+          conn.vlan ? `VLAN: ${conn.vlan}` : null,
+        ]
+          .filter(Boolean)
+          .join(' | ');
 
-          return {
-            value: conn.id!,
-            label: `${name} ${details ? `(${details})` : ''}`,
-          };
-        })
-    );
+        return {
+          value: conn.id!,
+          label: `${name} ${details ? `(${details})` : ''}`,
+        };
+      });
+
+    // Deduplicate by label to prevent showing identical connections
+    const seenLabels = new Set<string>();
+    const uniqueOptions: typeof mappedOptions = [];
+
+    for (const opt of mappedOptions) {
+      if (!seenLabels.has(opt.label)) {
+        seenLabels.add(opt.label);
+        uniqueOptions.push(opt);
+      }
+    }
+
+    return uniqueOptions;
   }, [connectionsData, filterLinkType, filterMediaType]);
 
   const onSubmit = (data: FormValues) => {
