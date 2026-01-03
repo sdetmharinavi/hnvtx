@@ -345,14 +345,14 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         </div>
         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
           <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
-          <span>Loss: {record.sn_power_dbm || '-'} dBm</span>
+          <span>End A Rx: {record.sn_power_dbm || '-'} dBm</span>
         </div>
         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
           <span>{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</span>
-          <span>Loss: {record.en_power_dbm || '-'} dBm</span>
+          <span>End B Rx: {record.en_power_dbm || '-'} dBm</span>
         </div>
         <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
-          <span>Loss: {record.route_loss_db || '-'} dB</span>
+          <span>Route Loss: {record.route_loss_db || '-'} dB</span>
         </div>
       </div>
     );
