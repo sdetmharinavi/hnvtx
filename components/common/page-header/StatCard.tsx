@@ -6,7 +6,7 @@ export interface StatProps {
   label: string;
   icon?: ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'default';
-  isLoading?: boolean; // THE FIX: Add isLoading prop
+  isLoading?: boolean;
 }
 
 export const StatCard: React.FC<StatProps> = ({
@@ -14,7 +14,7 @@ export const StatCard: React.FC<StatProps> = ({
   label,
   icon,
   color = 'default',
-  isLoading = false, // THE FIX: Add isLoading prop
+  isLoading = false,
 }) => {
   const statColors = {
     primary: 'text-blue-600 dark:text-blue-400',
@@ -43,22 +43,26 @@ export const StatCard: React.FC<StatProps> = ({
   return (
     <div
       className={cn(
-        'rounded-lg border p-4 flex items-start gap-4',
+        // MOBILE OPTIMIZATION: Reduced padding from p-4 to p-3 on mobile
+        'rounded-lg border p-3 sm:p-4 flex items-start gap-3 sm:gap-4',
         borderColors[color],
         bgColors[color]
       )}
     >
-      {icon && <div className={`shrink-0 text-2xl ${statColors[color]}`}>{icon}</div>}
-      <div>
-        {/* THE FIX: Conditionally render a skeleton for the value */}
-        <div className={`text-2xl font-bold ${statColors[color]}`}>
+      {/* Hide icon on very small screens if needed, or keep small */}
+      {icon && <div className={`shrink-0 text-xl sm:text-2xl ${statColors[color]}`}>{icon}</div>}
+      <div className="min-w-0">
+        {/* min-w-0 prevents truncation issues in grid */}
+        <div className={`text-xl sm:text-2xl font-bold truncate ${statColors[color]}`}>
           {isLoading ? (
-            <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+            <div className="h-6 w-12 sm:h-8 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
           ) : (
             value
           )}
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">{label}</div>
+        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate" title={label}>
+          {label}
+        </div>
       </div>
     </div>
   );

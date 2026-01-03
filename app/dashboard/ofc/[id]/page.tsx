@@ -293,7 +293,7 @@ export default function OfcCableDetailsPage() {
       ...createStandardActions({
         onEdit: canEdit ? editModal.openEdit : undefined,
         onDelete: canDelete ? crudActions.handleDelete : undefined,
-        onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
+        onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
       }),
     ],
     [
@@ -489,7 +489,7 @@ export default function OfcCableDetailsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white dark:bg-gray-800">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {cableConnectionsData.map((fiber) => (

@@ -27,7 +27,6 @@ interface ExportConfig<T extends PublicTableOrViewName> {
   filters?: Filters;
   fileName?: string;
   useRpc?: boolean;
-  // Added orderBy support
   orderBy?: OrderBy[];
 }
 
@@ -100,12 +99,9 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true
       );
 
-      // Default sort logic if not provided
       const orderBy = exportConfig.orderBy || [{ column: 'created_at', ascending: false }];
 
       if (exportConfig.useRpc) {
-        // Map OrderBy array to RPC string param if strictly one is expected,
-        // or just pick the first one for the simple RPC `p_order_by`
         const primaryOrder = orderBy[0] || { column: 'id', ascending: true };
 
         rpcExcelDownload.mutate({
@@ -131,7 +127,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           filters: filters,
           columns: columnsToExport,
           maxRows: exportConfig.maxRows,
-          // Pass the sort config to table downloader
           orderBy: orderBy,
         });
       }
@@ -150,6 +145,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         variant: 'outline',
         leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
         disabled: isLoading,
+        // MOBILE OPTIMIZATION: Hide text by default for Refresh
+        hideTextOnMobile: true,
       });
     }
 
@@ -182,6 +179,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           disabled: isExporting,
           'data-dropdown': true,
           dropdownoptions,
+          // MOBILE OPTIMIZATION: Hide text by default
+          hideTextOnMobile: true,
         });
       } else {
         actions.push({
@@ -190,6 +189,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           variant: 'outline',
           leftIcon: <FiDownload />,
           disabled: isLoading || isExporting,
+          // MOBILE OPTIMIZATION: Hide text by default
+          hideTextOnMobile: true,
         });
       }
     }
@@ -201,6 +202,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         variant: 'primary',
         leftIcon: <FiPlus />,
         disabled: isLoading,
+        // Keep Add New text visible as it's the primary action
       });
     }
 

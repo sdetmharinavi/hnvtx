@@ -87,9 +87,9 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
                 </>
               )}
             </div>
+            {/* Status Badge */}
+            <div className="ml-auto sm:ml-0">{badge}</div>
           </div>
-          {/* Status Badge */}
-          <div className="ml-auto sm:ml-0">{badge}</div>
         </div>
       </div>
 

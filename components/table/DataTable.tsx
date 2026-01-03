@@ -312,7 +312,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         nonEmptyKeys.add(col.key);
         return;
       }
-      
+
       const hasValue = processedData.some((row) => {
         const val = row[col.dataIndex as keyof typeof row];
         if (val === null || val === undefined) return false;
@@ -496,7 +496,7 @@ export function DataTable<T extends PublicTableOrViewName>({
 
       <div className="flex-1 w-full overflow-auto min-h-0 relative isolate">
         {renderMobileItem && (
-          <div className="block sm:hidden p-4 space-y-4">
+          <div className="block sm:hidden p-1 space-y-4">
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -508,7 +508,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             ) : (
               processedData.map((record, idx) => (
                 <Card
-                  key={`${record.id}-${idx}`} 
+                  key={`${record.id}-${idx}`}
                   className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative"
                 >
                   {selectable && (
