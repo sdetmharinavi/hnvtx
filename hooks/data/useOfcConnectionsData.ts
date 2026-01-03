@@ -119,19 +119,27 @@ export const useOfcConnectionsData = (cableId: string | null) => {
         }
       }
 
-      // 2. Filters
+      // NEW: Extended Allocation Status Logic
+      if (filters.allocation_status) {
+        const filterVal = filters.allocation_status;
+
+        if (filterVal === 'faulty') {
+          // Faulty = Status is False
+          filtered = filtered.filter((c) => !c.status);
+        } else if (filterVal === 'available') {
+          // Spare = Status True AND No Allocation
+          filtered = filtered.filter((c) => c.status && !c.system_id && !c.logical_path_id);
+        } else if (filterVal === 'allocated') {
+          // Utilized = Status True AND Allocated
+          filtered = filtered.filter((c) => c.status && (!!c.system_id || !!c.logical_path_id));
+        }
+      }
+      // Note: We removed the generic 'status' filter check here if 'allocation_status' covers it,
+      // but keeping the generic 'status' filter alongside is fine for "Show all Inactive" vs "Show faulty specifically".
+      // Just ensure they don't conflict. The existing code:
       if (filters.status) {
         const statusBool = filters.status === 'true';
         filtered = filtered.filter((c) => c.status === statusBool);
-      }
-
-      // NEW: Allocation Status Filter
-      if (filters.allocation_status) {
-        if (filters.allocation_status === 'available') {
-          filtered = filtered.filter((c) => !c.system_id && !c.logical_path_id);
-        } else if (filters.allocation_status === 'allocated') {
-          filtered = filtered.filter((c) => !!c.system_id || !!c.logical_path_id);
-        }
       }
 
       // 3. Sort (Manual numeric sort for fibers)
