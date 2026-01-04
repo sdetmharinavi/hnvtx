@@ -11,7 +11,12 @@ import { PageHeader } from '@/components/common/page-header';
 import { RingMapNode } from '@/components/map/types/node';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
-import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
+import {
+  V_ring_nodesRowSchema,
+  V_ringsRowSchema,
+  V_ofc_cables_completeRowSchema,
+  V_ofc_connections_completeRowSchema,
+} from '@/schemas/zod-schemas';
 import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
 import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
@@ -36,6 +41,7 @@ interface PathConfigForMap {
   destPort?: string;
   fiberInfo?: string;
   cableName?: string;
+  capacity?: number;
 }
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
@@ -120,56 +126,73 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  // --- NEW LOGIC: Fetch Physical Cables & Connections ---
+  // --- Fetch Physical Cables & Connections ---
   const ringNodeIds = useMemo(() => {
     if (!rawNodes) return [];
-    return rawNodes.map((n) => n.node_id).filter(Boolean) as string[];
+    return rawNodes.map((n) => n.node_id).filter((id): id is string => !!id);
   }, [rawNodes]);
 
   // 4. Fetch Cables
-  // FIX: Use direct Supabase query instead of RPC to handle UUID array filtering correctly
   const { data: ringCables } = useQuery({
     queryKey: ['ring-cables-physical', ringId, ringNodeIds],
     queryFn: async () => {
       if (ringNodeIds.length < 2) return [];
 
-      const { data, error } = await supabase
-        .from('ofc_cables')
-        .select('id, route_name, sn_id, en_id, capacity')
-        .in('sn_id', ringNodeIds)
-        .in('en_id', ringNodeIds);
+      const idList = ringNodeIds.map((id) => `'${id}'`).join(',');
+      const sqlCondition = `sn_id IN (${idList}) OR en_id IN (${idList})`;
+
+      const rpcFilters = {
+        or: sqlCondition,
+      };
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ofc_cables_complete',
+        p_limit: 1000,
+        p_offset: 0,
+        p_filters: rpcFilters,
+      });
 
       if (error) {
         console.error('Error fetching ring cables:', error);
         return [];
       }
-      return data;
+
+      const allCables = (data?.data as V_ofc_cables_completeRowSchema[]) || [];
+      const ringNodeSet = new Set(ringNodeIds);
+
+      return allCables.filter((c) => ringNodeSet.has(c.sn_id!) && ringNodeSet.has(c.en_id!));
     },
     enabled: ringNodeIds.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
 
-  const ringCableIds = useMemo(() => ringCables?.map((c) => c.id) || [], [ringCables]);
+  const ringCableIds = useMemo(() => {
+    return ringCables?.map((c) => c.id).filter((id): id is string => !!id) || [];
+  }, [ringCables]);
 
   // 5. Fetch ACTIVE Connections
-  // FIX: Use direct Supabase query instead of RPC to handle UUID array filtering correctly
   const { data: allCableConnections } = useQuery({
     queryKey: ['ring-connections-all', ringId, ringCableIds],
     queryFn: async () => {
       if (ringCableIds.length === 0) return [];
 
-      const { data, error } = await supabase
-        .from('v_ofc_connections_complete')
-        .select(
-          'ofc_id, system_name, source_port, fiber_no_sn, fiber_no_en, sn_id, en_id, status, fiber_role, path_direction, system_id, ofc_route_name'
-        )
-        .in('ofc_id', ringCableIds);
+      const rpcFilters = {
+        ofc_id: ringCableIds,
+        status: true,
+      };
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ofc_connections_complete',
+        p_limit: 5000,
+        p_offset: 0,
+        p_filters: buildRpcFilters(rpcFilters),
+      });
 
       if (error) {
         console.error('Error fetching connections:', error);
         return [];
       }
-      return data;
+      return (data?.data as V_ofc_connections_completeRowSchema[]) || [];
     },
     enabled: ringCableIds.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -179,29 +202,29 @@ export default function RingMapPage() {
   const { data: pathConfigs } = useQuery({
     queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
-      // Use standard select here as well for consistency
       const { data, error } = await supabase
         .from('logical_paths')
         .select(
           `
-           start_node_id, 
-           end_node_id, 
-           source_system:source_system_id(system_name), 
+           start_node_id,
+           end_node_id,
+           source_system:source_system_id(system_name),
            source_system_id,
-           source_port, 
-           destination_system:destination_system_id(system_name), 
+           source_port,
+           destination_system:destination_system_id(system_name),
            destination_system_id,
            destination_port
         `
         )
         .eq('ring_id', ringId);
+
       if (error) return [];
       return data;
     },
     enabled: !!ringId,
   });
 
-  // 5. Calculate Segments
+  // 6. Calculate Segments
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -261,15 +284,9 @@ export default function RingMapPage() {
     [activeSegments, spurConnections]
   );
 
-  // 7. BUILD SEGMENT CONFIG MAP
+  // 7. BUILD SEGMENT CONFIG MAP (Logic to show fibers on lines)
   const segmentConfigMap = useMemo(() => {
     const map: Record<string, PathConfigForMap> = {};
-
-    const findCable = (n1: string, n2: string) => {
-      return ringCables?.find(
-        (c) => (c.sn_id === n1 && c.en_id === n2) || (c.sn_id === n2 && c.en_id === n1)
-      );
-    };
 
     const nodeIdToSystemId = new Map<string, string>();
     mappedNodes.forEach((node) => {
@@ -278,7 +295,15 @@ export default function RingMapPage() {
       }
     });
 
-    // C. Apply Logical Configurations
+    // Helper to safely extract system name regardless of array/object structure
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getSystemName = (val: any) => {
+      if (!val) return undefined;
+      if (Array.isArray(val) && val.length > 0) return val[0]?.system_name;
+      return val?.system_name;
+    };
+
+    // Logical Paths Config
     pathConfigs?.forEach((p) => {
       const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
       const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
@@ -287,30 +312,26 @@ export default function RingMapPage() {
         const key1 = `${sysIdA}-${sysIdB}`;
         const key2 = `${sysIdB}-${sysIdA}`;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const srcSys = p.source_system as any;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const dstSys = p.destination_system as any;
+        const srcName = getSystemName(p.source_system);
+        const dstName = getSystemName(p.destination_system);
 
         const config: PathConfigForMap = {
-          source: srcSys?.system_name,
+          source: srcName,
           sourcePort: p.source_port,
-          dest: dstSys?.system_name,
+          dest: dstName,
           destPort: p.destination_port,
           fiberInfo: undefined,
           cableName: undefined,
         };
-
         map[key1] = config;
         map[key2] = config;
       }
     });
 
-    // D. Apply Physical Info (Fibers)
+    // Physical Fiber Info Calculation
     allConnections.forEach(([nodeA, nodeB]) => {
       const key1 = `${nodeA.id}-${nodeB.id}`;
       const key2 = `${nodeB.id}-${nodeA.id}`;
-
       const physNodeA = nodeA.node_id;
       const physNodeB = nodeB.node_id;
 
@@ -325,52 +346,44 @@ export default function RingMapPage() {
 
       if (matchingCables.length === 0) return;
 
-      // Find best cable
       let bestCable = matchingCables[0];
-      let bestFiberInfo = '';
-      let hasActiveFibers = false;
-      const sourceSystemId = nodeA.id;
+      const activeFibersInfo: string[] = [];
+      const contributingCableNames = new Set<string>();
 
+      // Collect ALL active fibers for this segment
       for (const cable of matchingCables) {
         const systemFibers =
           allCableConnections?.filter(
-            (c) => c.ofc_id === cable.id && c.system_id === sourceSystemId && c.status === true
+            (c) =>
+              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id)
           ) || [];
 
         if (systemFibers.length > 0) {
           bestCable = cable;
-          hasActiveFibers = true;
+          if (cable.route_name) contributingCableNames.add(cable.route_name);
 
-          const txFiber = systemFibers.find(
-            (f) => f.path_direction === 'tx' || f.fiber_role === 'working'
-          );
-          const rxFiber = systemFibers.find(
-            (f) =>
-              f.path_direction === 'rx' ||
-              (f.fiber_role === 'working' && f.fiber_no_sn !== txFiber?.fiber_no_sn)
-          );
+          systemFibers.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
-          const f1 = txFiber || systemFibers[0];
-          const f2 = rxFiber || (systemFibers.length > 1 ? systemFibers[1] : null);
-
-          if (f1 && f2) {
-            bestFiberInfo = `Tx: F${f1.fiber_no_sn}, Rx: F${f2.fiber_no_sn}`;
-          } else if (f1) {
-            bestFiberInfo = `Working: F${f1.fiber_no_sn}`;
-          } else {
-            bestFiberInfo = systemFibers.map((f) => `F${f.fiber_no_sn}`).join(', ');
-          }
-          break;
+          systemFibers.forEach((fib) => {
+            if (fib.fiber_role) {
+              activeFibersInfo.push(`F${fib.fiber_no_sn} (${fib.fiber_role})`);
+            } else {
+              activeFibersInfo.push(`F${fib.fiber_no_sn}`);
+            }
+          });
         }
       }
 
+      const uniqueFiberInfo = Array.from(new Set(activeFibersInfo));
       const existing = map[key1] || {};
-
       const mergedConfig = {
         ...existing,
-        fiberInfo: hasActiveFibers ? bestFiberInfo : 'No Active Fibers',
-        // FIX: Handle potential null route_name
-        cableName: bestCable.route_name || undefined,
+        fiberInfo: uniqueFiberInfo.length > 0 ? uniqueFiberInfo.join(', ') : 'No Active Fibers',
+        cableName:
+          contributingCableNames.size > 1
+            ? 'Multiple Active Routes'
+            : bestCable.route_name || undefined,
+        capacity: bestCable?.capacity || undefined,
       };
 
       map[key1] = mergedConfig;
@@ -379,6 +392,62 @@ export default function RingMapPage() {
 
     return map;
   }, [allConnections, ringCables, allCableConnections, pathConfigs, mappedNodes]);
+
+  // 8. NEW: Build Node -> Active Ports Map
+  const nodePortMap = useMemo(() => {
+    const map = new Map<string, Set<string>>(); // Use Set to prevent duplicates
+    if (!rawNodes) return new Map<string, string>();
+
+    // 1. Map System ID -> Node ID
+    const systemToNodeIdMap = new Map<string, string>();
+    rawNodes.forEach((node) => {
+      if (node.id && node.node_id) {
+        systemToNodeIdMap.set(node.id, node.node_id);
+      }
+    });
+
+    // Helper to add a port to a system(node)
+    const addPort = (systemId: string | null, port: string | null) => {
+      if (!systemId || !port) return;
+      const nodeId = systemToNodeIdMap.get(systemId);
+      // Only map if this system is actually a node in the ring
+      if (nodeId) {
+        if (!map.has(nodeId)) {
+          map.set(nodeId, new Set());
+        }
+        map.get(nodeId)!.add(port);
+      }
+    };
+
+    // 2. Add from Physical Connections
+    if (allCableConnections) {
+      allCableConnections.forEach((conn) => {
+        addPort(conn.system_id, conn.source_port);
+        // If we had destination info in this view, we'd add it here too
+      });
+    }
+
+    // 3. Add from Logical Path Config (Source & Destination)
+    if (pathConfigs) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pathConfigs.forEach((p: any) => {
+        addPort(p.source_system_id, p.source_port);
+        addPort(p.destination_system_id, p.destination_port);
+      });
+    }
+
+    // 4. Flatten to Map<string, string> for display
+    const finalMap = new Map<string, string>();
+    map.forEach((ports, nodeId) => {
+      // Natural sort for ports like 1, 2, 10
+      const sorted = Array.from(ports).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      finalMap.set(nodeId, sorted.join(', '));
+    });
+
+    return finalMap;
+  }, [allCableConnections, rawNodes, pathConfigs]);
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
@@ -401,8 +470,7 @@ export default function RingMapPage() {
         : {}),
       disabled_segments: newDisabled,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    updateRing({ id: ringId, data: { topology_config: newConfig as Json } as any });
+    updateRing({ id: ringId, data: { topology_config: newConfig as Json } });
   };
 
   const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
@@ -444,6 +512,8 @@ export default function RingMapPage() {
         onBack={handleBack}
         showControls={true}
         segmentConfigs={segmentConfigMap}
+        // NEW PROP: Pass the node ports
+        nodePorts={nodePortMap}
       />
     );
   };

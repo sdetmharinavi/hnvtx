@@ -22,7 +22,7 @@ import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
-import { Activity, Router } from 'lucide-react';
+import { Activity, Router, Anchor } from 'lucide-react'; // Added Anchor icon
 
 export interface PathConfig {
   source?: string;
@@ -31,6 +31,7 @@ export interface PathConfig {
   destPort?: string;
   fiberInfo?: string;
   cableName?: string;
+  capacity?: number; // Added capacity
 }
 
 interface ConnectionLineProps {
@@ -112,19 +113,26 @@ const ConnectionLine = ({
           </div>
 
           {config?.cableName && (
-            <div
-              className="mb-2 text-xs font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 truncate max-w-[220px]"
-              title={config.cableName}
-            >
-              <Router className="w-3 h-3 shrink-0" />
-              {config.cableName}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div
+                className="text-xs font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 truncate"
+                title={config.cableName}
+              >
+                <Router className="w-3 h-3 shrink-0" />
+                <span className="truncate max-w-[150px]">{config.cableName}</span>
+              </div>
+              {config.capacity && (
+                <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  {config.capacity}F
+                </span>
+              )}
             </div>
           )}
 
           {hasConfig ? (
             <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-800">
               {/* Show Source/Dest if available */}
-              {config.source && (
+              {/* {config.source && (
                 <div className="space-y-2 mb-2">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase">
@@ -140,7 +148,7 @@ const ConnectionLine = ({
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Show Physical Fiber Info */}
               {config.fiberInfo ? (
@@ -148,7 +156,7 @@ const ConnectionLine = ({
                   <div className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase mb-1 tracking-wider flex items-center gap-1">
                     <Activity className="w-3 h-3" /> Active Fibers
                   </div>
-                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-words bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded border border-green-100 dark:border-green-900/30 whitespace-pre-wrap">
+                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 wrap-break-words bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded border border-green-100 dark:border-green-900/30 whitespace-pre-wrap">
                     {config.fiberInfo}
                   </div>
                 </div>
@@ -170,7 +178,7 @@ const ConnectionLine = ({
           )}
 
           <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1">
-            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
+            {/* <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
               <span className="text-gray-500">From</span>
               <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
                 {start.name}
@@ -181,7 +189,7 @@ const ConnectionLine = ({
               <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
                 {end.name}
               </span>
-            </div>
+            </div> */}
             <div className="mt-1 flex justify-between items-center px-1">
               <span className="font-medium">Road Distance</span>
               <span className="font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
@@ -205,6 +213,8 @@ interface ClientRingMapProps {
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
   segmentConfigs?: Record<string, PathConfig>;
+  // NEW PROP
+  nodePorts?: Map<string, string>;
 }
 
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
@@ -283,6 +293,7 @@ export default function ClientRingMap({
   flyToCoordinates = null,
   showControls = false,
   segmentConfigs = {},
+  nodePorts, // Destructure new prop
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -343,7 +354,6 @@ export default function ClientRingMap({
   }, [nodes]);
 
   useEffect(() => {
-    // USE CENTRALIZED LEAFLET FIX
     fixLeafletIcons();
   }, []);
 
@@ -490,6 +500,9 @@ export default function ClientRingMap({
             const offset =
               direction === 'left' ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
 
+            // Get port info for this node
+            const portsInfo = nodePorts?.get(node.node_id || node.id!);
+
             return (
               <Marker
                 key={node.id! + i}
@@ -510,15 +523,40 @@ export default function ClientRingMap({
                     <h4 className="font-bold">{node.name}</h4>
                     {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
                     {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
+                    {/* Additional popup info */}
+                    {portsInfo && (
+                      <div className="mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-xs font-semibold text-gray-500 uppercase">
+                          Active Interfaces
+                        </div>
+                        <div className="text-xs font-mono text-blue-600 dark:text-blue-400">
+                          {portsInfo}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Popup>
+
+                {/* ENHANCED TOOLTIP */}
                 <Tooltip
                   permanent
                   direction={direction}
                   offset={offset}
-                  className="permanent-label"
+                  className="bg-transparent border-none shadow-none p-0"
+                  opacity={1}
                 >
-                  {node.system_node_name}
+                  <div className="flex flex-col items-center">
+                    <div className="px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-xs font-bold rounded border border-slate-300 dark:border-slate-600 shadow-md backdrop-blur-xs whitespace-nowrap z-10">
+                      {node.system_node_name} - {formatIP(node.ip)}
+                    </div>
+
+                    {/* Render Ports if available */}
+                    {portsInfo && (
+                      <div className="mt-0.5 px-1 py-px bg-blue-50/90 dark:bg-blue-900/80 text-blue-800 dark:text-blue-100 text-[10px] font-mono rounded border border-blue-200 dark:border-blue-800 shadow-sm flex items-center gap-1">
+                        <Anchor size={8} /> {portsInfo}
+                      </div>
+                    )}
+                  </div>
                 </Tooltip>
               </Marker>
             );
