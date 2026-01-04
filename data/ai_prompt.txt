@@ -136,4 +136,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to show fix client ring map where its showing Segment Details not provisioned. It should show port details of connected systems and fiber provisioned on any of that port.
+Let's begin! First of all I want to show fix client ring map where its not showing the provisioned fibers of the cable. Also in addition to system name, I want to show port interface also in respective direction if provisioned in permanent tooltip.

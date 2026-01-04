@@ -42,7 +42,6 @@ BEGIN
 
         IF filter_key = 'or' THEN
             -- Case A: OR is a String (Robust Method)
-            -- We expect the frontend to send a valid SQL fragment like "col1 ILIKE '%x%' OR col2::text ILIKE '%x%'"
             IF jsonb_typeof(filter_value) = 'string' THEN
                  where_clause := where_clause || ' AND (' || trim(both '"' from filter_value::text) || ')';
             
@@ -63,12 +62,14 @@ BEGIN
         ELSIF public.column_exists('public', p_view_name, filter_key) THEN
             IF jsonb_typeof(filter_value) = 'object' AND filter_value ? 'operator' THEN
                 IF filter_value->>'operator' = 'in' AND jsonb_typeof(filter_value->'value') = 'array' THEN
-                    where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
+                    -- THE FIX: Cast the column to text before comparing with text array to support UUID columns
+                    where_clause := where_clause || format(' AND %s%I::text = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value->'value');
                 ELSE
                     where_clause := where_clause || format(' AND %s%I::text %s %L::text', alias_prefix, filter_key, filter_value->>'operator', filter_value->>'value');
                 END IF;
             ELSIF jsonb_typeof(filter_value) = 'array' THEN
-                where_clause := where_clause || format(' AND %s%I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
+                -- THE FIX: Cast the column to text before comparing with text array to support UUID columns
+                where_clause := where_clause || format(' AND %s%I::text = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', alias_prefix, filter_key, filter_value);
             ELSE
                 where_clause := where_clause || format(' AND %s%I::text = %L::text', alias_prefix, filter_key, trim(both '"' from filter_value::text));
             END IF;
@@ -85,6 +86,7 @@ $$;
 
 -- Re-apply grants
 GRANT EXECUTE ON FUNCTION public.build_where_clause(JSONB, TEXT, TEXT) TO authenticated;
+
 
 -- =================================================================
 -- Section 2: Generic Query & Data Operation Functions

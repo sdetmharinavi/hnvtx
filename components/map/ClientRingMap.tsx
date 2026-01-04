@@ -21,13 +21,16 @@ import { MapLegend } from './MapLegend';
 import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
-import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils'; // USE CENTRALIZED UTILS
+import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
+import { Activity, Router } from 'lucide-react';
 
-interface PathConfig {
+export interface PathConfig {
   source?: string;
   sourcePort?: string;
   dest?: string;
   destPort?: string;
+  fiberInfo?: string;
+  cableName?: string;
 }
 
 interface ConnectionLineProps {
@@ -52,7 +55,6 @@ const ConnectionLine = ({
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
 
-  // Use the optimized fetcher
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
@@ -81,6 +83,8 @@ const ConnectionLine = ({
     'N/A'
   );
 
+  const hasConfig = config && (config.source || config.fiberInfo || config.cableName);
+
   return (
     <Polyline
       positions={[
@@ -102,54 +106,87 @@ const ConnectionLine = ({
         closeOnClick={false}
         className={theme === 'dark' ? 'dark-popup' : ''}
       >
-        <div className="text-sm min-w-[200px]">
+        <div className="text-sm min-w-[220px]">
           <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300">
             {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
           </div>
 
-          {config && (config.source || config.dest) ? (
-            <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800">
-              <div className="text-[10px] font-bold text-blue-600 dark:text-blue-300 uppercase mb-1 tracking-wider">
-                Logical Path
-              </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                <span className="text-gray-500 dark:text-gray-400 text-right font-medium">A:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {config.source}{' '}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    ::{config.sourcePort}
-                  </span>
-                </span>
+          {config?.cableName && (
+            <div
+              className="mb-2 text-xs font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 truncate max-w-[220px]"
+              title={config.cableName}
+            >
+              <Router className="w-3 h-3 shrink-0" />
+              {config.cableName}
+            </div>
+          )}
 
-                <span className="text-gray-500 dark:text-gray-400 text-right font-medium">B:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {config.dest}{' '}
-                  <span className="text-blue-600 dark:text-blue-400 font-bold">
-                    ::{config.destPort}
-                  </span>
-                </span>
-              </div>
+          {hasConfig ? (
+            <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-800">
+              {/* Show Source/Dest if available */}
+              {config.source && (
+                <div className="space-y-2 mb-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase">
+                      Active System (Start)
+                    </span>
+                    <div className="font-medium text-gray-800 dark:text-gray-200 text-xs truncate">
+                      {config.source}
+                    </div>
+                    {config.sourcePort && (
+                      <div className="text-xs font-mono text-blue-600 dark:text-blue-400 bg-white dark:bg-blue-950/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-900 inline-block w-fit">
+                        Port: {config.sourcePort}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Show Physical Fiber Info */}
+              {config.fiberInfo ? (
+                <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700/50">
+                  <div className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase mb-1 tracking-wider flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> Active Fibers
+                  </div>
+                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-words bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded border border-green-100 dark:border-green-900/30 whitespace-pre-wrap">
+                    {config.fiberInfo}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700/50">
+                  <div className="text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-wider flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> Connection Status
+                  </div>
+                  <div className="text-xs text-gray-500 italic">No fibers lit on this segment</div>
+                </div>
+              )}
             </div>
           ) : (
             type === 'solid' && (
-              <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-1 rounded text-center">
-                Not provisioned
+              <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center">
+                Physical link not provisioned
               </div>
             )
           )}
 
-          <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <div className="flex justify-between">
-              <span>From:</span>
-              <span className="font-medium text-gray-900 dark:text-white">{start.name}</span>
+          <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1">
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
+              <span className="text-gray-500">From</span>
+              <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
+                {start.name}
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span>To:</span>
-              <span className="font-medium text-gray-900 dark:text-white">{end.name}</span>
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
+              <span className="text-gray-500">To</span>
+              <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
+                {end.name}
+              </span>
             </div>
-            <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <span>Road Dist:</span>
-              <span className="font-medium text-gray-900 dark:text-white">{distanceText}</span>
+            <div className="mt-1 flex justify-between items-center px-1">
+              <span className="font-medium">Road Distance</span>
+              <span className="font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                {distanceText}
+              </span>
             </div>
           </div>
         </div>
@@ -347,7 +384,7 @@ export default function ClientRingMap({
     <div className={mapContainerClass}>
       <MapLegend />
       {showControls && (
-        <div className="absolute top-4 right-4 z-1000 flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white">
+        <div className="absolute top-4 right-4 z-1000 flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700">
           {onBack && (
             <button
               onClick={onBack}
@@ -471,8 +508,8 @@ export default function ClientRingMap({
                 >
                   <div className="text-sm">
                     <h4 className="font-bold">{node.name}</h4>
-                    {node.remark && <p>Remark: {node.remark}</p>}
-                    {node.ip && <p>IP: {displayIp}</p>}
+                    {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
+                    {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
                   </div>
                 </Popup>
                 <Tooltip

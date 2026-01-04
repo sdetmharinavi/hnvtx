@@ -12,7 +12,7 @@ import { RingMapNode } from '@/components/map/types/node';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import { V_ring_nodesRowSchema, V_ringsRowSchema } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database'; // CHANGED: Imported useRpcRecord
+import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
 import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
@@ -34,6 +34,8 @@ interface PathConfigForMap {
   sourcePort?: string;
   dest?: string;
   destPort?: string;
+  fiberInfo?: string;
+  cableName?: string;
 }
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
@@ -69,7 +71,6 @@ export default function RingMapPage() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // 1. Fetch Ring Details
-  // CHANGED: Use useRpcRecord instead of useTableRecord
   const {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
@@ -87,7 +88,7 @@ export default function RingMapPage() {
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
-  // 3. Fetch Nodes (useLocalFirstQuery handles RPC internally for online fetch)
+  // 3. Fetch Nodes
   const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
     queryKey: ['ring-nodes-detail', ringId],
     onlineQueryFn: async () => {
@@ -119,10 +120,66 @@ export default function RingMapPage() {
     return rawNodes.map(mapNodeData).filter((n): n is RingMapNode => n !== null);
   }, [rawNodes]);
 
-  // 4. Fetch Logical Path configurations (Direct Table Access Allowed)
+  // --- NEW LOGIC: Fetch Physical Cables & Connections ---
+  const ringNodeIds = useMemo(() => {
+    if (!rawNodes) return [];
+    return rawNodes.map((n) => n.node_id).filter(Boolean) as string[];
+  }, [rawNodes]);
+
+  // 4. Fetch Cables
+  // FIX: Use direct Supabase query instead of RPC to handle UUID array filtering correctly
+  const { data: ringCables } = useQuery({
+    queryKey: ['ring-cables-physical', ringId, ringNodeIds],
+    queryFn: async () => {
+      if (ringNodeIds.length < 2) return [];
+
+      const { data, error } = await supabase
+        .from('ofc_cables')
+        .select('id, route_name, sn_id, en_id, capacity')
+        .in('sn_id', ringNodeIds)
+        .in('en_id', ringNodeIds);
+
+      if (error) {
+        console.error('Error fetching ring cables:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: ringNodeIds.length >= 2,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const ringCableIds = useMemo(() => ringCables?.map((c) => c.id) || [], [ringCables]);
+
+  // 5. Fetch ACTIVE Connections
+  // FIX: Use direct Supabase query instead of RPC to handle UUID array filtering correctly
+  const { data: allCableConnections } = useQuery({
+    queryKey: ['ring-connections-all', ringId, ringCableIds],
+    queryFn: async () => {
+      if (ringCableIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('v_ofc_connections_complete')
+        .select(
+          'ofc_id, system_name, source_port, fiber_no_sn, fiber_no_en, sn_id, en_id, status, fiber_role, path_direction, system_id, ofc_route_name'
+        )
+        .in('ofc_id', ringCableIds);
+
+      if (error) {
+        console.error('Error fetching connections:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: ringCableIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 4a. Fetch Logical Path configurations
   const { data: pathConfigs } = useQuery({
     queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
+      // Use standard select here as well for consistency
       const { data, error } = await supabase
         .from('logical_paths')
         .select(
@@ -130,8 +187,10 @@ export default function RingMapPage() {
            start_node_id, 
            end_node_id, 
            source_system:source_system_id(system_name), 
+           source_system_id,
            source_port, 
            destination_system:destination_system_id(system_name), 
+           destination_system_id,
            destination_port
         `
         )
@@ -142,7 +201,7 @@ export default function RingMapPage() {
     enabled: !!ringId,
   });
 
-  // 5. Calculate Potential Segments
+  // 5. Calculate Segments
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -164,8 +223,11 @@ export default function RingMapPage() {
       );
       if (allNodes.length > 1) {
         allNodes.forEach((node, index) => {
-          const nextIndex = (index + 1) % allNodes.length;
-          segments.push([node, allNodes[nextIndex]]);
+          if (index < allNodes.length - 1) {
+            segments.push([node, allNodes[index + 1]]);
+          } else if (ringDetails?.is_closed_loop) {
+            segments.push([node, allNodes[0]]);
+          }
         });
       }
     }
@@ -183,7 +245,7 @@ export default function RingMapPage() {
     });
 
     return { potentialSegments: segments, spurConnections: spurs };
-  }, [mappedNodes]);
+  }, [mappedNodes, ringDetails]);
 
   const activeSegments = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
@@ -199,31 +261,124 @@ export default function RingMapPage() {
     [activeSegments, spurConnections]
   );
 
+  // 7. BUILD SEGMENT CONFIG MAP
   const segmentConfigMap = useMemo(() => {
     const map: Record<string, PathConfigForMap> = {};
-    pathConfigs?.forEach((p) => {
-      const key1 = `${p.start_node_id}-${p.end_node_id}`;
-      const key2 = `${p.end_node_id}-${p.start_node_id}`;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sourceSys = p.source_system as any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const destSys = p.destination_system as any;
+    const findCable = (n1: string, n2: string) => {
+      return ringCables?.find(
+        (c) => (c.sn_id === n1 && c.en_id === n2) || (c.sn_id === n2 && c.en_id === n1)
+      );
+    };
 
-      const config: PathConfigForMap = {
-        source:
-          (Array.isArray(sourceSys) ? sourceSys[0]?.system_name : sourceSys?.system_name) ??
-          undefined,
-        sourcePort: p.source_port ?? undefined,
-        dest:
-          (Array.isArray(destSys) ? destSys[0]?.system_name : destSys?.system_name) ?? undefined,
-        destPort: p.destination_port ?? undefined,
-      };
-      map[key1] = config;
-      map[key2] = config;
+    const nodeIdToSystemId = new Map<string, string>();
+    mappedNodes.forEach((node) => {
+      if (node.node_id && node.id) {
+        nodeIdToSystemId.set(node.node_id, node.id);
+      }
     });
+
+    // C. Apply Logical Configurations
+    pathConfigs?.forEach((p) => {
+      const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
+      const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
+
+      if (sysIdA && sysIdB) {
+        const key1 = `${sysIdA}-${sysIdB}`;
+        const key2 = `${sysIdB}-${sysIdA}`;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const srcSys = p.source_system as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const dstSys = p.destination_system as any;
+
+        const config: PathConfigForMap = {
+          source: srcSys?.system_name,
+          sourcePort: p.source_port,
+          dest: dstSys?.system_name,
+          destPort: p.destination_port,
+          fiberInfo: undefined,
+          cableName: undefined,
+        };
+
+        map[key1] = config;
+        map[key2] = config;
+      }
+    });
+
+    // D. Apply Physical Info (Fibers)
+    allConnections.forEach(([nodeA, nodeB]) => {
+      const key1 = `${nodeA.id}-${nodeB.id}`;
+      const key2 = `${nodeB.id}-${nodeA.id}`;
+
+      const physNodeA = nodeA.node_id;
+      const physNodeB = nodeB.node_id;
+
+      if (!physNodeA || !physNodeB) return;
+
+      const matchingCables =
+        ringCables?.filter(
+          (c) =>
+            (c.sn_id === physNodeA && c.en_id === physNodeB) ||
+            (c.sn_id === physNodeB && c.en_id === physNodeA)
+        ) || [];
+
+      if (matchingCables.length === 0) return;
+
+      // Find best cable
+      let bestCable = matchingCables[0];
+      let bestFiberInfo = '';
+      let hasActiveFibers = false;
+      const sourceSystemId = nodeA.id;
+
+      for (const cable of matchingCables) {
+        const systemFibers =
+          allCableConnections?.filter(
+            (c) => c.ofc_id === cable.id && c.system_id === sourceSystemId && c.status === true
+          ) || [];
+
+        if (systemFibers.length > 0) {
+          bestCable = cable;
+          hasActiveFibers = true;
+
+          const txFiber = systemFibers.find(
+            (f) => f.path_direction === 'tx' || f.fiber_role === 'working'
+          );
+          const rxFiber = systemFibers.find(
+            (f) =>
+              f.path_direction === 'rx' ||
+              (f.fiber_role === 'working' && f.fiber_no_sn !== txFiber?.fiber_no_sn)
+          );
+
+          const f1 = txFiber || systemFibers[0];
+          const f2 = rxFiber || (systemFibers.length > 1 ? systemFibers[1] : null);
+
+          if (f1 && f2) {
+            bestFiberInfo = `Tx: F${f1.fiber_no_sn}, Rx: F${f2.fiber_no_sn}`;
+          } else if (f1) {
+            bestFiberInfo = `Working: F${f1.fiber_no_sn}`;
+          } else {
+            bestFiberInfo = systemFibers.map((f) => `F${f.fiber_no_sn}`).join(', ');
+          }
+          break;
+        }
+      }
+
+      const existing = map[key1] || {};
+
+      const mergedConfig = {
+        ...existing,
+        fiberInfo: hasActiveFibers ? bestFiberInfo : 'No Active Fibers',
+        // FIX: Handle potential null route_name
+        cableName: bestCable.route_name || undefined,
+      };
+
+      map[key1] = mergedConfig;
+      map[key2] = mergedConfig;
+    });
+
     return map;
-  }, [pathConfigs]);
+  }, [allConnections, ringCables, allCableConnections, pathConfigs, mappedNodes]);
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
