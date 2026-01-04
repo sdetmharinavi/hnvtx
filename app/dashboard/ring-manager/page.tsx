@@ -67,15 +67,25 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
+    // THE FIX: Added missing fields (system_type_id, node_id, etc.) required for the upsert RPC
     columns: `
       order_in_ring,
       ring_id,
       system:systems!ring_based_systems_system_id_fkey (
         id,
         system_name,
+        system_type_id,
+        node_id,
         is_hub,
         status,
         ip_address,
+        s_no,
+        make,
+        maan_node_id,
+        maintenance_terminal_id,
+        commissioned_on,
+        remark,
+        system_capacity_id,
         system_type:lookup_types!systems_system_type_id_fkey (name)
       )
     `,
@@ -92,14 +102,23 @@ const useRingSystems = (ringId: string | null) => {
           return {
             id: sys.id,
             system_name: sys.system_name,
+            system_type_id: sys.system_type_id, // Mapped
+            node_id: sys.node_id, // Mapped
             is_hub: sys.is_hub,
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
             status: sys.status,
-            // Extract nested type name
             system_type_name: sys.system_type?.name || 'Unknown Type',
             ip_address:
               typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
+            // Map optional fields to ensure they exist for the update payload
+            s_no: sys.s_no,
+            make: sys.make,
+            maan_node_id: sys.maan_node_id,
+            maintenance_terminal_id: sys.maintenance_terminal_id,
+            commissioned_on: sys.commissioned_on,
+            remark: sys.remark,
+            system_capacity_id: sys.system_capacity_id,
           };
         })
         .filter((item): item is V_systems_completeRowSchema => item !== null);
