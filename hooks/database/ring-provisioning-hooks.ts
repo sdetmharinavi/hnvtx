@@ -8,12 +8,14 @@ import { ofc_cablesRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
+import { syncEntity } from '@/hooks/data/useDataSync'; // Added syncEntity import
 
 const supabase = createClient();
 
 // Hook to fetch all rings for the selection dropdown
 export function useRingsForSelection() {
   const onlineQueryFn = async () => {
+    // Select * to match localDb schema expectations
     const { data, error } = await supabase.from('rings').select('*').order('name');
     if (error) throw error;
     return data || [];
@@ -60,11 +62,44 @@ export function useRingConnectionPaths(ringId: string | null) {
     }));
   };
 
-  // 2. Local Fetcher
+  // 2. Local Fetcher with JOIN logic
   const localQueryFn = async () => {
     if (!ringId) return [];
+
+    // Fetch raw paths
     const paths = await localDb.logical_paths.where('ring_id').equals(ringId).toArray();
-    return paths;
+
+    // Fetch related data for joins
+    const nodeIds = new Set<string>();
+    const systemIds = new Set<string>();
+
+    paths.forEach((p) => {
+      if (p.start_node_id) nodeIds.add(p.start_node_id);
+      if (p.end_node_id) nodeIds.add(p.end_node_id);
+      if (p.source_system_id) systemIds.add(p.source_system_id);
+      if (p.destination_system_id) systemIds.add(p.destination_system_id);
+    });
+
+    const nodes = await localDb.nodes.where('id').anyOf(Array.from(nodeIds)).toArray();
+    const systems = await localDb.systems.where('id').anyOf(Array.from(systemIds)).toArray();
+
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    const systemMap = new Map(systems.map((s) => [s.id, s]));
+
+    // Reconstruct the joined object structure expected by the UI
+    return paths.map((p) => ({
+      ...p,
+      start_node: p.start_node_id
+        ? { name: nodeMap.get(p.start_node_id)?.name || 'Unknown' }
+        : null,
+      end_node: p.end_node_id ? { name: nodeMap.get(p.end_node_id)?.name || 'Unknown' } : null,
+      source_system: p.source_system_id
+        ? { system_name: systemMap.get(p.source_system_id)?.system_name || 'Unknown' }
+        : null,
+      destination_system: p.destination_system_id
+        ? { system_name: systemMap.get(p.destination_system_id)?.system_name || 'Unknown' }
+        : null,
+    }));
   };
 
   return useLocalFirstQuery({
@@ -169,7 +204,7 @@ export function useAssignSystemToFibers() {
   });
 }
 
-// THE FIX: Enhanced mutation hook to handle all necessary invalidations
+// Enhanced mutation hook to handle all necessary invalidations AND sync
 export function useGenerateRingPaths() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -177,11 +212,16 @@ export function useGenerateRingPaths() {
       const { error } = await supabase.rpc('generate_ring_connection_paths', { p_ring_id: ringId });
       if (error) throw error;
     },
-    onSuccess: (_, ringId) => {
+    onSuccess: async (_, ringId) => {
       toast.success('Logical paths generated successfully!');
-      // 1. Invalidate the paths list for this ring (Updates the Table)
+
+      // 1. Force Sync the logical_paths table so localDb is updated immediately
+      await syncEntity(supabase, localDb, 'logical_paths');
+
+      // 2. Invalidate the paths list for this ring (Updates the Table via localQueryFn)
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths', ringId] });
-      // 2. Invalidate the global ring manager stats (Updates the Counts on Ring Manager page)
+
+      // 3. Invalidate the global ring manager stats
       queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
@@ -197,8 +237,11 @@ export function useDeprovisionPath() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Path deprovisioned.');
+      // Sync to update local state
+      await syncEntity(supabase, localDb, 'logical_paths');
+
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
@@ -228,8 +271,11 @@ export function useUpdateLogicalPathDetails() {
         .eq('id', variables.pathId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Path configuration saved.');
+      // Sync to update local state
+      await syncEntity(supabase, localDb, 'logical_paths');
+
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['ring-path-config'] });
     },
