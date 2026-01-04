@@ -1,13 +1,13 @@
 // path: hooks/database/ring-provisioning-hooks.ts
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
-import { ofc_cablesRowSchema } from "@/schemas/zod-schemas";
-import { z } from "zod";
-import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
-import { localDb } from "@/hooks/data/localDb";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
+import { ofc_cablesRowSchema } from '@/schemas/zod-schemas';
+import { z } from 'zod';
+import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
+import { localDb } from '@/hooks/data/localDb';
 
 const supabase = createClient();
 
@@ -32,76 +32,79 @@ export function useRingsForSelection() {
 
 // Hook to fetch the logical connection paths for a selected ring
 export function useRingConnectionPaths(ringId: string | null) {
-  
   // 1. Online Fetcher: Uses the efficient join query
   const onlineQueryFn = async () => {
-      if (!ringId) return [];
-      const { data, error } = await supabase
-        .from('logical_paths')
-        .select(`
+    if (!ringId) return [];
+    const { data, error } = await supabase
+      .from('logical_paths')
+      .select(
+        `
             *,
             start_node:start_node_id(name),
             end_node:end_node_id(name),
             source_system:source_system_id(system_name),
             destination_system:destination_system_id(system_name)
-        `)
-        .eq('ring_id', ringId)
-        .order('name');
-      if (error) throw error;
-      
-      // Flatten the structure slightly to match our expected interface
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data || []).map((row: any) => ({
-          ...row,
-          start_node: row.start_node,
-          end_node: row.end_node,
-          source_system: row.source_system,
-          destination_system: row.destination_system
-      }));
+        `
+      )
+      .eq('ring_id', ringId)
+      .order('name');
+    if (error) throw error;
+
+    // Flatten the structure slightly to match our expected interface
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data || []).map((row: any) => ({
+      ...row,
+      start_node: row.start_node,
+      end_node: row.end_node,
+      source_system: row.source_system,
+      destination_system: row.destination_system,
+    }));
   };
 
   // 2. Local Fetcher
   const localQueryFn = async () => {
-     if (!ringId) return [];
-     
-     // Note: This relies on manual sync having populated the logical_paths table
-     const paths = await localDb.logical_paths
-        .where('ring_id')
-        .equals(ringId)
-        .toArray();
-        
-     return paths;
+    if (!ringId) return [];
+
+    // Note: This relies on manual sync having populated the logical_paths table
+    const paths = await localDb.logical_paths.where('ring_id').equals(ringId).toArray();
+
+    return paths;
   };
 
   return useLocalFirstQuery({
     queryKey: ['ring-connection-paths', ringId],
     onlineQueryFn,
     localQueryFn,
-    dexieTable: localDb.logical_paths, 
-    enabled: !!ringId
+    dexieTable: localDb.logical_paths,
+    enabled: !!ringId,
   });
 }
 
 const lenientCableSchema = ofc_cablesRowSchema.extend({
-    created_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
-    updated_at: z.string().nullable().transform(val => val ? new Date(val).toISOString() : null),
+  created_at: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? new Date(val).toISOString() : null)),
+  updated_at: z
+    .string()
+    .nullable()
+    .transform((val) => (val ? new Date(val).toISOString() : null)),
 });
 
 export function useAvailableCables(nodeId: string | null) {
   const onlineQueryFn = async () => {
-      const { data, error } = await supabase.rpc('get_available_cables_for_node', { p_node_id: nodeId! });
-      if (error) throw error;
-      const parsed = z.array(lenientCableSchema).safeParse(data);
-      if (!parsed.success) throw new Error("Invalid data for available cables");
-      return parsed.data;
+    const { data, error } = await supabase.rpc('get_available_cables_for_node', {
+      p_node_id: nodeId!,
+    });
+    if (error) throw error;
+    const parsed = z.array(lenientCableSchema).safeParse(data);
+    if (!parsed.success) throw new Error('Invalid data for available cables');
+    return parsed.data;
   };
 
   const localQueryFn = async () => {
-     // Local filtering
-     return localDb.ofc_cables
-        .where('sn_id').equals(nodeId!)
-        .or('en_id').equals(nodeId!)
-        .toArray();
+    // Local filtering
+    return localDb.ofc_cables.where('sn_id').equals(nodeId!).or('en_id').equals(nodeId!).toArray();
   };
 
   return useLocalFirstQuery<'ofc_cables'>({
@@ -109,25 +112,28 @@ export function useAvailableCables(nodeId: string | null) {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.ofc_cables,
-    enabled: !!nodeId
+    enabled: !!nodeId,
   });
 }
 
 export function useAvailableFibers(cableId: string | null) {
   const onlineQueryFn = async () => {
-    const { data, error } = await supabase.rpc('get_available_fibers_for_cable', { p_cable_id: cableId! });
+    const { data, error } = await supabase.rpc('get_available_fibers_for_cable', {
+      p_cable_id: cableId!,
+    });
     if (error) throw error;
     return data as { fiber_no: number }[];
   };
 
   const localQueryFn = async () => {
-     // Local: Find fibers in ofc_connections where system_id is null
-     // THE FIX: Use filter instead of complex chaining if index doesn't exist
-     const fibers = await localDb.ofc_connections
-        .where('ofc_id').equals(cableId!)
-        .filter(f => f.system_id === null && f.status === true)
-        .toArray();
-     return fibers.map(f => ({ fiber_no: f.fiber_no_sn }));
+    // Local: Find fibers in ofc_connections where system_id is null
+    // THE FIX: Use filter instead of complex chaining if index doesn't exist
+    const fibers = await localDb.ofc_connections
+      .where('ofc_id')
+      .equals(cableId!)
+      .filter((f) => f.system_id === null && f.status === true)
+      .toArray();
+    return fibers.map((f) => ({ fiber_no: f.fiber_no_sn }));
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +142,7 @@ export function useAvailableFibers(cableId: string | null) {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.ofc_connections,
-    enabled: !!cableId
+    enabled: !!cableId,
   });
 }
 
@@ -144,13 +150,19 @@ export function useAvailableFibers(cableId: string | null) {
 export function useAssignSystemToFibers() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (variables: { systemId: string; cableId: string; fiberTx: number; fiberRx: number; logicalPathId: string }) => {
+    mutationFn: async (variables: {
+      systemId: string;
+      cableId: string;
+      fiberTx: number;
+      fiberRx: number;
+      logicalPathId: string;
+    }) => {
       const { error } = await supabase.rpc('assign_system_to_fibers', {
         p_system_id: variables.systemId,
         p_cable_id: variables.cableId,
         p_fiber_tx: variables.fiberTx,
         p_fiber_rx: variables.fiberRx,
-        p_logical_path_id: variables.logicalPathId
+        p_logical_path_id: variables.logicalPathId,
       });
       if (error) throw error;
     },
@@ -161,61 +173,70 @@ export function useAssignSystemToFibers() {
     },
     onError: (err) => {
       toast.error(`Provisioning failed: ${err.message}`);
-    }
+    },
   });
 }
 
 export function useGenerateRingPaths() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (ringId: string) => {
-            const { error } = await supabase.rpc('generate_ring_connection_paths', { p_ring_id: ringId });
-            if (error) throw error;
-        },
-        onSuccess: (_, ringId) => {
-            toast.success("Logical paths generated successfully!");
-            queryClient.invalidateQueries({ queryKey: ['ring-connection-paths', ringId] });
-        },
-        onError: (err) => toast.error(`Failed: ${err.message}`)
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ringId: string) => {
+      const { error } = await supabase.rpc('generate_ring_connection_paths', { p_ring_id: ringId });
+      if (error) throw error;
+    },
+    onSuccess: (_, ringId) => {
+      toast.success('Logical paths generated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['ring-connection-paths', ringId] });
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
 }
 
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: { logicalPathId: string }) => {
-      const { error } = await supabase.rpc('deprovision_logical_path', { p_path_id: variables.logicalPathId });
+      const { error } = await supabase.rpc('deprovision_logical_path', {
+        p_path_id: variables.logicalPathId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Path deprovisioned.");
+      toast.success('Path deprovisioned.');
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
-    onError: (err) => toast.error(`Failed: ${err.message}`)
+    onError: (err) => toast.error(`Failed: ${err.message}`),
   });
 }
 
 export function useUpdateLogicalPathDetails() {
-    const queryClient = useQueryClient();
-    return useMutation({
-      mutationFn: async (variables: {
-        pathId: string; sourceSystemId: string; sourcePort: string; destinationSystemId: string; destinationPort: string;
-      }) => {
-        const { error } = await supabase.from('logical_paths').update({
-            source_system_id: variables.sourceSystemId,
-            source_port: variables.sourcePort,
-            destination_system_id: variables.destinationSystemId,
-            destination_port: variables.destinationPort,
-            status: 'configured'
-          }).eq('id', variables.pathId);
-        if (error) throw error;
-      },
-      onSuccess: () => {
-        toast.success("Path configuration saved.");
-        queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
-        queryClient.invalidateQueries({ queryKey: ['ring-path-config'] }); 
-      },
-      onError: (err) => toast.error(`Failed: ${err.message}`)
-    });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (variables: {
+      pathId: string;
+      sourceSystemId: string;
+      sourcePort: string;
+      destinationSystemId: string;
+      destinationPort: string;
+    }) => {
+      const { error } = await supabase
+        .from('logical_paths')
+        .update({
+          source_system_id: variables.sourceSystemId,
+          source_port: variables.sourcePort,
+          destination_system_id: variables.destinationSystemId,
+          destination_port: variables.destinationPort,
+          status: 'configured',
+        })
+        .eq('id', variables.pathId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Path configuration saved.');
+      queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
+      queryClient.invalidateQueries({ queryKey: ['ring-path-config'] });
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
 }

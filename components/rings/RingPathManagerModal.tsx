@@ -85,10 +85,26 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
 
   const sourceSystemOptions = useMemo(
     () =>
-      (sourceSystemsData?.data || []).map((s) => ({
-        value: s.id,
-        label: s.system_name || 'Unnamed System',
-      })),
+      (sourceSystemsData?.data || []).map((s) => {
+        const labels: string[] = [];
+
+        if (s.system_name && s.make && s.ip_address) {
+          labels.push(`${s.system_name} (${s.make}) (${s.ip_address})`);
+        } else if (s.system_name && s.ip_address) {
+          labels.push(`${s.system_name} (${s.ip_address})`);
+        } else if (s.system_name) {
+          labels.push(s.system_name);
+        } else if (s.make) {
+          labels.push(s.make);
+        } else if (s.ip_address) {
+          labels.push(`(${s.ip_address})`);
+        }
+
+        return {
+          value: s.id,
+          label: labels.join(' - ') || 'Unnamed System',
+        };
+      }),
     [sourceSystemsData]
   );
 
@@ -99,10 +115,26 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
 
   const destSystemOptions = useMemo(
     () =>
-      (destSystemsData?.data || []).map((s) => ({
-        value: s.id,
-        label: s.system_name || 'Unnamed System',
-      })),
+      (destSystemsData?.data || []).map((s) => {
+        const labels: string[] = [];
+
+        if (s.system_name && s.make && s.ip_address) {
+          labels.push(`${s.system_name} (${s.make}) (${s.ip_address})`);
+        } else if (s.system_name && s.ip_address) {
+          labels.push(`${s.system_name} (${s.ip_address})`);
+        } else if (s.system_name) {
+          labels.push(s.system_name);
+        } else if (s.make) {
+          labels.push(s.make);
+        } else if (s.ip_address) {
+          labels.push(`(${s.ip_address})`);
+        }
+
+        return {
+          value: s.id,
+          label: labels.join(' - ') || 'Unnamed System',
+        };
+      }),
     [destSystemsData]
   );
 

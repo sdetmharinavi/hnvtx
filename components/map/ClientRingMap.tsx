@@ -1,7 +1,16 @@
 // components/map/ClientRingMap.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Tooltip, LayersControl } from 'react-leaflet';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+  Tooltip,
+  LayersControl,
+} from 'react-leaflet';
 import L, { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -28,7 +37,7 @@ interface ConnectionLineProps {
   theme: string;
   showPopup: boolean;
   setPolylineRef: (key: string, el: L.Polyline | null) => void;
-  config?: PathConfig; 
+  config?: PathConfig;
 }
 
 const ConnectionLine = ({
@@ -158,7 +167,7 @@ interface ClientRingMapProps {
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
-  segmentConfigs?: Record<string, PathConfig>; 
+  segmentConfigs?: Record<string, PathConfig>;
 }
 
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
@@ -386,7 +395,7 @@ export default function ClientRingMap({
           <LayersControl.BaseLayer name="Satellite View">
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
             />
           </LayersControl.BaseLayer>
         </LayersControl>
