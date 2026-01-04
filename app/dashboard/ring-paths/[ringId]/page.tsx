@@ -19,7 +19,6 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { useQueryClient } from '@tanstack/react-query';
 
 // Define the shape of the data returned by useRingConnectionPaths
 interface LogicalPathData {
@@ -46,7 +45,6 @@ export default function RingPathsPage() {
   const router = useRouter();
   const ringId = params.ringId as string;
   const supabase = createClient();
-  const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -80,14 +78,9 @@ export default function RingPathsPage() {
 
   // --- HANDLERS ---
 
+  // THE FIX: Simplified handler. Side effects (invalidation) are now inside the hook.
   const handleGeneratePaths = () => {
-    generateMutation.mutate(ringId, {
-      onSuccess: () => {
-        refetch();
-        // Invalidate cache to ensure ring-manager stats update if they track path count
-        queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
-      },
-    });
+    generateMutation.mutate(ringId);
   };
 
   const handleEditPath = (path: LogicalPathData) => {
@@ -199,7 +192,6 @@ export default function RingPathsPage() {
     []
   );
 
-  // THE FIX: Use "logical_paths" (string) instead of LogicalPathData (interface)
   const tableActions = useMemo(
     (): TableAction<'logical_paths'>[] => [
       {
@@ -319,8 +311,6 @@ export default function RingPathsPage() {
         <RingPathManagerModal
           isOpen={isEditModalOpen}
           onClose={handleCloseModal}
-          // THE FIX: We cast here because RingPathManagerModal expects extended logical path
-          // and selectedPath satisfies that structure.
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           path={selectedPath as any}
         />

@@ -1,4 +1,4 @@
-// path: hooks/database/ring-provisioning-hooks.ts
+// hooks/database/ring-provisioning-hooks.ts
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +14,6 @@ const supabase = createClient();
 // Hook to fetch all rings for the selection dropdown
 export function useRingsForSelection() {
   const onlineQueryFn = async () => {
-    // THE FIX: Select * to match localDb schema expectations
     const { data, error } = await supabase.from('rings').select('*').order('name');
     if (error) throw error;
     return data || [];
@@ -64,10 +63,7 @@ export function useRingConnectionPaths(ringId: string | null) {
   // 2. Local Fetcher
   const localQueryFn = async () => {
     if (!ringId) return [];
-
-    // Note: This relies on manual sync having populated the logical_paths table
     const paths = await localDb.logical_paths.where('ring_id').equals(ringId).toArray();
-
     return paths;
   };
 
@@ -103,7 +99,6 @@ export function useAvailableCables(nodeId: string | null) {
   };
 
   const localQueryFn = async () => {
-    // Local filtering
     return localDb.ofc_cables.where('sn_id').equals(nodeId!).or('en_id').equals(nodeId!).toArray();
   };
 
@@ -126,8 +121,6 @@ export function useAvailableFibers(cableId: string | null) {
   };
 
   const localQueryFn = async () => {
-    // Local: Find fibers in ofc_connections where system_id is null
-    // THE FIX: Use filter instead of complex chaining if index doesn't exist
     const fibers = await localDb.ofc_connections
       .where('ofc_id')
       .equals(cableId!)
@@ -146,7 +139,6 @@ export function useAvailableFibers(cableId: string | null) {
   });
 }
 
-// ... Mutations remain standard (they update via queue) ...
 export function useAssignSystemToFibers() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -177,6 +169,7 @@ export function useAssignSystemToFibers() {
   });
 }
 
+// THE FIX: Enhanced mutation hook to handle all necessary invalidations
 export function useGenerateRingPaths() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -186,7 +179,10 @@ export function useGenerateRingPaths() {
     },
     onSuccess: (_, ringId) => {
       toast.success('Logical paths generated successfully!');
+      // 1. Invalidate the paths list for this ring (Updates the Table)
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths', ringId] });
+      // 2. Invalidate the global ring manager stats (Updates the Counts on Ring Manager page)
+      queryClient.invalidateQueries({ queryKey: ['rings-manager-data'] });
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
   });
