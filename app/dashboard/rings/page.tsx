@@ -1,4 +1,4 @@
-// path: app/dashboard/rings/page.tsx
+// app/dashboard/rings/page.tsx
 "use client";
 
 import { useMemo, useCallback, useState } from "react";
@@ -67,6 +67,7 @@ export default function RingsPage() {
     editModal,
     deleteModal,
     actions: crudActions,
+    bulkActions,
   } = useCrudManager<"rings", V_ringsRowSchema>({
     tableName: "rings",
     dataQueryHook: useRingsData,

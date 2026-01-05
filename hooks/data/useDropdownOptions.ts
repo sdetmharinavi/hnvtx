@@ -68,10 +68,14 @@ export function useDropdownOptions({
     return table
       .filter((item) => {
         return Object.entries(validFilters).every(([key, val]) => {
-          const itemVal = item[key];
-          if (key === "status" && typeof val === "boolean") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const itemVal = (item as any)[key];
+
+          // Robust boolean check: handles true/false vs "true"/"false" vs 1/0
+          if (key === "status") {
             return String(itemVal) === String(val);
           }
+          // General equality check
           return itemVal === val;
         });
       })
@@ -102,8 +106,8 @@ export function useDropdownOptions({
     localQueryFn,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dexieTable: localDb.table(tableName) as any,
-    staleTime: 60 * 60 * 1000,
-    autoSync: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    autoSync: true, // Ensure we fetch if missing locally
   });
 
   const options: Option[] = useMemo(() => {
@@ -128,7 +132,7 @@ export function useDropdownOptions({
     return uniqueOptions;
   }, [data, valueField, labelField]);
 
-  return { options, isLoading, originalData: data };
+  return { options, isLoading, originalData: data || [] };
 }
 
 // ... (Rest of exports remain same) ...

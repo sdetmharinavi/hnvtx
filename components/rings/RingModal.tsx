@@ -23,9 +23,10 @@ interface RingModalProps {
   editingRing?: V_ringsRowSchema | null;
   onSubmit: (data: RingsInsertSchema) => void;
   isLoading: boolean;
+  // Use loose typing for flexibility, but expected structure
   ringTypes: Array<{ id: string; name: string; code: string | null }>;
   maintenanceAreas: Array<{ id: string; name: string; code: string | null }>;
-  isLoadingDropdowns?: boolean; // New Prop
+  isLoadingDropdowns?: boolean;
 }
 
 const STATUS_OPTIONS = {
@@ -54,7 +55,7 @@ export function RingModal({
   isLoading,
   ringTypes,
   maintenanceAreas,
-  isLoadingDropdowns = false, // Default to false
+  isLoadingDropdowns = false,
 }: RingModalProps) {
   const {
     register,
@@ -166,6 +167,7 @@ export function RingModal({
             error={errors.name}
             disabled={isLoading}
             placeholder='Enter ring name'
+            required
           />
           <FormSearchableSelect
             key={`ring-type-${formKey}`}
@@ -174,9 +176,10 @@ export function RingModal({
             control={control}
             error={errors.ring_type_id}
             disabled={isLoading}
-            isLoading={isLoadingDropdowns} // Pass loading state
+            isLoading={isLoadingDropdowns}
             placeholder={isLoadingDropdowns ? "Loading types..." : "Select ring type"}
             options={ringTypeOptions}
+            required
           />
         </div>
 
@@ -187,7 +190,7 @@ export function RingModal({
           control={control}
           error={errors.maintenance_terminal_id}
           disabled={isLoading}
-          isLoading={isLoadingDropdowns} // Pass loading state
+          isLoading={isLoadingDropdowns}
           placeholder={isLoadingDropdowns ? "Loading areas..." : "Select maintenance terminal"}
           options={maintenanceAreaOptions}
         />
