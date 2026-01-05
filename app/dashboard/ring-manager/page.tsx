@@ -42,7 +42,7 @@ import {
   V_systems_completeRowSchema,
 } from "@/schemas/zod-schemas";
 import { createClient } from "@/utils/supabase/client";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
+// import { useOfflineQuery } from '@/hooks/data/useOfflineQuery'; // REMOVED
 import { localDb } from "@/hooks/data/localDb";
 import { ringConfig, RingEntity } from "@/config/ring-config";
 import { useUser } from "@/providers/UserProvider";
@@ -53,6 +53,7 @@ import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
 import { formatDate } from "@/utils/formatters";
 import { useRingManagerData, DynamicStats } from "@/hooks/data/useRingManagerData";
 import { UserRole } from "@/types/user-roles";
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from "@/hooks/data/useDropdownOptions"; // ADDED
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -67,7 +68,6 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, "ring_based_systems", {
-    // THE FIX: Added missing fields (system_type_id, node_id, etc.) required for the upsert RPC
     columns: `
       order_in_ring,
       ring_id,
@@ -279,7 +279,7 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = manager;
 
-  // THE FIX: Safely extract 'stats' from the hook result
+  // Safely extract 'stats' from the hook result
   const dynamicStats = useMemo<DynamicStats>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const s = (manager as any).stats;
@@ -304,7 +304,7 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
     onSuccess: () => {
       void refetch();
-      // THE FIX: Invalidate specific node data to ensure Ring Paths map is updated
+      // Invalidate specific node data to ensure Ring Paths map is updated
       queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
       queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
       queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
@@ -316,7 +316,6 @@ export default function RingManagerPage() {
     onSuccess: () => {
       toast.success("System disassociated from ring.");
       void refetch();
-      // THE FIX: Invalidate specific node data
       queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
       queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
       queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
@@ -360,7 +359,6 @@ export default function RingManagerPage() {
       await Promise.all(promises);
       toast.success("All system associations saved successfully!");
       void refetch();
-      // THE FIX: Invalidate after batch save
       queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
       queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
     } catch {
@@ -415,18 +413,18 @@ export default function RingManagerPage() {
     });
   };
 
-  const { data: ringTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ["ring-types-for-modal"],
-    async () =>
-      (await supabase.from("lookup_types").select("*").eq("category", "RING_TYPES")).data ?? [],
-    async () => await localDb.lookup_types.where({ category: "RING_TYPES" }).toArray()
-  );
-  const { data: maintenanceAreasData } = useOfflineQuery<Maintenance_areasRowSchema[]>(
-    ["maintenance-areas-for-modal"],
-    async () =>
-      (await supabase.from("maintenance_areas").select("*").eq("status", true)).data ?? [],
-    async () => await localDb.maintenance_areas.where({ status: true }).toArray()
-  );
+  // --- REPLACED MANUAL OFFLINE QUERY WITH CENTRALIZED HOOKS ---
+  const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
+    useLookupTypeOptions("RING_TYPES");
+
+  const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
+    useMaintenanceAreaOptions();
+
+  // Cast raw data
+  const ringTypesData = (ringTypesRaw || []) as Lookup_typesRowSchema[];
+  const maintenanceAreasData = (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[];
+  const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
+  // -----------------------------------------------------------
 
   const handleMutationSuccess = () => {
     toast.success(`Ring ${editModal.record ? "updated" : "created"} successfully.`);
@@ -487,10 +485,10 @@ export default function RingManagerPage() {
         { key: "bts_status", title: "bts_status", dataIndex: "bts_status" },
         { key: "total_nodes", title: "total_nodes", dataIndex: "total_nodes" },
         {
-          key: "topology_config", // ADDED
+          key: "topology_config",
           title: "topology_config",
           dataIndex: "topology_config",
-          excelFormat: "json", // Handles JSON stringification automatically
+          excelFormat: "json",
         },
         {
           key: "associated_systems",
@@ -545,7 +543,7 @@ export default function RingManagerPage() {
         label: "Add Systems to Ring",
         onClick: () => setIsSystemsModalOpen(true),
         variant: "primary",
-        leftIcon: <FiPlus />, // Changed to Plus icon for better semantics
+        leftIcon: <FiPlus />,
         disabled: isLoading,
       });
     }
@@ -658,7 +656,6 @@ export default function RingManagerPage() {
         if (opt.key === "ring_type_id") {
           return {
             ...opt,
-            // 1. Map "DEFAULT" to empty string (which clears the filter)
             options: (ringTypesData || [])
               .map((t) => {
                 if (t.name === "DEFAULT") {
@@ -666,7 +663,6 @@ export default function RingManagerPage() {
                 }
                 return { value: t.id, label: t.name };
               })
-              // 2. Sort to ensure "All Ring Types" is always at the top
               .sort((a, b) => {
                 if (a.value === "") return -1;
                 if (b.value === "") return 1;
@@ -688,13 +684,12 @@ export default function RingManagerPage() {
 
   useEffect(() => {
     // Only set if data is loaded and no filter is currently set
-    if (ringTypesData && !filters.filters.ring_type_id) {
+    if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
       const defaultType = ringTypesData.find(
         (t) => t.code === "BBU_RINGS" || t.name === "BBU_RINGS"
       );
 
       if (defaultType) {
-        // Set the filter
         filters.setFilters((prev) => ({
           ...prev,
           ring_type_id: defaultType.id,
@@ -784,9 +779,10 @@ export default function RingManagerPage() {
         onClose={editModal.close}
         onSubmit={handleSave}
         editingRing={editModal.record}
-        ringTypes={ringTypesData || []}
-        maintenanceAreas={maintenanceAreasData || []}
+        ringTypes={ringTypesData}
+        maintenanceAreas={maintenanceAreasData}
         isLoading={isMutating}
+        isLoadingDropdowns={isLoadingDropdowns}
       />
 
       <SystemRingModal
