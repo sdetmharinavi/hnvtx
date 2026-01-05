@@ -23,9 +23,9 @@ import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
-import { Activity, Router, Anchor, ArrowRight } from 'lucide-react'; 
+import { Activity, Router, Anchor, ArrowRight } from 'lucide-react';
 // Import PortDisplayInfo type
-import type { PortDisplayInfo } from '@/app/dashboard/rings/[id]/page'; 
+import { getReadableTextColor, type PortDisplayInfo } from '@/app/dashboard/rings/[id]/page';
 
 export interface PathConfig {
   source?: string;
@@ -176,7 +176,6 @@ const ConnectionLine = ({
   );
 };
 
-
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
@@ -193,70 +192,70 @@ interface ClientRingMapProps {
 
 // ... MapController, FullscreenControl, MapFlyToController ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
-    const map = useMap();
-    useEffect(() => {
-      const timer = setTimeout(() => map.invalidateSize(), 100);
-      return () => clearTimeout(timer);
-    }, [isFullScreen, map]);
-    return null;
-  };
-  
-  const FullscreenControl = ({
-    isFullScreen,
-    setIsFullScreen,
-  }: {
-    isFullScreen: boolean;
-    setIsFullScreen: (fs: boolean) => void;
-  }) => {
-    const map = useMap();
-    useEffect(() => {
-      const Fullscreen = L.Control.extend({
-        onAdd: function () {
-          const container = L.DomUtil.create(
-            'div',
-            'leaflet-bar leaflet-control leaflet-control-custom'
-          );
-          container.style.backgroundColor = 'white';
-          container.style.color = 'black';
-          container.style.width = '34px';
-          container.style.height = '34px';
-          container.style.borderRadius = '4px';
-          container.style.cursor = 'pointer';
-          container.style.display = 'flex';
-          container.style.alignItems = 'center';
-          container.style.justifyContent = 'center';
-          container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
-          const iconHTML = isFullScreen
-            ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
-            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
-          container.innerHTML = iconHTML;
-          L.DomEvent.on(container, 'click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            setIsFullScreen(!isFullScreen);
-          });
-          return container;
-        },
-      });
-      const control = new Fullscreen({ position: 'topleft' });
-      map.whenReady(() => {
-        control.addTo(map);
-      });
-      return () => {
-        control.remove();
-      };
-    }, [map, isFullScreen, setIsFullScreen]);
-    return null;
-  };
-  
-  const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
-    const map = useMap();
-    useEffect(() => {
-      if (coords) {
-        map.flyTo(coords as [number, number], 16);
-      }
-    }, [coords, map]);
-    return null;
-  };
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 100);
+    return () => clearTimeout(timer);
+  }, [isFullScreen, map]);
+  return null;
+};
+
+const FullscreenControl = ({
+  isFullScreen,
+  setIsFullScreen,
+}: {
+  isFullScreen: boolean;
+  setIsFullScreen: (fs: boolean) => void;
+}) => {
+  const map = useMap();
+  useEffect(() => {
+    const Fullscreen = L.Control.extend({
+      onAdd: function () {
+        const container = L.DomUtil.create(
+          'div',
+          'leaflet-bar leaflet-control leaflet-control-custom'
+        );
+        container.style.backgroundColor = 'white';
+        container.style.color = 'black';
+        container.style.width = '34px';
+        container.style.height = '34px';
+        container.style.borderRadius = '4px';
+        container.style.cursor = 'pointer';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
+        const iconHTML = isFullScreen
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
+        container.innerHTML = iconHTML;
+        L.DomEvent.on(container, 'click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          setIsFullScreen(!isFullScreen);
+        });
+        return container;
+      },
+    });
+    const control = new Fullscreen({ position: 'topleft' });
+    map.whenReady(() => {
+      control.addTo(map);
+    });
+    return () => {
+      control.remove();
+    };
+  }, [map, isFullScreen, setIsFullScreen]);
+  return null;
+};
+
+const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (coords) {
+      map.flyTo(coords as [number, number], 16);
+    }
+  }, [coords, map]);
+  return null;
+};
 
 export default function ClientRingMap({
   nodes,
@@ -268,7 +267,7 @@ export default function ClientRingMap({
   flyToCoordinates = null,
   showControls = false,
   segmentConfigs = {},
-  nodePorts, 
+  nodePorts,
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -498,7 +497,7 @@ export default function ClientRingMap({
                     <h4 className="font-bold">{node.name}</h4>
                     {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
                     {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
-                    
+
                     {/* Render Ports if available */}
                     {portsList.length > 0 && (
                       <div className="mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
@@ -507,20 +506,20 @@ export default function ClientRingMap({
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {portsList.map((p, idx) => (
-                            <span 
-                                key={idx} 
-                                className="text-[10px] px-1.5 py-0.5 rounded border"
-                                style={{ 
-                                    backgroundColor: p.color + '15', // 10% opacity
-                                    borderColor: p.color + '40', // 25% opacity
-                                    color: p.color
-                                }}
-                                title={p.targetNodeName ? `→ ${p.targetNodeName}` : 'Endpoint'}
+                            <span
+                              key={idx}
+                              className="text-[10px] px-1.5 py-0.5 rounded border"
+                              style={{
+                                backgroundColor: p.color + '15', // 10% opacity
+                                borderColor: p.color + '40', // 25% opacity
+                                color: p.color,
+                              }}
+                              title={p.targetNodeName ? `→ ${p.targetNodeName}` : 'Endpoint'}
                             >
-                                <span className="font-mono font-bold">{p.port}</span>
-                                {p.targetNodeName && (
-                                    <span className="ml-1 opacity-70">→ {p.targetNodeName}</span>
-                                )}
+                              <span className="font-mono font-bold">{p.port}</span>
+                              {p.targetNodeName && (
+                                <span className="ml-1 opacity-70">→ {p.targetNodeName}</span>
+                              )}
                             </span>
                           ))}
                         </div>
@@ -545,31 +544,31 @@ export default function ClientRingMap({
                     {/* Render Ports if available - With Colors */}
                     {portsList.length > 0 && (
                       <div className="mt-0.5 flex flex-row gap-px items-center">
-                         {portsList.slice(0, 3).map((p, idx) => (
-                             <div 
-                                key={idx}
-                                className="px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
-                                style={{
-                                    backgroundColor: p.color ? p.color : '#3b82f6', // Fallback blue
-                                    color: '#000000',
-                                    borderColor: 'rgba(255,255,255,0.3)'
-                                }}
-                             >
-                                <Anchor size={8} /> 
-                                <span>{p.port}</span>
-                                {/* {p.targetNodeName && (
+                        {portsList.slice(0, 3).map((p, idx) => (
+                          <div
+                            key={idx}
+                            className="px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
+                            style={{
+                              backgroundColor: p.color ? p.color : '#3b82f6', // Fallback blue
+                              color: getReadableTextColor(p.color),
+                              borderColor: 'rgba(255,255,255,0.3)',
+                            }}
+                          >
+                            <Anchor size={8} />
+                            <span>{p.port}</span>
+                            {/* {p.targetNodeName && (
                                   <>
                                     <ArrowRight size={8} className="mx-0.5" />
                                     <span className="opacity-90">{p.targetNodeName}</span>
                                   </>
                                 )} */}
-                             </div>
-                         ))}
-                         {portsList.length > 3 && (
-                             <div className="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">
-                                +{portsList.length - 3} more
-                             </div>
-                         )}
+                          </div>
+                        ))}
+                        {portsList.length > 3 && (
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">
+                            +{portsList.length - 3} more
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
