@@ -24,8 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
 import { Activity, Router, Anchor, ArrowRight } from 'lucide-react';
-// Import PortDisplayInfo type
-import { getReadableTextColor, type PortDisplayInfo } from '@/app/dashboard/rings/[id]/page';
+import { PortDisplayInfo } from '@/app/dashboard/rings/[id]/page';
 
 export interface PathConfig {
   source?: string;
@@ -273,6 +272,19 @@ export default function ClientRingMap({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
+
+  function getReadableTextColor(bgColor: string): string {
+    const c = bgColor.substring(1);
+    const rgb = parseInt(c, 16);
+    const r = (rgb >> 16) & 255;
+    const g = (rgb >> 8) & 255;
+    const b = rgb & 255;
+
+    // Perceived luminance formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 150 ? '#000000' : '#ffffff';
+  }
 
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
