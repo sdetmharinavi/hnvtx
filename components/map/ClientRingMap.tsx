@@ -23,7 +23,7 @@ import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
-import { Activity, Router, Anchor, ArrowRight } from 'lucide-react';
+import { Activity, Router, Anchor } from 'lucide-react';
 import { PortDisplayInfo } from '@/app/dashboard/rings/[id]/page';
 
 export interface PathConfig {

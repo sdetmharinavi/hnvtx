@@ -42,8 +42,6 @@ import {
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-// import { useOfflineQuery } from '@/hooks/data/useOfflineQuery'; // REMOVED
-import { localDb } from '@/hooks/data/localDb';
 import { ringConfig, RingEntity } from '@/config/ring-config';
 import { useUser } from '@/providers/UserProvider';
 import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
@@ -53,7 +51,7 @@ import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // ADDED
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -435,7 +433,7 @@ export default function RingManagerPage() {
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
   // -----------------------------------------------------------
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const handleMutationSuccess = (data: any) => {
     toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
