@@ -23,6 +23,13 @@ import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
 
+// Define the PortDisplayInfo type here to be passed to the map
+export interface PortDisplayInfo {
+  port: string;
+  color: string;
+  targetNodeName?: string;
+}
+
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
@@ -65,6 +72,30 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
     system_type_code: node.system_type_code,
     system_node_name: node.system_node_name,
   };
+};
+
+// Helper for consistent colors based on string input (connection ID)
+const getConnectionColor = (id: string) => {
+  // A palette of distinct, readable colors
+  const colors = [
+    '#ef4444', // Red
+    '#f97316', // Orange
+    '#f59e0b', // Amber
+    '#84cc16', // Lime
+    '#10b981', // Emerald
+    '#06b6d4', // Cyan
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#d946ef', // Fuchsia
+    '#f43f5e', // Rose
+    '#14b8a6', // Teal
+  ];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
 };
 
 export default function RingMapPage() {
@@ -206,6 +237,7 @@ export default function RingMapPage() {
         .from('logical_paths')
         .select(
           `
+           id,
            start_node_id,
            end_node_id,
            source_system:source_system_id(system_name),
@@ -393,61 +425,81 @@ export default function RingMapPage() {
     return map;
   }, [allConnections, ringCables, allCableConnections, pathConfigs, mappedNodes]);
 
-  // 8. NEW: Build Node -> Active Ports Map
+  // 8. NEW: Build Node -> Active Ports Map with Colors
   const nodePortMap = useMemo(() => {
-    const map = new Map<string, Set<string>>(); // Use Set to prevent duplicates
-    if (!rawNodes) return new Map<string, string>();
+    // Map<NodeId, Array<{ port: string, color: string, targetNodeName: string }>>
+    const map = new Map<string, PortDisplayInfo[]>();
+    
+    if (!rawNodes) return new Map<string, PortDisplayInfo[]>();
 
-    // 1. Map System ID -> Node ID
-    const systemToNodeIdMap = new Map<string, string>();
+    // 1. Map System ID -> Node ID & Node Name
+    const systemToNodeInfo = new Map<string, { nodeId: string; nodeName: string }>();
     rawNodes.forEach((node) => {
       if (node.id && node.node_id) {
-        systemToNodeIdMap.set(node.id, node.node_id);
+        systemToNodeInfo.set(node.id, { 
+            nodeId: node.node_id, 
+            nodeName: node.system_node_name || node.name || 'Unknown' 
+        });
       }
     });
 
     // Helper to add a port to a system(node)
-    const addPort = (systemId: string | null, port: string | null) => {
+    const addPort = (systemId: string | null, port: string | null, connectionId: string, targetSystemId?: string | null) => {
       if (!systemId || !port) return;
-      const nodeId = systemToNodeIdMap.get(systemId);
-      // Only map if this system is actually a node in the ring
-      if (nodeId) {
+      
+      const nodeInfo = systemToNodeInfo.get(systemId);
+      
+      if (nodeInfo) {
+        const nodeId = nodeInfo.nodeId;
         if (!map.has(nodeId)) {
-          map.set(nodeId, new Set());
+          map.set(nodeId, []);
         }
-        map.get(nodeId)!.add(port);
+
+        const list = map.get(nodeId)!;
+        
+        // Avoid duplicates for same port on same node (though one port usually has one connection)
+        if (!list.some(p => p.port === port)) {
+            const color = getConnectionColor(connectionId);
+            
+            // Resolve target name
+            let targetName = 'Unknown';
+            if (targetSystemId) {
+                const targetInfo = systemToNodeInfo.get(targetSystemId);
+                targetName = targetInfo ? targetInfo.nodeName : 'External';
+            }
+
+            list.push({ port, color, targetNodeName: targetName });
+        }
       }
     };
 
-    // 2. Add from Physical Connections
-    if (allCableConnections) {
-      allCableConnections.forEach((conn) => {
-        addPort(conn.system_id, conn.source_port);
-        // If we had destination info in this view, we'd add it here too
-      });
-    }
-
-    // 3. Add from Logical Path Config (Source & Destination)
+    // 2. Add from Physical Connections (We don't have connection IDs in allCableConnections easily linked to systems here
+    // unless we fetch system_connections. But we DO have pathConfigs which link systems)
+    
+    // NOTE: 'allCableConnections' are fiber-level. We need system-level connections.
+    // However, 'pathConfigs' (Logical Paths) has what we need for Ring Topology.
+    
     if (pathConfigs) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pathConfigs.forEach((p: any) => {
-        addPort(p.source_system_id, p.source_port);
-        addPort(p.destination_system_id, p.destination_port);
+        // Use path ID as unique key for color generation
+        const connectionId = p.id; 
+        
+        // Add Source
+        addPort(p.source_system_id, p.source_port, connectionId, p.destination_system_id);
+        
+        // Add Destination
+        addPort(p.destination_system_id, p.destination_port, connectionId, p.source_system_id);
       });
     }
 
-    // 4. Flatten to Map<string, string> for display
-    const finalMap = new Map<string, string>();
-    map.forEach((ports, nodeId) => {
-      // Natural sort for ports like 1, 2, 10
-      const sorted = Array.from(ports).sort((a, b) =>
-        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-      );
-      finalMap.set(nodeId, sorted.join(', '));
+    // Sort ports naturally for display
+    map.forEach((ports) => {
+      ports.sort((a, b) => a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: 'base' }));
     });
 
-    return finalMap;
-  }, [allCableConnections, rawNodes, pathConfigs]);
+    return map;
+  }, [rawNodes, pathConfigs]);
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
@@ -512,7 +564,7 @@ export default function RingMapPage() {
         onBack={handleBack}
         showControls={true}
         segmentConfigs={segmentConfigMap}
-        // NEW PROP: Pass the node ports
+        // NEW PROP: Pass the structured node ports
         nodePorts={nodePortMap}
       />
     );

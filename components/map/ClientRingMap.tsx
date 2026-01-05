@@ -1,4 +1,5 @@
 // components/map/ClientRingMap.tsx
+
 'use client';
 
 import {
@@ -22,7 +23,9 @@ import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { fetchOrsDistance, fixLeafletIcons } from '@/utils/mapUtils';
-import { Activity, Router, Anchor } from 'lucide-react'; // Added Anchor icon
+import { Activity, Router, Anchor, ArrowRight } from 'lucide-react'; 
+// Import PortDisplayInfo type
+import type { PortDisplayInfo } from '@/app/dashboard/rings/[id]/page'; 
 
 export interface PathConfig {
   source?: string;
@@ -31,7 +34,7 @@ export interface PathConfig {
   destPort?: string;
   fiberInfo?: string;
   cableName?: string;
-  capacity?: number; // Added capacity
+  capacity?: number;
 }
 
 interface ConnectionLineProps {
@@ -44,6 +47,7 @@ interface ConnectionLineProps {
   config?: PathConfig;
 }
 
+// ... ConnectionLine component ...
 const ConnectionLine = ({
   start,
   end,
@@ -131,25 +135,6 @@ const ConnectionLine = ({
 
           {hasConfig ? (
             <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-800">
-              {/* Show Source/Dest if available */}
-              {/* {config.source && (
-                <div className="space-y-2 mb-2">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase">
-                      Active System (Start)
-                    </span>
-                    <div className="font-medium text-gray-800 dark:text-gray-200 text-xs truncate">
-                      {config.source}
-                    </div>
-                    {config.sourcePort && (
-                      <div className="text-xs font-mono text-blue-600 dark:text-blue-400 bg-white dark:bg-blue-950/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-900 inline-block w-fit">
-                        Port: {config.sourcePort}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )} */}
-
               {/* Show Physical Fiber Info */}
               {config.fiberInfo ? (
                 <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700/50">
@@ -178,18 +163,6 @@ const ConnectionLine = ({
           )}
 
           <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1">
-            {/* <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
-              <span className="text-gray-500">From</span>
-              <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
-                {start.name}
-              </span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-1.5 rounded">
-              <span className="text-gray-500">To</span>
-              <span className="font-medium text-gray-900 dark:text-white truncate max-w-[120px] text-right">
-                {end.name}
-              </span>
-            </div> */}
             <div className="mt-1 flex justify-between items-center px-1">
               <span className="font-medium">Road Distance</span>
               <span className="font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
@@ -203,6 +176,7 @@ const ConnectionLine = ({
   );
 };
 
+
 interface ClientRingMapProps {
   nodes: MapNode[];
   solidLines?: Array<[MapNode, MapNode]>;
@@ -213,75 +187,76 @@ interface ClientRingMapProps {
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
   segmentConfigs?: Record<string, PathConfig>;
-  // NEW PROP
-  nodePorts?: Map<string, string>;
+  // UPDATED PROP
+  nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
+// ... MapController, FullscreenControl, MapFlyToController ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
-  const map = useMap();
-  useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 100);
-    return () => clearTimeout(timer);
-  }, [isFullScreen, map]);
-  return null;
-};
-
-const FullscreenControl = ({
-  isFullScreen,
-  setIsFullScreen,
-}: {
-  isFullScreen: boolean;
-  setIsFullScreen: (fs: boolean) => void;
-}) => {
-  const map = useMap();
-  useEffect(() => {
-    const Fullscreen = L.Control.extend({
-      onAdd: function () {
-        const container = L.DomUtil.create(
-          'div',
-          'leaflet-bar leaflet-control leaflet-control-custom'
-        );
-        container.style.backgroundColor = 'white';
-        container.style.color = 'black';
-        container.style.width = '34px';
-        container.style.height = '34px';
-        container.style.borderRadius = '4px';
-        container.style.cursor = 'pointer';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
-        container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
-        const iconHTML = isFullScreen
-          ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
-        container.innerHTML = iconHTML;
-        L.DomEvent.on(container, 'click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          setIsFullScreen(!isFullScreen);
-        });
-        return container;
-      },
-    });
-    const control = new Fullscreen({ position: 'topleft' });
-    map.whenReady(() => {
-      control.addTo(map);
-    });
-    return () => {
-      control.remove();
-    };
-  }, [map, isFullScreen, setIsFullScreen]);
-  return null;
-};
-
-const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
-  const map = useMap();
-  useEffect(() => {
-    if (coords) {
-      map.flyTo(coords as [number, number], 16);
-    }
-  }, [coords, map]);
-  return null;
-};
+    const map = useMap();
+    useEffect(() => {
+      const timer = setTimeout(() => map.invalidateSize(), 100);
+      return () => clearTimeout(timer);
+    }, [isFullScreen, map]);
+    return null;
+  };
+  
+  const FullscreenControl = ({
+    isFullScreen,
+    setIsFullScreen,
+  }: {
+    isFullScreen: boolean;
+    setIsFullScreen: (fs: boolean) => void;
+  }) => {
+    const map = useMap();
+    useEffect(() => {
+      const Fullscreen = L.Control.extend({
+        onAdd: function () {
+          const container = L.DomUtil.create(
+            'div',
+            'leaflet-bar leaflet-control leaflet-control-custom'
+          );
+          container.style.backgroundColor = 'white';
+          container.style.color = 'black';
+          container.style.width = '34px';
+          container.style.height = '34px';
+          container.style.borderRadius = '4px';
+          container.style.cursor = 'pointer';
+          container.style.display = 'flex';
+          container.style.alignItems = 'center';
+          container.style.justifyContent = 'center';
+          container.title = isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen';
+          const iconHTML = isFullScreen
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>`;
+          container.innerHTML = iconHTML;
+          L.DomEvent.on(container, 'click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            setIsFullScreen(!isFullScreen);
+          });
+          return container;
+        },
+      });
+      const control = new Fullscreen({ position: 'topleft' });
+      map.whenReady(() => {
+        control.addTo(map);
+      });
+      return () => {
+        control.remove();
+      };
+    }, [map, isFullScreen, setIsFullScreen]);
+    return null;
+  };
+  
+  const MapFlyToController = ({ coords }: { coords: [number, number] | null }) => {
+    const map = useMap();
+    useEffect(() => {
+      if (coords) {
+        map.flyTo(coords as [number, number], 16);
+      }
+    }, [coords, map]);
+    return null;
+  };
 
 export default function ClientRingMap({
   nodes,
@@ -293,7 +268,7 @@ export default function ClientRingMap({
   flyToCoordinates = null,
   showControls = false,
   segmentConfigs = {},
-  nodePorts, // Destructure new prop
+  nodePorts, 
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -500,8 +475,8 @@ export default function ClientRingMap({
             const offset =
               direction === 'left' ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
 
-            // Get port info for this node
-            const portsInfo = nodePorts?.get(node.node_id || node.id!);
+            // Get port info array for this node
+            const portsList = nodePorts?.get(node.node_id || node.id!) || [];
 
             return (
               <Marker
@@ -523,14 +498,31 @@ export default function ClientRingMap({
                     <h4 className="font-bold">{node.name}</h4>
                     {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
                     {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
-                    {/* Additional popup info */}
-                    {portsInfo && (
+                    
+                    {/* Render Ports if available */}
+                    {portsList.length > 0 && (
                       <div className="mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
-                        <div className="text-xs font-semibold text-gray-500 uppercase">
+                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
                           Active Interfaces
                         </div>
-                        <div className="text-xs font-mono text-blue-600 dark:text-blue-400">
-                          {portsInfo}
+                        <div className="flex flex-wrap gap-1">
+                          {portsList.map((p, idx) => (
+                            <span 
+                                key={idx} 
+                                className="text-[10px] px-1.5 py-0.5 rounded border"
+                                style={{ 
+                                    backgroundColor: p.color + '15', // 10% opacity
+                                    borderColor: p.color + '40', // 25% opacity
+                                    color: p.color
+                                }}
+                                title={p.targetNodeName ? `→ ${p.targetNodeName}` : 'Endpoint'}
+                            >
+                                <span className="font-mono font-bold">{p.port}</span>
+                                {p.targetNodeName && (
+                                    <span className="ml-1 opacity-70">→ {p.targetNodeName}</span>
+                                )}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -546,14 +538,38 @@ export default function ClientRingMap({
                   opacity={1}
                 >
                   <div className="flex flex-col items-center">
-                    <div className="px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-xs font-bold rounded border border-slate-300 dark:border-slate-600 shadow-md backdrop-blur-xs whitespace-nowrap z-10">
+                    <div className="px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-xs font-bold rounded border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap z-10">
                       {node.system_node_name} - {formatIP(node.ip)}
                     </div>
 
-                    {/* Render Ports if available */}
-                    {portsInfo && (
-                      <div className="mt-0.5 px-1 py-px bg-blue-50/90 dark:bg-blue-900/80 text-blue-800 dark:text-blue-100 text-[10px] font-mono rounded border border-blue-200 dark:border-blue-800 shadow-sm flex items-center gap-1">
-                        <Anchor size={8} /> {portsInfo}
+                    {/* Render Ports if available - With Colors */}
+                    {portsList.length > 0 && (
+                      <div className="mt-0.5 flex flex-row gap-px items-center">
+                         {portsList.slice(0, 3).map((p, idx) => (
+                             <div 
+                                key={idx}
+                                className="px-1 py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
+                                style={{
+                                    backgroundColor: p.color ? p.color : '#3b82f6', // Fallback blue
+                                    color: '#ffffff',
+                                    borderColor: 'rgba(255,255,255,0.3)'
+                                }}
+                             >
+                                <Anchor size={8} /> 
+                                <span>{p.port}</span>
+                                {/* {p.targetNodeName && (
+                                  <>
+                                    <ArrowRight size={8} className="mx-0.5" />
+                                    <span className="opacity-90">{p.targetNodeName}</span>
+                                  </>
+                                )} */}
+                             </div>
+                         ))}
+                         {portsList.length > 3 && (
+                             <div className="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">
+                                +{portsList.length - 3} more
+                             </div>
+                         )}
                       </div>
                     )}
                   </div>
