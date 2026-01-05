@@ -3,14 +3,15 @@
 
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEdit2, FiZap } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEdit2, FiZap, FiTrash2 } from 'react-icons/fi'; // Import FiTrash2
 
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
-import { PageSpinner, ErrorDisplay, Button } from '@/components/common/ui';
+import { PageSpinner, ErrorDisplay, Button, ConfirmModal } from '@/components/common/ui'; // Import ConfirmModal
 import {
   useRingConnectionPaths,
   useGenerateRingPaths,
+  useDeprovisionPath, // Ensure this hook is imported
 } from '@/hooks/database/ring-provisioning-hooks';
 import { useTableRecord } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
@@ -48,6 +49,7 @@ export default function RingPathsPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPath, setSelectedPath] = useState<LogicalPathData | null>(null);
 
   // --- PERMISSIONS ---
@@ -73,13 +75,15 @@ export default function RingPathsPage() {
     refetch,
   } = useRingConnectionPaths(ringId);
 
-  // 3. Mutation to Generate Paths
+  // 3. Mutations
   const generateMutation = useGenerateRingPaths();
+  const deleteMutation = useDeprovisionPath(); // Hook to delete/deprovision
 
   // --- HANDLERS ---
 
-  // THE FIX: Simplified handler. Side effects (invalidation) are now inside the hook.
   const handleGeneratePaths = () => {
+    // Optional: Warn user that this might duplicate if not careful, 
+    // but the SQL ON CONFLICT handles duplicates gracefully.
     generateMutation.mutate(ringId);
   };
 
@@ -87,6 +91,26 @@ export default function RingPathsPage() {
     setSelectedPath(path);
     setIsEditModalOpen(true);
   };
+
+  const handleDeletePath = (path: LogicalPathData) => {
+    setSelectedPath(path);
+    setIsDeleteModalOpen(true);
+  }
+
+  const confirmDelete = () => {
+    if (selectedPath) {
+      deleteMutation.mutate(
+        { logicalPathId: selectedPath.id }, 
+        {
+          onSuccess: () => {
+            setIsDeleteModalOpen(false);
+            setSelectedPath(null);
+            refetch();
+          }
+        }
+      );
+    }
+  }
 
   const handleCloseModal = () => {
     setIsEditModalOpen(false);
@@ -202,6 +226,14 @@ export default function RingPathsPage() {
         variant: 'secondary',
         disabled: !canEdit,
       },
+      {
+        key: 'delete',
+        label: 'Delete Path',
+        icon: <FiTrash2 />,
+        onClick: (record) => handleDeletePath(record as unknown as LogicalPathData),
+        variant: 'danger',
+        disabled: !canEdit, // Use same permission as edit for now
+      },
     ],
     [canEdit]
   );
@@ -272,8 +304,7 @@ export default function RingPathsPage() {
             </h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
               It seems this ring doesn&apos;t have any logical paths defined yet. Click{' '}
-              <strong>Generate Paths</strong> to automatically create paths between all adjacent
-              nodes in the ring.
+              <strong>Generate Paths</strong> to automatically create paths based on the Ring Topology (Hub-to-Hub and Hub-to-Spur).
             </p>
             {canEdit && (
               <Button
@@ -315,6 +346,17 @@ export default function RingPathsPage() {
           path={selectedPath as any}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={isDeleteModalOpen}
+        onConfirm={confirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+        title="Delete Logical Path"
+        message={`Are you sure you want to delete path "${selectedPath?.name}"? This will remove all associated fiber allocations.`}
+        type="danger"
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

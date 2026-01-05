@@ -144,15 +144,16 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
   );
 
   const handleSave = () => {
-    if (!path?.id || !sourceSystemId || !sourcePort || !destSystemId || !destPort) return;
+    // UPDATED VALIDATION: Only Require Source side. Destination side is optional.
+    if (!path?.id || !sourceSystemId || !sourcePort) return;
 
     updatePathMutation.mutate(
       {
         pathId: path.id,
         sourceSystemId,
         sourcePort,
-        destinationSystemId: destSystemId,
-        destinationPort: destPort,
+        destinationSystemId: destSystemId, // Can be null
+        destinationPort: destPort,         // Can be null
       },
       {
         onSuccess: () => onClose(),
@@ -194,7 +195,7 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
             <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700">
               <span className="w-2 h-2 rounded-full bg-blue-500"></span>
               <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300">
-                Source Configuration
+                Source Configuration <span className="text-red-500">*</span>
               </h4>
             </div>
             <SearchableSelect
@@ -249,8 +250,7 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
             disabled={
               !sourceSystemId ||
               !sourcePort ||
-              !destSystemId ||
-              !destPort ||
+              // Removed dest checks to allow partial save
               updatePathMutation.isPending
             }
             variant="primary"

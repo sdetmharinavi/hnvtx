@@ -327,46 +327,116 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     ring_info RECORD;
-    node_rec RECORD;
-    prev_node_rec RECORD;
-    first_node_rec RECORD;
+    
+    -- Variables for Backbone Loop
+    hub_nodes RECORD;
+    prev_hub RECORD;
+    first_hub RECORD;
+    
+    -- Variables for Spur Loop
+    spur_rec RECORD;
+    parent_hub_id UUID;
+    parent_node_id UUID;
+    parent_node_name TEXT; -- Fixed: Specific variable for the name
 BEGIN
+    -- 1. Get Ring Info
     SELECT * INTO ring_info FROM public.rings WHERE id = p_ring_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Ring not found';
     END IF;
 
-    -- Loop through nodes in the ring and create paths
-    prev_node_rec := NULL;
-    first_node_rec := NULL;
+    -- ==========================================
+    -- PHASE 1: GENERATE BACKBONE (Hub to Hub)
+    -- ==========================================
+    prev_hub := NULL;
+    first_hub := NULL;
 
-    FOR node_rec IN
-        SELECT n.id, n.name
-        FROM public.nodes n
-        JOIN public.systems s ON n.id = s.node_id
-        JOIN public.ring_based_systems rbs ON s.id = rbs.system_id
-        WHERE rbs.ring_id = p_ring_id
-        -- Order by the specified ring order, not alphabetically
-        ORDER BY rbs.order_in_ring 
+    FOR hub_nodes IN
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring
+        FROM public.ring_based_systems rbs
+        JOIN public.systems s ON rbs.system_id = s.id
+        JOIN public.nodes n ON s.node_id = n.id
+        WHERE rbs.ring_id = p_ring_id AND s.is_hub = true
+        ORDER BY rbs.order_in_ring ASC
     LOOP
-        IF first_node_rec IS NULL THEN
-            first_node_rec := node_rec;
+        IF first_hub IS NULL THEN
+            first_hub := hub_nodes;
         END IF;
 
-        IF prev_node_rec IS NOT NULL THEN
-            INSERT INTO public.logical_paths (name, ring_id, start_node_id, end_node_id)
-            VALUES (ring_info.name || ':' || prev_node_rec.name || '-' || node_rec.name, p_ring_id, prev_node_rec.id, node_rec.id)
+        IF prev_hub IS NOT NULL THEN
+            -- Connect Previous Hub to Current Hub
+            INSERT INTO public.logical_paths (
+                name, ring_id, 
+                start_node_id, end_node_id, 
+                source_system_id, destination_system_id
+            )
+            VALUES (
+                ring_info.name || ': ' || prev_hub.node_name || ' -> ' || hub_nodes.node_name, 
+                p_ring_id, 
+                prev_hub.node_id, hub_nodes.node_id,
+                prev_hub.system_id, hub_nodes.system_id
+            )
             ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
         END IF;
-        prev_node_rec := node_rec;
+        
+        prev_hub := hub_nodes;
     END LOOP;
 
-    -- Create final path to close the ring
-    IF prev_node_rec IS NOT NULL AND first_node_rec IS NOT NULL AND prev_node_rec.id <> first_node_rec.id THEN
-        INSERT INTO public.logical_paths (name, ring_id, start_node_id, end_node_id)
-        VALUES (ring_info.name || ':' || prev_node_rec.name || '-' || first_node_rec.name, p_ring_id, prev_node_rec.id, first_node_rec.id)
+    -- Close the Loop (Last Hub -> First Hub)
+    IF ring_info.is_closed_loop AND prev_hub IS NOT NULL AND first_hub IS NOT NULL AND prev_hub.node_id <> first_hub.node_id THEN
+        INSERT INTO public.logical_paths (
+            name, ring_id, 
+            start_node_id, end_node_id,
+            source_system_id, destination_system_id
+        )
+        VALUES (
+            ring_info.name || ': ' || prev_hub.node_name || ' -> ' || first_hub.node_name, 
+            p_ring_id, 
+            prev_hub.node_id, first_hub.node_id,
+            prev_hub.system_id, first_hub.system_id
+        )
         ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
     END IF;
+
+    -- ==========================================
+    -- PHASE 2: GENERATE SPURS (Parent -> Spur)
+    -- ==========================================
+    FOR spur_rec IN
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring
+        FROM public.ring_based_systems rbs
+        JOIN public.systems s ON rbs.system_id = s.id
+        JOIN public.nodes n ON s.node_id = n.id
+        WHERE rbs.ring_id = p_ring_id AND s.is_hub = false
+    LOOP
+        -- Find the parent hub (The hub with order = floor(spur.order))
+        -- e.g. Spur 1.2 belongs to Hub 1.0
+        parent_hub_id := NULL; -- Reset for safety
+        
+        SELECT s.id, n.id, n.name INTO parent_hub_id, parent_node_id, parent_node_name
+        FROM public.ring_based_systems rbs
+        JOIN public.systems s ON rbs.system_id = s.id
+        JOIN public.nodes n ON s.node_id = n.id
+        WHERE rbs.ring_id = p_ring_id 
+          AND s.is_hub = true 
+          AND rbs.order_in_ring = floor(spur_rec.order_in_ring)
+        LIMIT 1;
+
+        IF parent_hub_id IS NOT NULL THEN
+            -- Connect Parent Hub -> Spur Node
+            INSERT INTO public.logical_paths (
+                name, ring_id, 
+                start_node_id, end_node_id,
+                source_system_id, destination_system_id
+            )
+            VALUES (
+                ring_info.name || ' (Spur): ' || parent_node_name || ' -> ' || spur_rec.node_name, 
+                p_ring_id, 
+                parent_node_id, spur_rec.node_id,
+                parent_hub_id, spur_rec.system_id
+            )
+            ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+        END IF;
+    END LOOP;
 
     RETURN QUERY SELECT * FROM public.logical_paths WHERE ring_id = p_ring_id;
 END;

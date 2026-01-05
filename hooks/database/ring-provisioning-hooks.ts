@@ -256,8 +256,9 @@ export function useUpdateLogicalPathDetails() {
       pathId: string;
       sourceSystemId: string;
       sourcePort: string;
-      destinationSystemId: string;
-      destinationPort: string;
+      // Made optional/nullable to support partial configuration
+      destinationSystemId: string | null;
+      destinationPort: string | null;
     }) => {
       const { error } = await supabase
         .from('logical_paths')
