@@ -257,6 +257,7 @@ export default function RingMapPage() {
   });
 
   // 6. Calculate Segments
+  // 6. Calculate Segments
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -267,12 +268,21 @@ export default function RingMapPage() {
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
 
+    // --- FIX STARTS HERE ---
     if (hubs.length > 1) {
-      hubs.forEach((hub, index) => {
-        const nextIndex = (index + 1) % hubs.length;
-        segments.push([hub, hubs[nextIndex]]);
-      });
-    } else {
+      // Connect sequential hubs: 0->1, 1->2, 2->3
+      for (let i = 0; i < hubs.length - 1; i++) {
+        segments.push([hubs[i], hubs[i + 1]]);
+      }
+      
+      // Conditionally close the loop: 3->0
+      if (ringDetails?.is_closed_loop) {
+        segments.push([hubs[hubs.length - 1], hubs[0]]);
+      }
+    } 
+    // --- FIX ENDS HERE ---
+    else {
+      // Fallback for non-hub/flat lists (existing logic)
       const allNodes = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );

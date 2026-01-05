@@ -136,4 +136,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want information of connected source and destination ports in permanent tooltip in client ring map, for that only we need to add same colors to the connected ports
+Let's begin! First of all I want to fix options not showing for ring type in ring modal form.
