@@ -426,10 +426,15 @@ export default function RingManagerPage() {
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
   // -----------------------------------------------------------
 
-  const handleMutationSuccess = () => {
-    toast.success(`Ring ${editModal.record ? "updated" : "created"} successfully.`);
+  const handleMutationSuccess = (data: any) => {
+    toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
     refetch();
+    
+    // THE FIX: Invalidate specific ring details if we updated one
+    if (editModal.record?.id) {
+       queryClient.invalidateQueries({ queryKey: ['rpc-record', 'v_rings', editModal.record.id] });
+    }
   };
 
   const handleSave = (data: RingsInsertSchema) => {

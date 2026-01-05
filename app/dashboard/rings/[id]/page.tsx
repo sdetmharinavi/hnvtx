@@ -112,7 +112,10 @@ export default function RingMapPage() {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
     refetch: refetchRing,
-  } = useRpcRecord(supabase, "v_rings", ringId);
+  } = useRpcRecord(supabase, "v_rings", ringId, {
+    // THE FIX: Ensure we fetch fresh data when entering this page to catch "Closed Loop" updates
+    refetchOnMount: true,
+  });
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
   // 2. Mutation
@@ -257,7 +260,6 @@ export default function RingMapPage() {
   });
 
   // 6. Calculate Segments
-  // 6. Calculate Segments
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -268,7 +270,6 @@ export default function RingMapPage() {
     const spokes = mappedNodes.filter((node) => !node.is_hub);
     const segments: Array<[RingMapNode, RingMapNode]> = [];
 
-    // --- FIX STARTS HERE ---
     if (hubs.length > 1) {
       // Connect sequential hubs: 0->1, 1->2, 2->3
       for (let i = 0; i < hubs.length - 1; i++) {
@@ -276,13 +277,12 @@ export default function RingMapPage() {
       }
 
       // Conditionally close the loop: 3->0
-      if (ringDetails?.is_closed_loop) {
+      // Check for null explicitly because it could be undefined on first render
+      if (ringDetails?.is_closed_loop === true) {
         segments.push([hubs[hubs.length - 1], hubs[0]]);
       }
-    }
-    // --- FIX ENDS HERE ---
-    else {
-      // Fallback for non-hub/flat lists (existing logic)
+    } else {
+      // Fallback for non-hub/flat lists (legacy)
       const allNodes = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );
@@ -290,7 +290,7 @@ export default function RingMapPage() {
         allNodes.forEach((node, index) => {
           if (index < allNodes.length - 1) {
             segments.push([node, allNodes[index + 1]]);
-          } else if (ringDetails?.is_closed_loop) {
+          } else if (ringDetails?.is_closed_loop === true) {
             segments.push([node, allNodes[0]]);
           }
         });
@@ -488,12 +488,6 @@ export default function RingMapPage() {
       }
     };
 
-    // 2. Add from Physical Connections (We don't have connection IDs in allCableConnections easily linked to systems here
-    // unless we fetch system_connections. But we DO have pathConfigs which link systems)
-
-    // NOTE: 'allCableConnections' are fiber-level. We need system-level connections.
-    // However, 'pathConfigs' (Logical Paths) has what we need for Ring Topology.
-
     if (pathConfigs) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pathConfigs.forEach((p: any) => {
@@ -581,7 +575,6 @@ export default function RingMapPage() {
         onBack={handleBack}
         showControls={true}
         segmentConfigs={segmentConfigMap}
-        // NEW PROP: Pass the structured node ports
         nodePorts={nodePortMap}
       />
     );
