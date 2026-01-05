@@ -78,18 +78,18 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
 const getConnectionColor = (id: string) => {
   // A palette of distinct, readable colors
   const colors = [
-    '#ef4444', // Red
-    '#f97316', // Orange
-    '#f59e0b', // Amber
-    '#84cc16', // Lime
-    '#10b981', // Emerald
-    '#06b6d4', // Cyan
-    '#3b82f6', // Blue
-    '#6366f1', // Indigo
-    '#8b5cf6', // Violet
-    '#d946ef', // Fuchsia
-    '#f43f5e', // Rose
-    '#14b8a6', // Teal
+    '#fca5a5', // Light Red
+    '#fdba74', // Light Orange
+    '#fcd34d', // Light Amber
+    '#bef264', // Light Lime
+    '#6ee7b7', // Light Emerald
+    '#67e8f9', // Light Cyan
+    '#93c5fd', // Light Blue
+    '#a5b4fc', // Light Indigo
+    '#c4b5fd', // Light Violet
+    '#f0abfc', // Light Fuchsia
+    '#fda4af', // Light Rose
+    '#5eead4', // Light Teal
   ];
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
