@@ -7,14 +7,21 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RingMapNode } from "./types/node";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { Maximize, Minimize, ArrowLeft } from "lucide-react";
+import { Maximize, Minimize, ArrowLeft, Router, Activity, Anchor } from "lucide-react";
 import { useThemeStore } from "@/stores/themeStore";
+import { PathConfig } from "./ClientRingMap";
+// Reuse the type definition
+import type { PortDisplayInfo } from "@/app/dashboard/rings/[id]/page";
+import { formatIP } from "@/utils/formatters";
 
 interface MeshDiagramProps {
   nodes: RingMapNode[];
   connections: Array<[RingMapNode, RingMapNode]>;
   ringName?: string;
   onBack?: () => void;
+  segmentConfigs?: Record<string, PathConfig>;
+  // ADDED: Prop to receive port info
+  nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
 const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
@@ -29,34 +36,146 @@ const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
   return null;
 };
 
-export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramProps) {
+// Sub-component for rendering lines with Popups
+const MeshConnectionLine = ({
+  startPos,
+  endPos,
+  isSpur,
+  config,
+  theme,
+  startNodeName,
+  endNodeName,
+}: {
+  startPos: L.LatLng;
+  endPos: L.LatLng;
+  isSpur: boolean;
+  config?: PathConfig;
+  theme: string;
+  startNodeName: string;
+  endNodeName: string;
+}) => {
+  const [isInteracted, setIsInteracted] = useState(false);
+  const isDark = theme === "dark";
+
+  const color = isSpur ? (isDark ? "#b4083f" : "#ff0066") : isDark ? "#60a5fa" : "#3b82f6";
+
+  const hasConfig = config && (config.source || config.fiberInfo || config.cableName);
+
+  return (
+    <Polyline
+      positions={[startPos, endPos]}
+      pathOptions={{
+        color: color,
+        weight: isSpur ? 2 : 4,
+        dashArray: isSpur ? "5, 5" : undefined,
+        opacity: 0.8,
+        lineCap: "round",
+        lineJoin: "round",
+      }}
+      eventHandlers={{
+        click: () => setIsInteracted(true),
+        popupopen: () => setIsInteracted(true),
+      }}>
+      <Popup className={isDark ? "dark-popup" : ""}>
+        <div className='text-sm min-w-[220px]'>
+          <div className='font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300'>
+            {isSpur ? "Spur Connection" : "Backbone Segment"}
+          </div>
+
+          <div className='text-xs text-gray-500 mb-2'>
+            {startNodeName} ↔ {endNodeName}
+          </div>
+
+          {config?.cableName && (
+            <div className='flex items-center justify-between gap-2 mb-2'>
+              <div
+                className='text-xs font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-1.5 truncate'
+                title={config.cableName}>
+                <Router className='w-3 h-3 shrink-0' />
+                <span className='truncate max-w-[150px]'>{config.cableName}</span>
+              </div>
+              {config.capacity && (
+                <span className='shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800'>
+                  {config.capacity}F
+                </span>
+              )}
+            </div>
+          )}
+
+          {hasConfig ? (
+            <div className='mb-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-800'>
+              {config.fiberInfo ? (
+                <div className='mt-1'>
+                  <div className='text-[10px] font-bold text-green-600 dark:text-green-400 uppercase mb-1 tracking-wider flex items-center gap-1'>
+                    <Activity className='w-3 h-3' /> Active Fibers
+                  </div>
+                  <div className='text-xs font-mono text-gray-700 dark:text-gray-300 wrap-break-words bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded border border-green-100 dark:border-green-900/30 whitespace-pre-wrap'>
+                    {config.fiberInfo}
+                  </div>
+                </div>
+              ) : (
+                <div className='mt-1'>
+                  <div className='text-[10px] font-bold text-gray-500 uppercase mb-1 tracking-wider flex items-center gap-1'>
+                    <Activity className='w-3 h-3' /> Connection Status
+                  </div>
+                  <div className='text-xs text-gray-500 italic'>No fibers lit on this segment</div>
+                </div>
+              )}
+            </div>
+          ) : (
+            !isSpur && (
+              <div className='mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center'>
+                Physical link not provisioned
+              </div>
+            )
+          )}
+        </div>
+      </Popup>
+    </Polyline>
+  );
+};
+
+export default function MeshDiagram({
+  nodes,
+  connections,
+  onBack,
+  segmentConfigs = {},
+  nodePorts, // Receive ports
+}: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { theme } = useThemeStore();
 
   const isDark = theme === "dark";
   const bgColor = isDark ? "#0f172a" : "#f8fafc";
-  const hubLineColor = isDark ? "#60a5fa" : "#3b82f6";
-  const spurLineColor = isDark ? "#b4083f" : "#ff0066";
+
+  function getReadableTextColor(bgColor: string): string {
+    const c = bgColor.substring(1);
+    const rgb = parseInt(c, 16);
+    const r = (rgb >> 16) & 255;
+    const g = (rgb >> 8) & 255;
+    const b = rgb & 255;
+
+    // Perceived luminance formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 150 ? '#000000' : '#ffffff';
+  }
 
   const { nodePositions, bounds } = useMemo(() => {
     const positions = new Map<string, L.LatLng>();
 
-    // Configuration
     const CENTER_X = 1000;
     const CENTER_Y = 1000;
     const RING_RADIUS = 400;
     const SPUR_LENGTH = 200;
 
-    // 1. Sort nodes by order
     const sortedNodes = [...nodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
-    // 2. Separate Backbone (Integer Orders) from Spurs (Decimal Orders)
     const backboneNodes: RingMapNode[] = [];
     const spurNodes: RingMapNode[] = [];
 
     sortedNodes.forEach((node) => {
       const order = node.order_in_ring || 0;
-      // Check if it's effectively an integer (e.g., 1.0, 2.0)
       if (Math.abs(order - Math.round(order)) < 0.01) {
         backboneNodes.push(node);
       } else {
@@ -64,25 +183,20 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
       }
     });
 
-    // If no backbone detected (all nulls), treat everyone as backbone
     if (backboneNodes.length === 0 && spurNodes.length === 0) {
       backboneNodes.push(...nodes);
     }
 
-    // 3. Position Backbone Nodes in a Circle
     const angleStep = (2 * Math.PI) / Math.max(1, backboneNodes.length);
-    // Start from -90deg (Top)
     const startAngle = -Math.PI / 2;
 
     backboneNodes.forEach((node, index) => {
       const angle = startAngle + index * angleStep;
-      const lat = CENTER_Y + RING_RADIUS * Math.sin(angle); // Y corresponds to Lat
-      const lng = CENTER_X + RING_RADIUS * Math.cos(angle); // X corresponds to Lng
+      const lat = CENTER_Y + RING_RADIUS * Math.sin(angle);
+      const lng = CENTER_X + RING_RADIUS * Math.cos(angle);
       positions.set(node.id!, new L.LatLng(lat, lng));
     });
 
-    // 4. Position Spur Nodes (Radiating from parent)
-    // Group spurs by their parent integer order
     const spursByParent = new Map<number, RingMapNode[]>();
     spurNodes.forEach((node) => {
       const parentOrder = Math.floor(node.order_in_ring || 0);
@@ -91,40 +205,31 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
     });
 
     spursByParent.forEach((children, parentOrder) => {
-      // Find parent position
       const parentNode = backboneNodes.find(
         (n) => Math.round(n.order_in_ring || 0) === parentOrder
       );
-      if (!parentNode) {
-        return;
-      }
+      if (!parentNode) return;
 
       const parentPos = positions.get(parentNode.id!);
       if (!parentPos) return;
 
-      // Calculate vector from center to parent
       const vecX = parentPos.lng - CENTER_X;
       const vecY = parentPos.lat - CENTER_Y;
       const mag = Math.sqrt(vecX * vecX + vecY * vecY);
 
-      // Normalized direction vector
       const dirX = mag === 0 ? 1 : vecX / mag;
       const dirY = mag === 0 ? 0 : vecY / mag;
 
-      // Fan out logic if multiple spurs on one node
-      const fanAngle = Math.PI / 4; // 45 degrees spread
+      const fanAngle = Math.PI / 4;
       const totalSpurs = children.length;
 
       children.forEach((child, idx) => {
-        // If multiple spurs, rotate the vector slightly
         let rotation = 0;
         if (totalSpurs > 1) {
-          // Center the fan around the main direction
           const step = fanAngle / (totalSpurs - 1);
           rotation = -fanAngle / 2 + idx * step;
         }
 
-        // Rotate direction vector
         const rotatedX = dirX * Math.cos(rotation) - dirY * Math.sin(rotation);
         const rotatedY = dirX * Math.sin(rotation) + dirY * Math.cos(rotation);
 
@@ -135,11 +240,9 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
       });
     });
 
-    // 5. Calculate Bounds
     const lats = Array.from(positions.values()).map((p) => p.lat);
     const lngs = Array.from(positions.values()).map((p) => p.lng);
 
-    // Add padding to bounds
     const minLat = Math.min(...lats) - 100;
     const maxLat = Math.max(...lats) + 100;
     const minLng = Math.min(...lngs) - 100;
@@ -173,7 +276,6 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
 
   return (
     <div className={containerClass}>
-      {/* Controls Overlay */}
       <div className='absolute top-4 right-4 z-50 flex flex-col gap-2'>
         {onBack && (
           <button
@@ -202,14 +304,12 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
         maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
-        zoomControl={false} // We add it manually below
+        zoomControl={false}
         className='dark:bg-blue-950! shadow-lg'>
         <MeshController bounds={bounds} />
 
-        {/* ADDED: Standard Zoom Controls in top-left */}
         <ZoomControl position='bottomright' />
 
-        {/* Render Connections */}
         {connections.map(([nodeA, nodeB], index) => {
           const posA = nodePositions.get(nodeA.id!);
           const posB = nodePositions.get(nodeB.id!);
@@ -219,32 +319,37 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
           const orderB = nodeB.order_in_ring || 0;
           const isSpur = orderA % 1 !== 0 || orderB % 1 !== 0;
 
+          const key1 = `${nodeA.id}-${nodeB.id}`;
+          const key2 = `${nodeB.id}-${nodeA.id}`;
+          const config = segmentConfigs[key1] || segmentConfigs[key2];
+
           return (
-            <Polyline
+            <MeshConnectionLine
               key={`${nodeA.id}-${nodeB.id}-${index}`}
-              positions={[posA, posB]}
-              pathOptions={{
-                color: isSpur ? spurLineColor : hubLineColor,
-                weight: isSpur ? 2 : 4,
-                dashArray: isSpur ? "5, 5" : undefined,
-                opacity: 0.8,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
+              startPos={posA}
+              endPos={posB}
+              isSpur={isSpur}
+              config={config}
+              theme={theme}
+              startNodeName={nodeA.name || "A"}
+              endNodeName={nodeB.name || "B"}
             />
           );
         })}
 
-        {/* Render Nodes */}
         {Array.from(nodePositions.entries()).map(([nodeId, pos]) => {
           const node = nodes.find((n) => n.id === nodeId);
           if (!node) return null;
+
+          // ADDED: Get ports for this node
+          const portsList = nodePorts?.get(node.node_id || node.id!) || [];
 
           return (
             <Marker
               key={nodeId}
               position={pos}
               icon={getNodeIcon(node.system_type, node.type, false)}>
+              {/* ADDED: Enhanced Tooltip with Ports */}
               <Tooltip
                 direction='bottom'
                 offset={[0, 10]}
@@ -255,9 +360,33 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                   <div className='px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap'>
                     {node.name}
                   </div>
+                  {/* Render Ports if available */}
+                  {portsList.length > 0 && (
+                    <div className='mt-0.5 flex flex-row gap-px items-center'>
+                      {portsList.slice(0, 3).map((p, idx) => (
+                        <div
+                          key={idx}
+                          className='px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
+                          style={{
+                            backgroundColor: p.color ? p.color : "#3b82f6",
+                            color: getReadableTextColor(p.color),
+                            borderColor: "rgba(255,255,255,0.3)",
+                          }}>
+                          <Anchor size={8} />
+                          <span>{p.port}</span>
+                        </div>
+                      ))}
+                      {portsList.length > 3 && (
+                        <div className='text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm'>
+                          +{portsList.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Tooltip>
 
+              {/* ADDED: Enhanced Popup with Ports */}
               <Popup className='custom-popup'>
                 <div className='text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800'>
                   <div className='bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600'>
@@ -271,7 +400,7 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                       <div className='flex items-center justify-between'>
                         <span className='font-medium text-slate-700 dark:text-slate-200'>IP:</span>
                         <span className='font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all'>
-                          {node.ip?.split("/")[0]}
+                          {formatIP(node.ip)}
                         </span>
                       </div>
                     )}
@@ -282,6 +411,33 @@ export default function MeshDiagram({ nodes, connections, onBack }: MeshDiagramP
                           Type:
                         </span>
                         <span className='text-xs'>{node.system_type}</span>
+                      </div>
+                    )}
+
+                    {/* Render Ports in Popup */}
+                    {portsList.length > 0 && (
+                      <div className='mt-2 pt-1 border-t border-gray-200 dark:border-gray-600'>
+                        <div className='text-xs font-semibold text-gray-500 uppercase mb-1'>
+                          Active Interfaces
+                        </div>
+                        <div className='flex flex-wrap gap-1'>
+                          {portsList.map((p, idx) => (
+                            <span
+                              key={idx}
+                              className='text-[10px] px-1.5 py-0.5 rounded border'
+                              style={{
+                                backgroundColor: p.color + "15", // 10% opacity
+                                borderColor: p.color + "40", // 25% opacity
+                                color: p.color,
+                              }}
+                              title={p.targetNodeName ? `→ ${p.targetNodeName}` : "Endpoint"}>
+                              <span className='font-mono font-bold'>{p.port}</span>
+                              {p.targetNodeName && (
+                                <span className='ml-1 opacity-70'>→ {p.targetNodeName}</span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
 
