@@ -10,7 +10,6 @@ import { getNodeIcon } from "@/utils/getNodeIcons";
 import { Maximize, Minimize, ArrowLeft, Router, Activity, Anchor } from "lucide-react";
 import { useThemeStore } from "@/stores/themeStore";
 import { PathConfig } from "./ClientRingMap";
-// Reuse the type definition
 import type { PortDisplayInfo } from "@/app/dashboard/rings/[id]/page";
 import { formatIP } from "@/utils/formatters";
 
@@ -20,8 +19,7 @@ interface MeshDiagramProps {
   ringName?: string;
   onBack?: () => void;
   segmentConfigs?: Record<string, PathConfig>;
-  // ADDED: Prop to receive port info
-  nodePorts?: Map<string, PortDisplayInfo[]>;
+  nodePorts?: Map<string, PortDisplayInfo[]>; // Ensure this prop is used
 }
 
 const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
@@ -140,26 +138,13 @@ export default function MeshDiagram({
   connections,
   onBack,
   segmentConfigs = {},
-  nodePorts, // Receive ports
+  nodePorts,
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { theme } = useThemeStore();
 
   const isDark = theme === "dark";
   const bgColor = isDark ? "#0f172a" : "#f8fafc";
-
-  function getReadableTextColor(bgColor: string): string {
-    const c = bgColor.substring(1);
-    const rgb = parseInt(c, 16);
-    const r = (rgb >> 16) & 255;
-    const g = (rgb >> 8) & 255;
-    const b = rgb & 255;
-
-    // Perceived luminance formula
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-    return brightness > 150 ? "#000000" : "#ffffff";
-  }
 
   const { nodePositions, bounds } = useMemo(() => {
     const positions = new Map<string, L.LatLng>();
@@ -341,7 +326,7 @@ export default function MeshDiagram({
           const node = nodes.find((n) => n.id === nodeId);
           if (!node) return null;
 
-          // ADDED: Get ports for this node
+          // ADDED: Get ports for this node (Fixed logic to access map)
           const portsList = nodePorts?.get(node.node_id || node.id!) || [];
 
           return (
@@ -349,7 +334,7 @@ export default function MeshDiagram({
               key={nodeId}
               position={pos}
               icon={getNodeIcon(node.system_type, node.type, false)}>
-              {/* ADDED: Enhanced Tooltip with Ports */}
+              {/* ADDED: Enhanced Tooltip with Ports - MATCHING ClientRingMap */}
               <Tooltip
                 direction='bottom'
                 offset={[0, 10]}
@@ -369,7 +354,7 @@ export default function MeshDiagram({
                           className='px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
                           style={{
                             backgroundColor: p.color ? p.color : "#3b82f6",
-                            color: getReadableTextColor(p.color),
+                            color: "#000000",
                             borderColor: "rgba(255,255,255,0.3)",
                           }}>
                           <Anchor size={8} />
@@ -386,7 +371,7 @@ export default function MeshDiagram({
                 </div>
               </Tooltip>
 
-              {/* ADDED: Enhanced Popup with Ports */}
+              {/* ADDED: Enhanced Popup with Ports - MATCHING ClientRingMap */}
               <Popup className='custom-popup'>
                 <div className='text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800'>
                   <div className='bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600'>

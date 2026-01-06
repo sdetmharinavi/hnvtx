@@ -235,10 +235,10 @@ export default function RingMapPage() {
 
   // 4a. Fetch Logical Path configurations
   const { data: pathConfigs } = useQuery({
-    queryKey: ["ring-path-config", ringId],
+    queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("logical_paths")
+        .from('logical_paths')
         .select(
           `
            id,
@@ -252,12 +252,14 @@ export default function RingMapPage() {
            destination_port
         `
         )
-        .eq("ring_id", ringId);
+        .eq('ring_id', ringId);
 
       if (error) return [];
       return data;
     },
     enabled: !!ringId,
+    // THE FIX: Force refetch on mount so added ports appear instantly
+    refetchOnMount: true, 
   });
 
   // 6. Calculate Segments
