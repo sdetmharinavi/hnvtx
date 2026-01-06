@@ -1,32 +1,37 @@
-// app/dashboard/inventory/page.tsx
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import { DataTable, TableAction } from '@/components/table';
-import { useCrudManager } from '@/hooks/useCrudManager';
-import { FiArchive, FiMinusCircle, FiClock, FiUpload } from 'react-icons/fi';
-import { toast } from 'sonner';
-import { Row } from '@/hooks/database';
-import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from '@/schemas/zod-schemas';
-import { createStandardActions } from '@/components/table/action-helpers';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/providers/UserProvider';
-import { getInventoryTableColumns } from '@/config/table-columns/InventoryTableColumns';
+import { toast } from 'sonner';
+import {
+  FiArchive,
+  FiMinusCircle,
+  FiClock,
+  FiUpload,
+  FiMapPin,
+  FiTag,
+  FiDollarSign,
+} from 'react-icons/fi';
 import { FaQrcode } from 'react-icons/fa';
+
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
+import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { InventoryFormModal } from '@/components/inventory/InventoryFormModal';
-import { useInventoryData } from '@/hooks/data/useInventoryData';
 import { IssueItemModal } from '@/components/inventory/IssueItemModal';
 import { InventoryHistoryModal } from '@/components/inventory/InventoryHistoryModal';
-import { IssueItemFormData, useIssueInventoryItem } from '@/hooks/inventory-actions';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { getInventoryTableColumns } from '@/config/table-columns/InventoryTableColumns';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useInventoryData } from '@/hooks/data/useInventoryData';
+import { useIssueInventoryItem } from '@/hooks/inventory-actions';
 import { useInventoryExcelUpload } from '@/hooks/database/excel-queries/useInventoryExcelUpload';
-import { formatCurrency } from '@/utils/formatters';
-import { InventoryItemCard } from '@/components/inventory/InventoryItemCard';
-import { BulkActions } from '@/components/common/BulkActions';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useActiveNodeOptions } from '@/hooks/data/useDropdownOptions';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from '@/schemas/zod-schemas';
+import { formatCurrency } from '@/utils/formatters';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
+import { useStandardHeaderActions } from '@/components/common/page-header';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -68,8 +73,8 @@ export default function InventoryPage() {
     useLookupTypeOptions('INVENTORY_CATEGORY');
   const { options: locationOptions, isLoading: loadingLocs } = useActiveNodeOptions();
 
-  // --- DRY FILTER CONFIG ---
-  const filterConfigs = useMemo<FilterConfig[]>(
+  // --- Filter Config ---
+  const filterConfigs = useMemo(
     () => [
       { key: 'category_id', label: 'Category', options: categoryOptions, isLoading: loadingCats },
       { key: 'location_id', label: 'Location', options: locationOptions, isLoading: loadingLocs },
@@ -83,7 +88,6 @@ export default function InventoryPage() {
     },
     [filters]
   );
-  // -------------------------
 
   const canEdit = useMemo(
     () =>
@@ -110,7 +114,13 @@ export default function InventoryPage() {
     setIsHistoryModalOpen(true);
   };
 
-  const handleIssueSubmit = (data: IssueItemFormData) => {
+  const handleIssueSubmit = (data: {
+    item_id: string;
+    quantity: number;
+    issued_to: string;
+    issue_reason: string;
+    issued_date: string;
+  }) => {
     issueItem(data, {
       onSuccess: () => {
         refetch();
@@ -127,7 +137,9 @@ export default function InventoryPage() {
   };
 
   const columns = getInventoryTableColumns();
-  const tableActions = useMemo((): TableAction<'v_inventory_items'>[] => {
+
+  // Custom actions for table
+  const tableActions = useMemo(() => {
     const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
       onEdit: canEdit ? editModal.openEdit : undefined,
       onDelete: canDelete ? crudActions.handleDelete : undefined,
@@ -159,8 +171,8 @@ export default function InventoryPage() {
     return standardActions;
   }, [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router]);
 
-  const headerActions = useStandardHeaderActions<'v_inventory_items'>({
-    data: inventory as Row<'v_inventory_items'>[],
+  const headerActions = useStandardHeaderActions({
+    data: inventory,
     onRefresh: async () => {
       await refetch();
       toast.success('Inventory refreshed!');
@@ -181,155 +193,231 @@ export default function InventoryPage() {
     });
   }
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Items' },
-    { value: formatCurrency(totalInventoryValue), label: 'Total Value', color: 'success' as const },
-  ];
+  const renderGrid = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {inventory.map((item) => {
+        const quantity = item.quantity || 0;
+        const totalValue = (item.cost || 0) * quantity;
+
+        let stockStatusColor =
+          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+        let stockLabel = 'In Stock';
+        if (quantity === 0) {
+          stockStatusColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+          stockLabel = 'Out of Stock';
+        } else if (quantity < 5) {
+          stockStatusColor =
+            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+          stockLabel = 'Low Stock';
+        }
+
+        return (
+          <GenericEntityCard
+            key={item.id}
+            entity={item}
+            title={item.name || 'Unnamed Item'}
+            // Custom Status Badge (Stock Level)
+            subBadge={
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                  {item.asset_no || 'NO ID'}
+                </span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stockStatusColor}`}
+                >
+                  {stockLabel}
+                </span>
+              </div>
+            }
+            // Use header icon instead of avatar
+            headerIcon={<FiArchive className="w-6 h-6 text-blue-500" />}
+            // Data Rows
+            dataItems={[
+              { icon: FiMapPin, label: 'Location', value: item.store_location || 'Unknown' },
+              { icon: FiTag, label: 'Category', value: item.category_name || 'Uncategorized' },
+              {
+                icon: FiDollarSign,
+                label: 'Total Value',
+                value: (
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(totalValue)}
+                  </span>
+                ),
+              },
+            ]}
+            // Custom Footer (Quantity)
+            customFooter={
+              <div className="flex items-center justify-between w-full">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Unit Cost: {formatCurrency(item.cost || 0)}
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {quantity}
+                  </span>
+                  <div className="text-[10px] text-gray-500 uppercase">Qty</div>
+                </div>
+              </div>
+            }
+            // Actions
+            extraActions={
+              <>
+                {canEdit && (
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    onClick={() => handleOpenIssueModal(item)}
+                    disabled={quantity <= 0}
+                    title="Issue Stock"
+                  >
+                    <FiMinusCircle className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => handleOpenHistory(item)}
+                  title="View History"
+                >
+                  <FiClock className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)}
+                  title="QR Code"
+                >
+                  <FaQrcode className="w-4 h-4" />
+                </Button>
+              </>
+            }
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
+        );
+      })}
+    </div>
+  );
 
   if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls"
-      />
-
-      <PageHeader
-        title="Inventory"
-        description="Track physical assets, stock levels, and movements."
-        icon={<FiArchive />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading}
-        isFetching={isFetching}
-      />
-
-      {/* REUSABLE FILTER BAR */}
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search asset, name, desc..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        isOperationLoading={isMutating}
-        onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={() => {}}
-        onClearSelection={bulkActions.handleClearSelection}
-        entityName="item"
-        showStatusUpdate={false}
-        canDelete={() => canDelete}
-      />
-
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {inventory.map((item) => (
-            <InventoryItemCard
-              key={item.id}
-              item={item}
-              onEdit={editModal.openEdit}
-              onDelete={crudActions.handleDelete}
-              onIssue={handleOpenIssueModal}
-              onHistory={handleOpenHistory}
-              onQr={(r) => router.push(`/dashboard/inventory/qr/${r.id}`)}
-              canManage={canEdit}
-              canDelete={canDelete}
-            />
-          ))}
-          {inventory.length === 0 && !isLoading && (
-            <div className="col-span-full py-16 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
-                <FiArchive className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">No items found</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-1">
-                Try adjusting your filters or search terms.
-              </p>
-            </div>
-          )}
+    <DashboardPageLayout
+      header={{
+        title: 'Inventory',
+        description: 'Track physical assets, stock levels, and movements.',
+        icon: <FiArchive />,
+        stats: [
+          { value: totalCount, label: 'Total Items' },
+          { value: formatCurrency(totalInventoryValue), label: 'Total Value', color: 'success' },
+        ],
+        actions: headerActions,
+        isLoading,
+        isFetching,
+      }}
+      searchQuery={search.searchQuery}
+      onSearchChange={search.setSearchQuery}
+      searchPlaceholder="Search asset, name, desc..."
+      filters={filters.filters}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'item',
+        showStatusUpdate: false,
+        canDelete: () => canDelete,
+      }}
+      renderGrid={renderGrid}
+      tableProps={{
+        tableName: 'v_inventory_items',
+        data: inventory,
+        columns: columns,
+        loading: isLoading,
+        isFetching: isFetching || isMutating,
+        actions: tableActions,
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_inventory_itemsRowSchema & { id: string } => !!row.id
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
+        pagination: {
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={inventory.length === 0 && !isLoading}
+      emptyState={
+        <div className="col-span-full py-16 text-center text-gray-500">
+          <FiArchive className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No items found matching your criteria.</p>
         </div>
-      ) : (
-        <DataTable
-          autoHideEmptyColumns={true}
-          tableName="v_inventory_items"
-          data={inventory}
-          columns={columns}
-          loading={isLoading}
-          isFetching={isFetching || isMutating}
-          actions={tableActions}
-          selectable={canDelete}
-          onRowSelect={(rows) => {
-            const validRows = rows.filter(
-              (row): row is V_inventory_itemsRowSchema & { id: string } => row.id != null
-            );
-            bulkActions.handleRowSelect(validRows);
-          }}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => {
-              pagination.setCurrentPage(p);
-              pagination.setPageLimit(s);
-            },
-          }}
-          customToolbar={<></>}
-        />
-      )}
+      }
+      modals={
+        <>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept=".xlsx, .xls"
+          />
 
-      <InventoryFormModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        editingItem={editModal.record as V_inventory_itemsRowSchema | null}
-        onSubmit={crudActions.handleSave as (data: Inventory_itemsInsertSchema) => void}
-        isLoading={isMutating}
-      />
+          <InventoryFormModal
+            isOpen={editModal.isOpen}
+            onClose={editModal.close}
+            editingItem={editModal.record as V_inventory_itemsRowSchema | null}
+            onSubmit={crudActions.handleSave as (data: Inventory_itemsInsertSchema) => void}
+            isLoading={isMutating}
+          />
 
-      {isIssueModalOpen && (
-        <IssueItemModal
-          isOpen={isIssueModalOpen}
-          onClose={() => setIsIssueModalOpen(false)}
-          item={itemToIssue}
-          onSubmit={handleIssueSubmit}
-          isLoading={isIssuing}
-        />
-      )}
+          {isIssueModalOpen && (
+            <IssueItemModal
+              isOpen={isIssueModalOpen}
+              onClose={() => setIsIssueModalOpen(false)}
+              item={itemToIssue}
+              onSubmit={handleIssueSubmit}
+              isLoading={isIssuing}
+            />
+          )}
 
-      {isHistoryModalOpen && historyItem && (
-        <InventoryHistoryModal
-          isOpen={isHistoryModalOpen}
-          onClose={() => setIsHistoryModalOpen(false)}
-          itemId={historyItem.id}
-          itemName={historyItem.name}
-        />
-      )}
+          {isHistoryModalOpen && historyItem && (
+            <InventoryHistoryModal
+              isOpen={isHistoryModalOpen}
+              onClose={() => setIsHistoryModalOpen(false)}
+              itemId={historyItem.id}
+              itemName={historyItem.name}
+            />
+          )}
 
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type="danger"
-      />
-    </div>
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title="Confirm Deletion"
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type="danger"
+          />
+        </>
+      }
+    />
   );
 }
