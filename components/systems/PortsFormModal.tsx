@@ -1,19 +1,17 @@
 // components/systems/PortsFormModal.tsx
 'use client';
 
-import { FC, useCallback, useEffect } from 'react';
-import { useForm, SubmitErrorHandler } from 'react-hook-form';
+import { FC, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ports_managementInsertSchema,
   V_ports_management_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { Modal } from '@/components/common/ui';
-import { FormCard, FormInput, FormSearchableSelect, FormSwitch } from '@/components/common/form';
+import { FormInput, FormSearchableSelect, FormSwitch } from '@/components/common/form';
 import { z } from 'zod';
-import { toast } from 'sonner';
-// THE FIX: Use centralized offline hook
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
 
 type PortsFormValues = z.infer<typeof ports_managementInsertSchema>;
 
@@ -43,17 +41,10 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({
 }) => {
   const isEditMode = !!editingRecord;
 
-  // THE FIX: Replaced useTableQuery with useLookupTypeOptions
   const { options: portTypeOptions, isLoading: isLoadingTypes } =
     useLookupTypeOptions('PORT_TYPES');
 
-  const {
-    control,
-    handleSubmit,
-    register,
-    formState: { errors },
-    reset,
-  } = useForm<PortsFormValues>({
+  const form = useForm<PortsFormValues>({
     resolver: zodResolver(ports_managementInsertSchema),
     defaultValues: {
       system_id: systemId,
@@ -62,6 +53,13 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({
       services_count: 0,
     },
   });
+
+  const {
+    control,
+    register,
+    reset,
+    formState: { errors },
+  } = form;
 
   useEffect(() => {
     if (isOpen) {
@@ -91,96 +89,83 @@ export const PortsFormModal: FC<PortsFormModalProps> = ({
     }
   }, [isOpen, isEditMode, editingRecord, systemId, reset]);
 
-  const onValidSubmit = useCallback(
-    (formData: PortsFormValues) => {
-      onSubmit(formData);
-    },
-    [onSubmit]
-  );
-
-  const onInvalidSubmit: SubmitErrorHandler<PortsFormValues> = () => {
-    toast.error('Please fix the validation errors.');
-  };
-
-  const modalTitle = isEditMode ? 'Edit Port' : 'Add New Port';
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} className="w-0 h-0 bg-transparent">
-      <FormCard
-        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        onCancel={onClose}
-        isLoading={isLoading || isLoadingTypes}
-        title={modalTitle}
-        standalone
-      >
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              name="port"
-              label="Port Name/Number"
-              register={register}
-              error={errors.port}
-              required
-              placeholder="e.g., Gi0/1"
-            />
-            <FormSearchableSelect
-              name="port_type_id"
-              label="Port Type"
-              control={control}
-              options={portTypeOptions}
-              error={errors.port_type_id}
-            />
-            <FormInput
-              name="port_capacity"
-              label="Port Capacity"
-              register={register}
-              error={errors.port_capacity}
-              placeholder="e.g., 1G, 10G"
-            />
-            <FormInput
-              name="sfp_serial_no"
-              label="SFP Serial No."
-              register={register}
-              error={errors.sfp_serial_no}
-            />
-          </div>
+    <BaseFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Port"
+      isEditMode={isEditMode}
+      isLoading={isLoading || isLoadingTypes}
+      form={form}
+      onSubmit={onSubmit}
+    >
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormInput
+            name="port"
+            label="Port Name/Number"
+            register={register}
+            error={errors.port}
+            required
+            placeholder="e.g., Gi0/1"
+          />
+          <FormSearchableSelect
+            name="port_type_id"
+            label="Port Type"
+            control={control}
+            options={portTypeOptions}
+            error={errors.port_type_id}
+          />
+          <FormInput
+            name="port_capacity"
+            label="Port Capacity"
+            register={register}
+            error={errors.port_capacity}
+            placeholder="e.g., 1G, 10G"
+          />
+          <FormInput
+            name="sfp_serial_no"
+            label="SFP Serial No."
+            register={register}
+            error={errors.sfp_serial_no}
+          />
+        </div>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-              Port Status & Metrics
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <FormSwitch
-                  name="port_admin_status"
-                  label="Admin Status"
-                  control={control}
-                  error={errors.port_admin_status}
-                  description="Enable/Disable port (Up/Down)"
-                />
-                <FormSwitch
-                  name="port_utilization"
-                  label="Port Utilization"
-                  control={control}
-                  error={errors.port_utilization}
-                  description="Mark as currently in use"
-                />
-              </div>
-              <div>
-                <FormInput
-                  name="services_count"
-                  label="Services Count"
-                  type="number"
-                  min="0"
-                  register={register}
-                  error={errors.services_count}
-                  placeholder="0"
-                />
-              </div>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+            Port Status & Metrics
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <FormSwitch
+                name="port_admin_status"
+                label="Admin Status"
+                control={control}
+                error={errors.port_admin_status}
+                description="Enable/Disable port (Up/Down)"
+              />
+              <FormSwitch
+                name="port_utilization"
+                label="Port Utilization"
+                control={control}
+                error={errors.port_utilization}
+                description="Mark as currently in use"
+              />
+            </div>
+            <div>
+              <FormInput
+                name="services_count"
+                label="Services Count"
+                type="number"
+                min="0"
+                register={register}
+                error={errors.services_count}
+                placeholder="0"
+              />
             </div>
           </div>
         </div>
-      </FormCard>
-    </Modal>
+      </div>
+    </BaseFormModal>
   );
 };

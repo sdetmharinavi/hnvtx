@@ -1,15 +1,13 @@
 // components/ofc-details/OfcConnectionsFormModal.tsx
 'use client';
 
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { Modal } from '@/components/common/ui/Modal';
-import { useForm, SubmitErrorHandler } from 'react-hook-form';
+import React, { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FormCard } from '@/components/common/form/FormCard';
 import { FormInput, FormTextarea, FormSwitch } from '@/components/common/form/FormControls';
 import { ofc_connectionsInsertSchema, Ofc_connectionsRowSchema } from '@/schemas/zod-schemas';
-import { toast } from 'sonner';
 import { z } from 'zod';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
 
 // Omit DOM fields so they aren't sent to the DB. The DB trigger handles them.
 const connectionFormSchema = ofc_connectionsInsertSchema.omit({
@@ -26,7 +24,6 @@ interface OfcConnectionsFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingOfcConnections?: Ofc_connectionsRowSchema | null;
-  // THE FIX: Single onSubmit handler that takes form data
   onSubmit: (data: FormValues) => void;
   isLoading: boolean;
 }
@@ -40,13 +37,7 @@ export function OfcConnectionsFormModal({
 }: OfcConnectionsFormModalProps) {
   const isEdit = useMemo(() => Boolean(editingOfcConnections), [editingOfcConnections]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-    reset,
-    control,
-  } = useForm<FormValues>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(connectionFormSchema),
     defaultValues: {
       status: true,
@@ -54,6 +45,13 @@ export function OfcConnectionsFormModal({
       fiber_no_en: 1,
     },
   });
+
+  const {
+    register,
+    control,
+    reset,
+    formState: { errors },
+  } = form;
 
   useEffect(() => {
     if (isOpen) {
@@ -90,123 +88,97 @@ export function OfcConnectionsFormModal({
     }
   }, [isOpen, editingOfcConnections, reset]);
 
-  const handleClose = useCallback(() => {
-    if (isLoading) return;
-    if (isDirty) {
-      if (!window.confirm('You have unsaved changes. Close anyway?')) return;
-    }
-    onClose();
-  }, [isLoading, onClose, isDirty]);
-
-  const onValidSubmit = (formData: FormValues) => {
-    // Pass raw form data to parent.
-    // Parent (useCrudManager) handles insert vs update based on its internal state or ID presence.
-    onSubmit(formData);
-  };
-
-  const onInvalidSubmit: SubmitErrorHandler<FormValues> = (errors) => {
-    console.error('Form Validation Errors:', errors);
-    const errorFields = Object.keys(errors).join(', ');
-    toast.error(`Validation error in: ${errorFields}`);
-  };
-
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
-      onClose={handleClose} // Use handleClose
-      title={isEdit ? 'Edit OFC Connection' : 'Add OFC Connection'}
+      onClose={onClose}
+      title="OFC Connection"
+      isEditMode={isEdit}
+      isLoading={isLoading}
+      form={form}
+      onSubmit={onSubmit}
       size="full"
-      visible={false}
+      // Custom class can still be passed if needed
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
-      closeOnOverlayClick={false}
-      closeOnEscape={!isDirty}
     >
-      <FormCard
-        title={isEdit ? 'Edit OFC Connection' : 'Add OFC Connection'}
-        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        onCancel={handleClose} // Use handleClose
-        isLoading={isLoading}
-        standalone
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput
-            name="fiber_no_sn"
-            label="Start Node Fiber No. *"
-            register={register}
-            error={errors.fiber_no_sn}
-            disabled
-          />
-          <FormInput
-            name="fiber_no_en"
-            label="End Node Fiber No."
-            register={register}
-            error={errors.fiber_no_en}
-            disabled
-          />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormInput
+          name="fiber_no_sn"
+          label="Start Node Fiber No. *"
+          register={register}
+          error={errors.fiber_no_sn}
+          disabled
+        />
+        <FormInput
+          name="fiber_no_en"
+          label="End Node Fiber No."
+          register={register}
+          error={errors.fiber_no_en}
+          disabled
+        />
 
-          <FormInput
-            name="otdr_distance_sn_km"
-            label="OTDR Distance SN (km)"
-            register={register}
-            type="number"
-            step="0.001"
-            error={errors.otdr_distance_sn_km}
-          />
-          <FormInput
-            name="sn_power_dbm"
-            label="SN Power (dBm)"
-            register={register}
-            type="text"
-            inputMode="text"
-            placeholder="-12.5"
-            treatAsNumber={true} // Auto-convert to number
-            step="any"
-            error={errors.sn_power_dbm}
-          />
-          <FormInput
-            name="otdr_distance_en_km"
-            label="OTDR Distance EN (km)"
-            register={register}
-            type="number"
-            step="0.001"
-            error={errors.otdr_distance_en_km}
-          />
-          <FormInput
-            name="en_power_dbm"
-            label="EN Power (dBm)"
-            register={register}
-            type="text"
-            inputMode="text"
-            placeholder="-12.5"
-            treatAsNumber={true} // Auto-convert to number
-            step="any"
-            error={errors.en_power_dbm}
-          />
-          <FormInput
-            name="route_loss_db"
-            label="Route Loss (dB)"
-            register={register}
-            type="text"
-            inputMode="text"
-            placeholder="-12.5"
-            treatAsNumber={true} // Auto-convert to number
-            step="any"
-            error={errors.route_loss_db}
-          />
-        </div>
-        <div className="mt-4">
-          <FormSwitch name="status" label="Active" control={control} error={errors.status} />
-        </div>
-        <div className="mt-4">
-          <FormTextarea
-            name="remark"
-            label="Remark"
-            control={control}
-            error={errors.remark}
-            rows={4}
-          />
-        </div>
-      </FormCard>
-    </Modal>
+        <FormInput
+          name="otdr_distance_sn_km"
+          label="OTDR Distance SN (km)"
+          register={register}
+          type="number"
+          step="0.001"
+          error={errors.otdr_distance_sn_km}
+        />
+        <FormInput
+          name="sn_power_dbm"
+          label="SN Power (dBm)"
+          register={register}
+          type="text"
+          inputMode="text"
+          placeholder="-12.5"
+          treatAsNumber={true}
+          step="any"
+          error={errors.sn_power_dbm}
+        />
+        <FormInput
+          name="otdr_distance_en_km"
+          label="OTDR Distance EN (km)"
+          register={register}
+          type="number"
+          step="0.001"
+          error={errors.otdr_distance_en_km}
+        />
+        <FormInput
+          name="en_power_dbm"
+          label="EN Power (dBm)"
+          register={register}
+          type="text"
+          inputMode="text"
+          placeholder="-12.5"
+          treatAsNumber={true}
+          step="any"
+          error={errors.en_power_dbm}
+        />
+        <FormInput
+          name="route_loss_db"
+          label="Route Loss (dB)"
+          register={register}
+          type="text"
+          inputMode="text"
+          placeholder="-12.5"
+          treatAsNumber={true}
+          step="any"
+          error={errors.route_loss_db}
+        />
+      </div>
+      <div className="mt-4">
+        <FormSwitch name="status" label="Active" control={control} error={errors.status} />
+      </div>
+      <div className="mt-4">
+        <FormTextarea
+          name="remark"
+          label="Remark"
+          control={control}
+          error={errors.remark}
+          rows={4}
+        />
+      </div>
+    </BaseFormModal>
   );
 }

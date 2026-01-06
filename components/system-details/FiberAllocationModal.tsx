@@ -3,9 +3,8 @@
 
 import { FC, useMemo, useState, useEffect, useCallback } from 'react';
 import { useForm, Controller, useFieldArray, Control, UseFormWatch } from 'react-hook-form';
-import { Modal, Button, PageSpinner, SearchableSelect } from '@/components/common/ui';
-import { FormCard } from '@/components/common/form';
-import { usePagedData, useTableQuery } from '@/hooks/database'; // CHANGED: Re-imported usePagedData
+import { Button, PageSpinner, SearchableSelect } from '@/components/common/ui';
+import { usePagedData, useTableQuery } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import {
   V_system_connections_completeRowSchema,
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 import { GitBranch, Plus, Trash2, ChevronsRight } from 'lucide-react';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useProvisionServicePath } from '@/hooks/database/system-connection-hooks';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
 
 // --- TYPE DEFINITIONS ---
 interface PathStep {
@@ -41,32 +41,23 @@ interface FiberAllocationModalProps {
 }
 
 // --- HELPER: Reconstruct Path Steps ---
-// Fetches fiber details (specifically ofc_id) given a list of fiber IDs
 const useReconstructPath = (fiberIds: string[] | null | undefined) => {
   const supabase = createClient();
-
-  // THE FIX: Use RPC (usePagedData) to avoid permission issues with Views.
-  // Workaround for UUID mismatch: Manually construct an OR filter with casting.
   const orFilter = useMemo(() => {
     if (!fiberIds || fiberIds.length === 0) return undefined;
-    // Construct SQL: id::text IN ('uuid1', 'uuid2')
     return `id::text IN ('${fiberIds.join("','")}')`;
   }, [fiberIds]);
 
   return usePagedData<V_ofc_connections_completeRowSchema>(
     supabase,
     'v_ofc_connections_complete',
-    {
-      filters: {
-        or: orFilter,
-      },
-      limit: 100,
-    },
+    { filters: { or: orFilter }, limit: 100 },
     { enabled: !!fiberIds && fiberIds.length > 0 }
   );
 };
 
-// --- SUB-COMPONENT: Single Row in the Cascade ---
+// --- SUB-COMPONENTS (PathCascadeRow & PathBuilder) ---
+// (These remain unchanged, just included for context)
 const PathCascadeRow: FC<{
   index: number;
   pathType: keyof FiberAllocationForm;
@@ -88,16 +79,12 @@ const PathCascadeRow: FC<{
 }) => {
   const cableIdForThisRow = watch(`${pathType}.${index}.cable_id`);
   const supabase = createClient();
-
-  // Use useTableQuery here is fine because 'ofc_connections' is a TABLE, not a View.
   const { data: availableFibersResult, isLoading: isLoadingFibers } = useTableQuery(
     supabase,
     'ofc_connections',
     {
       columns: 'id, fiber_no_sn, system_id',
-      filters: {
-        ofc_id: cableIdForThisRow || '',
-      },
+      filters: { ofc_id: cableIdForThisRow || '' },
       enabled: !!cableIdForThisRow,
       limit: 1000,
     }
@@ -106,12 +93,7 @@ const PathCascadeRow: FC<{
   const fiberOptions = useMemo(
     () =>
       (availableFibersResult?.data || [])
-        .filter(
-          (f) =>
-            // Show if fiber has no system_id (is free) AND is not picked elsewhere in current form
-            // OR if it is the fiber currently selected in this specific dropdown
-            (!f.system_id && !allAllocatedFiberIds.has(f.id)) || f.id === currentFiberId
-        )
+        .filter((f) => (!f.system_id && !allAllocatedFiberIds.has(f.id)) || f.id === currentFiberId)
         .map((f) => ({ value: f.id, label: `Fiber #${f.fiber_no_sn}` }))
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true })),
     [availableFibersResult, allAllocatedFiberIds, currentFiberId]
@@ -147,7 +129,6 @@ const PathCascadeRow: FC<{
   );
 };
 
-// --- SUB-COMPONENT: Path Builder ---
 const PathBuilder: FC<{
   pathType: keyof FiberAllocationForm;
   control: Control<FiberAllocationForm>;
@@ -159,20 +140,16 @@ const PathBuilder: FC<{
 }> = ({ pathType, control, watch, nodes, cables, startNode, allAllocatedFiberIds }) => {
   const { fields, append, remove } = useFieldArray({ control, name: pathType });
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
-
   const pathValues = watch(pathType);
 
   const lastNode = useMemo(() => {
     let currentNode = startNode;
     const currentSteps = pathValues || fields;
-
     currentSteps.forEach((step) => {
       if (!currentNode) return;
       const cableId = (step as PathStep).cable_id;
-
       const cable = cables.find((c) => c.id === cableId);
       if (!cable) return;
-
       const nextNodeId = cable.sn_id === currentNode.id ? cable.en_id : cable.sn_id;
       const nextNode = nodes.find((n) => n.id === nextNodeId);
       currentNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
@@ -201,7 +178,6 @@ const PathBuilder: FC<{
       {fields.map((field, index) => {
         let currentStartNode = startNode;
         const currentSteps = pathValues || fields;
-
         for (let i = 0; i < index; i++) {
           const prevCableId = (currentSteps[i] as PathStep).cable_id;
           const prevCable = cables.find((c) => c.id === prevCableId);
@@ -212,12 +188,8 @@ const PathBuilder: FC<{
             currentStartNode = nextNode ? { id: nextNode.id!, name: nextNode.name! } : null;
           }
         }
-
         const currentStepValue = currentSteps[index] as PathStep;
-        const cableId = currentStepValue?.cable_id;
-        const liveFiberId = currentStepValue?.fiber_id;
-
-        const cable = cables.find((c) => c.id === cableId);
+        const cable = cables.find((c) => c.id === currentStepValue?.cable_id);
         const endNodeId =
           cable && currentStartNode
             ? cable.sn_id === currentStartNode.id
@@ -240,11 +212,10 @@ const PathBuilder: FC<{
             }}
             onRemove={() => remove(index)}
             allAllocatedFiberIds={allAllocatedFiberIds}
-            currentFiberId={liveFiberId}
+            currentFiberId={currentStepValue?.fiber_id}
           />
         );
       })}
-
       <div className="space-y-2 pt-3 mt-3 border-t dark:border-gray-600">
         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
           Add Cascade from: {lastNode?.name || startNode?.name}
@@ -283,7 +254,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
   onSave,
 }) => {
   const supabase = createClient();
-  const { control, handleSubmit, watch, reset } = useForm<FiberAllocationForm>({
+  const form = useForm<FiberAllocationForm>({
     defaultValues: {
       working_path_in: [],
       working_path_out: [],
@@ -292,6 +263,7 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
     },
   });
 
+  const { control, watch, reset } = form;
   const allPaths = watch();
   const allAllocatedFiberIds = useMemo(() => {
     const ids = new Set<string>();
@@ -305,20 +277,17 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
     return ids;
   }, [allPaths]);
 
-  // 2. Fetch Network Context (Using RPC for Views - Correct)
   const { data: allCablesResult, isLoading: isLoadingCables } =
     usePagedData<V_ofc_cables_completeRowSchema>(supabase, 'v_ofc_cables_complete', {
       limit: 5000,
       orderBy: 'route_name',
     });
-
   const { data: allNodesResult, isLoading: isLoadingNodes } =
     usePagedData<V_nodes_completeRowSchema>(supabase, 'v_nodes_complete', {
       limit: 5000,
       orderBy: 'name',
     });
 
-  // 3. Fetch Existing Allocation Data (RPC with custom OR filter logic applied in helper hook)
   const { data: workingInFibers, isLoading: load1 } = useReconstructPath(
     connection?.working_fiber_in_ids
   );
@@ -331,7 +300,6 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
   const { data: protectOutFibers, isLoading: load4 } = useReconstructPath(
     connection?.protection_fiber_out_ids
   );
-
   const isHydrating = load1 || load2 || load3 || load4;
 
   useEffect(() => {
@@ -341,9 +309,9 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
         originalIds: string[] | null | undefined
       ): PathStep[] => {
         if (!fibersData?.data || !originalIds || originalIds.length === 0) return [];
-
-        const validFibers = fibersData.data.filter((f) => f.id !== null);
-        const fiberMap = new Map(validFibers.map((f) => [f.id!, f]));
+        const fiberMap = new Map(
+          fibersData.data.filter((f) => f.id !== null).map((f) => [f.id!, f])
+        );
 
         return (
           originalIds
@@ -353,7 +321,6 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
             .map((f) => ({ cable_id: (f as any).ofc_id, fiber_id: f!.id }))
         );
       };
-
       reset({
         working_path_in: mapToSteps(
           workingInFibers as { data: V_ofc_connections_completeRowSchema[] },
@@ -385,32 +352,30 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
   ]);
 
   const provisionMutation = useProvisionServicePath();
-
-  const startNode = useMemo(() => {
-    if (!parentSystem || !allNodesResult?.data) return null;
-    const node = allNodesResult.data.find((n) => n.id === parentSystem.node_id);
-    return node ? { id: node.id!, name: node.name! } : null;
-  }, [parentSystem, allNodesResult]);
-
-  const endNode = useMemo(() => {
-    if (!connection || !allNodesResult?.data) return null;
-    const node = allNodesResult.data.find((n) => n.id === connection.en_node_id);
-    return node ? { id: node.id!, name: node.name! } : null;
-  }, [connection, allNodesResult]);
+  const startNode = useMemo(
+    () =>
+      parentSystem && allNodesResult?.data
+        ? allNodesResult.data.find((n) => n.id === parentSystem.node_id)
+        : null,
+    [parentSystem, allNodesResult]
+  );
+  const endNode = useMemo(
+    () =>
+      connection && allNodesResult?.data
+        ? allNodesResult.data.find((n) => n.id === connection.en_node_id)
+        : null,
+    [connection, allNodesResult]
+  );
 
   const onValidSubmit = (data: FiberAllocationForm) => {
     if (!connection?.id) return;
-
-    const workingPathInIsDefined =
-      data.working_path_in.length > 0 && data.working_path_in.every((s) => s.fiber_id);
-    const workingPathOutIsDefined =
-      data.working_path_out.length > 0 && data.working_path_out.every((s) => s.fiber_id);
-
-    if (!workingPathInIsDefined || !workingPathOutIsDefined) {
+    if (
+      !(data.working_path_in.length > 0 && data.working_path_in.every((s) => s.fiber_id)) ||
+      !(data.working_path_out.length > 0 && data.working_path_out.every((s) => s.fiber_id))
+    ) {
       toast.error('Both Working Path In (Tx) and Out (Rx) must be fully defined.');
       return;
     }
-
     provisionMutation.mutate(
       {
         p_system_connection_id: connection.id,
@@ -436,109 +401,93 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
   if (!connection) return null;
 
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Allocate Fibers`}
+      title="Allocate Fibers"
+      isEditMode={true}
+      isLoading={provisionMutation.isPending}
+      form={form}
+      onSubmit={onValidSubmit}
       size="full"
-      visible={false}
-      className="h-0 w-0 bg-transparent"
+      widthClass="w-full max-w-7xl"
+      heightClass="h-full max-h-[95vh]"
+      subtitle={
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <span>Path:</span>
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {startNode?.name || '...'}
+          </span>
+          <ChevronsRight className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-700 dark:text-gray-300">
+            {endNode?.name || '...'}
+          </span>
+        </div>
+      }
     >
-      <FormCard
-        onSubmit={handleSubmit(onValidSubmit)}
-        onCancel={onClose}
-        isLoading={provisionMutation.isPending}
-        title={
-          <div className="flex items-center gap-2">
-            <span>Path:</span>
-            <span className="font-medium text-gray-700 dark:text-gray-300">
-              {startNode?.name || '...'}
-            </span>
-            <ChevronsRight className="h-5 w-5 text-gray-400" />
-            <span className="font-medium text-gray-700 dark:text-gray-300">
-              {endNode?.name || '...'}
-            </span>
-          </div>
-        }
-        standalone
-        widthClass="w-full max-w-7xl"
-        heightClass="h-full max-h-[95vh]"
-      >
-        {isLoadingCables || isLoadingNodes || isHydrating ? (
-          <PageSpinner text="Loading network configuration..." />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
-            {/* ... Path Building UI remains the same ... */}
-            <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <GitBranch className="text-blue-500" /> Working Path
-              </h3>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Inbound (Tx)
-                </label>
-                <PathBuilder
-                  pathType="working_path_in"
-                  control={control}
-                  watch={watch}
-                  startNode={startNode}
-                  nodes={allNodesResult!.data}
-                  cables={allCablesResult!.data}
-                  allAllocatedFiberIds={allAllocatedFiberIds}
-                />
-              </div>
-              <div className="space-y-1 pt-4 border-t dark:border-gray-600">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Outbound (Rx)
-                </label>
-                <PathBuilder
-                  pathType="working_path_out"
-                  control={control}
-                  watch={watch}
-                  startNode={startNode}
-                  nodes={allNodesResult!.data}
-                  cables={allCablesResult!.data}
-                  allAllocatedFiberIds={allAllocatedFiberIds}
-                />
-              </div>
-            </div>
-            <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <GitBranch className="text-gray-400" /> Protection Path{' '}
-                <span className="text-xs font-normal text-gray-500">(Optional)</span>
-              </h3>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Inbound (Tx)
-                </label>
-                <PathBuilder
-                  pathType="protection_path_in"
-                  control={control}
-                  watch={watch}
-                  startNode={startNode}
-                  nodes={allNodesResult!.data}
-                  cables={allCablesResult!.data}
-                  allAllocatedFiberIds={allAllocatedFiberIds}
-                />
-              </div>
-              <div className="space-y-1 pt-4 border-t dark:border-gray-600">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Outbound (Rx)
-                </label>
-                <PathBuilder
-                  pathType="protection_path_out"
-                  control={control}
-                  watch={watch}
-                  startNode={startNode}
-                  nodes={allNodesResult!.data}
-                  cables={allCablesResult!.data}
-                  allAllocatedFiberIds={allAllocatedFiberIds}
-                />
-              </div>
+      {isLoadingCables || isLoadingNodes || isHydrating ? (
+        <PageSpinner text="Loading network configuration..." />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[calc(95vh-220px)] overflow-y-auto p-1">
+          <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <GitBranch className="text-blue-500" /> Working Path
+            </h3>
+            <PathBuilder
+              pathType="working_path_in"
+              control={control}
+              watch={watch}
+              startNode={startNode ? { id: startNode.id!, name: startNode.name! } : null}
+              nodes={allNodesResult!.data}
+              cables={allCablesResult!.data}
+              allAllocatedFiberIds={allAllocatedFiberIds}
+            />
+            <div className="space-y-1 pt-4 border-t dark:border-gray-600">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Outbound (Rx)
+              </label>
+              <PathBuilder
+                pathType="working_path_out"
+                control={control}
+                watch={watch}
+                startNode={startNode ? { id: startNode.id!, name: startNode.name! } : null}
+                nodes={allNodesResult!.data}
+                cables={allCablesResult!.data}
+                allAllocatedFiberIds={allAllocatedFiberIds}
+              />
             </div>
           </div>
-        )}
-      </FormCard>
-    </Modal>
+          <div className="space-y-4 p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <GitBranch className="text-gray-400" /> Protection Path{' '}
+              <span className="text-xs font-normal text-gray-500">(Optional)</span>
+            </h3>
+            <PathBuilder
+              pathType="protection_path_in"
+              control={control}
+              watch={watch}
+              startNode={startNode ? { id: startNode.id!, name: startNode.name! } : null}
+              nodes={allNodesResult!.data}
+              cables={allCablesResult!.data}
+              allAllocatedFiberIds={allAllocatedFiberIds}
+            />
+            <div className="space-y-1 pt-4 border-t dark:border-gray-600">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Outbound (Rx)
+              </label>
+              <PathBuilder
+                pathType="protection_path_out"
+                control={control}
+                watch={watch}
+                startNode={startNode ? { id: startNode.id!, name: startNode.name! } : null}
+                nodes={allNodesResult!.data}
+                cables={allCablesResult!.data}
+                allAllocatedFiberIds={allAllocatedFiberIds}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </BaseFormModal>
   );
 };
