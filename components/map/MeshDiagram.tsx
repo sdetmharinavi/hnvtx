@@ -147,6 +147,19 @@ export default function MeshDiagram({
   const isDark = theme === "dark";
   const bgColor = isDark ? "#0f172a" : "#f8fafc";
 
+  function getReadableTextColor(bgColor: string): string {
+    const c = bgColor.substring(1);
+    const rgb = parseInt(c, 16);
+    const r = (rgb >> 16) & 255;
+    const g = (rgb >> 8) & 255;
+    const b = rgb & 255;
+
+    // Perceived luminance formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 150 ? '#000000' : '#ffffff';
+  }
+
   const { nodePositions, bounds } = useMemo(() => {
     const positions = new Map<string, L.LatLng>();
     const CENTER_X = 1000;
@@ -406,11 +419,11 @@ export default function MeshDiagram({
                           {portsList.map((p, idx) => (
                             <span
                               key={idx}
-                              className='text-[10px] px-1.5 py-0.5 rounded border'
+                              className='text-[14px] px-1.5 py-0.5 rounded border'
                               style={{
                                 backgroundColor: p.color + "15", // 10% opacity
                                 borderColor: p.color + "40", // 25% opacity
-                                color: p.color,
+                                color: getReadableTextColor(p.color),
                               }}
                               title={p.targetNodeName ? `→ ${p.targetNodeName}` : "Endpoint"}>
                               <span className='font-mono font-bold'>{p.port}</span>

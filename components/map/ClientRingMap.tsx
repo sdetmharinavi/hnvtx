@@ -549,7 +549,7 @@ export default function ClientRingMap({
                   opacity={1}
                 >
                   <div className="flex flex-col items-center">
-                    <div className="px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-xs font-bold rounded border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap z-10">
+                    <div className="px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-[14px] font-bold rounded border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap z-10">
                       {node.system_node_name} - {formatIP(node.ip)}
                     </div>
 
@@ -559,7 +559,7 @@ export default function ClientRingMap({
                         {portsList.slice(0, 3).map((p, idx) => (
                           <div
                             key={idx}
-                            className="px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
+                            className="px-1 font-bold py-px text-[14px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
                             style={{
                               backgroundColor: p.color ? p.color : '#3b82f6', // Fallback blue
                               color: getReadableTextColor(p.color),
@@ -577,7 +577,7 @@ export default function ClientRingMap({
                           </div>
                         ))}
                         {portsList.length > 3 && (
-                          <div className="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">
                             +{portsList.length - 3} more
                           </div>
                         )}
