@@ -559,7 +559,7 @@ export default function ClientRingMap({
                         {portsList.slice(0, 3).map((p, idx) => (
                           <div
                             key={idx}
-                            className="px-1 font-bold py-px text-[14px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
+                            className="px-1 font-bold py-px text-[16px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap"
                             style={{
                               backgroundColor: p.color ? p.color : '#3b82f6', // Fallback blue
                               color: getReadableTextColor(p.color),

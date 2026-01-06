@@ -419,7 +419,7 @@ export default function MeshDiagram({
                           {portsList.map((p, idx) => (
                             <span
                               key={idx}
-                              className='text-[14px] px-1.5 py-0.5 rounded border'
+                              className='text-[16px] px-1.5 py-0.5 rounded border'
                               style={{
                                 backgroundColor: p.color + "15", // 10% opacity
                                 borderColor: p.color + "40", // 25% opacity
