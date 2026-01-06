@@ -13,6 +13,7 @@
       "reauthentication",
       "refetches",
       "treeify",
+      "unprovisioned",
       "uuidv"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
