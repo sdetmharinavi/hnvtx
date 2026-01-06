@@ -23,7 +23,7 @@ import {
 } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
 import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
-import { useTableBulkOperations, usePagedData } from '@/hooks/database'; // CHANGED: Imported usePagedData, removed useTableQuery
+import { useTableBulkOperations, usePagedData } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
@@ -32,13 +32,12 @@ import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
+// IMPORT GENERIC FILTER BAR
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
-import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
@@ -60,7 +59,6 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   const supabase = createClient();
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
 
   // 1. Fetch Ports
   const {
@@ -97,7 +95,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   }, [isOpen]);
 
   // 2. Fetch Port Types for Filter
-  const { data: portTypesData } = useOfflineQuery<Lookup_typesRowSchema[]>(
+  const { data: portTypesData, isLoading: loadingTypes } = useOfflineQuery<Lookup_typesRowSchema[]>(
     ['port-types-filter'],
     async () =>
       (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
@@ -113,14 +111,52 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       }));
   }, [portTypesData]);
 
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'port_type_code',
+        label: 'Port Types',
+        type: 'multi-select',
+        options: portTypeCodeOptions,
+        isLoading: loadingTypes,
+      },
+      {
+        key: 'port_utilization',
+        label: 'Utilization',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'In Use' },
+          { value: 'false', label: 'Free' },
+        ],
+      },
+      {
+        key: 'port_admin_status',
+        label: 'Admin Status',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'Up' },
+          { value: 'false', label: 'Down' },
+        ],
+      },
+    ],
+    [portTypeCodeOptions, loadingTypes]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
+
   // 3. Fetch Connections (Bi-Directional)
-  // CHANGED: Use usePagedData (RPC) with SQL filter syntax
   const { data: connectionsResult } = usePagedData<V_system_connections_completeRowSchema>(
     supabase,
     'v_system_connections_complete',
     {
       filters: {
-        // SQL Syntax for the RPC 'or' handler
         or: `system_id = '${systemId}' OR en_id = '${systemId}'`,
       },
       limit: 2000,
@@ -410,6 +446,17 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
         <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
 
+        {/* REUSABLE FILTER BAR */}
+        <GenericFilterBar
+          searchQuery={search.searchQuery}
+          onSearchChange={search.setSearchQuery}
+          searchPlaceholder="Search ports, serials..."
+          filters={filters.filters}
+          onFilterChange={handleFilterChange}
+          setFilters={filters.setFilters} // Passed specifically for multi-select
+          filterConfigs={filterConfigs}
+        />
+
         <DataTable
           autoHideEmptyColumns={true}
           tableName="v_ports_management_complete"
@@ -429,51 +476,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
               pagination.setPageLimit(limit);
             },
           }}
-          customToolbar={
-            <SearchAndFilters
-              searchTerm={search.searchQuery}
-              onSearchChange={search.setSearchQuery}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
-              onClearFilters={() => {
-                search.setSearchQuery('');
-                // THE FIX: Reset filters to empty object to actually clear all filters
-                filters.setFilters({});
-              }}
-              hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-              activeFilterCount={Object.keys(filters.filters).length}
-              searchPlaceholder="Search ports, serials..."
-            >
-              <MultiSelectFilter
-                label="Port Types"
-                filterKey="port_type_code"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={portTypeCodeOptions}
-              />
-
-              <SelectFilter
-                label="Utilization"
-                filterKey="port_utilization"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={[
-                  { value: 'true', label: 'In Use' },
-                  { value: 'false', label: 'Free' },
-                ]}
-              />
-              <SelectFilter
-                label="Admin Status"
-                filterKey="port_admin_status"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={[
-                  { value: 'true', label: 'Up' },
-                  { value: 'false', label: 'Down' },
-                ]}
-              />
-            </SearchAndFilters>
-          }
+          customToolbar={<></>}
           sortable={true}
         />
 

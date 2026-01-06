@@ -1,7 +1,7 @@
 // app/dashboard/e-files/page.tsx
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable } from '@/components/table';
 import { useEFiles, useDeleteFile } from '@/hooks/data/useEFilesData';
@@ -12,18 +12,7 @@ import {
 } from '@/components/efile/ActionModals';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { useRouter } from 'next/navigation';
-import {
-  FileText,
-  Eye,
-  Plus,
-  Send,
-  Edit,
-  Trash2,
-  Database,
-  Grid,
-  List,
-  Search,
-} from 'lucide-react';
+import { FileText, Eye, Plus, Send, Edit, Trash2, Database } from 'lucide-react';
 import { EFileRow } from '@/schemas/efile-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { formatDate } from '@/utils/formatters';
@@ -37,13 +26,13 @@ import {
   useImportEFileSystem,
 } from '@/hooks/database/excel-queries/useEFileSystemBackup';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
-import { Input } from '@/components/common/ui/Input';
 import { EFileCard } from '@/components/efile/EFileCard';
 import { UserRole } from '@/types/user-roles';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { ActionButton } from '@/components/common/page-header';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
-// Hardcoded categories to match the form options
+// Hardcoded categories options
 const CATEGORY_OPTIONS = [
   { value: 'administrative', label: 'Administrative' },
   { value: 'technical', label: 'Technical' },
@@ -56,7 +45,6 @@ export default function EFilesPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
   const [searchQuery, setSearchQuery] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [filters, setFilters] = useState<Record<string, any>>({ status: 'active' });
@@ -86,6 +74,47 @@ export default function EFilesPage() {
 
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   const canDelete = isSuperAdmin === true || role === UserRole.ADMINPRO;
+
+  // --- FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        options: [
+          { value: 'active', label: 'Active Files' },
+          { value: 'closed', label: 'Closed / Archived' },
+          { value: '', label: 'All Files' },
+        ],
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        type: 'native-select',
+        options: CATEGORY_OPTIONS,
+      },
+      {
+        key: 'priority',
+        label: 'Priority',
+        type: 'native-select',
+        options: [
+          { value: 'immediate', label: 'Immediate' },
+          { value: 'urgent', label: 'Urgent' },
+          { value: 'normal', label: 'Normal' },
+        ],
+      },
+    ],
+    []
+  );
+
+  const handleFilterChange = useCallback((key: string, value: string | null) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  }, []);
+  // ---------------------
 
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -146,7 +175,6 @@ export default function EFilesPage() {
     return result;
   }, [files, searchQuery, filters]);
 
-  // THE FIX: Conditionally build the header actions array
   const headerActions = useMemo((): ActionButton[] => {
     const actions: ActionButton[] = [
       {
@@ -335,91 +363,17 @@ export default function EFilesPage() {
         actions={headerActions}
       />
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search subject, number, holder..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<Search className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[140px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filters.status}
-              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="active">Active Files</option>
-              <option value="closed">Closed / Archived</option>
-              <option value="">All Files</option>
-            </select>
-          </div>
-
-          {/* Category Filter */}
-          <div className="min-w-[140px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filters.category || ''}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, category: e.target.value || undefined }))
-              }
-            >
-              <option value="">All Categories</option>
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="min-w-[140px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filters.priority || ''}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, priority: e.target.value || undefined }))
-              }
-            >
-              <option value="">All Priorities</option>
-              <option value="immediate">Immediate</option>
-              <option value="urgent">Urgent</option>
-              <option value="normal">Normal</option>
-            </select>
-          </div>
-          {/* View Toggle */}
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <Grid size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <List size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search subject, number, holder..."
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       {/* Content */}
       {viewMode === 'grid' ? (

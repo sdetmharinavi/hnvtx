@@ -2,13 +2,13 @@
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
-import { FiBookOpen, FiUpload, FiCalendar, FiSearch, FiList, FiClock, FiPrinter } from 'react-icons/fi'; // Added FiPrinter
+import { FiBookOpen, FiUpload, FiCalendar, FiPrinter } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useDebounce } from 'use-debounce';
 import { v4 as uuidv4 } from 'uuid';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
 import { DiaryEntryCard } from '@/components/diary/DiaryEntryCard';
 import { DiaryFormModal } from '@/components/diary/DiaryFormModal';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
@@ -22,17 +22,17 @@ import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { useTableInsert, useTableUpdate } from '@/hooks/database';
 import { useDiaryData } from '@/hooks/data/useDiaryData';
 import { UserRole } from '@/types/user-roles';
-import { Input } from '@/components/common/ui/Input';
-import { Button } from '@/components/common/ui/Button';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { localDb } from '@/hooks/data/localDb';
 import { addMutationToQueue } from '@/hooks/data/useMutationQueue';
+import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 type ViewMode = 'day' | 'feed';
 
 export default function DiaryPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  // We'll map "grid" to "day" and "table" to "feed" for the generic bar
   const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch] = useDebounce(searchQuery, 300);
@@ -258,6 +258,12 @@ export default function DiaryPage() {
     day: 'numeric',
   });
 
+  // Map generic view modes back to domain-specific modes
+  const handleViewModeChange = (mode: 'grid' | 'table') => {
+    setViewMode(mode === 'grid' ? 'day' : 'feed');
+  };
+  const genericViewMode = viewMode === 'day' ? 'grid' : 'table';
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -313,21 +319,18 @@ export default function DiaryPage() {
 
           {/* Main Content Area */}
           <div className="xl:col-span-8 space-y-6">
-            {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="relative w-full sm:w-72">
-                <Input
-                  placeholder="Search logs or tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  leftIcon={<FiSearch className="text-gray-400" />}
-                  clearable
-                  fullWidth
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                {viewMode === 'feed' && (
+            {/* REUSABLE FILTER BAR */}
+            <GenericFilterBar
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search logs or tags..."
+              filters={{}} // No dropdowns
+              onFilterChange={() => {}}
+              filterConfigs={[]} // No configs
+              viewMode={genericViewMode} // mapped
+              onViewModeChange={handleViewModeChange}
+              extraActions={
+                viewMode === 'feed' ? (
                   <Button
                     size="sm"
                     variant="outline"
@@ -335,36 +338,13 @@ export default function DiaryPage() {
                     leftIcon={<FiPrinter className="w-4 h-4" />}
                     title="Print this month's feed"
                   >
-                    Print Feed
+                    Print
                   </Button>
-                )}
-                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('day')}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'day'
-                        ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                    }`}
-                  >
-                    <FiClock className="w-4 h-4" /> Day
-                  </button>
-                  <button
-                    onClick={() => setViewMode('feed')}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'feed'
-                        ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-300'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
-                    }`}
-                  >
-                    <FiList className="w-4 h-4" /> Month Feed
-                  </button>
-                </div>
-              </div>
-            </div>
+                ) : null
+              }
+            />
 
             {/* List Header */}
-            {/* WRAPPED IN PRINTABLE-CONTENT */}
             <div className={viewMode === 'feed' ? 'printable-content' : ''}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
