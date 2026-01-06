@@ -1,27 +1,27 @@
 // path: app/dashboard/rings/[id]/page.tsx
-'use client';
+"use client";
 
-import { useMemo, useCallback, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
-import dynamic from 'next/dynamic';
-import { localDb } from '@/hooks/data/localDb';
-import { PageSpinner, Modal, Button } from '@/components/common/ui';
-import { PageHeader } from '@/components/common/page-header';
-import { RingMapNode } from '@/components/map/types/node';
-import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
-import { createClient } from '@/utils/supabase/client';
+import { useMemo, useCallback, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { FiArrowLeft, FiMap, FiGrid, FiSettings } from "react-icons/fi";
+import dynamic from "next/dynamic";
+import { localDb } from "@/hooks/data/localDb";
+import { PageSpinner, Modal, Button } from "@/components/common/ui";
+import { PageHeader } from "@/components/common/page-header";
+import { RingMapNode } from "@/components/map/types/node";
+import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
+import { createClient } from "@/utils/supabase/client";
 import {
   V_ring_nodesRowSchema,
   V_ringsRowSchema,
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
-} from '@/schemas/zod-schemas';
-import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
-import MeshDiagram from '@/components/map/MeshDiagram';
-import { toast } from 'sonner';
-import { Json } from '@/types/supabase-types';
-import { useQuery } from '@tanstack/react-query';
+} from "@/schemas/zod-schemas";
+import { buildRpcFilters, useRpcRecord, useTableUpdate } from "@/hooks/database";
+import MeshDiagram from "@/components/map/MeshDiagram";
+import { toast } from "sonner";
+import { Json } from "@/types/supabase-types";
+import { useQuery } from "@tanstack/react-query";
 
 // Define the PortDisplayInfo type here to be passed to the map
 export interface PortDisplayInfo {
@@ -30,9 +30,9 @@ export interface PortDisplayInfo {
   targetNodeName?: string;
 }
 
-const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
+const ClientRingMap = dynamic(() => import("@/components/map/ClientRingMap"), {
   ssr: false,
-  loading: () => <PageSpinner text="Loading Map..." />,
+  loading: () => <PageSpinner text='Loading Map...' />,
 });
 
 type ExtendedRingDetails = V_ringsRowSchema & {
@@ -78,18 +78,18 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
 const getConnectionColor = (id: string) => {
   // A palette of distinct, readable colors
   const colors = [
-    '#dc2626', // Strong Red
-    '#ea580c', // Deep Orange
-    '#ca8a04', // Golden Amber
-    '#65a30d', // Lime Green
-    '#059669', // Emerald Green
-    '#0f766e', // Teal
-    '#0284c7', // Cyan Blue
-    '#1d4ed8', // Royal Blue
-    '#4f46e5', // Indigo
-    '#7c3aed', // Violet
-    '#c026d3', // Fuchsia
-    '#be123c', // Rose / Magenta Red
+    "#dc2626", // Strong Red
+    "#ea580c", // Deep Orange
+    "#ca8a04", // Golden Amber
+    "#65a30d", // Lime Green
+    "#059669", // Emerald Green
+    "#0f766e", // Teal
+    "#0284c7", // Cyan Blue
+    "#1d4ed8", // Royal Blue
+    "#4f46e5", // Indigo
+    "#7c3aed", // Violet
+    "#c026d3", // Fuchsia
+    "#be123c", // Rose / Magenta Red
   ];
 
   let hash = 0;
@@ -105,7 +105,7 @@ export default function RingMapPage() {
   const ringId = params.id as string;
   const supabase = createClient();
 
-  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
+  const [viewMode, setViewMode] = useState<"map" | "schematic">("map");
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // 1. Fetch Ring Details
@@ -113,16 +113,16 @@ export default function RingMapPage() {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
     refetch: refetchRing,
-  } = useRpcRecord(supabase, 'v_rings', ringId, {
+  } = useRpcRecord(supabase, "v_rings", ringId, {
     // THE FIX: Ensure we fetch fresh data when entering this page to catch "Closed Loop" updates
     refetchOnMount: true,
   });
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
   // 2. Mutation
-  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, "rings", {
     onSuccess: () => {
-      toast.success('Topology configuration saved');
+      toast.success("Topology configuration saved");
       refetchRing();
       setIsConfigModalOpen(false);
     },
@@ -130,25 +130,25 @@ export default function RingMapPage() {
   });
 
   // 3. Fetch Nodes
-  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
-    queryKey: ['ring-nodes-detail', ringId],
+  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<"v_ring_nodes">({
+    queryKey: ["ring-nodes-detail", ringId],
     onlineQueryFn: async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_ring_nodes',
+      const { data, error } = await supabase.rpc("get_paged_data", {
+        p_view_name: "v_ring_nodes",
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
-        p_order_by: 'order_in_ring',
-        p_order_dir: 'asc',
+        p_order_by: "order_in_ring",
+        p_order_dir: "asc",
       });
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
     },
     localQueryFn: () => {
       if (!ringId) return Promise.resolve([]);
-      return localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
+      return localDb.v_ring_nodes.where("ring_id").equals(ringId).toArray();
     },
     dexieTable: localDb.v_ring_nodes,
     enabled: !!ringId,
@@ -169,26 +169,26 @@ export default function RingMapPage() {
 
   // 4. Fetch Cables
   const { data: ringCables } = useQuery({
-    queryKey: ['ring-cables-physical', ringId, ringNodeIds],
+    queryKey: ["ring-cables-physical", ringId, ringNodeIds],
     queryFn: async () => {
       if (ringNodeIds.length < 2) return [];
 
-      const idList = ringNodeIds.map((id) => `'${id}'`).join(',');
+      const idList = ringNodeIds.map((id) => `'${id}'`).join(",");
       const sqlCondition = `sn_id IN (${idList}) OR en_id IN (${idList})`;
 
       const rpcFilters = {
         or: sqlCondition,
       };
 
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_ofc_cables_complete',
+      const { data, error } = await supabase.rpc("get_paged_data", {
+        p_view_name: "v_ofc_cables_complete",
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
       });
 
       if (error) {
-        console.error('Error fetching ring cables:', error);
+        console.error("Error fetching ring cables:", error);
         return [];
       }
 
@@ -207,7 +207,7 @@ export default function RingMapPage() {
 
   // 5. Fetch ACTIVE Connections
   const { data: allCableConnections } = useQuery({
-    queryKey: ['ring-connections-all', ringId, ringCableIds],
+    queryKey: ["ring-connections-all", ringId, ringCableIds],
     queryFn: async () => {
       if (ringCableIds.length === 0) return [];
 
@@ -216,15 +216,15 @@ export default function RingMapPage() {
         status: true,
       };
 
-      const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_ofc_connections_complete',
+      const { data, error } = await supabase.rpc("get_paged_data", {
+        p_view_name: "v_ofc_connections_complete",
         p_limit: 5000,
         p_offset: 0,
         p_filters: buildRpcFilters(rpcFilters),
       });
 
       if (error) {
-        console.error('Error fetching connections:', error);
+        console.error("Error fetching connections:", error);
         return [];
       }
       return (data?.data as V_ofc_connections_completeRowSchema[]) || [];
@@ -235,10 +235,10 @@ export default function RingMapPage() {
 
   // 4a. Fetch Logical Path configurations
   const { data: pathConfigs } = useQuery({
-    queryKey: ['ring-path-config', ringId],
+    queryKey: ["ring-path-config", ringId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('logical_paths')
+        .from("logical_paths")
         .select(
           `
            id,
@@ -252,7 +252,7 @@ export default function RingMapPage() {
            destination_port
         `
         )
-        .eq('ring_id', ringId);
+        .eq("ring_id", ringId);
 
       if (error) return [];
       return data;
@@ -348,8 +348,8 @@ export default function RingMapPage() {
 
     // Logical Paths Config
     pathConfigs?.forEach((p) => {
-      const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
-      const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
+      const sysIdA = nodeIdToSystemId.get(p.start_node_id || "");
+      const sysIdB = nodeIdToSystemId.get(p.end_node_id || "");
 
       if (sysIdA && sysIdB) {
         const key1 = `${sysIdA}-${sysIdB}`;
@@ -421,10 +421,10 @@ export default function RingMapPage() {
       const existing = map[key1] || {};
       const mergedConfig = {
         ...existing,
-        fiberInfo: uniqueFiberInfo.length > 0 ? uniqueFiberInfo.join(', ') : 'No Active Fibers',
+        fiberInfo: uniqueFiberInfo.length > 0 ? uniqueFiberInfo.join(", ") : "No Active Fibers",
         cableName:
           contributingCableNames.size > 1
-            ? 'Multiple Active Routes'
+            ? "Multiple Active Routes"
             : bestCable.route_name || undefined,
         capacity: bestCable?.capacity || undefined,
       };
@@ -449,7 +449,7 @@ export default function RingMapPage() {
       if (node.id && node.node_id) {
         systemToNodeInfo.set(node.id, {
           nodeId: node.node_id,
-          nodeName: node.system_node_name || node.name || 'Unknown',
+          nodeName: node.system_node_name || node.name || "Unknown",
         });
       }
     });
@@ -478,10 +478,10 @@ export default function RingMapPage() {
           const color = getConnectionColor(connectionId);
 
           // Resolve target name
-          let targetName = 'Unknown';
+          let targetName = "Unknown";
           if (targetSystemId) {
             const targetInfo = systemToNodeInfo.get(targetSystemId);
-            targetName = targetInfo ? targetInfo.nodeName : 'External';
+            targetName = targetInfo ? targetInfo.nodeName : "External";
           }
 
           list.push({ port, color, targetNodeName: targetName });
@@ -506,7 +506,7 @@ export default function RingMapPage() {
     // Sort ports naturally for display
     map.forEach((ports) => {
       ports.sort((a, b) =>
-        a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: 'base' })
+        a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: "base" })
       );
     });
 
@@ -529,7 +529,7 @@ export default function RingMapPage() {
     }
 
     const newConfig = {
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object'
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === "object"
         ? ringDetails.topology_config
         : {}),
       disabled_segments: newDisabled,
@@ -542,17 +542,17 @@ export default function RingMapPage() {
 
   const renderContent = () => {
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
-    if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
+    if (isLoading) return <PageSpinner text='Loading Ring Data...' />;
 
     if (mappedNodes.length === 0) {
       return (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No nodes found.</p>
+        <div className='text-center py-12'>
+          <p className='text-gray-500'>No nodes found.</p>
         </div>
       );
     }
 
-    if (viewMode === 'schematic') {
+    if (viewMode === "schematic") {
       return (
         <MeshDiagram
           nodes={mappedNodes}
@@ -565,7 +565,7 @@ export default function RingMapPage() {
 
     const mapNodes = mappedNodes.filter((n) => n.lat != null && n.long != null);
     if (mapNodes.length === 0) {
-      return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
+      return <div className='flex justify-center h-full items-center'>No Geographic Data</div>;
     }
 
     return (
@@ -582,50 +582,49 @@ export default function RingMapPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
-      <div className="shrink-0">
+    <div className='p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col'>
+      <div className='shrink-0'>
         <PageHeader
           title={ringName}
-          description="Visualize and configure topology."
+          description='Visualize and configure topology.'
           icon={<FiMap />}
           actions={[
             {
-              label: 'Configure Topology',
+              label: "Configure Topology",
               onClick: () => setIsConfigModalOpen(true),
-              variant: 'primary',
+              variant: "primary",
               leftIcon: <FiSettings />,
               disabled: isLoadingRingDetails || isUpdating,
             },
             {
-              label: viewMode === 'map' ? 'Schematic View' : 'Map View',
-              onClick: () => setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
-              variant: 'secondary',
-              leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
+              label: viewMode === "map" ? "Schematic View" : "Map View",
+              onClick: () => setViewMode((prev) => (prev === "map" ? "schematic" : "map")),
+              variant: "secondary",
+              leftIcon: viewMode === "map" ? <FiGrid /> : <FiMap />,
             },
             {
-              label: 'Back',
+              label: "Back",
               onClick: handleBack,
-              variant: 'outline',
+              variant: "outline",
               leftIcon: <FiArrowLeft />,
             },
           ]}
         />
       </div>
 
-      <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
+      <div className='grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden'>
         {renderContent()}
       </div>
 
       <Modal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
-        title="Configure Ring Connections"
-      >
-        <div className="p-4 space-y-4 z-50">
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+        title='Configure Ring Connections'>
+        <div className='p-4 space-y-4 z-50'>
+          <p className='text-sm text-gray-600 dark:text-gray-300 mb-4'>
             Toggle the switches below to enable or disable specific connections between hubs.
           </p>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className='space-y-2 max-h-96 overflow-y-auto'>
             {potentialSegments.map(([start, end], idx) => {
               const key = `${start.id}-${end.id}`;
               const reverseKey = `${end.id}-${start.id}`;
@@ -635,29 +634,27 @@ export default function RingMapPage() {
               return (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
+                  className='flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600'>
+                  <div className='flex flex-col'>
+                    <span className='font-medium text-sm text-gray-800 dark:text-gray-200'>
                       {start.name} ↔ {end.name}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className='text-xs text-gray-500'>
                       Order: {start.order_in_ring} ↔ {end.order_in_ring}
                     </span>
                   </div>
                   <Button
-                    size="xs"
-                    variant={isActive ? 'success' : 'secondary'}
+                    size='xs'
+                    variant={isActive ? "success" : "secondary"}
                     onClick={() => handleToggleSegment(start.id!, end.id!)}
-                    disabled={isUpdating}
-                  >
-                    {isActive ? 'Connected' : 'Disconnected'}
+                    disabled={isUpdating}>
+                    {isActive ? "Connected" : "Disconnected"}
                   </Button>
                 </div>
               );
             })}
           </div>
-          <div className="flex justify-end pt-4">
+          <div className='flex justify-end pt-4'>
             <Button onClick={() => setIsConfigModalOpen(false)}>Done</Button>
           </div>
         </div>
