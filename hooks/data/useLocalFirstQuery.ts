@@ -1,16 +1,12 @@
 // hooks/data/useLocalFirstQuery.ts
-import { useQuery, type QueryKey } from '@tanstack/react-query';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect } from 'react';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { PublicTableOrViewName, Row } from '@/hooks/database';
-import { Table, PromiseExtended } from 'dexie';
+import { useQuery, type QueryKey } from "@tanstack/react-query";
+import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect } from "react";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { PublicTableOrViewName, Row } from "@/hooks/database";
+import { Table, PromiseExtended } from "dexie";
 
-interface UseLocalFirstQueryOptions<
-  T extends PublicTableOrViewName,
-  TRow = Row<T>,
-  TLocal = TRow
-> {
+interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow> {
   queryKey: QueryKey;
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
@@ -19,28 +15,24 @@ interface UseLocalFirstQueryOptions<
   dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
-  autoSync?: boolean; 
+  autoSync?: boolean;
 }
 
-export function useLocalFirstQuery<
-  T extends PublicTableOrViewName,
-  TRow = Row<T>,
-  TLocal = TRow
->({
+export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow>({
   queryKey,
   onlineQueryFn,
   localQueryFn,
   localQueryDeps = [],
   dexieTable,
   enabled = true,
-  staleTime = Infinity, 
+  staleTime = Infinity,
   autoSync = false,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
 
   // 1. Fetch Local Data
   const localData = useLiveQuery(localQueryFn, localQueryDeps, "loading");
-  
+
   // 2. Network Query Configuration
   const shouldFetchOnMount = enabled && isOnline && autoSync;
 
@@ -60,12 +52,12 @@ export function useLocalFirstQuery<
       }
       return onlineQueryFn();
     },
-    enabled: shouldFetchOnMount, 
+    enabled: shouldFetchOnMount,
     refetchOnWindowFocus: false,
-    refetchOnMount: false, 
-    refetchOnReconnect: false, 
+    refetchOnMount: false,
+    refetchOnReconnect: false,
     staleTime,
-    retry: 1, 
+    retry: 1,
   });
 
   // 3. Sync Network Data to Local DB
@@ -78,21 +70,23 @@ export function useLocalFirstQuery<
           // If so, we filter out any records that have a null/undefined value for that key
           // before saving to Dexie, as IndexedDB does not allow null primary keys.
           const primaryKey = dexieTable.schema.primKey.name;
-          
+
           let dataToSave = networkData as unknown as TLocal[];
-          
+
           if (primaryKey) {
-             dataToSave = dataToSave.filter(item => {
-                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                 const pkValue = (item as any)[primaryKey];
-                 return pkValue !== null && pkValue !== undefined;
-             });
+            dataToSave = dataToSave.filter((item) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pkValue = (item as any)[primaryKey];
+              return pkValue !== null && pkValue !== undefined;
+            });
           }
 
           if (dataToSave.length > 0) {
             await dexieTable.bulkPut(dataToSave);
           } else if (networkData.length > 0) {
-             console.warn(`[useLocalFirstQuery] Skipped syncing to ${dexieTable.name}: All ${networkData.length} records had invalid primary keys.`);
+            console.warn(
+              `[useLocalFirstQuery] Skipped syncing to ${dexieTable.name}: All ${networkData.length} records had invalid primary keys.`
+            );
           }
         } catch (e) {
           console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
@@ -105,11 +99,11 @@ export function useLocalFirstQuery<
   // 4. Determine Loading State
   const isLocalLoading = localData === "loading";
   const hasLocalData = Array.isArray(localData) && localData.length > 0;
-  
+
   // Show loading if:
   // 1. Dexie is still initializing (isLocalLoading)
   // 2. OR we are forced to fetch network (autoSync) AND we have no local data yet
-  const isLoading = isLocalLoading || ((isNetworkLoading && autoSync) && !hasLocalData);
+  const isLoading = isLocalLoading || (isNetworkLoading && autoSync && !hasLocalData);
 
   // 5. Determine Error State
   const isError = isNetworkError && !hasLocalData;
@@ -117,8 +111,8 @@ export function useLocalFirstQuery<
 
   // 6. Indicators
   const isSyncing = isNetworkFetching;
-  const isStale = isNetworkError && hasLocalData; 
-  
+  const isStale = isNetworkError && hasLocalData;
+
   const safeData = Array.isArray(localData) ? localData : [];
 
   return {
@@ -127,9 +121,9 @@ export function useLocalFirstQuery<
     isFetching: isSyncing,
     isError,
     error,
-    refetch, 
+    refetch,
     networkStatus: networkQueryStatus,
     isStale,
-    isSyncing
+    isSyncing,
   };
 }

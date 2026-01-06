@@ -19,7 +19,8 @@ interface MeshDiagramProps {
   ringName?: string;
   onBack?: () => void;
   segmentConfigs?: Record<string, PathConfig>;
-  nodePorts?: Map<string, PortDisplayInfo[]>; // Ensure this prop is used
+  // ADDED: Prop to receive port info
+  nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
 const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
@@ -138,7 +139,7 @@ export default function MeshDiagram({
   connections,
   onBack,
   segmentConfigs = {},
-  nodePorts,
+  nodePorts, // Receive ports
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { theme } = useThemeStore();
@@ -148,7 +149,6 @@ export default function MeshDiagram({
 
   const { nodePositions, bounds } = useMemo(() => {
     const positions = new Map<string, L.LatLng>();
-
     const CENTER_X = 1000;
     const CENTER_Y = 1000;
     const RING_RADIUS = 400;
@@ -292,7 +292,6 @@ export default function MeshDiagram({
         zoomControl={false}
         className='dark:bg-blue-950! shadow-lg'>
         <MeshController bounds={bounds} />
-
         <ZoomControl position='bottomright' />
 
         {connections.map(([nodeA, nodeB], index) => {
@@ -303,7 +302,6 @@ export default function MeshDiagram({
           const orderA = nodeA.order_in_ring || 0;
           const orderB = nodeB.order_in_ring || 0;
           const isSpur = orderA % 1 !== 0 || orderB % 1 !== 0;
-
           const key1 = `${nodeA.id}-${nodeB.id}`;
           const key2 = `${nodeB.id}-${nodeA.id}`;
           const config = segmentConfigs[key1] || segmentConfigs[key2];
@@ -326,7 +324,7 @@ export default function MeshDiagram({
           const node = nodes.find((n) => n.id === nodeId);
           if (!node) return null;
 
-          // ADDED: Get ports for this node (Fixed logic to access map)
+          // ADDED: Get ports for this node
           const portsList = nodePorts?.get(node.node_id || node.id!) || [];
 
           return (
@@ -334,7 +332,7 @@ export default function MeshDiagram({
               key={nodeId}
               position={pos}
               icon={getNodeIcon(node.system_type, node.type, false)}>
-              {/* ADDED: Enhanced Tooltip with Ports - MATCHING ClientRingMap */}
+              {/* ADDED: Enhanced Tooltip with Ports */}
               <Tooltip
                 direction='bottom'
                 offset={[0, 10]}
@@ -371,7 +369,6 @@ export default function MeshDiagram({
                 </div>
               </Tooltip>
 
-              {/* ADDED: Enhanced Popup with Ports - MATCHING ClientRingMap */}
               <Popup className='custom-popup'>
                 <div className='text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800'>
                   <div className='bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600'>
