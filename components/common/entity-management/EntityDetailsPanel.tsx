@@ -1,13 +1,12 @@
 // path: components/common/entity-management/EntityDetailsPanel.tsx
-import React from "react";
-import { FiEdit3, FiTrash2, FiEye } from "react-icons/fi";
+import React, { useState } from "react";
+import { FiEdit3, FiTrash2, FiEye, FiLoader } from "react-icons/fi";
 import { BaseEntity, EntityConfig } from "@/components/common/entity-management/types";
 import { DetailItem } from "@/components/common/entity-management/DetailItem";
 
 interface EntityDetailsPanelProps<T extends BaseEntity> {
   entity: T | null;
   config: EntityConfig<T>;
-  // THE FIX: Made onEdit optional
   onEdit?: () => void;
   onDelete?: (entity: { id: string; name: string }) => void;
   onViewDetails?: () => void;
@@ -20,6 +19,22 @@ export function EntityDetailsPanel<T extends BaseEntity>({
   onDelete,
   onViewDetails,
 }: EntityDetailsPanelProps<T>) {
+  // Local state to track navigation action
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleViewDetails = async () => {
+    if (onViewDetails) {
+      setIsNavigating(true);
+      // Execute the callback (usually router.push)
+      // We don't await here because router.push doesn't return a promise in all Next.js versions,
+      // and we want to show loading immediately until the page unmounts/changes.
+      onViewDetails();
+
+      // Safety timeout: if navigation fails or is cancelled, reset state after 5s
+      setTimeout(() => setIsNavigating(false), 5000);
+    }
+  };
+
   if (!entity) {
     const IconComponent = config.icon;
     return (
@@ -36,16 +51,22 @@ export function EntityDetailsPanel<T extends BaseEntity>({
         <div className='flex gap-2'>
           {onViewDetails && (
             <button
-              onClick={onViewDetails}
-              className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800'>
-              <FiEye className='h-4 w-4' /> Open Ring
+              onClick={handleViewDetails}
+              disabled={isNavigating}
+              className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-70 disabled:cursor-wait transition-all'>
+              {isNavigating ? (
+                <FiLoader className='h-4 w-4 animate-spin' />
+              ) : (
+                <FiEye className='h-4 w-4' />
+              )}
+              {isNavigating ? "Opening..." : `Open ${config.entityDisplayName}`}
             </button>
           )}
 
-          {/* THE FIX: Conditionally render Edit button */}
           {onEdit && (
             <button
               onClick={onEdit}
+              disabled={isNavigating}
               className='flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               title='Edit'>
               <FiEdit3 className='h-4 w-4' />
@@ -55,6 +76,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
           {onDelete && (
             <button
               onClick={() => onDelete({ id: entity.id ?? "", name: entity.name })}
+              disabled={isNavigating}
               className='flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
               title='Delete'>
               <FiTrash2 className='h-4 w-4' />
