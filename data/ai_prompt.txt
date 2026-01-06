@@ -116,6 +116,7 @@ Seek debugging assistance for specific issues
 
 Important: When providing code solutions:
 
+Always use rpc for view table to avoid permission issues.
 Always provide the COMPLETE file content, not just changed sections
 Include all imports, exports, and dependencies
 Ensure code is production-ready with proper error handling
@@ -136,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to fix positioning of permanent tooltips in client ring map, somtimes, its overlapping above another. Also what to do in a situations when two or more systems are at same node with same lat long? Also if I forget to add a system to ring from ring manager page, and add later then go to manage logical path and generate, then new paths are not being added.
+Let's begin! First of all I want to fix that it seems that if two systems are located at same node then both are displaying same ports.
