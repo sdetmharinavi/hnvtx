@@ -1,20 +1,25 @@
-// app/dashboard/services/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import {
-  PageHeader,
-  useStandardHeaderActions,
-  type ActionButton,
-} from '@/components/common/page-header';
-import { DataTable } from '@/components/table';
+import { useStandardHeaderActions, ActionButton } from '@/components/common/page-header';
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useServicesData } from '@/hooks/data/useServicesData';
 import { ServicesTableColumns } from '@/config/table-columns/ServicesTableColumns';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { ServiceFormModal } from '@/components/services/ServiceFormModal';
 import { toast } from 'sonner';
-import { Copy, Database as DatabaseIcon } from 'lucide-react';
+import {
+  Copy,
+  Database as DatabaseIcon,
+  Server,
+  ExternalLink,
+  Activity,
+  Tag,
+  Hash,
+  Info,
+} from 'lucide-react';
 import { useTableInsert, useTableUpdate } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
@@ -22,11 +27,14 @@ import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { useUser } from '@/providers/UserProvider';
-import { BulkActions } from '@/components/common/BulkActions';
-import { ServiceCard } from '@/components/services/ServiceCard';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+
+// Helper Type for allocated systems JSON
+interface AllocatedSystem {
+  id: string;
+  name: string;
+}
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -77,11 +85,10 @@ export default function ServicesPage() {
   );
 
   const columns = ServicesTableColumns(data, duplicateSet);
-
   const { options: linkTypeOptions, isLoading: loadingLinks } = useLookupTypeOptions('LINK_TYPES');
 
-  // --- DRY FILTER CONFIG ---
-  const filterConfigs = useMemo<FilterConfig[]>(
+  // --- Filter Config ---
+  const filterConfigs = useMemo(
     () => [
       {
         key: 'link_type_id',
@@ -92,7 +99,7 @@ export default function ServicesPage() {
       {
         key: 'allocation_status',
         label: 'Allocation',
-        type: 'native-select',
+        type: 'native-select' as const,
         options: [
           { value: 'allocated', label: 'Allocated' },
           { value: 'unallocated', label: 'Unallocated' },
@@ -101,7 +108,7 @@ export default function ServicesPage() {
       {
         key: 'status',
         label: 'Status',
-        type: 'native-select',
+        type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
@@ -117,8 +124,8 @@ export default function ServicesPage() {
     },
     [filters]
   );
-  // -------------------------
 
+  // --- Mutations ---
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
     onSuccess: () => {
       refetch();
@@ -137,27 +144,9 @@ export default function ServicesPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSave = (formData: any) => {
-    if (editModal.record?.id) {
-      updateService({ id: editModal.record.id, data: formData });
-    } else {
-      insertService(formData);
-    }
+    if (editModal.record?.id) updateService({ id: editModal.record.id, data: formData });
+    else insertService(formData);
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getEditingService = (record: V_servicesRowSchema | null): any | null => {
-    if (!record) return null;
-    return record;
-  };
-
-  const tableActions = useMemo(
-    () =>
-      createStandardActions({
-        onEdit: canEdit ? editModal.openEdit : undefined,
-        onDelete: canDelete ? crudActions.handleDelete : undefined,
-      }),
-    [editModal.openEdit, canEdit, canDelete, crudActions.handleDelete]
-  );
 
   const headerActions = useStandardHeaderActions({
     onRefresh: refetch,
@@ -174,6 +163,7 @@ export default function ServicesPage() {
       : undefined,
   });
 
+  // Inject Duplicate Action
   const enhancedHeaderActions: ActionButton[] = [
     ...headerActions,
     {
@@ -184,26 +174,117 @@ export default function ServicesPage() {
       hideTextOnMobile: true,
     },
   ];
+  // Ensure "Add New" is last
+  const addNewAction = enhancedHeaderActions.find((a) => a.label === 'Add New');
+  if (addNewAction) {
+    const idx = enhancedHeaderActions.indexOf(addNewAction);
+    enhancedHeaderActions.splice(idx, 1);
+    enhancedHeaderActions.push(addNewAction);
+  }
 
-  const addNewAction = enhancedHeaderActions.pop();
-  if (addNewAction) enhancedHeaderActions.splice(enhancedHeaderActions.length - 1, 0, addNewAction);
+  const renderGrid = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {data.map((service) => {
+        const isDup = duplicateSet.has(
+          `${service.name?.trim().toLowerCase()}|${service.link_type_name?.trim().toLowerCase()}`
+        );
+        const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) || [];
 
-  const renderMobileItem = useCallback(
-    (record: Row<'v_services'>) => {
-      return (
-        <ServiceCard
-          service={record as V_servicesRowSchema}
-          onEdit={editModal.openEdit}
-          onDelete={crudActions.handleDelete}
-          canEdit={canEdit}
-          canDelete={canDelete}
-          isDuplicate={duplicateSet.has(
-            `${record.name?.trim().toLowerCase()}|${record.link_type_name?.trim().toLowerCase()}`
-          )}
-        />
-      );
-    },
-    [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, duplicateSet]
+        return (
+          <GenericEntityCard
+            key={service.id}
+            entity={service}
+            title={service.name || 'Unnamed Service'}
+            status={service.status}
+            subBadge={
+              <div className="flex gap-2 flex-wrap mb-2">
+                {service.link_type_name && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 text-white shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    {service.link_type_name}
+                  </span>
+                )}
+                {service.bandwidth_allocated && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-linear-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+                    <Activity className="w-3.5 h-3.5" />
+                    {service.bandwidth_allocated}
+                  </span>
+                )}
+                {isDup && (
+                  <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded border border-amber-200">
+                    Duplicate
+                  </span>
+                )}
+              </div>
+            }
+            dataItems={[
+              { icon: Tag, label: 'VLAN', value: service.vlan || '—' },
+              { icon: Hash, label: 'Unique ID', value: service.unique_id || '—' },
+              // Route visualization for data items
+              {
+                icon: Server,
+                label: 'Route',
+                value: (
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="font-medium truncate max-w-[80px]">
+                      {service.node_name || '?'}
+                    </span>
+                    <span className="text-gray-400">→</span>
+                    <span className="font-medium truncate max-w-[80px]">
+                      {service.end_node_name || '?'}
+                    </span>
+                  </div>
+                ),
+              },
+            ]}
+            customFooter={
+              <div className="space-y-2 w-full">
+                {/* Remarks */}
+                {service.description && (
+                  <div className="flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded w-full">
+                    <Info className="shrink-0 w-3 h-3 mt-0.5" />
+                    <span className="truncate">{service.description}</span>
+                  </div>
+                )}
+
+                {/* Allocated Systems Logic */}
+                {allocatedSystems.length > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
+                    <div className="text-[10px] text-blue-600 font-bold uppercase mb-1 flex items-center gap-1">
+                      <Server className="w-3 h-3" /> Allocations
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {allocatedSystems.slice(0, 2).map((sys) => (
+                        <a
+                          key={sys.id}
+                          href={`/dashboard/systems/${sys.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700 hover:underline flex items-center gap-1"
+                        >
+                          <span className="truncate max-w-[100px]">{sys.name}</span>
+                          <ExternalLink className="w-2 h-2" />
+                        </a>
+                      ))}
+                      {allocatedSystems.length > 2 && (
+                        <span className="text-[10px] text-blue-500">
+                          +{allocatedSystems.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            }
+            onEdit={editModal.openEdit}
+            onDelete={crudActions.handleDelete}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
+        );
+      })}
+    </div>
   );
 
   if (error)
@@ -215,117 +296,97 @@ export default function ServicesPage() {
     );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <PageHeader
-        title="Service Management"
-        description="Manage logical services, customers, and link definitions."
-        icon={<DatabaseIcon />}
-        stats={[
+    <DashboardPageLayout
+      header={{
+        title: 'Service Management',
+        description: 'Manage logical services, customers, and link definitions.',
+        icon: <DatabaseIcon />,
+        stats: [
           { value: totalCount, label: 'Total Services' },
           { value: activeCount, label: 'Active', color: 'success' },
           { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ]}
-        actions={enhancedHeaderActions}
-        isLoading={isLoading}
-        isFetching={isFetching}
-      />
-
-      {/* REUSABLE FILTER BAR */}
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search name, node, description..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        isOperationLoading={isMutating}
-        onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={() => {}}
-        onClearSelection={bulkActions.handleClearSelection}
-        entityName="service"
-        showStatusUpdate={false}
-        canDelete={() => canDelete}
-      />
-
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {data.map((service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              onEdit={editModal.openEdit}
-              onDelete={crudActions.handleDelete}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              isDuplicate={duplicateSet.has(
-                `${service.name?.trim().toLowerCase()}|${service.link_type_name
-                  ?.trim()
-                  .toLowerCase()}`
-              )}
-            />
-          ))}
-          {data.length === 0 && !isLoading && (
-            <div className="col-span-full py-16 text-center text-gray-500">
-              <DatabaseIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No services found matching your criteria.</p>
-            </div>
-          )}
+        ],
+        actions: enhancedHeaderActions,
+        isLoading: isLoading,
+        isFetching: isFetching,
+      }}
+      searchQuery={search.searchQuery}
+      onSearchChange={search.setSearchQuery}
+      searchPlaceholder="Search name, node, description..."
+      filters={filters.filters}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: () => {}, // No bulk status update implemented for services yet in original
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'service',
+        showStatusUpdate: false,
+        canDelete: () => canDelete,
+      }}
+      renderGrid={renderGrid}
+      tableProps={{
+        tableName: 'v_services',
+        data: data,
+        columns: columns,
+        loading: isLoading,
+        isFetching: isFetching,
+        actions: createStandardActions({
+          onEdit: canEdit ? editModal.openEdit : undefined,
+          onDelete: canDelete ? crudActions.handleDelete : undefined,
+        }),
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_servicesRowSchema & { id: string } => row.id != null
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
+        pagination: {
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={data.length === 0 && !isLoading}
+      emptyState={
+        <div className="col-span-full py-16 text-center text-gray-500">
+          <DatabaseIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No services found matching your criteria.</p>
         </div>
-      ) : (
-        <DataTable
-          autoHideEmptyColumns={true}
-          tableName="v_services"
-          data={data}
-          columns={columns}
-          loading={isLoading}
-          isFetching={isFetching}
-          actions={tableActions}
-          selectable={canDelete}
-          onRowSelect={(rows) => {
-            const validRows = rows.filter(
-              (row): row is V_servicesRowSchema & { id: string } => row.id != null
-            );
-            bulkActions.handleRowSelect(validRows);
-          }}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            onChange: (p, s) => {
-              pagination.setCurrentPage(p);
-              pagination.setPageLimit(s);
-            },
-          }}
-          customToolbar={<></>}
-          renderMobileItem={renderMobileItem}
-        />
-      )}
+      }
+      modals={
+        <>
+          {editModal.isOpen && (
+            <ServiceFormModal
+              isOpen={editModal.isOpen}
+              onClose={editModal.close}
+              editingService={editModal.record ? editModal.record : null}
+              onSubmit={handleSave}
+              isLoading={isInserting || isUpdating}
+            />
+          )}
 
-      {editModal.isOpen && (
-        <ServiceFormModal
-          isOpen={editModal.isOpen}
-          onClose={editModal.close}
-          editingService={getEditingService(editModal.record)}
-          onSubmit={handleSave}
-          isLoading={isInserting || isUpdating}
-        />
-      )}
-
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Delete"
-        message={deleteModal.message}
-        type="danger"
-        loading={deleteModal.loading}
-      />
-    </div>
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title="Confirm Delete"
+            message={deleteModal.message}
+            type="danger"
+            loading={deleteModal.loading}
+          />
+        </>
+      }
+    />
   );
 }

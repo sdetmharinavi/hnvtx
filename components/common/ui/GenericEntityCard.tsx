@@ -31,12 +31,14 @@ interface GenericEntityCardProps<T> {
   canDelete?: boolean;
 
   // Custom slots
-  customHeader?: React.ReactNode;
-  customFooter?: React.ReactNode;
+  customHeader?: React.ReactNode; // For extra rows in the body before data items
+  customFooter?: React.ReactNode; // For remarks block
+  extraActions?: React.ReactNode; // For extra buttons (e.g. "Manage Ports")
 
   // Styling overrides
   avatarColor?: string; // e.g. "from-blue-500 to-blue-600"
   initials?: string;
+  headerIcon?: React.ReactNode; // For non-avatar icons (e.g. Node Pin, System Server)
 }
 
 export function GenericEntityCard<T>({
@@ -53,10 +55,11 @@ export function GenericEntityCard<T>({
   canDelete = false,
   customHeader,
   customFooter,
+  extraActions,
   avatarColor,
   initials,
+  headerIcon,
 }: GenericEntityCardProps<T>) {
-  // Determine if we are using the Avatar Header style (like Employees) or Linear Header style (like Systems)
   const isAvatarStyle = !!initials;
 
   return (
@@ -83,7 +86,7 @@ export function GenericEntityCard<T>({
         </div>
       ) : (
         // Standard Style Header (e.g. System, Node)
-        <>
+        <div className="relative bg-linear-to-br from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-900 p-5 border-b border-gray-200 dark:border-gray-700">
           <div
             className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
               status
@@ -91,22 +94,37 @@ export function GenericEntityCard<T>({
                 : 'bg-linear-to-b from-red-500 to-red-600'
             }`}
           />
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 bg-linear-to-b from-gray-50/50 to-transparent dark:from-gray-900/20 pl-6">
-            <div className="flex justify-between items-start gap-3">
-              <div className="min-w-0 flex-1">
-                {subBadge && <div className="mb-2">{subBadge}</div>}
-                <h3
-                  className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug truncate"
-                  title={title}
-                >
-                  <TruncateTooltip text={title} />
-                </h3>
-                {subtitle && <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>}
+
+          {/* Status Badge - Top Right */}
+          <div className="absolute top-4 right-4">
+            <StatusBadge status={status ?? false} />
+          </div>
+
+          <div className="flex items-start gap-3 pr-16">
+            {headerIcon && (
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                  {headerIcon}
+                </div>
+                {/* Decorative ring */}
+                <div className="absolute inset-0 rounded-xl ring-2 ring-blue-200 dark:ring-blue-800 animate-pulse opacity-50" />
               </div>
-              <StatusBadge status={status ?? false} />
+            )}
+
+            <div className="min-w-0 flex-1 pt-1">
+              <h3
+                className="font-bold text-gray-900 dark:text-gray-100 text-lg mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                title={title}
+              >
+                <TruncateTooltip text={title} />
+              </h3>
+              {subBadge && <div className="flex flex-wrap gap-2">{subBadge}</div>}
+              {subtitle && !subBadge && (
+                <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>
+              )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* 2. Body Section */}
@@ -154,6 +172,9 @@ export function GenericEntityCard<T>({
             </div>
           ))}
         </div>
+
+        {/* Footer Content (Remarks) */}
+        {customFooter}
       </div>
 
       {/* 3. Footer / Actions */}
@@ -161,19 +182,21 @@ export function GenericEntityCard<T>({
         className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-between gap-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex-1">{customFooter}</div>
+        <div className="flex-1 flex gap-2">{extraActions}</div>
 
         <div className="flex items-center gap-2">
           {onView && (
             <Button
               size="xs"
-              variant="secondary"
+              variant={extraActions ? 'ghost' : 'secondary'} // Demote if extra actions exist
               onClick={() => onView(entity)}
               title="View Details"
               className="font-medium"
             >
               <FiInfo className="w-4 h-4" />
-              {!isAvatarStyle && <span className="ml-1.5 hidden sm:inline">Details</span>}
+              {!isAvatarStyle && !extraActions && (
+                <span className="ml-1.5 hidden sm:inline">Details</span>
+              )}
             </Button>
           )}
 

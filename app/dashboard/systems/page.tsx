@@ -1,13 +1,22 @@
-// app/dashboard/systems/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from 'react-icons/fi';
+import {
+  FiDatabase,
+  FiUpload,
+  FiDownload,
+  FiRefreshCw,
+  FiServer,
+  FiCpu,
+  FiMapPin,
+  FiActivity,
+  FiGrid,
+} from 'react-icons/fi';
 import { toast } from 'sonner';
-import { PageHeader, ActionButton } from '@/components/common/page-header';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
-import { DataTable } from '@/components/table';
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
+import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
 import {
   useRpcMutation,
@@ -31,15 +40,13 @@ import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemEx
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatIP } from '@/utils/formatters';
 import { SystemPortsManagerModal } from '@/components/systems/SystemPortsManagerModal';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
-import { BulkActions } from '@/components/common/BulkActions';
-import { SystemCard } from '@/components/systems/SystemCard';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { ActionButton } from '@/components/common/page-header';
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -74,7 +81,6 @@ export default function SystemsPage() {
     displayNameField: 'system_name',
   });
 
-  // --- PERMISSIONS ---
   const canEdit =
     !!isSuperAdmin ||
     [
@@ -86,14 +92,13 @@ export default function SystemsPage() {
     ].includes(role as UserRole);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- DROPDOWNS ---
   const { options: systemTypeOptions, isLoading: loadingTypes } =
     useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions, isLoading: loadingCaps } =
     useLookupTypeOptions('SYSTEM_CAPACITY');
 
-  // --- DRY FILTER CONFIG ---
-  const filterConfigs = useMemo<FilterConfig[]>(
+  // --- Filter Config ---
+  const filterConfigs = useMemo(
     () => [
       {
         key: 'system_type_id',
@@ -110,7 +115,7 @@ export default function SystemsPage() {
       {
         key: 'status',
         label: 'Status',
-        type: 'native-select',
+        type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
@@ -119,7 +124,7 @@ export default function SystemsPage() {
       {
         key: 'sortBy',
         label: 'Sort',
-        type: 'native-select',
+        type: 'native-select' as const,
         options: [
           { value: 'name', label: 'Name (A-Z)' },
           { value: 'last_activity', label: 'Last Activity' },
@@ -136,9 +141,8 @@ export default function SystemsPage() {
     },
     [filters]
   );
-  // -------------------------
 
-  // --- UPLOAD / EXPORT ---
+  // --- Upload / Export ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
     onSuccess: (result) => {
       if (result.successCount > 0) refetch();
@@ -178,6 +182,7 @@ export default function SystemsPage() {
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
 
+  // Enhanced actions for the table view
   const tableActions = useMemo(() => {
     const actions = createStandardActions<V_systems_completeRowSchema>({
       onEdit: canEdit ? editModal.openEdit : undefined,
@@ -272,12 +277,6 @@ export default function SystemsPage() {
     canEdit,
   ]);
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Systems' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
-
   const handleSave = useCallback(
     (formData: SystemFormData) => {
       const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
@@ -305,155 +304,165 @@ export default function SystemsPage() {
     [editModal.record, upsertSystemMutation]
   );
 
-  const renderMobileItem = useCallback(
-    (record: Row<'v_systems_complete'>) => {
-      return (
-        <SystemCard
-          system={record as V_systems_completeRowSchema}
+  const renderGrid = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {systems.map((sys) => (
+        <GenericEntityCard
+          key={sys.id}
+          entity={sys}
+          title={sys.system_name || 'Unnamed System'}
+          status={sys.status}
+          // Badge logic for HUB + Type
+          subBadge={
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50">
+                {sys.system_type_code || sys.system_type_name}
+              </span>
+              {sys.is_hub && (
+                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50">
+                  HUB
+                </span>
+              )}
+            </div>
+          }
+          // Data Rows
+          dataItems={[
+            { icon: FiMapPin, label: 'Location', value: sys.node_name || 'Unknown' },
+            {
+              icon: FiActivity,
+              label: 'IP Address',
+              value: sys.ip_address ? formatIP(sys.ip_address) : 'No IP',
+            },
+            { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name || 'Unknown' },
+          ]}
+          // Footer: Manage Ports
+          extraActions={
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={() => handleManagePorts(sys)}
+              title="Manage Ports"
+              className="font-medium"
+            >
+              <FiGrid className="w-4 h-4" />
+              <span className="ml-1.5 hidden sm:inline">Ports</span>
+            </Button>
+          }
           onView={handleView}
           onEdit={editModal.openEdit}
           onDelete={crudActions.handleDelete}
-          onManagePorts={handleManagePorts}
           canEdit={canEdit}
           canDelete={canDelete}
         />
-      );
-    },
-    [
-      handleView,
-      editModal.openEdit,
-      crudActions.handleDelete,
-      handleManagePorts,
-      canEdit,
-      canDelete,
-    ]
+      ))}
+    </div>
   );
 
   if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <PageHeader
-        title="System Management"
-        description="Manage all network systems, including CPAN, MAAN, SDH, DWDM etc."
-        icon={<FiDatabase />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isInitialLoad}
-        isFetching={isFetching}
-      />
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
-
-      {/* REUSABLE FILTER BAR */}
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search system, node, IP..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        isOperationLoading={isMutating}
-        onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
-        onClearSelection={bulkActions.handleClearSelection}
-        entityName="system"
-        showStatusUpdate={true}
-        canDelete={() => canDelete}
-      />
-
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {systems.map((sys) => (
-            <SystemCard
-              key={sys.id}
-              system={sys}
-              onView={handleView}
-              onEdit={editModal.openEdit}
-              onDelete={crudActions.handleDelete}
-              onManagePorts={handleManagePorts}
-              canEdit={canEdit}
-              canDelete={canDelete}
-            />
-          ))}
-          {systems.length === 0 && !isLoading && (
-            <div className="col-span-full py-16 text-center text-gray-500">
-              <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No systems found matching your criteria.</p>
-            </div>
-          )}
+    <DashboardPageLayout
+      header={{
+        title: 'System Management',
+        description: 'Manage all network systems, including CPAN, MAAN, SDH, DWDM etc.',
+        icon: <FiDatabase />,
+        stats: [
+          { value: totalCount, label: 'Total Systems' },
+          { value: activeCount, label: 'Active', color: 'success' },
+          { value: inactiveCount, label: 'Inactive', color: 'danger' },
+        ],
+        actions: headerActions,
+        isLoading: isInitialLoad,
+        isFetching: isFetching,
+      }}
+      searchQuery={search.searchQuery}
+      onSearchChange={search.setSearchQuery}
+      searchPlaceholder="Search system, node, IP..."
+      filters={filters.filters}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'system',
+        showStatusUpdate: true,
+        canDelete: () => canDelete,
+      }}
+      renderGrid={renderGrid}
+      tableProps={{
+        tableName: 'v_systems_complete',
+        data: systems,
+        columns: orderedSystems,
+        loading: isLoading,
+        isFetching: isFetching || isMutating,
+        actions: tableActions,
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_systems_completeRowSchema & { id: string } => !!row.id
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
+        pagination: {
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={systems.length === 0 && !isLoading}
+      emptyState={
+        <div className="col-span-full py-16 text-center text-gray-500">
+          <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No systems found matching your criteria.</p>
         </div>
-      ) : (
-        <DataTable
-          autoHideEmptyColumns={true}
-          tableName="v_systems_complete"
-          data={systems}
-          columns={orderedSystems}
-          loading={isLoading}
-          isFetching={isFetching || isMutating}
-          actions={tableActions}
-          selectable={canDelete}
-          onRowSelect={(rows) => {
-            const validRows = rows.filter(
-              (row): row is V_systems_completeRowSchema & { id: string } => row.id != null
-            );
-            bulkActions.handleRowSelect(validRows);
-          }}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => {
-              pagination.setCurrentPage(p);
-              pagination.setPageLimit(s);
-            },
-          }}
-          customToolbar={<></>}
-          renderMobileItem={renderMobileItem}
-        />
-      )}
+      }
+      modals={
+        <>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept=".xlsx, .xls, .csv"
+          />
 
-      <SystemModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        rowData={editModal.record}
-        onSubmit={handleSave}
-        isLoading={upsertSystemMutation.isPending}
-      />
-      <SystemPortsManagerModal
-        isOpen={isPortsModalOpen}
-        onClose={() => setIsPortsModalOpen(false)}
-        system={selectedSystemForPorts}
-      />
+          <SystemModal
+            isOpen={editModal.isOpen}
+            onClose={editModal.close}
+            rowData={editModal.record}
+            onSubmit={handleSave}
+            isLoading={upsertSystemMutation.isPending}
+          />
 
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type="danger"
-      />
-    </div>
+          <SystemPortsManagerModal
+            isOpen={isPortsModalOpen}
+            onClose={() => setIsPortsModalOpen(false)}
+            system={selectedSystemForPorts}
+          />
+
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title="Confirm Deletion"
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type="danger"
+          />
+        </>
+      }
+    />
   );
 }
