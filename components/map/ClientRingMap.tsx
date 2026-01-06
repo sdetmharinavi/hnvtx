@@ -27,7 +27,7 @@ import {
   applyJitterToNodes,
   DisplayNode,
 } from "@/utils/mapUtils";
-import { Activity, Router, Anchor } from "lucide-react";
+import { Activity, Router } from "lucide-react";
 import { PortDisplayInfo } from "@/app/dashboard/rings/[id]/page";
 
 // ... (PathConfig, ConnectionLine, MapController, FullscreenControl, MapFlyToController etc. remain unchanged) ...
@@ -459,8 +459,8 @@ export default function ClientRingMap({
           const isHighlighted = highlightedNodeIds.includes(node.id!);
           const displayIp = formatIP(node.ip);
 
-          // Get port info array for this node
-          const portsList = nodePorts?.get(node.node_id || node.id!) || [];
+          // THE FIX: Use node.id (System ID) to lookup ports, not node.node_id
+          const portsList = nodePorts?.get(node.id!) || [];
 
           // Calculate direction based on jitter angle
           const { direction, offset } = getTooltipDirectionAndOffset(

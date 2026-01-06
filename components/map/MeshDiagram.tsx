@@ -337,8 +337,8 @@ export default function MeshDiagram({
           const node = nodes.find((n) => n.id === nodeId);
           if (!node) return null;
 
-          // ADDED: Get ports for this node
-          const portsList = nodePorts?.get(node.node_id || node.id!) || [];
+          // THE FIX: Use node.id (System ID) to lookup ports
+          const portsList = nodePorts?.get(node.id!) || [];
 
           return (
             <Marker

@@ -441,12 +441,13 @@ export default function RingMapPage() {
 
   // 8. NEW: Build Node -> Active Ports Map with Colors
   const nodePortMap = useMemo(() => {
-    // Map<NodeId, Array<{ port: string, color: string, targetNodeName: string }>>
+    // Map<SYSTEM_ID, Array<{ port: string, color: string, targetNodeName: string }>>
+    // THE FIX: Changed key from NodeId to SystemId
     const map = new Map<string, PortDisplayInfo[]>();
 
     if (!rawNodes) return new Map<string, PortDisplayInfo[]>();
 
-    // 1. Map System ID -> Node ID & Node Name
+    // 1. Map System ID -> Node Name (for target resolution)
     const systemToNodeInfo = new Map<string, { nodeId: string; nodeName: string }>();
     rawNodes.forEach((node) => {
       if (node.id && node.node_id) {
@@ -457,7 +458,7 @@ export default function RingMapPage() {
       }
     });
 
-    // Helper to add a port to a system(node)
+    // Helper to add a port to a system
     const addPort = (
       systemId: string | null,
       port: string | null,
@@ -466,47 +467,38 @@ export default function RingMapPage() {
     ) => {
       if (!systemId || !port) return;
 
-      const nodeInfo = systemToNodeInfo.get(systemId);
+      // We now key by systemId directly
+      if (!map.has(systemId)) {
+        map.set(systemId, []);
+      }
 
-      if (nodeInfo) {
-        const nodeId = nodeInfo.nodeId;
-        if (!map.has(nodeId)) {
-          map.set(nodeId, []);
+      const list = map.get(systemId)!;
+
+      // Avoid duplicates
+      if (!list.some((p) => p.port === port)) {
+        const color = getConnectionColor(connectionId);
+
+        // Resolve target name (Node name of the target system)
+        let targetName = "Unknown";
+        if (targetSystemId) {
+          const targetInfo = systemToNodeInfo.get(targetSystemId);
+          targetName = targetInfo ? targetInfo.nodeName : "External";
         }
 
-        const list = map.get(nodeId)!;
-
-        // Avoid duplicates for same port on same node (though one port usually has one connection)
-        if (!list.some((p) => p.port === port)) {
-          const color = getConnectionColor(connectionId);
-
-          // Resolve target name
-          let targetName = "Unknown";
-          if (targetSystemId) {
-            const targetInfo = systemToNodeInfo.get(targetSystemId);
-            targetName = targetInfo ? targetInfo.nodeName : "External";
-          }
-
-          list.push({ port, color, targetNodeName: targetName });
-        }
+        list.push({ port, color, targetNodeName: targetName });
       }
     };
 
     if (pathConfigs) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pathConfigs.forEach((p: any) => {
-        // Use path ID as unique key for color generation
         const connectionId = p.id;
-
-        // Add Source
         addPort(p.source_system_id, p.source_port, connectionId, p.destination_system_id);
-
-        // Add Destination
         addPort(p.destination_system_id, p.destination_port, connectionId, p.source_system_id);
       });
     }
 
-    // Sort ports naturally for display
+    // Sort ports naturally
     map.forEach((ports) => {
       ports.sort((a, b) =>
         a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: "base" })
@@ -563,7 +555,6 @@ export default function RingMapPage() {
           ringName={ringName}
           onBack={handleBack}
           segmentConfigs={segmentConfigMap}
-          // THE FIX: Pass the calculated node ports to the schematic view
           nodePorts={nodePortMap}
         />
       );
