@@ -1,16 +1,15 @@
 // path: components/ring-manager/EditSystemInRingModal.tsx
-"use client";
+'use client';
 
-import { FC, useCallback, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Modal } from "@/components/common/ui";
-import { FormCard, FormInput, FormSwitch } from "@/components/common/form";
-import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
-import { toast } from "sonner";
+import { FC } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { FormInput, FormSwitch } from '@/components/common/form';
+import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
+import { useEffect } from 'react';
 
-// Schema for the fields we want to edit in this modal
 const editSystemInRingSchema = z.object({
   order_in_ring: z.number().nullable(),
   is_hub: z.boolean().nullable(),
@@ -33,19 +32,20 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
   onSubmit,
   isLoading,
 }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    control,
-  } = useForm<EditSystemInRingForm>({
+  const form = useForm<EditSystemInRingForm>({
     resolver: zodResolver(editSystemInRingSchema),
     defaultValues: {
       order_in_ring: 0,
       is_hub: false,
     },
   });
+
+  const {
+    register,
+    control,
+    reset,
+    formState: { errors },
+  } = form;
 
   useEffect(() => {
     if (isOpen && system) {
@@ -56,42 +56,29 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
     }
   }, [isOpen, system, reset]);
 
-  const handleValidSubmit = useCallback(
-    (formData: EditSystemInRingForm) => {
-      onSubmit(formData);
-    },
-    [onSubmit]
-  );
-
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Edit System: ${system?.system_name || ""}`}
-      visible={false}
-      className='transparent bg-gray-700 rounded-2xl'>
-      <FormCard
-        standalone
-        onSubmit={handleSubmit(handleValidSubmit, () =>
-          toast.error("Please fix validation errors")
-        )}
-        onCancel={onClose}
-        isLoading={isLoading}
-        title={`Edit: ${system?.system_name || "System"}`}
-        submitText='Save Changes'>
-        <div className='space-y-4'>
-          <FormInput
-            name='order_in_ring'
-            label='Order in Ring'
-            type='number'
-            step='0.1'
-            register={register}
-            error={errors.order_in_ring}
-            placeholder='e.g., 1, 2, 2.1, 3...'
-          />
-          <FormSwitch name='is_hub' label='Is Hub System' control={control} />
-        </div>
-      </FormCard>
-    </Modal>
+      title="System Ring Config"
+      isEditMode={true}
+      isLoading={isLoading}
+      form={form}
+      onSubmit={onSubmit}
+      heightClass="h-auto"
+      subtitle={system?.system_name}
+    >
+      <div className="space-y-4">
+        <FormInput
+          name="order_in_ring"
+          label="Order in Ring"
+          type="number"
+          step="0.1"
+          register={register}
+          error={errors.order_in_ring}
+        />
+        <FormSwitch name="is_hub" label="Is Hub System" control={control} />
+      </div>
+    </BaseFormModal>
   );
 };

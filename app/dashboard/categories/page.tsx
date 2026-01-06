@@ -3,14 +3,13 @@
 
 import { CategoriesTable } from '@/components/categories/CategoriesTable';
 import { CategoryModal } from '@/components/categories/CategoryModal';
-import { CategorySearch } from '@/components/categories/CategorySearch';
 import { EmptyState } from '@/components/categories/EmptyState';
 import { LoadingState } from '@/components/categories/LoadingState';
 import { formatCategoryName } from '@/components/categories/utils';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay } from '@/components/common/ui';
 import { ConfirmModal } from '@/components/common/ui/Modal';
-import { useTableInsert, Filters } from '@/hooks/database'; // Kept generic hooks for mutations
+import { useTableInsert, Filters } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Lookup_typesInsertSchema, Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
@@ -20,7 +19,8 @@ import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { useCategoriesData } from '@/hooks/data/useCategoriesData'; // NEW HOOK
+import { useCategoriesData } from '@/hooks/data/useCategoriesData';
+import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -214,7 +214,15 @@ export default function CategoriesPage() {
         isLoading={isLoading}
       />
 
-      <CategorySearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+      {/* Replaced CategorySearch with GenericFilterBar (search only) */}
+      <GenericFilterBar
+        searchQuery={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search unique categories..."
+        filters={{}}
+        onFilterChange={() => {}}
+        filterConfigs={[]}
+      />
 
       {isLoading && <LoadingState />}
 

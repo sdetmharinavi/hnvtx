@@ -2,18 +2,17 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Modal, Button, SearchableSelect } from '@/components/common/ui';
+import { SearchableSelect } from '@/components/common/ui';
 import { createClient } from '@/utils/supabase/client';
 import { useTableQuery } from '@/hooks/database';
 import { useUpdateLogicalPathDetails } from '@/hooks/database/ring-provisioning-hooks';
 import { Logical_pathsRowSchema } from '@/schemas/zod-schemas';
 import { ArrowRight, Server, Cable } from 'lucide-react';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
 
-// Extended type to include joined data
 type ExtendedLogicalPath = Logical_pathsRowSchema & {
   start_node?: { name: string } | null;
   end_node?: { name: string } | null;
-  // New columns from migration
   source_system_id?: string | null;
   source_port?: string | null;
   destination_system_id?: string | null;
@@ -39,7 +38,6 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
   const [destSystemId, setDestSystemId] = useState<string | null>(null);
   const [destPort, setDestPort] = useState<string | null>(null);
 
-  // --- FIX: Pre-fill data when modal opens ---
   useEffect(() => {
     if (isOpen && path) {
       setSourceSystemId(path.source_system_id || null);
@@ -47,7 +45,6 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
       setDestSystemId(path.destination_system_id || null);
       setDestPort(path.destination_port || null);
     } else if (!isOpen) {
-      // Reset on close
       setSourceSystemId(null);
       setSourcePort(null);
       setDestSystemId(null);
@@ -55,96 +52,65 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
     }
   }, [isOpen, path]);
 
-  // --- Fetch Systems for Start Node ---
-  const { data: sourceSystemsData } = useTableQuery(supabase, 'systems', {
+  // --- Fetch Systems & Ports (Same as before) ---
+  const { data: sourceSystemsData, isLoading: loadingSrcSys } = useTableQuery(supabase, 'systems', {
     columns: 'id, system_name, ip_address',
     filters: { node_id: path?.start_node_id || '' },
     enabled: !!path?.start_node_id,
   });
 
-  // --- Fetch Ports for Selected Source System ---
-  const { data: sourcePortsData } = useTableQuery(supabase, 'ports_management', {
-    columns: 'port, port_type_id',
-    filters: { system_id: sourceSystemId || '' },
-    enabled: !!sourceSystemId,
-  });
+  const { data: sourcePortsData, isLoading: loadingSrcPort } = useTableQuery(
+    supabase,
+    'ports_management',
+    {
+      columns: 'port, port_type_id',
+      filters: { system_id: sourceSystemId || '' },
+      enabled: !!sourceSystemId,
+    }
+  );
 
-  // --- Fetch Systems for End Node ---
-  const { data: destSystemsData } = useTableQuery(supabase, 'systems', {
+  const { data: destSystemsData, isLoading: loadingDstSys } = useTableQuery(supabase, 'systems', {
     columns: 'id, system_name, ip_address',
     filters: { node_id: path?.end_node_id || '' },
     enabled: !!path?.end_node_id,
   });
 
-  // --- Fetch Ports for Selected Dest System ---
-  const { data: destPortsData } = useTableQuery(supabase, 'ports_management', {
-    columns: 'port, port_type_id',
-    filters: { system_id: destSystemId || '' },
-    enabled: !!destSystemId,
-  });
-
-  const sourceSystemOptions = useMemo(
-    () =>
-      (sourceSystemsData?.data || []).map((s) => {
-        const labels: string[] = [];
-
-        if (s.system_name && s.make && s.ip_address) {
-          labels.push(`${s.system_name} (${s.make}) (${s.ip_address})`);
-        } else if (s.system_name && s.ip_address) {
-          labels.push(`${s.system_name} (${s.ip_address})`);
-        } else if (s.system_name) {
-          labels.push(s.system_name);
-        } else if (s.make) {
-          labels.push(s.make);
-        } else if (s.ip_address) {
-          labels.push(`(${s.ip_address})`);
-        }
-
-        return {
-          value: s.id,
-          label: labels.join(' - ') || 'Unnamed System',
-        };
-      }),
-    [sourceSystemsData]
+  const { data: destPortsData, isLoading: loadingDstPort } = useTableQuery(
+    supabase,
+    'ports_management',
+    {
+      columns: 'port, port_type_id',
+      filters: { system_id: destSystemId || '' },
+      enabled: !!destSystemId,
+    }
   );
 
+  const mapSystemsToOptions = (data: typeof sourceSystemsData) => {
+    return (data?.data || []).map((s) => {
+      const labels: string[] = [];
+      if (s.system_name) labels.push(s.system_name);
+      if (s.ip_address) labels.push(`(${String(s.ip_address).split('/')[0]})`);
+      return { value: s.id, label: labels.join(' ') || 'Unnamed System' };
+    });
+  };
+
+  const sourceSystemOptions = useMemo(
+    () => mapSystemsToOptions(sourceSystemsData),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sourceSystemsData]
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const destSystemOptions = useMemo(() => mapSystemsToOptions(destSystemsData), [destSystemsData]);
   const sourcePortOptions = useMemo(
     () => (sourcePortsData?.data || []).map((p) => ({ value: p.port!, label: p.port! })),
     [sourcePortsData]
   );
-
-  const destSystemOptions = useMemo(
-    () =>
-      (destSystemsData?.data || []).map((s) => {
-        const labels: string[] = [];
-
-        if (s.system_name && s.make && s.ip_address) {
-          labels.push(`${s.system_name} (${s.make}) (${s.ip_address})`);
-        } else if (s.system_name && s.ip_address) {
-          labels.push(`${s.system_name} (${s.ip_address})`);
-        } else if (s.system_name) {
-          labels.push(s.system_name);
-        } else if (s.make) {
-          labels.push(s.make);
-        } else if (s.ip_address) {
-          labels.push(`(${s.ip_address})`);
-        }
-
-        return {
-          value: s.id,
-          label: labels.join(' - ') || 'Unnamed System',
-        };
-      }),
-    [destSystemsData]
-  );
-
   const destPortOptions = useMemo(
     () => (destPortsData?.data || []).map((p) => ({ value: p.port!, label: p.port! })),
     [destPortsData]
   );
 
   const handleSave = () => {
-    // UPDATED VALIDATION: Only Require Source side. Destination side is optional.
     if (!path?.id || !sourceSystemId || !sourcePort) return;
 
     updatePathMutation.mutate(
@@ -152,20 +118,46 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
         pathId: path.id,
         sourceSystemId,
         sourcePort,
-        destinationSystemId: destSystemId, // Can be null
-        destinationPort: destPort,         // Can be null
+        destinationSystemId: destSystemId,
+        destinationPort: destPort,
       },
-      {
-        onSuccess: () => onClose(),
-      }
+      { onSuccess: () => onClose() }
     );
   };
 
-  if (!isOpen || !path) return null;
+  // Mock form object to satisfy BaseFormModal interface since we aren't using react-hook-form here fully
+  // In a stricter refactor, we would migrate this local state to react-hook-form.
+  const mockForm = {
+    handleSubmit: (fn: () => void) => (e?: React.BaseSyntheticEvent) => {
+      e?.preventDefault();
+      fn();
+      return Promise.resolve();
+    },
+    formState: { isDirty: true }, // Always treat as potentially dirty or handle logic
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+
+  const isLoading =
+    loadingSrcSys ||
+    loadingSrcPort ||
+    loadingDstSys ||
+    loadingDstPort ||
+    updatePathMutation.isPending;
+
+  if (!path) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Configure Path Endpoints" size="lg">
-      <div className="space-y-6 p-4">
+    <BaseFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Configure Path Endpoints"
+      isEditMode={true}
+      isLoading={isLoading}
+      form={mockForm} // Passing mock
+      onSubmit={handleSave}
+      size="lg"
+    >
+      <div className="space-y-6">
         {/* Visual Header */}
         <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
           <div className="text-center flex-1">
@@ -240,25 +232,7 @@ export const RingPathManagerModal: React.FC<RingPathManagerModalProps> = ({
             />
           </div>
         </div>
-
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={
-              !sourceSystemId ||
-              !sourcePort ||
-              // Removed dest checks to allow partial save
-              updatePathMutation.isPending
-            }
-            variant="primary"
-          >
-            {updatePathMutation.isPending ? 'Saving...' : 'Save Configuration'}
-          </Button>
-        </div>
       </div>
-    </Modal>
+    </BaseFormModal>
   );
 };

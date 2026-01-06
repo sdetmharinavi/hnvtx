@@ -4,7 +4,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { PageSpinner, ConfirmModal, Input, Button } from '@/components/common/ui';
+import { PageSpinner, ConfirmModal, Button } from '@/components/common/ui'; // Removed Input
 import { DataTable } from '@/components/table';
 import { Row, usePagedData, useTableQuery } from '@/hooks/database';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
@@ -17,9 +17,6 @@ import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { FiberAssignmentModal } from '@/components/ofc-details/FiberAssignmentModal';
 import {
   GitCommit,
-  Search,
-  Grid,
-  List,
   Trash2,
   Edit2,
   Link as LinkIcon,
@@ -28,7 +25,7 @@ import {
   GitBranch,
   RefreshCw,
   Settings,
-} from 'lucide-react';
+} from 'lucide-react'; // Removed Search, Grid, List
 import { useOfcRoutesForSelection, useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -47,11 +44,12 @@ import { useUser } from '@/providers/UserProvider';
 import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 import { UserRole } from '@/types/user-roles';
 import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCard';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
+// Removed SelectFilter, FancyEmptyState imports as they are used inside components or replaced
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 // Type extension for the new view fields
 type ExtendedUtilization = V_cable_utilizationRowSchema & {
@@ -100,6 +98,42 @@ export default function OfcCableDetailsPage() {
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
   const canAdd = canEdit;
   const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'allocation_status',
+        label: 'Allocation',
+        type: 'native-select',
+        placeholder: 'All Statuses',
+        options: [
+          { value: 'available', label: 'Spare (Available)' },
+          { value: 'allocated', label: 'Utilized' },
+          { value: 'faulty', label: 'Faulty' },
+        ],
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        placeholder: 'All Active/Inactive',
+        options: [
+          { value: 'true', label: 'Active' },
+          { value: 'false', label: 'Inactive' },
+        ],
+      },
+    ],
+    []
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
 
   const {
     data: routeDetails,
@@ -437,74 +471,17 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
-        <div className="w-full lg:w-96 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search fibers, systems..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            className="pl-10"
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[150px]">
-            <SelectFilter
-              label=""
-              filterKey="allocation_status"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: 'available', label: 'Spare (Available)' },
-                { value: 'allocated', label: 'Utilized' },
-                { value: 'faulty', label: 'Faulty' },
-              ]}
-              placeholder="All Statuses"
-            />
-          </div>
-
-          <div className="min-w-[150px]">
-            <SelectFilter
-              label=""
-              filterKey="status"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: 'true', label: 'Active' },
-                { value: 'false', label: 'Inactive' },
-              ]}
-              placeholder="All Active/Inactive"
-            />
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <Grid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search fibers, systems..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         {viewMode === 'grid' ? (
@@ -552,7 +529,8 @@ export default function OfcCableDetailsPage() {
         isOpen={editModal.isOpen}
         onClose={editModal.close}
         editingOfcConnections={editModal.record as Ofc_connectionsRowSchema | null}
-        onSubmit={crudActions.handleSave as unknown as (data: Ofc_connectionsInsertSchema) => void}
+        // onSubmit={crudActions.handleSave as unknown as (data: Ofc_connectionsInsertSchema) => void}
+        onSubmit={crudActions.handleSave as (data: Ofc_connectionsInsertSchema) => void}
         isLoading={isMutating}
       />
 
