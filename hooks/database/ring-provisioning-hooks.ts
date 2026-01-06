@@ -8,7 +8,7 @@ import { ofc_cablesRowSchema } from '@/schemas/zod-schemas';
 import { z } from 'zod';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
-import { syncEntity } from '@/hooks/data/useDataSync'; // Added syncEntity import
+import { syncEntity } from '@/hooks/data/useDataSync';
 
 const supabase = createClient();
 
@@ -228,6 +228,53 @@ export function useGenerateRingPaths() {
   });
 }
 
+/**
+ * NEW: Completely removes a logical path record.
+ */
+export function useDeleteRingLogicalPath() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('logical_paths').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      toast.success('Path deleted.');
+      // Sync local DB
+      await syncEntity(supabase, localDb, 'logical_paths');
+      queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
+    },
+    onError: (err) => toast.error(`Delete failed: ${err.message}`),
+  });
+}
+
+/**
+ * NEW: Resets configuration for a logical path (Deprovisioning).
+ */
+export function useDeprovisionRingLogicalPath() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('logical_paths').update({
+        source_system_id: null,
+        source_port: null,
+        destination_system_id: null,
+        destination_port: null,
+        status: 'unprovisioned'
+      }).eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      toast.success('Path configuration cleared.');
+      await syncEntity(supabase, localDb, 'logical_paths');
+      queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
+    },
+    onError: (err) => toast.error(`Deprovision failed: ${err.message}`),
+  });
+}
+
+// Old hook (can be removed if no longer used, or kept for backward compatibility if `logical_fiber_paths` are used elsewhere)
 export function useDeprovisionPath() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -239,9 +286,7 @@ export function useDeprovisionPath() {
     },
     onSuccess: async () => {
       toast.success('Path deprovisioned.');
-      // Sync to update local state
       await syncEntity(supabase, localDb, 'logical_paths');
-
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers'] });
     },
@@ -256,7 +301,6 @@ export function useUpdateLogicalPathDetails() {
       pathId: string;
       sourceSystemId: string;
       sourcePort: string;
-      // Made optional/nullable to support partial configuration
       destinationSystemId: string | null;
       destinationPort: string | null;
     }) => {

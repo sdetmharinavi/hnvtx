@@ -3,15 +3,16 @@
 
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEdit2, FiZap, FiTrash2 } from 'react-icons/fi'; // Import FiTrash2
+import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEdit2, FiZap, FiTrash2, FiMinusCircle } from 'react-icons/fi';
 
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
-import { PageSpinner, ErrorDisplay, Button, ConfirmModal } from '@/components/common/ui'; // Import ConfirmModal
+import { PageSpinner, ErrorDisplay, Button, ConfirmModal } from '@/components/common/ui';
 import {
   useRingConnectionPaths,
   useGenerateRingPaths,
-  useDeprovisionPath, // Ensure this hook is imported
+  useDeleteRingLogicalPath,
+  useDeprovisionRingLogicalPath,
 } from '@/hooks/database/ring-provisioning-hooks';
 import { useTableRecord } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
@@ -49,7 +50,9 @@ export default function RingPathsPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  
+  // Modal states for delete vs deprovision
+  const [modalType, setModalType] = useState<'delete' | 'deprovision' | null>(null);
   const [selectedPath, setSelectedPath] = useState<LogicalPathData | null>(null);
 
   // --- PERMISSIONS ---
@@ -77,13 +80,12 @@ export default function RingPathsPage() {
 
   // 3. Mutations
   const generateMutation = useGenerateRingPaths();
-  const deleteMutation = useDeprovisionPath(); // Hook to delete/deprovision
+  const deleteMutation = useDeleteRingLogicalPath();
+  const deprovisionMutation = useDeprovisionRingLogicalPath();
 
   // --- HANDLERS ---
 
   const handleGeneratePaths = () => {
-    // Optional: Warn user that this might duplicate if not careful, 
-    // but the SQL ON CONFLICT handles duplicates gracefully.
     generateMutation.mutate(ringId);
   };
 
@@ -94,21 +96,33 @@ export default function RingPathsPage() {
 
   const handleDeletePath = (path: LogicalPathData) => {
     setSelectedPath(path);
-    setIsDeleteModalOpen(true);
+    setModalType('delete');
   }
 
-  const confirmDelete = () => {
-    if (selectedPath) {
-      deleteMutation.mutate(
-        { logicalPathId: selectedPath.id }, 
-        {
-          onSuccess: () => {
-            setIsDeleteModalOpen(false);
-            setSelectedPath(null);
-            refetch();
-          }
+  const handleDeprovisionPath = (path: LogicalPathData) => {
+    setSelectedPath(path);
+    setModalType('deprovision');
+  }
+
+  const confirmAction = () => {
+    if (!selectedPath) return;
+
+    if (modalType === 'delete') {
+      deleteMutation.mutate(selectedPath.id, {
+        onSuccess: () => {
+          setModalType(null);
+          setSelectedPath(null);
+          refetch();
         }
-      );
+      });
+    } else if (modalType === 'deprovision') {
+      deprovisionMutation.mutate(selectedPath.id, {
+        onSuccess: () => {
+          setModalType(null);
+          setSelectedPath(null);
+          refetch();
+        }
+      });
     }
   }
 
@@ -220,11 +234,20 @@ export default function RingPathsPage() {
     (): TableAction<'logical_paths'>[] => [
       {
         key: 'edit',
-        label: 'Configure Endpoints',
+        label: 'Configure',
         icon: <FiEdit2 />,
         onClick: (record) => handleEditPath(record as unknown as LogicalPathData),
         variant: 'secondary',
         disabled: !canEdit,
+      },
+      {
+        key: 'deprovision',
+        label: 'Deprovision',
+        icon: <FiMinusCircle />,
+        onClick: (record) => handleDeprovisionPath(record as unknown as LogicalPathData),
+        variant: 'secondary',
+        // Only show deprovision if it is actually configured
+        hidden: (record) => !canEdit || (record as unknown as LogicalPathData).status === 'unprovisioned' || !(record as unknown as LogicalPathData).source_system_id
       },
       {
         key: 'delete',
@@ -232,7 +255,7 @@ export default function RingPathsPage() {
         icon: <FiTrash2 />,
         onClick: (record) => handleDeletePath(record as unknown as LogicalPathData),
         variant: 'danger',
-        disabled: !canEdit, // Use same permission as edit for now
+        disabled: !canEdit,
       },
     ],
     [canEdit]
@@ -347,15 +370,23 @@ export default function RingPathsPage() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Unified Confirmation Modal */}
       <ConfirmModal 
-        isOpen={isDeleteModalOpen}
-        onConfirm={confirmDelete}
-        onCancel={() => setIsDeleteModalOpen(false)}
-        title="Delete Logical Path"
-        message={`Are you sure you want to delete path "${selectedPath?.name}"? This will remove all associated fiber allocations.`}
-        type="danger"
-        loading={deleteMutation.isPending}
+        isOpen={!!modalType}
+        onConfirm={confirmAction}
+        onCancel={() => {
+           setModalType(null);
+           setSelectedPath(null);
+        }}
+        title={modalType === 'delete' ? "Delete Logical Path" : "Deprovision Path"}
+        message={
+          modalType === 'delete' 
+            ? `Are you sure you want to delete path "${selectedPath?.name}"? This action cannot be undone.`
+            : `Are you sure you want to deprovision "${selectedPath?.name}"? This will clear the system assignments but keep the path definition.`
+        }
+        type={modalType === 'delete' ? "danger" : "warning"}
+        confirmText={modalType === 'delete' ? "Delete Path" : "Deprovision"}
+        loading={deleteMutation.isPending || deprovisionMutation.isPending}
       />
     </div>
   );
