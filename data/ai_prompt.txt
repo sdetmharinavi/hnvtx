@@ -136,4 +136,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to fix options not showing for ring type in ring modal form.
+Let's begin! First of all I want to fix positioning of permanent tooltips in client ring map, somtimes, its overlapping above another. Also what to do in a situations when two or more systems are at same node with same lat long? Also if I forget to add a system to ring from ring manager page, and add later then go to manage logical path and generate, then new paths are not being added.
