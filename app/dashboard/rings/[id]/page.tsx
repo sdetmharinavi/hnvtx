@@ -130,29 +130,31 @@ export default function RingMapPage() {
   });
 
   // 3. Fetch Nodes
-  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<"v_ring_nodes">({
-    queryKey: ["ring-nodes-detail", ringId],
+  const { data: rawNodes, isLoading: isLoadingNodes } = useLocalFirstQuery<'v_ring_nodes'>({
+    queryKey: ['ring-nodes-detail', ringId],
     onlineQueryFn: async () => {
       if (!ringId) return [];
       const rpcFilters = buildRpcFilters({ ring_id: ringId });
-      const { data, error } = await supabase.rpc("get_paged_data", {
-        p_view_name: "v_ring_nodes",
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ring_nodes',
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
-        p_order_by: "order_in_ring",
-        p_order_dir: "asc",
+        p_order_by: 'order_in_ring',
+        p_order_dir: 'asc',
       });
       if (error) throw error;
       return (data as { data: V_ring_nodesRowSchema[] })?.data || [];
     },
     localQueryFn: () => {
       if (!ringId) return Promise.resolve([]);
-      return localDb.v_ring_nodes.where("ring_id").equals(ringId).toArray();
+      return localDb.v_ring_nodes.where('ring_id').equals(ringId).toArray();
     },
     dexieTable: localDb.v_ring_nodes,
     enabled: !!ringId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,        // Force fresh fetch on mount
+    autoSync: true,      
+    refetchOnMount: true, // Force refresh
     localQueryDeps: [ringId],
   });
 
@@ -258,8 +260,7 @@ export default function RingMapPage() {
       return data;
     },
     enabled: !!ringId,
-    // THE FIX: Force refetch on mount so added ports appear instantly
-    refetchOnMount: true, 
+    refetchOnMount: true, // Force refresh for ports
   });
 
   // 6. Calculate Segments

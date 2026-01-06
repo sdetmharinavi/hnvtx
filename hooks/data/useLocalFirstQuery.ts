@@ -16,6 +16,7 @@ interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<
   enabled?: boolean;
   staleTime?: number;
   autoSync?: boolean;
+  refetchOnMount?: boolean | "always"; // ADDED
 }
 
 export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow>({
@@ -27,6 +28,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   enabled = true,
   staleTime = Infinity,
   autoSync = false,
+  refetchOnMount = false, // ADDED
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
 
@@ -54,7 +56,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     },
     enabled: shouldFetchOnMount,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: refetchOnMount, // UPDATED
     refetchOnReconnect: false,
     staleTime,
     retry: 1,
@@ -65,10 +67,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     if (networkData) {
       const syncToLocal = async () => {
         try {
-          // THE FIX: Safe Data Saving
-          // We check if the table schema has a primary key (usually 'id').
-          // If so, we filter out any records that have a null/undefined value for that key
-          // before saving to Dexie, as IndexedDB does not allow null primary keys.
           const primaryKey = dexieTable.schema.primKey.name;
 
           let dataToSave = networkData as unknown as TLocal[];
@@ -83,10 +81,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
           if (dataToSave.length > 0) {
             await dexieTable.bulkPut(dataToSave);
-          } else if (networkData.length > 0) {
-            console.warn(
-              `[useLocalFirstQuery] Skipped syncing to ${dexieTable.name}: All ${networkData.length} records had invalid primary keys.`
-            );
           }
         } catch (e) {
           console.error(`[useLocalFirstQuery] Failed to sync data to ${dexieTable.name}`, e);
@@ -100,16 +94,11 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   const isLocalLoading = localData === "loading";
   const hasLocalData = Array.isArray(localData) && localData.length > 0;
 
-  // Show loading if:
-  // 1. Dexie is still initializing (isLocalLoading)
-  // 2. OR we are forced to fetch network (autoSync) AND we have no local data yet
   const isLoading = isLocalLoading || (isNetworkLoading && autoSync && !hasLocalData);
 
-  // 5. Determine Error State
   const isError = isNetworkError && !hasLocalData;
   const error = isError ? networkError : null;
 
-  // 6. Indicators
   const isSyncing = isNetworkFetching;
   const isStale = isNetworkError && hasLocalData;
 
