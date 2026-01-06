@@ -359,22 +359,21 @@ export default function MeshDiagram({
                   {/* Render Ports if available */}
                   {portsList.length > 0 && (
                     <div className='mt-0.5 flex flex-row gap-px items-center'>
-                      {portsList.slice(0, 3).map((p, idx) => (
+                      {portsList.slice(0, 6).map((p, idx) => (
                         <div
                           key={idx}
-                          className='px-1 font-bold py-px text-[10px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
+                          className='px-1 font-bold py-px text-[14px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
                           style={{
                             backgroundColor: p.color ? p.color : "#3b82f6",
-                            color: "#000000",
+                            color: getReadableTextColor(p.color),
                             borderColor: "rgba(255,255,255,0.3)",
                           }}>
-                          <Anchor size={8} />
                           <span>{p.port}</span>
                         </div>
                       ))}
-                      {portsList.length > 3 && (
+                      {portsList.length > 6 && (
                         <div className='text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm'>
-                          +{portsList.length - 3} more
+                          +{portsList.length - 6} more
                         </div>
                       )}
                     </div>
