@@ -321,20 +321,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) TO authenticated;
 
 -- Description: Updates the path generation logic to remove stale paths when ring topology changes.
-
--- path: data/migrations/06_utilities/21_fix_logical_path_constraint.sql
 -- Description: Changes logical path uniqueness from Node-based to System-based to allow multiple systems per node in a ring.
-
--- 1. Drop the old node-based constraint
-ALTER TABLE public.logical_paths 
-DROP CONSTRAINT IF EXISTS uq_ring_path;
-
--- 2. Add new system-based constraint
--- This ensures distinct paths for distinct systems, even if they are at the same location.
-ALTER TABLE public.logical_paths
-ADD CONSTRAINT uq_ring_system_path 
-UNIQUE (ring_id, source_system_id, destination_system_id);
-
 
 -- 3. Update the generator function to respect System IDs
 CREATE OR REPLACE FUNCTION public.generate_ring_connection_paths(p_ring_id UUID)
