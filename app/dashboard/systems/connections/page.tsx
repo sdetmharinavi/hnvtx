@@ -4,7 +4,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { DebouncedInput, ErrorDisplay } from '@/components/common/ui';
+import { ErrorDisplay } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -14,24 +14,21 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { buildUploadConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { FiGitBranch, FiMonitor, FiEye, FiGrid, FiList, FiSearch, FiUpload } from 'react-icons/fi';
+import { FiGitBranch, FiMonitor, FiEye, FiUpload } from 'react-icons/fi';
 import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
 import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { useRouter } from 'next/navigation';
-import { SearchableSelect } from '@/components/common/ui/select/SearchableSelect';
 import { Row } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { UploadColumnMapping } from '@/hooks/database';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
-// THE FIX: Import the centralized hook
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
@@ -50,7 +47,6 @@ export default function GlobalConnectionsPage() {
     ].includes(role as UserRole);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedConnection, setSelectedConnection] =
     useState<V_system_connections_completeRowSchema | null>(null);
@@ -80,6 +76,42 @@ export default function GlobalConnectionsPage() {
     searchColumn: ['service_name', 'system_name', 'connected_system_name'],
   });
 
+  // --- DATA OPTIONS ---
+  const { options: mediaOptions, isLoading: mediaLoading } = useLookupTypeOptions('MEDIA_TYPES');
+  const { options: linkTypeOptions, isLoading: linkTypeLoading } =
+    useLookupTypeOptions('LINK_TYPES');
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'connected_link_type_id',
+        label: 'Link Type',
+        options: linkTypeOptions,
+        isLoading: linkTypeLoading,
+      },
+      { key: 'media_type_id', label: 'Media Type', options: mediaOptions, isLoading: mediaLoading },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'Active' },
+          { value: 'false', label: 'Inactive' },
+        ],
+      },
+    ],
+    [linkTypeOptions, mediaOptions, linkTypeLoading, mediaLoading]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
+
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(
     supabase,
     {
@@ -106,11 +138,6 @@ export default function GlobalConnectionsPage() {
     },
     [uploadConnections]
   );
-
-  // THE FIX: Replaced useOfflineQuery with useLookupTypeOptions
-  const { options: mediaOptions, isLoading: mediaLoading } = useLookupTypeOptions('MEDIA_TYPES');
-  const { options: linkTypeOptions, isLoading: linkTypeLoading } =
-    useLookupTypeOptions('LINK_TYPES');
 
   const columns = SystemConnectionsTableColumns(connections, true);
   const orderedColumns = useOrderedColumns(columns, [
@@ -287,80 +314,17 @@ export default function GlobalConnectionsPage() {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <DebouncedInput
-            placeholder="Search service, system, or ID..."
-            value={search.searchQuery}
-            onChange={(value) => search.setSearchQuery(value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-            debounce={900}
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[160px]">
-            {/* THE FIX: Pass options from hook and isLoading */}
-            <SearchableSelect
-              placeholder="Link Type"
-              options={linkTypeOptions}
-              value={filters.filters.connected_link_type_id as string}
-              onChange={(v) =>
-                filters.setFilters((prev) => ({ ...prev, connected_link_type_id: v }))
-              }
-              clearable
-              isLoading={linkTypeLoading}
-            />
-          </div>
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Media Type"
-              options={mediaOptions}
-              value={filters.filters.media_type_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, media_type_id: v }))}
-              clearable
-              isLoading={mediaLoading}
-            />
-          </div>
-          <div className="min-w-[120px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={(filters.filters.status as string) || ''}
-              onChange={(e) => filters.setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="">Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search service, system, or ID..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -400,49 +364,7 @@ export default function GlobalConnectionsPage() {
               pagination.setPageLimit(s);
             },
           }}
-          customToolbar={
-            <SearchAndFilters
-              searchTerm={search.searchQuery}
-              onSearchChange={search.setSearchQuery}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
-              onClearFilters={() => {
-                search.setSearchQuery('');
-                filters.setFilters({});
-              }}
-              hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-              activeFilterCount={Object.keys(filters.filters).length}
-              searchPlaceholder="Search service, customer..."
-            >
-              <SelectFilter
-                label="Media Type"
-                filterKey="media_type_id"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={mediaOptions}
-                isLoading={mediaLoading}
-              />
-              <SelectFilter
-                label="Link Type"
-                filterKey="connected_link_type_id"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={linkTypeOptions}
-                placeholder="Filter by Link Type"
-                isLoading={linkTypeLoading}
-              />
-              <SelectFilter
-                label="Status"
-                filterKey="status"
-                filters={filters.filters}
-                setFilters={filters.setFilters}
-                options={[
-                  { value: 'true', label: 'Active' },
-                  { value: 'false', label: 'Inactive' },
-                ]}
-              />
-            </SearchAndFilters>
-          }
+          customToolbar={<></>}
         />
       )}
 

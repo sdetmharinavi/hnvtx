@@ -22,12 +22,11 @@ import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { useUser } from '@/providers/UserProvider';
-import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { ServiceCard } from '@/components/services/ServiceCard';
 import { UserRole } from '@/types/user-roles';
-import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function ServicesPage() {
   const supabase = createClient();
@@ -79,7 +78,46 @@ export default function ServicesPage() {
 
   const columns = ServicesTableColumns(data, duplicateSet);
 
-  const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
+  const { options: linkTypeOptions, isLoading: loadingLinks } = useLookupTypeOptions('LINK_TYPES');
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'link_type_id',
+        label: 'Link Type',
+        options: linkTypeOptions,
+        isLoading: loadingLinks,
+      },
+      {
+        key: 'allocation_status',
+        label: 'Allocation',
+        type: 'native-select',
+        options: [
+          { value: 'allocated', label: 'Allocated' },
+          { value: 'unallocated', label: 'Unallocated' },
+        ],
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'Active' },
+          { value: 'false', label: 'Inactive' },
+        ],
+      },
+    ],
+    [linkTypeOptions, loadingLinks]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
 
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
     onSuccess: () => {
@@ -131,7 +169,6 @@ export default function ServicesPage() {
           tableName: 'v_services',
           fileName: `All_Services`,
           filters: filters.filters,
-          // THE FIX: Use RPC
           useRpc: true,
         }
       : undefined,
@@ -193,81 +230,17 @@ export default function ServicesPage() {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search name, node, description..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[180px]">
-            <SearchableSelect
-              placeholder="Link Type"
-              options={linkTypeOptions}
-              value={filters.filters.link_type_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, link_type_id: v }))}
-              clearable
-            />
-          </div>
-
-          {/* NEW: Allocation Status Filter */}
-          <div className="min-w-[160px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={(filters.filters.allocation_status as string) || ''}
-              onChange={(e) =>
-                filters.setFilters((prev) => ({ ...prev, allocation_status: e.target.value }))
-              }
-            >
-              <option value="">All Allocation</option>
-              <option value="allocated">Allocated</option>
-              <option value="unallocated">Unallocated</option>
-            </select>
-          </div>
-
-          <div className="min-w-[140px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={(filters.filters.status as string) || ''}
-              onChange={(e) => filters.setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search name, node, description..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <BulkActions
         selectedCount={bulkActions.selectedCount}

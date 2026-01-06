@@ -1,7 +1,7 @@
 // app/dashboard/audit-logs/page.tsx
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
@@ -12,8 +12,6 @@ import { FiShield, FiEye, FiClock } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { AuditLogsTableColumns } from '@/config/table-columns/AuditLogsTableColumns';
 import { AuditLogDetailsModal } from '@/components/audit/AuditLogDetailsModal';
-import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useUser } from '@/providers/UserProvider';
 import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 import { UserRole } from '@/types/user-roles';
@@ -22,10 +20,10 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { BulkActions } from '@/components/common/BulkActions';
 import { Row } from '@/hooks/database';
 import { formatDate } from '@/utils/formatters';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
-  const [showFilters, setShowFilters] = useState(false);
 
   const {
     data: logs,
@@ -48,6 +46,32 @@ export default function AuditLogsPage() {
     dataQueryHook: useAuditLogsData,
     displayNameField: 'action_type',
   });
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'action_type',
+        label: 'Action Type',
+        type: 'native-select',
+        options: [
+          { value: 'INSERT', label: 'Create (Insert)' },
+          { value: 'UPDATE', label: 'Edit (Update)' },
+          { value: 'DELETE', label: 'Delete' },
+        ],
+      },
+      // Note: Table name filtering could be added here if we want to fetch distinct table names
+    ],
+    []
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
 
   const columns = AuditLogsTableColumns(logs);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_audit_logs]);
@@ -72,12 +96,10 @@ export default function AuditLogsPage() {
       toast.success('Logs refreshed!');
     },
     isLoading: isLoading,
-    // THE FIX: Use RPC
     exportConfig: !!isSuperAdmin ? { tableName: 'v_audit_logs', useRpc: true } : undefined,
   });
 
   const renderMobileItem = useCallback((record: Row<'v_audit_logs'>, actions: React.ReactNode) => {
-    // Action Badge Logic
     const getActionColor = (action: string) => {
       switch (action) {
         case 'INSERT':
@@ -135,7 +157,6 @@ export default function AuditLogsPage() {
     );
   }, []);
 
-  // Security check
   const allowedAuditRoles = [UserRole.ADMIN, UserRole.ADMINPRO];
   if (!isSuperAdmin && !allowedAuditRoles.includes(role as UserRole)) {
     return <UnauthorizedModal allowedRoles={allowedAuditRoles} currentRole={role} />;
@@ -162,10 +183,20 @@ export default function AuditLogsPage() {
         isFetching={isFetching}
       />
 
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search logs..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+      />
+
       <BulkActions
         selectedCount={bulkActions.selectedCount}
         onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={() => {}} // Not applicable for audit logs
+        onBulkUpdateStatus={() => {}}
         onClearSelection={bulkActions.handleClearSelection}
         showStatusUpdate={false}
         entityName="audit log"
@@ -180,7 +211,7 @@ export default function AuditLogsPage() {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
-        searchable
+        searchable={false} // Handled by GenericFilterBar
         selectable={true}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
@@ -199,32 +230,7 @@ export default function AuditLogsPage() {
             pagination.setPageLimit(limit);
           },
         }}
-        customToolbar={
-          <SearchAndFilters
-            searchTerm={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            onClearFilters={() => {
-              search.setSearchQuery('');
-              filters.setFilters({});
-            }}
-            hasActiveFilters={Object.keys(filters.filters).length > 0 || !!search.searchQuery}
-            activeFilterCount={Object.keys(filters.filters).length}
-          >
-            <SelectFilter
-              label="Action Type"
-              filterKey="action_type"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: 'INSERT', label: 'Create (Insert)' },
-                { value: 'UPDATE', label: 'Edit (Update)' },
-                { value: 'DELETE', label: 'Delete' },
-              ]}
-            />
-          </SearchAndFilters>
-        }
+        customToolbar={<></>}
       />
 
       <AuditLogDetailsModal
