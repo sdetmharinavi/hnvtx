@@ -342,7 +342,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
             {config.entityDisplayName} Details
           </h2>
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 flex-row overflow-y-auto custom-scrollbar">
           {selectedEntity ? (
             <EntityDetailsPanel
               entity={selectedEntity}

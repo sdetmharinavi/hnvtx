@@ -166,11 +166,12 @@ const RingAssociatedSystemsView = ({
   });
 
   return (
-    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar'>
+    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-2 gap-1'>
       {systems.map((system) => {
         const isSpur = !system.is_hub && system.order_in_ring !== null;
         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
         const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
+        const system_ip = system.ip_address;
 
         return (
           <div
@@ -181,6 +182,9 @@ const RingAssociatedSystemsView = ({
                 <span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
                   {system.system_name}
                 </span>
+                {system_ip && (<span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
+                  / {system_ip}
+                </span>)}
                 <span className='text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800'>
                   {system.system_type_code}
                 </span>
@@ -598,7 +602,7 @@ export default function RingManagerPage() {
         ...ringConfig.detailFields.filter((f) => f.key !== "description"),
         { key: "ofc_status", label: "OFC Status", type: "text" },
         { key: "spec_status", label: "SPEC Status", type: "text" },
-        { key: "bts_status", label: "BTS Status", type: "text" },
+        { key: "bts_status", label: "Working Status", type: "text" },
         { key: "description", label: "Description", type: "html" },
         {
           key: "id",
