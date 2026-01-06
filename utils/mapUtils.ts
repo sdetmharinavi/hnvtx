@@ -1,58 +1,88 @@
 // utils/mapUtils.ts
-import { BsnlNode } from "@/components/bsnl/types";
 import { MapNode } from "@/components/map/types/node";
 import L from "leaflet";
 import { localDb } from "@/hooks/data/localDb";
 
 // --- 1. JITTER LOGIC (Map Display) ---
 
-export interface DisplayNode extends BsnlNode {
+// Define a union type for inputs that have coordinates
+export type CoordinateNode = {
+  id: string | null;
+  // Support both naming conventions
+  lat?: number | null;
+  long?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  [key: string]: unknown; // Allow other props to pass through
+};
+
+// Generic Display Node Type
+export type DisplayNode<T = CoordinateNode> = T & {
   displayLat: number;
   displayLng: number;
-}
+  jitterAngle: number;
+  isCluster: boolean;
+};
 
 /**
  * Applies a spiral jitter to nodes that share the exact same coordinates.
- * This prevents markers from overlapping perfectly, ensuring all are clickable.
- *
- * @param nodes List of nodes to process
- * @returns Nodes with modified displayLat/displayLng
+ * Handles inputs with either lat/long or latitude/longitude properties.
  */
-export const applyJitterToNodes = (nodes: BsnlNode[]): DisplayNode[] => {
-  const groupedNodes = new Map<string, BsnlNode[]>();
+export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): DisplayNode<T>[] => {
+  const groupedNodes = new Map<string, T[]>();
+
+  // Helper to extract coords regardless of property name
+  const getCoords = (node: T): [number, number] | null => {
+    const lat = node.lat ?? node.latitude;
+    const lng = node.long ?? node.longitude;
+    if (typeof lat === "number" && typeof lng === "number") {
+      return [lat, lng];
+    }
+    return null;
+  };
 
   // Group nodes by exact coordinate
   nodes.forEach((node) => {
-    if (node.latitude && node.longitude) {
+    const coords = getCoords(node);
+    if (coords) {
       // Create a key based on coordinates (rounded slightly to catch very close nodes)
-      const key = `${node.latitude.toFixed(6)},${node.longitude.toFixed(6)}`;
+      const key = `${coords[0].toFixed(6)},${coords[1].toFixed(6)}`;
       if (!groupedNodes.has(key)) groupedNodes.set(key, []);
       groupedNodes.get(key)!.push(node);
     }
   });
 
-  const results: DisplayNode[] = [];
+  const results: DisplayNode<T>[] = [];
 
   groupedNodes.forEach((nodesAtLoc) => {
+    const coords = getCoords(nodesAtLoc[0]);
+    if (!coords) return; // Should not happen given the filter above
+    const [baseLat, baseLng] = coords;
+
     if (nodesAtLoc.length === 1) {
       // No overlap, keep original position
       results.push({
         ...nodesAtLoc[0],
-        displayLat: nodesAtLoc[0].latitude!,
-        displayLng: nodesAtLoc[0].longitude!,
+        displayLat: baseLat,
+        displayLng: baseLng,
+        jitterAngle: 0,
+        isCluster: false,
       });
     } else {
       // Overlap detected: Spiral them out
-      // 0.00015 degrees is roughly 15-20 meters
-      const radius = 0.00015;
+      // 0.00020 degrees is roughly 20-25 meters
+      const radius = 0.0002;
       const angleStep = (2 * Math.PI) / nodesAtLoc.length;
+      const startAngle = Math.PI / 2; // Start from top
 
       nodesAtLoc.forEach((node, i) => {
-        const angle = i * angleStep;
+        const angle = startAngle + i * angleStep;
         results.push({
           ...node,
-          displayLat: node.latitude! + radius * Math.sin(angle),
-          displayLng: node.longitude! + radius * Math.cos(angle),
+          displayLat: baseLat + radius * Math.sin(angle),
+          displayLng: baseLng + radius * Math.cos(angle),
+          jitterAngle: angle,
+          isCluster: true,
         });
       });
     }
@@ -82,12 +112,6 @@ const getDistanceKey = (start: MapNode, end: MapNode) => {
 
 /**
  * Fetches driving distance from OpenRouteService.
- *
- * OPTIMIZATIONS:
- * 1. Checks IndexedDB (localDb) first.
- * 2. If cached, returns immediately (no network, no delay).
- * 3. If missing, queues request in singleton chain (1.6s delay).
- * 4. Saves result to IndexedDB for future use.
  */
 export const fetchOrsDistance = async (
   start: MapNode,

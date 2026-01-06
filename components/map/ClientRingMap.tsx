@@ -1,5 +1,4 @@
 // components/map/ClientRingMap.tsx
-
 "use client";
 
 import {
@@ -22,9 +21,52 @@ import { MapLegend } from "./MapLegend";
 import { formatIP } from "@/utils/formatters";
 import { useQuery } from "@tanstack/react-query";
 import { ButtonSpinner } from "@/components/common/ui";
-import { fetchOrsDistance, fixLeafletIcons } from "@/utils/mapUtils";
+import {
+  fetchOrsDistance,
+  fixLeafletIcons,
+  applyJitterToNodes,
+  DisplayNode,
+} from "@/utils/mapUtils";
 import { Activity, Router, Anchor } from "lucide-react";
 import { PortDisplayInfo } from "@/app/dashboard/rings/[id]/page";
+
+// ... (PathConfig, ConnectionLine, MapController, FullscreenControl, MapFlyToController etc. remain unchanged) ...
+// Include the helper function again for completeness
+function getReadableTextColor(bgColor: string): string {
+  const c = bgColor.substring(1);
+  const rgb = parseInt(c, 16);
+  const r = (rgb >> 16) & 255;
+  const g = (rgb >> 8) & 255;
+  const b = rgb & 255;
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 150 ? "#000000" : "#ffffff";
+}
+
+function getTooltipDirectionAndOffset(
+  angle: number,
+  isCluster: boolean
+): {
+  direction: "top" | "bottom" | "left" | "right" | "center" | "auto";
+  offset: [number, number];
+} {
+  if (!isCluster) {
+    return { direction: "auto", offset: [0, -10] };
+  }
+
+  const normAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  const degrees = normAngle * (180 / Math.PI);
+  const pxOffset = 15;
+
+  if (degrees >= 315 || degrees < 45) {
+    return { direction: "right", offset: [pxOffset, 0] };
+  } else if (degrees >= 45 && degrees < 135) {
+    return { direction: "bottom", offset: [0, pxOffset] };
+  } else if (degrees >= 135 && degrees < 225) {
+    return { direction: "left", offset: [-pxOffset, 0] };
+  } else {
+    return { direction: "top", offset: [0, -pxOffset] };
+  }
+}
 
 export interface PathConfig {
   source?: string;
@@ -46,7 +88,6 @@ interface ConnectionLineProps {
   config?: PathConfig;
 }
 
-// ... ConnectionLine component ...
 const ConnectionLine = ({
   start,
   end,
@@ -131,7 +172,6 @@ const ConnectionLine = ({
 
           {hasConfig ? (
             <div className='mb-3 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-800'>
-              {/* Show Physical Fiber Info */}
               {config.fiberInfo ? (
                 <div className='mt-2 pt-2 border-t border-blue-200 dark:border-blue-700/50'>
                   <div className='text-[10px] font-bold text-green-600 dark:text-green-400 uppercase mb-1 tracking-wider flex items-center gap-1'>
@@ -182,11 +222,9 @@ interface ClientRingMapProps {
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
   segmentConfigs?: Record<string, PathConfig>;
-  // UPDATED PROP
   nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
-// ... MapController, FullscreenControl, MapFlyToController ...
 const MapController = ({ isFullScreen }: { isFullScreen: boolean }) => {
   const map = useMap();
   useEffect(() => {
@@ -270,22 +308,13 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
 
-  function getReadableTextColor(bgColor: string): string {
-    const c = bgColor.substring(1);
-    const rgb = parseInt(c, 16);
-    const r = (rgb >> 16) & 255;
-    const g = (rgb >> 8) & 255;
-    const b = rgb & 255;
-
-    // Perceived luminance formula
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-    return brightness > 150 ? "#000000" : "#ffffff";
-  }
-
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
+
+  // 1. Process Nodes with Jitter to handle duplicates
+  // FIX: Cast explicitly using the generic to tell TS this returns DisplayNode<RingMapNode>
+  const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
     if (el) {
@@ -295,46 +324,6 @@ export default function ClientRingMap({
       delete polylineRefs.current[key];
     }
   };
-
-  const popupOffsets = useMemo(() => {
-    const groups: Record<string, string[]> = {};
-    nodes.forEach((node) => {
-      const key = `${node.lat},${node.long}`;
-      if (!groups[key]) groups[key] = [];
-      if (node.id) groups[key].push(node.id);
-    });
-
-    const offsets: Record<string, [number, number]> = {};
-    Object.values(groups).forEach((nodeIds) => {
-      const total = nodeIds.length;
-      if (total > 1) {
-        nodeIds.forEach((nodeId, index) => {
-          const angle = (index / total) * (Math.PI * 2) - Math.PI / 2;
-          const radius = 40;
-          const offsetX = Math.cos(angle) * radius;
-          const offsetY = Math.sin(angle) * radius;
-          offsets[nodeId] = [offsetX, offsetY];
-        });
-      }
-    });
-    return offsets;
-  }, [nodes]);
-
-  const nodeLabelDirections = useMemo(() => {
-    const directions = new Map<string, "left" | "right">();
-    if (nodes.length < 2) return directions;
-    const validNodes = nodes.filter((n) => n.long != null && isFinite(n.long as number));
-    if (validNodes.length === 0) return directions;
-    const lngs = validNodes.map((n) => n.long as number);
-    const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-    validNodes.forEach((node) => {
-      if (node.id) {
-        const direction = (node.long as number) < centerLng ? "left" : "right";
-        directions.set(node.id, direction);
-      }
-    });
-    return directions;
-  }, [nodes]);
 
   useEffect(() => {
     fixLeafletIcons();
@@ -353,21 +342,17 @@ export default function ClientRingMap({
   }, [showAllLinePopups]);
 
   const bounds = useMemo(() => {
-    if (nodes.length === 0) return null;
-    const validNodes = nodes.filter(
-      (n) =>
-        n.lat !== null && n.long !== null && typeof n.lat === "number" && typeof n.long === "number"
-    );
-    if (validNodes.length === 0) return null;
-    const lats = validNodes.map((n) => n.lat as number);
-    const lngs = validNodes.map((n) => n.long as number);
+    if (displayNodes.length === 0) return null;
+    const lats = displayNodes.map((n) => n.displayLat);
+    const lngs = displayNodes.map((n) => n.displayLng);
     return new LatLngBounds(
       [Math.min(...lats), Math.min(...lngs)],
       [Math.max(...lats), Math.max(...lngs)]
     );
-  }, [nodes]);
+  }, [displayNodes]);
 
-  if (nodes.length === 0) return <div className='py-10 text-center'>No nodes to display</div>;
+  if (displayNodes.length === 0)
+    return <div className='py-10 text-center'>No nodes to display</div>;
 
   const mapContainerClass = isFullScreen
     ? "fixed inset-0 z-[100]"
@@ -470,112 +455,109 @@ export default function ClientRingMap({
             />
           ))}
 
-        {nodes
-          .filter((node) => node.lat !== null && node.long !== null)
-          .map((node, i) => {
-            const isHighlighted = highlightedNodeIds.includes(node.id!);
-            const displayIp = formatIP(node.ip);
-            const direction = nodeLabelDirections.get(node.id!) || "auto";
-            const offset =
-              direction === "left" ? ([-20, 0] as [number, number]) : ([20, 0] as [number, number]);
+        {displayNodes.map((node: DisplayNode<RingMapNode>, i) => {
+          const isHighlighted = highlightedNodeIds.includes(node.id!);
+          const displayIp = formatIP(node.ip);
 
-            // Get port info array for this node
-            const portsList = nodePorts?.get(node.node_id || node.id!) || [];
+          // Get port info array for this node
+          const portsList = nodePorts?.get(node.node_id || node.id!) || [];
 
-            return (
-              <Marker
-                key={node.id! + i}
-                position={[node.lat as number, node.long as number]}
-                icon={getNodeIcon(node.system_type, node.type, isHighlighted)}
-                eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
-                ref={(el) => {
-                  if (el) markerRefs.current[node.id!] = el;
-                }}>
-                <Popup
-                  autoClose={false}
-                  closeOnClick={false}
-                  className={theme === "dark" ? "dark-popup" : ""}
-                  offset={popupOffsets[node.id!] || [0, 0]}>
-                  <div className='text-sm'>
-                    <h4 className='font-bold'>{node.name}</h4>
-                    {node.remark && <p className='italic text-xs mt-1'>{node.remark}</p>}
-                    {node.ip && <p className='font-mono text-xs mt-1'>IP: {displayIp}</p>}
+          // Calculate direction based on jitter angle
+          const { direction, offset } = getTooltipDirectionAndOffset(
+            node.jitterAngle,
+            node.isCluster
+          );
 
-                    {/* Render Ports if available */}
-                    {portsList.length > 0 && (
-                      <div className='mt-2 pt-1 border-t border-gray-200 dark:border-gray-600'>
-                        <div className='text-xs font-semibold text-gray-500 uppercase mb-1'>
-                          Active Interfaces
-                        </div>
-                        <div className='flex flex-wrap gap-1'>
-                          {portsList.map((p, idx) => (
-                            <span
-                              key={idx}
-                              className='text-[10px] px-1.5 py-0.5 rounded border'
-                              style={{
-                                backgroundColor: p.color + "15", // 10% opacity
-                                borderColor: p.color + "40", // 25% opacity
-                                color: p.color,
-                              }}
-                              title={p.targetNodeName ? `→ ${p.targetNodeName}` : "Endpoint"}>
-                              <span className='font-mono font-bold'>{p.port}</span>
-                              {p.targetNodeName && (
-                                <span className='ml-1 opacity-70'>→ {p.targetNodeName}</span>
-                              )}
-                            </span>
-                          ))}
-                        </div>
+          return (
+            <Marker
+              key={node.id! + i}
+              position={[node.displayLat, node.displayLng]} // Use Jittered Coords
+              icon={getNodeIcon(node.system_type, node.type, isHighlighted)}
+              eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
+              ref={(el) => {
+                if (el) markerRefs.current[node.id!] = el;
+              }}>
+              <Popup
+                autoClose={false}
+                closeOnClick={false}
+                className={theme === "dark" ? "dark-popup" : ""}
+                // Reset popup offset as marker handles it, or adjust if needed
+                offset={[0, -20]}>
+                <div className='text-sm'>
+                  <h4 className='font-bold'>{node.name}</h4>
+                  <div className='text-xs text-gray-500 mb-1'>{node.system_node_name}</div>
+                  {node.remark && <p className='italic text-xs mt-1'>{node.remark}</p>}
+                  {node.ip && <p className='font-mono text-xs mt-1'>IP: {displayIp}</p>}
+
+                  {/* Render Ports if available */}
+                  {portsList.length > 0 && (
+                    <div className='mt-2 pt-1 border-t border-gray-200 dark:border-gray-600'>
+                      <div className='text-xs font-semibold text-gray-500 uppercase mb-1'>
+                        Active Interfaces
                       </div>
-                    )}
-                  </div>
-                </Popup>
-
-                {/* ENHANCED TOOLTIP */}
-                <Tooltip
-                  permanent
-                  direction={direction}
-                  offset={offset}
-                  className='bg-transparent border-none shadow-none p-0'
-                  opacity={1}>
-                  <div className='flex flex-col items-center'>
-                    <div className='px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-[14px] font-bold rounded border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap z-10'>
-                      {node.system_node_name} - {formatIP(node.ip)}
-                    </div>
-
-                    {/* Render Ports if available - With Colors */}
-                    {portsList.length > 0 && (
-                      <div className='mt-0.5 flex flex-row gap-px items-center'>
-                        {portsList.slice(0, 3).map((p, idx) => (
-                          <div
+                      <div className='flex flex-wrap gap-1'>
+                        {portsList.map((p, idx) => (
+                          <span
                             key={idx}
-                            className='px-1 font-bold py-px text-[16px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
+                            className='text-[10px] px-1.5 py-0.5 rounded border'
                             style={{
-                              backgroundColor: p.color ? p.color : "#3b82f6", // Fallback blue
-                              color: getReadableTextColor(p.color),
-                              borderColor: "rgba(255,255,255,0.3)",
-                            }}>
-                            <Anchor size={8} />
-                            <span>{p.port}</span>
-                            {/* {p.targetNodeName && (
-                                  <>
-                                    <ArrowRight size={8} className="mx-0.5" />
-                                    <span className="opacity-90">{p.targetNodeName}</span>
-                                  </>
-                                )} */}
-                          </div>
+                              backgroundColor: p.color + "15", // 10% opacity
+                              borderColor: p.color + "40", // 25% opacity
+                              color: p.color,
+                            }}
+                            title={p.targetNodeName ? `→ ${p.targetNodeName}` : "Endpoint"}>
+                            <span className='font-mono font-bold'>{p.port}</span>
+                            {p.targetNodeName && (
+                              <span className='ml-1 opacity-70'>→ {p.targetNodeName}</span>
+                            )}
+                          </span>
                         ))}
-                        {portsList.length > 3 && (
-                          <div className='text-[11px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm'>
-                            +{portsList.length - 3} more
-                          </div>
-                        )}
                       </div>
-                    )}
+                    </div>
+                  )}
+                </div>
+              </Popup>
+
+              {/* ENHANCED TOOLTIP */}
+              <Tooltip
+                permanent
+                direction={direction}
+                offset={offset}
+                className='bg-transparent border-none shadow-none p-0'
+                opacity={1}>
+                <div className='flex flex-col items-center'>
+                  <div className='px-1.5 py-0.5 bg-white/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50 text-[14px] font-bold rounded border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap z-10'>
+                    {node.system_node_name || node.name} {displayIp ? `- ${displayIp}` : ""}
                   </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
+
+                  {/* Render Ports if available - With Colors */}
+                  {portsList.length > 0 && (
+                    <div className='mt-0.5 flex flex-row gap-px items-center'>
+                      {portsList.slice(0, 3).map((p, idx) => (
+                        <div
+                          key={idx}
+                          className='px-1 font-bold py-px text-[12px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap'
+                          style={{
+                            backgroundColor: p.color ? p.color : "#3b82f6",
+                            color: getReadableTextColor(p.color),
+                            borderColor: "rgba(255,255,255,0.3)",
+                          }}>
+                          <Anchor size={8} />
+                          <span>{p.port}</span>
+                        </div>
+                      ))}
+                      {portsList.length > 3 && (
+                        <div className='text-[11px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm'>
+                          +{portsList.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Tooltip>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );

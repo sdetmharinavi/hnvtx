@@ -17,7 +17,7 @@ import 'leaflet/dist/leaflet.css';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
-import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils'; // IMPORT FROM UTILS
+import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils'; 
 
 function MapEventHandler({
   setBounds,
@@ -85,8 +85,8 @@ const MapContent = ({
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
 }) => {
-  // USE UTILITY FUNCTION FOR JITTER
-  const displayNodes = useMemo(() => applyJitterToNodes(visibleNodes), [visibleNodes]);
+  // USE UTILITY FUNCTION FOR JITTER (Typed for BsnlNode)
+  const displayNodes = useMemo(() => applyJitterToNodes<BsnlNode>(visibleNodes), [visibleNodes]);
 
   return (
     <>
@@ -107,7 +107,7 @@ const MapContent = ({
             return (
               <Polyline
                 key={cable.id}
-                // Use original coordinates for lines
+                // Use original coordinates for lines (we want lines to go to the true geographic center, not the jittered point)
                 positions={[
                   [startNode.latitude, startNode.longitude],
                   [endNode.latitude, endNode.longitude],
@@ -133,14 +133,14 @@ const MapContent = ({
           return null;
         })}
 
-      {displayNodes.map((node: DisplayNode) => {
+      {displayNodes.map((node: DisplayNode<BsnlNode>) => {
         const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
         const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
 
         return (
           <Marker
             key={node.id}
-            position={[node.displayLat, node.displayLng]} // Use jittered coords
+            position={[node.displayLat, node.displayLng]} // Use jittered coords for markers
             icon={icon}
             riseOnHover={true}
             zIndexOffset={10}
@@ -153,6 +153,7 @@ const MapContent = ({
                 {systemTypesAtNode && (
                   <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>
                 )}
+                {/* Display original geographic coordinates */}
                 {node.latitude && (
                   <p className="text-sm mt-1 text-gray-500">
                     {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
@@ -242,6 +243,7 @@ export function OptimizedNetworkMap({
 
   const visibleNodes = useMemo(() => {
     if (!mapBounds || !visibleLayers.nodes) return [];
+    // Optimization: Limit rendered nodes based on zoom level to maintain performance
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
     return nodes.slice(0, maxItems).filter((node) => {
       const lat = node.latitude;
