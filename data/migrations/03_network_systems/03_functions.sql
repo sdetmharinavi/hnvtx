@@ -320,10 +320,13 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) TO authenticated;
 
--- NEW FUNCTION: To generate logical connection paths for a given ring
+-- Description: Updates the path generation logic to remove stale paths when ring topology changes.
+
 CREATE OR REPLACE FUNCTION public.generate_ring_connection_paths(p_ring_id UUID)
 RETURNS SETOF public.logical_paths
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     ring_info RECORD;
@@ -337,7 +340,11 @@ DECLARE
     spur_rec RECORD;
     parent_hub_id UUID;
     parent_node_id UUID;
-    parent_node_name TEXT; -- Fixed: Specific variable for the name
+    parent_node_name TEXT;
+
+    -- New: To track valid pairs for cleanup
+    valid_pairs TEXT[] := ARRAY[]::TEXT[];
+    current_pair_key TEXT;
 BEGIN
     -- 1. Get Ring Info
     SELECT * INTO ring_info FROM public.rings WHERE id = p_ring_id;
@@ -377,6 +384,9 @@ BEGIN
                 prev_hub.system_id, hub_nodes.system_id
             )
             ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+            
+            -- Add to valid list (bidirectional keys to be safe)
+            valid_pairs := array_append(valid_pairs, prev_hub.node_id || '_' || hub_nodes.node_id);
         END IF;
         
         prev_hub := hub_nodes;
@@ -396,6 +406,8 @@ BEGIN
             prev_hub.system_id, first_hub.system_id
         )
         ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+        
+        valid_pairs := array_append(valid_pairs, prev_hub.node_id || '_' || first_hub.node_id);
     END IF;
 
     -- ==========================================
@@ -409,8 +421,7 @@ BEGIN
         WHERE rbs.ring_id = p_ring_id AND s.is_hub = false
     LOOP
         -- Find the parent hub (The hub with order = floor(spur.order))
-        -- e.g. Spur 1.2 belongs to Hub 1.0
-        parent_hub_id := NULL; -- Reset for safety
+        parent_hub_id := NULL; 
         
         SELECT s.id, n.id, n.name INTO parent_hub_id, parent_node_id, parent_node_name
         FROM public.ring_based_systems rbs
@@ -435,8 +446,23 @@ BEGIN
                 parent_hub_id, spur_rec.system_id
             )
             ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+            
+            valid_pairs := array_append(valid_pairs, parent_node_id || '_' || spur_rec.node_id);
         END IF;
     END LOOP;
+
+    -- ==========================================
+    -- PHASE 3: CLEANUP STALE PATHS
+    -- ==========================================
+    -- Remove paths that are NOT in the valid_pairs list AND are not provisioned (status is default/null or unprovisioned)
+    -- This prevents accidental deletion of manually configured/provisioned paths unless intended,
+    -- but cleans up auto-generated paths that are no longer valid in the topology.
+    
+    DELETE FROM public.logical_paths
+    WHERE ring_id = p_ring_id
+      AND (start_node_id || '_' || end_node_id) != ALL(valid_pairs)
+      -- Important: Only delete if not actively provisioned (safety check)
+      AND (status IS NULL OR status = 'unprovisioned');
 
     RETURN QUERY SELECT * FROM public.logical_paths WHERE ring_id = p_ring_id;
 END;
