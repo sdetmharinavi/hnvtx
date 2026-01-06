@@ -322,6 +322,21 @@ GRANT EXECUTE ON FUNCTION public.update_ring_system_associations(UUID, UUID[]) T
 
 -- Description: Updates the path generation logic to remove stale paths when ring topology changes.
 
+-- path: data/migrations/06_utilities/21_fix_logical_path_constraint.sql
+-- Description: Changes logical path uniqueness from Node-based to System-based to allow multiple systems per node in a ring.
+
+-- 1. Drop the old node-based constraint
+ALTER TABLE public.logical_paths 
+DROP CONSTRAINT IF EXISTS uq_ring_path;
+
+-- 2. Add new system-based constraint
+-- This ensures distinct paths for distinct systems, even if they are at the same location.
+ALTER TABLE public.logical_paths
+ADD CONSTRAINT uq_ring_system_path 
+UNIQUE (ring_id, source_system_id, destination_system_id);
+
+
+-- 3. Update the generator function to respect System IDs
 CREATE OR REPLACE FUNCTION public.generate_ring_connection_paths(p_ring_id UUID)
 RETURNS SETOF public.logical_paths
 LANGUAGE plpgsql
@@ -342,9 +357,8 @@ DECLARE
     parent_node_id UUID;
     parent_node_name TEXT;
 
-    -- New: To track valid pairs for cleanup
-    valid_pairs TEXT[] := ARRAY[]::TEXT[];
-    current_pair_key TEXT;
+    -- Track valid SYSTEM pairs (not node pairs)
+    valid_system_pairs TEXT[] := ARRAY[]::TEXT[];
 BEGIN
     -- 1. Get Ring Info
     SELECT * INTO ring_info FROM public.rings WHERE id = p_ring_id;
@@ -359,7 +373,7 @@ BEGIN
     first_hub := NULL;
 
     FOR hub_nodes IN
-        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -371,50 +385,53 @@ BEGIN
         END IF;
 
         IF prev_hub IS NOT NULL THEN
-            -- Connect Previous Hub to Current Hub
+            -- Connect Previous Hub System to Current Hub System
             INSERT INTO public.logical_paths (
                 name, ring_id, 
                 start_node_id, end_node_id, 
                 source_system_id, destination_system_id
             )
             VALUES (
-                ring_info.name || ': ' || prev_hub.node_name || ' -> ' || hub_nodes.node_name, 
+                -- Naming includes System Names now to be specific
+                ring_info.name || ': ' || prev_hub.system_name || ' -> ' || hub_nodes.system_name, 
                 p_ring_id, 
                 prev_hub.node_id, hub_nodes.node_id,
                 prev_hub.system_id, hub_nodes.system_id
             )
-            ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+            -- Conflict check is now on SYSTEMS
+            ON CONFLICT (ring_id, source_system_id, destination_system_id) DO NOTHING;
             
-            -- Add to valid list (bidirectional keys to be safe)
-            valid_pairs := array_append(valid_pairs, prev_hub.node_id || '_' || hub_nodes.node_id);
+            -- Track valid system pair
+            valid_system_pairs := array_append(valid_system_pairs, prev_hub.system_id || '_' || hub_nodes.system_id);
         END IF;
         
         prev_hub := hub_nodes;
     END LOOP;
 
     -- Close the Loop (Last Hub -> First Hub)
-    IF ring_info.is_closed_loop AND prev_hub IS NOT NULL AND first_hub IS NOT NULL AND prev_hub.node_id <> first_hub.node_id THEN
+    -- Allow closing loop even if nodes are same, provided systems are different (though unlikely in a ring, usually distinct)
+    IF ring_info.is_closed_loop AND prev_hub IS NOT NULL AND first_hub IS NOT NULL AND prev_hub.system_id <> first_hub.system_id THEN
         INSERT INTO public.logical_paths (
             name, ring_id, 
             start_node_id, end_node_id,
             source_system_id, destination_system_id
         )
         VALUES (
-            ring_info.name || ': ' || prev_hub.node_name || ' -> ' || first_hub.node_name, 
+            ring_info.name || ': ' || prev_hub.system_name || ' -> ' || first_hub.system_name, 
             p_ring_id, 
             prev_hub.node_id, first_hub.node_id,
             prev_hub.system_id, first_hub.system_id
         )
-        ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+        ON CONFLICT (ring_id, source_system_id, destination_system_id) DO NOTHING;
         
-        valid_pairs := array_append(valid_pairs, prev_hub.node_id || '_' || first_hub.node_id);
+        valid_system_pairs := array_append(valid_system_pairs, prev_hub.system_id || '_' || first_hub.system_id);
     END IF;
 
     -- ==========================================
     -- PHASE 2: GENERATE SPURS (Parent -> Spur)
     -- ==========================================
     FOR spur_rec IN
-        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -423,7 +440,7 @@ BEGIN
         -- Find the parent hub (The hub with order = floor(spur.order))
         parent_hub_id := NULL; 
         
-        SELECT s.id, n.id, n.name INTO parent_hub_id, parent_node_id, parent_node_name
+        SELECT s.id, n.id, s.system_name INTO parent_hub_id, parent_node_id, parent_node_name
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -433,34 +450,33 @@ BEGIN
         LIMIT 1;
 
         IF parent_hub_id IS NOT NULL THEN
-            -- Connect Parent Hub -> Spur Node
+            -- Connect Parent Hub System -> Spur System
             INSERT INTO public.logical_paths (
                 name, ring_id, 
                 start_node_id, end_node_id,
                 source_system_id, destination_system_id
             )
             VALUES (
-                ring_info.name || ' (Spur): ' || parent_node_name || ' -> ' || spur_rec.node_name, 
+                ring_info.name || ' (Spur): ' || parent_node_name || ' -> ' || spur_rec.system_name, 
                 p_ring_id, 
                 parent_node_id, spur_rec.node_id,
                 parent_hub_id, spur_rec.system_id
             )
-            ON CONFLICT (ring_id, start_node_id, end_node_id) DO NOTHING;
+            ON CONFLICT (ring_id, source_system_id, destination_system_id) DO NOTHING;
             
-            valid_pairs := array_append(valid_pairs, parent_node_id || '_' || spur_rec.node_id);
+            valid_system_pairs := array_append(valid_system_pairs, parent_hub_id || '_' || spur_rec.system_id);
         END IF;
     END LOOP;
 
     -- ==========================================
     -- PHASE 3: CLEANUP STALE PATHS
     -- ==========================================
-    -- Remove paths that are NOT in the valid_pairs list AND are not provisioned (status is default/null or unprovisioned)
-    -- This prevents accidental deletion of manually configured/provisioned paths unless intended,
-    -- but cleans up auto-generated paths that are no longer valid in the topology.
+    -- Remove paths that are NOT in the valid_system_pairs list AND are not provisioned.
+    -- Check against source_system_id and destination_system_id
     
     DELETE FROM public.logical_paths
     WHERE ring_id = p_ring_id
-      AND (start_node_id || '_' || end_node_id) != ALL(valid_pairs)
+      AND (source_system_id || '_' || destination_system_id) != ALL(valid_system_pairs)
       -- Important: Only delete if not actively provisioned (safety check)
       AND (status IS NULL OR status = 'unprovisioned');
 

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.logical_paths (
     status TEXT DEFAULT 'unprovisioned', -- e.g., unprovisioned, partially, provisioned
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT uq_ring_path UNIQUE (ring_id, start_node_id, end_node_id)
+    CONSTRAINT uq_ring_system_path UNIQUE (ring_id, source_system_id, destination_system_id);
 );
 
 -- Add indexes for better query performance

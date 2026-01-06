@@ -5532,6 +5532,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_system_to_fibers: {
+        Args: {
+          p_cable_id: string
+          p_fiber_rx: number
+          p_fiber_tx: number
+          p_logical_path_id: string
+          p_system_id: string
+        }
+        Returns: undefined
+      }
       auto_splice_straight_segments: {
         Args: {
           p_jc_id: string
