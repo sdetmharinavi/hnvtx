@@ -158,7 +158,7 @@ export default function MeshDiagram({
     // Perceived luminance formula
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
 
-    return brightness > 150 ? '#000000' : '#ffffff';
+    return brightness > 150 ? "#000000" : "#ffffff";
   }
 
   const { nodePositions, bounds } = useMemo(() => {

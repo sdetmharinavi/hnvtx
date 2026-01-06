@@ -552,7 +552,7 @@ export default function RingMapPage() {
       );
     }
 
-    if (viewMode === 'schematic') {
+    if (viewMode === "schematic") {
       return (
         <MeshDiagram
           nodes={mappedNodes}
@@ -561,7 +561,7 @@ export default function RingMapPage() {
           onBack={handleBack}
           segmentConfigs={segmentConfigMap}
           // THE FIX: Pass the calculated node ports to the schematic view
-          nodePorts={nodePortMap} 
+          nodePorts={nodePortMap}
         />
       );
     }
