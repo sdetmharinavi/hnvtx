@@ -18,3 +18,4 @@ export { StatusBadge } from './badges/StatusBadge';
 export {Tabs, TabsContent, TabsList, TabsTrigger} from './tabs';
 export {SearchableSelect} from './select/SearchableSelect';
 export { FontSizeToggle } from './FontSizeToggle';
+export * from './GenericEntityCard'
