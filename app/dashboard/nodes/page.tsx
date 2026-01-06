@@ -14,16 +14,16 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { useCallback, useMemo, useState } from 'react';
-import { FiCpu, FiCopy, FiGrid, FiList, FiSearch } from 'react-icons/fi';
+import { FiCpu, FiCopy } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { NodeCard } from '@/components/nodes/NodeCard';
-import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT GENERIC BAR
 
 export type NodeRowsWithRelations = NodesRowSchema & {
   maintenance_terminal?: { id: string; name: string } | null;
@@ -66,7 +66,6 @@ const NodesPage = () => {
     'Nodes'
   );
 
-  // --- PERMISSIONS ---
   const canEdit =
     isSuperAdmin ||
     role === UserRole.ADMIN ||
@@ -74,9 +73,46 @@ const NodesPage = () => {
     role === UserRole.ASSETADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- REFACTORED: Use Centralized Dropdown Hooks ---
-  const { options: nodeTypeOptions } = useLookupTypeOptions('NODE_TYPES');
-  const { options: areaOptions } = useMaintenanceAreaOptions();
+  // --- DATA OPTIONS ---
+  const { options: nodeTypeOptions, isLoading: loadingNodeTypes } =
+    useLookupTypeOptions('NODE_TYPES');
+  const { options: areaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
+
+  // --- FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'coordinates_status',
+        label: 'Coords',
+        type: 'native-select',
+        options: [
+          { value: 'with_coords', label: 'With Coordinates' },
+          { value: 'without_coords', label: 'Without Coordinates' },
+        ],
+        placeholder: 'All Locations',
+      },
+      {
+        key: 'node_type_id',
+        label: 'Node Type',
+        options: nodeTypeOptions,
+        isLoading: loadingNodeTypes,
+      },
+      {
+        key: 'maintenance_terminal_id',
+        label: 'Maintenance Area',
+        options: areaOptions,
+        isLoading: loadingAreas,
+      },
+    ],
+    [nodeTypeOptions, areaOptions, loadingNodeTypes, loadingAreas]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
 
   const isInitialLoad = isLoading && nodes.length === 0;
 
@@ -154,82 +190,17 @@ const NodesPage = () => {
         isFetching={isFetching}
       />
 
-      {/* Sticky Filter Bar */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search node name, remark..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          {/* NEW: Coordinates Filter */}
-          <div className="min-w-[160px]">
-            <select
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={(filters.filters.coordinates_status as string) || ''}
-              onChange={(e) =>
-                filters.setFilters((prev) => ({ ...prev, coordinates_status: e.target.value }))
-              }
-            >
-              <option value="">All Locations</option>
-              <option value="with_coords">With Coordinates</option>
-              <option value="without_coords">Without Coordinates</option>
-            </select>
-          </div>
-
-          <div className="min-w-[180px]">
-            <SearchableSelect
-              placeholder="Node Type"
-              options={nodeTypeOptions}
-              value={filters.filters.node_type_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, node_type_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="min-w-[180px]">
-            <SearchableSelect
-              placeholder="Maintenance Area"
-              options={areaOptions}
-              value={filters.filters.maintenance_terminal_id as string}
-              onChange={(v) =>
-                filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: v }))
-              }
-              clearable
-            />
-          </div>
-          {/* View Toggle */}
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* --- REUSABLE FILTER BAR --- */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search node name, remark..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <BulkActions
         selectedCount={bulkActions.selectedCount}
@@ -300,7 +271,7 @@ const NodesPage = () => {
         <NodeFormModal
           isOpen={editModal.isOpen}
           onClose={editModal.close}
-          editingNode={editModal.record as NodeRowsWithRelations | null}
+          editingNode={editModal.record as NodesRowSchema}
           onSubmit={crudActions.handleSave}
           isLoading={isMutating}
         />

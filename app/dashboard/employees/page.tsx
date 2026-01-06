@@ -24,11 +24,10 @@ import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
 import { Row } from '@/hooks/database';
 import { EmployeeCard } from '@/components/employee/EmployeeCard';
-import { Input } from '@/components/common/ui/Input';
-import { SearchableSelect } from '@/components/common/ui';
 import { UserRole } from '@/types/user-roles';
 import { useDropdownOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
-import { FiGrid, FiList, FiSearch, FiUsers } from 'react-icons/fi';
+import { FiUsers } from 'react-icons/fi';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // NEW
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -59,14 +58,13 @@ export default function EmployeesPage() {
     displayNameField: 'employee_name',
   });
 
-  // --- PERMISSIONS FIX: Define clear permissions ---
   const canEdit = useMemo(
     () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
     [isSuperAdmin, role]
   );
   const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
-  const { options: desOptions } = useDropdownOptions({
+  const { options: desOptions, isLoading: loadingDes } = useDropdownOptions({
     tableName: 'employee_designations',
     valueField: 'id',
     labelField: 'name',
@@ -74,7 +72,38 @@ export default function EmployeesPage() {
     orderBy: 'name',
   });
 
-  const { options: areaOptions } = useMaintenanceAreaOptions();
+  const { options: areaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
+
+  // --- DRY IMPLEMENTATION: FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'employee_designation_id',
+        label: 'Designation',
+        options: desOptions,
+        isLoading: loadingDes,
+      },
+      {
+        key: 'maintenance_terminal_id',
+        label: 'Area',
+        options: areaOptions,
+        isLoading: loadingAreas,
+      },
+    ],
+    [desOptions, areaOptions, loadingDes, loadingAreas]
+  );
+
+  // Handle generic filter change
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    },
+    [filters]
+  );
+  // ----------------------------------------
 
   const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_employees]);
@@ -84,7 +113,6 @@ export default function EmployeesPage() {
     () =>
       createStandardActions<V_employeesRowSchema>({
         onView: viewModal.open,
-        // --- PERMISSIONS FIX: Guard actions ---
         onEdit: canEdit ? editModal.openEdit : undefined,
         onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
         onDelete: canDelete ? crudActions.handleDelete : undefined,
@@ -105,7 +133,6 @@ export default function EmployeesPage() {
       await refetch();
       toast.success('Refreshed successfully!');
     },
-    // --- PERMISSIONS FIX: Guard action ---
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     exportConfig: canEdit ? { tableName: 'employees' } : undefined,
@@ -124,7 +151,6 @@ export default function EmployeesPage() {
           employee={record as V_employeesRowSchema}
           onEdit={editModal.openEdit}
           onDelete={crudActions.handleDelete}
-          // --- PERMISSIONS FIX: Pass permissions to card ---
           canDelete={canDelete}
           canEdit={canEdit}
           viewMode="list"
@@ -154,69 +180,18 @@ export default function EmployeesPage() {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search employees..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
+      {/* REPLACED MANUAL LAYOUT WITH GENERIC FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search employees..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[180px]">
-            <SearchableSelect
-              placeholder="Designation"
-              options={desOptions}
-              value={filters.filters.employee_designation_id as string}
-              onChange={(v) =>
-                filters.setFilters((prev) => ({ ...prev, employee_designation_id: v }))
-              }
-              clearable
-            />
-          </div>
-          <div className="min-w-[180px]">
-            <SearchableSelect
-              placeholder="Area"
-              options={areaOptions}
-              value={filters.filters.maintenance_terminal_id as string}
-              onChange={(v) =>
-                filters.setFilters((prev) => ({ ...prev, maintenance_terminal_id: v }))
-              }
-              clearable
-            />
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* --- PERMISSIONS FIX: Conditionally render Bulk Actions --- */}
       {canEdit && (
         <BulkActions
           selectedCount={bulkActions.selectedCount}
@@ -274,12 +249,11 @@ export default function EmployeesPage() {
               pagination.setPageLimit(pageSize);
             },
           }}
-          customToolbar={<></>}
+          customToolbar={<></>} // Custom toolbar hidden as we use GenericFilterBar
           renderMobileItem={renderMobileItem}
         />
       )}
 
-      {/* --- PERMISSIONS FIX: Conditionally render form modal --- */}
       {canEdit && (
         <EmployeeForm
           isOpen={editModal.isOpen}

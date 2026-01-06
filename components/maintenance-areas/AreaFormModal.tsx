@@ -1,25 +1,34 @@
 // path: components/maintenance-areas/AreaFormModal.tsx
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { AreaFormModalProps } from "@/config/areas";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormCard } from "@/components/common/form/FormCard";
+import { useEffect, useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   FormInput,
   FormSearchableSelect,
   FormSwitch,
   FormTextarea,
-} from "@/components/common/form/FormControls";
-import { useForm } from "react-hook-form";
+} from '@/components/common/form/FormControls';
+import { useForm } from 'react-hook-form';
 import {
   maintenance_areasInsertSchema,
   Maintenance_areasInsertSchema,
   Maintenance_areasRowSchema,
-} from "@/schemas/zod-schemas";
-import { generateCodeFromName } from "@/config/helper-functions";
-// THIS IS THE FIX: Import the correct hook
-import { useLookupTypeOptions } from "@/hooks/data/useDropdownOptions";
+} from '@/schemas/zod-schemas';
+import { generateCodeFromName } from '@/config/helper-functions';
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
+import { MaintenanceAreaWithRelations } from '@/config/areas';
+
+// Redefine props slightly to match
+interface AreaFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: Maintenance_areasInsertSchema) => void;
+  area: MaintenanceAreaWithRelations | null;
+  allAreas: Maintenance_areasRowSchema[];
+  isLoading: boolean;
+}
 
 export function AreaFormModal({
   isOpen,
@@ -28,28 +37,18 @@ export function AreaFormModal({
   area,
   allAreas,
   isLoading,
-}: Omit<AreaFormModalProps, "areaTypes">) {
-  // areaTypes is now fetched internally
+}: AreaFormModalProps) {
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false);
   const isEditMode = !!area;
 
-  // THIS IS THE FIX: Use the offline-first hook internally
   const { options: areaTypeOptions, isLoading: isLoadingAreaTypes } =
-    useLookupTypeOptions("MAINTENANCE_AREA_TYPES");
+    useLookupTypeOptions('MAINTENANCE_AREA_TYPES');
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-    reset,
-    control,
-    watch,
-    setValue,
-  } = useForm<Maintenance_areasInsertSchema>({
+  const form = useForm<Maintenance_areasInsertSchema>({
     resolver: zodResolver(maintenance_areasInsertSchema),
     defaultValues: {
-      name: "",
-      code: "",
+      name: '',
+      code: '',
       area_type_id: null,
       parent_id: null,
       contact_person: null,
@@ -62,7 +61,15 @@ export function AreaFormModal({
     },
   });
 
-  const watchedName = watch("name");
+  const {
+    register,
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+    reset,
+  } = form;
+  const watchedName = watch('name');
 
   useEffect(() => {
     if (isOpen) {
@@ -83,8 +90,8 @@ export function AreaFormModal({
         });
       } else {
         reset({
-          name: "",
-          code: "",
+          name: '',
+          code: '',
           area_type_id: null,
           parent_id: null,
           contact_person: null,
@@ -100,9 +107,9 @@ export function AreaFormModal({
   }, [area, isOpen, reset, isEditMode]);
 
   useEffect(() => {
-    if (!isCodeManuallyEdited && !isEditMode) {
+    if (!isCodeManuallyEdited && !isEditMode && watchedName) {
       const generatedCode = generateCodeFromName(watchedName);
-      setValue("code", generatedCode, { shouldValidate: true });
+      setValue('code', generatedCode, { shouldValidate: true });
     }
   }, [watchedName, isCodeManuallyEdited, isEditMode, setValue]);
 
@@ -112,155 +119,138 @@ export function AreaFormModal({
       const descendants = new Set<string>([areaId]);
       const children = areas.filter((a) => a.parent_id === areaId);
       children.forEach((child) => {
+        if (!child.id) return;
         const childDescendants = getDescendantIds(child.id, areas);
         childDescendants.forEach((id) => descendants.add(id));
       });
       return descendants;
     };
     const excludeIds = getDescendantIds(area.id, allAreas);
-    return allAreas.filter((a) => !excludeIds.has(a.id));
+    return allAreas.filter((a) => !a.id || !excludeIds.has(a.id));
   }, [area, allAreas]);
 
-  const handleClose = () => {
-    if (isDirty) {
-      if (!window.confirm("You have unsaved changes. Close anyway?")) return;
-    }
-    onClose();
-  };
-
-  const onValidSubmit = (data: Maintenance_areasInsertSchema) => {
-    onSubmit(data);
-  };
-
-  if (!isOpen) return null;
   const combinedLoading = isLoading || isLoadingAreaTypes;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm'>
-      <div className='w-0 h-0 transparent'>
-        <FormCard
-          onSubmit={handleSubmit(onValidSubmit)}
-          title={area ? "Edit Area" : "Add New Area"}
-          onCancel={handleClose}
-          isLoading={combinedLoading}
-          heightClass='max-h-[85vh] overflow-y-auto'
-          standalone>
-          <div className='space-y-4'>
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='name'
-                label='Area Name'
-                register={register}
-                error={errors.name}
-                required
-                disabled={combinedLoading}
-              />
-              <FormInput
-                name='code'
-                label='Area Code'
-                register={register}
-                error={errors.code}
-                disabled={combinedLoading}
-                onChange={(e) => {
-                  setIsCodeManuallyEdited(true);
-                  register("code").onChange(e);
-                }}
-              />
-            </div>
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormSearchableSelect
-                name='area_type_id'
-                label='Area Type'
-                control={control}
-                error={errors.area_type_id}
-                disabled={combinedLoading}
-                options={areaTypeOptions}
-              />
-              <FormSearchableSelect
-                name='parent_id'
-                label='Parent Area'
-                control={control}
-                error={errors.parent_id}
-                disabled={combinedLoading}
-                options={availableParents.map((a) => ({ value: a.id, label: a.name }))}
-              />
-            </div>
-          </div>
+    <BaseFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Area"
+      isEditMode={isEditMode}
+      isLoading={combinedLoading}
+      form={form}
+      onSubmit={(data) => onSubmit(data as Maintenance_areasInsertSchema)}
+      heightClass="max-h-[85vh] overflow-y-auto"
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormInput
+            name="name"
+            label="Area Name"
+            register={register}
+            error={errors.name}
+            required
+            disabled={combinedLoading}
+          />
+          <FormInput
+            name="code"
+            label="Area Code"
+            register={register}
+            error={errors.code}
+            disabled={combinedLoading}
+            onChange={(e) => {
+              setIsCodeManuallyEdited(true);
+              register('code').onChange(e);
+            }}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormSearchableSelect
+            name="area_type_id"
+            label="Area Type"
+            control={control}
+            error={errors.area_type_id}
+            disabled={combinedLoading}
+            options={areaTypeOptions}
+          />
+          <FormSearchableSelect
+            name="parent_id"
+            label="Parent Area"
+            control={control}
+            error={errors.parent_id}
+            disabled={combinedLoading}
+            options={availableParents.map((a) => ({ value: a.id, label: a.name }))}
+          />
+        </div>
 
-          <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
-              Contact Information
-            </h3>
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='contact_person'
-                label='Contact Person'
-                register={register}
-                error={errors.contact_person}
-                disabled={combinedLoading}
-              />
-              <FormInput
-                name='contact_number'
-                label='Contact Number'
-                register={register}
-                error={errors.contact_number}
-                disabled={combinedLoading}
-              />
-            </div>
+        <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Contact Information
+          </h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormInput
-              name='email'
-              label='Email Address'
+              name="contact_person"
+              label="Contact Person"
               register={register}
-              error={errors.email}
+              error={errors.contact_person}
+              disabled={combinedLoading}
+            />
+            <FormInput
+              name="contact_number"
+              label="Contact Number"
+              register={register}
+              error={errors.contact_number}
               disabled={combinedLoading}
             />
           </div>
+          <FormInput
+            name="email"
+            label="Email Address"
+            register={register}
+            error={errors.email}
+            disabled={combinedLoading}
+          />
+        </div>
 
-          <div className='mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <h3 className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
-              Location Details
-            </h3>
-            <FormTextarea
-              name='address'
-              label='Address'
-              control={control}
-              error={errors.address}
+        <div className="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Location Details
+          </h3>
+          <FormTextarea
+            name="address"
+            label="Address"
+            control={control}
+            error={errors.address}
+            disabled={combinedLoading}
+          />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormInput
+              name="latitude"
+              label="Latitude"
+              type="number"
+              step="any"
+              register={register}
+              error={errors.latitude}
               disabled={combinedLoading}
+              placeholder="e.g., 22.5726"
             />
-            <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-              <FormInput
-                name='latitude'
-                label='Latitude'
-                type='number'
-                step='any'
-                register={register}
-                error={errors.latitude}
-                disabled={combinedLoading}
-                placeholder='e.g., 22.5726'
-              />
-              <FormInput
-                name='longitude'
-                label='Longitude'
-                type='number'
-                step='any'
-                register={register}
-                error={errors.longitude}
-                disabled={combinedLoading}
-                placeholder='e.g., 88.3639'
-              />
-            </div>
+            <FormInput
+              name="longitude"
+              label="Longitude"
+              type="number"
+              step="any"
+              register={register}
+              error={errors.longitude}
+              disabled={combinedLoading}
+              placeholder="e.g., 88.3639"
+            />
           </div>
+        </div>
 
-          <div className='mt-6 border-t border-gray-200 pt-6 dark:border-gray-700'>
-            <FormSwitch
-              name='status'
-              label='Active Status'
-              control={control}
-              error={errors.status}
-            />
-          </div>
-        </FormCard>
+        <div className="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+          <FormSwitch name="status" label="Active Status" control={control} error={errors.status} />
+        </div>
       </div>
-    </div>
+    </BaseFormModal>
   );
 }

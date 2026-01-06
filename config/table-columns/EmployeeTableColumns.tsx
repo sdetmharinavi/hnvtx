@@ -33,9 +33,7 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_contact ? (
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {record.employee_contact}
-          </div>
+          <div className="text-sm text-gray-700 dark:text-gray-300">{record.employee_contact}</div>
         ) : (
           <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
             Click to add
@@ -54,9 +52,7 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     render: (_, record: V_employeesRowSchema) => (
       <div className="space-y-1">
         {record.employee_email ? (
-          <div className="text-sm text-gray-700 dark:text-gray-300">
-            {record.employee_email}
-          </div>
+          <div className="text-sm text-gray-700 dark:text-gray-300">{record.employee_email}</div>
         ) : (
           <span className="text-sm text-gray-400 italic hover:text-gray-500 cursor-pointer">
             Click to add
@@ -88,6 +84,7 @@ export const getEmployeeTableColumns = (): Column<V_employeesRowSchema>[] => [
     dataIndex: 'employee_addr',
     key: 'employee_addr',
     width: 300,
+    editable: true,
     searchable: true,
   },
   {

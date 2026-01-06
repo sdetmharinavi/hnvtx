@@ -12,8 +12,6 @@ import {
   StatusBadge,
 } from '@/components/common/ui';
 import { DataTable } from '@/components/table/DataTable';
-import { UserFilters } from '@/components/users/UserFilters';
-import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
@@ -31,10 +29,11 @@ import { useUsersData } from '@/hooks/data/useUsersData';
 import Image from 'next/image';
 import { UserRole } from '@/types/user-roles';
 import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
+import UserProfileEditModal from '@/components/users/UserProfileEditModal';
+// IMPORT GENERIC FILTER BAR
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 
 const AdminUsersPage = () => {
-  const [showFilters, setShowFilters] = useState(false);
-  // THE FIX: Get isUserLoading state to handle initial permission check
   const { isSuperAdmin, role, isLoading: isUserLoading } = useUser();
   const {
     createUser,
@@ -65,6 +64,49 @@ const AdminUsersPage = () => {
   });
 
   const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+
+  // --- DRY FILTER CONFIGURATION ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'role',
+        label: 'Role',
+        type: 'native-select',
+        options: Object.values(UserRole).map((r) => ({
+          value: r,
+          label: r.replace(/_/g, ' ').toUpperCase(),
+        })),
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+          { value: 'suspended', label: 'Suspended' },
+        ],
+      },
+      {
+        key: 'is_email_verified',
+        label: 'Email Status',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'Verified' },
+          { value: 'false', label: 'Unverified' },
+        ],
+      },
+    ],
+    []
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // ---------------------------------
 
   const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
   const { selectedRowIds, handleClearSelection } = bulkActions;
@@ -137,13 +179,13 @@ const AdminUsersPage = () => {
   const headerStats = [
     { value: totalCount, label: 'Total Users' },
     {
-      value: users.filter((r) => r.status).length,
+      value: users.filter((r) => r.status === 'active').length,
       label: 'Active',
       color: 'success' as const,
     },
     {
-      value: users.filter((r) => !r.status).length,
-      label: 'Inactive',
+      value: users.filter((r) => r.status !== 'active').length,
+      label: 'Inactive/Suspended',
       color: 'danger' as const,
     },
   ];
@@ -203,7 +245,6 @@ const AdminUsersPage = () => {
     []
   );
 
-  // THE FIX: Add page-level loading and permission guard
   if (isUserLoading) {
     return <PageSpinner text="Verifying permissions..." />;
   }
@@ -238,6 +279,18 @@ const AdminUsersPage = () => {
         actions={headerActions}
         isLoading={isLoading}
       />
+
+      {/* REPLACED UserFilters with GenericFilterBar */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search users by name or email..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        // Users page currently doesn't implement view mode switching, so we omit those props
+      />
+
       {canManage && (
         <BulkActions
           selectedCount={bulkActions.selectedCount}
@@ -249,6 +302,7 @@ const AdminUsersPage = () => {
           onClearSelection={handleClearSelection}
         />
       )}
+
       <DataTable
         autoHideEmptyColumns={true}
         tableName="v_user_profiles_extended"
@@ -282,27 +336,9 @@ const AdminUsersPage = () => {
             pagination.setPageLimit(pageSize);
           },
         }}
-        customToolbar={
-          <UserFilters
-            searchQuery={search.searchQuery}
-            onSearchChange={search.setSearchQuery}
-            roleFilter={(filters.filters.role as string) || ''}
-            onRoleFilterChange={(value) => filters.setFilters((prev) => ({ ...prev, role: value }))}
-            statusFilter={(filters.filters.status as string) || ''}
-            onStatusFilterChange={(value) =>
-              filters.setFilters((prev) => ({ ...prev, status: value }))
-            }
-            emailVerificationFilter={''}
-            onEmailVerificationFilterChange={() => {}}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters(!showFilters)}
-            onClearFilters={() => {
-              search.setSearchQuery('');
-              filters.setFilters((prev) => ({ ...prev, role: '', status: '' }));
-            }}
-          />
-        }
+        customToolbar={<></>}
       />
+
       <UserProfileEditModal
         isOpen={editModal.isOpen}
         user={editModal.record as V_user_profiles_extendedRowSchema | null}

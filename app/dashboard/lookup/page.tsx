@@ -11,7 +11,6 @@ import {
   NoCategoriesState,
   SelectCategoryPrompt,
 } from '@/components/lookup/LookupTypesEmptyStates';
-import { LookupTypesFilters } from '@/components/lookup/LookupTypesFilters';
 import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
 import { useSorting } from '@/hooks/useSorting';
 import { useMemo, useCallback, useEffect } from 'react';
@@ -26,6 +25,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { useLookupActions } from '@/components/lookup/lookup-hooks';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+import { snakeToTitleCase } from '@/utils/formatters';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function LookupTypesPage() {
   const {
@@ -81,9 +82,11 @@ export default function LookupTypesPage() {
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
   useEffect(() => {
-    filters.setFilters({ category: selectedCategory });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, filters.setFilters]);
+    // Only set if actually changed to prevent loops or empty overrides
+    if (selectedCategory && filters.filters.category !== selectedCategory) {
+      filters.setFilters({ category: selectedCategory });
+    }
+  }, [selectedCategory, filters]);
 
   const {
     sortedData: sortedLookupTypes,
@@ -92,7 +95,7 @@ export default function LookupTypesPage() {
   } = useSorting({
     data: lookupTypes,
     defaultSortKey: 'sort_order',
-    defaultDirection: 'asc', // Ensure explicit ascending order
+    defaultDirection: 'asc',
   });
 
   const handleRefresh = useCallback(async () => {
@@ -107,7 +110,6 @@ export default function LookupTypesPage() {
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
     onRefresh: handleRefresh,
-    // Gate Add New button
     onAddNew: canManage
       ? hasSelectedCategory
         ? editModal.openAdd
@@ -129,7 +131,7 @@ export default function LookupTypesPage() {
   });
 
   const headerStats = [
-    { value: totalCount, label: 'Total Types' }, // Count is already accurate from hook
+    { value: totalCount, label: 'Total Types' },
     { value: activeCount, label: 'Active', color: 'success' as const },
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
@@ -143,6 +145,30 @@ export default function LookupTypesPage() {
 
   const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
     crudActions.handleSave(data);
+  };
+
+  // --- FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(() => {
+    const categoryOptions = categories.map((c) => ({
+      value: c.category,
+      label: `${snakeToTitleCase(c.category)} (${c.category})`,
+    }));
+
+    return [
+      {
+        key: 'category',
+        label: 'Category',
+        options: categoryOptions,
+        type: 'native-select',
+        placeholder: 'Select a category',
+      },
+    ];
+  }, [categories]);
+
+  const handleFilterChange = (key: string, value: string | null) => {
+    if (key === 'category' && value) {
+      handleCategoryChange(value);
+    }
   };
 
   if (categoriesError) {
@@ -165,16 +191,17 @@ export default function LookupTypesPage() {
         isLoading={isLoading}
       />
 
+      {/* REPLACED WITH GENERIC FILTER BAR */}
       {!hasCategories && !isLoading ? (
         <NoCategoriesState error={categoriesError ?? undefined} isLoading={isLoading} />
       ) : (
-        <LookupTypesFilters
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onCategoryChange={handleCategoryChange}
-          searchTerm={search.searchQuery}
-          onSearchTermChange={search.setSearchQuery}
-          hasSelectedCategory={hasSelectedCategory}
+        <GenericFilterBar
+          searchQuery={search.searchQuery}
+          onSearchChange={search.setSearchQuery}
+          searchPlaceholder="Search lookup types..."
+          filters={{ category: selectedCategory }}
+          onFilterChange={handleFilterChange}
+          filterConfigs={filterConfigs}
         />
       )}
 
@@ -198,7 +225,7 @@ export default function LookupTypesPage() {
             searchTerm={search.searchQuery}
             onSort={handleSort}
             getSortDirection={getSortDirection}
-            canManage={canManage} // Pass permission for visual disabling if needed
+            canManage={canManage}
           />
         </Card>
       )}

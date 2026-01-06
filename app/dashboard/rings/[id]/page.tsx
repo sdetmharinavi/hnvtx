@@ -1,38 +1,32 @@
 // path: app/dashboard/rings/[id]/page.tsx
-"use client";
+'use client';
 
-import { useMemo, useCallback, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiMap, FiGrid, FiSettings } from "react-icons/fi";
-import dynamic from "next/dynamic";
-import { localDb } from "@/hooks/data/localDb";
-import { PageSpinner, Modal, Button } from "@/components/common/ui";
-import { PageHeader } from "@/components/common/page-header";
-import { RingMapNode } from "@/components/map/types/node";
-import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
-import { createClient } from "@/utils/supabase/client";
+import { useMemo, useCallback, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
+import dynamic from 'next/dynamic';
+import { localDb } from '@/hooks/data/localDb';
+import { PageSpinner, Modal, Button } from '@/components/common/ui';
+import { PageHeader } from '@/components/common/page-header';
+import { RingMapNode } from '@/components/map/types/node';
+import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
+import { createClient } from '@/utils/supabase/client';
 import {
   V_ring_nodesRowSchema,
   V_ringsRowSchema,
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
-} from "@/schemas/zod-schemas";
-import { buildRpcFilters, useRpcRecord, useTableUpdate } from "@/hooks/database";
-import MeshDiagram from "@/components/map/MeshDiagram";
-import { toast } from "sonner";
-import { Json } from "@/types/supabase-types";
-import { useQuery } from "@tanstack/react-query";
+} from '@/schemas/zod-schemas';
+import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
+import MeshDiagram from '@/components/map/MeshDiagram';
+import { toast } from 'sonner';
+import { Json } from '@/types/supabase-types';
+import { useQuery } from '@tanstack/react-query';
+import { FiberMetric, PortDisplayInfo } from '@/components/map/ClientRingMap';
 
-// Define the PortDisplayInfo type here to be passed to the map
-export interface PortDisplayInfo {
-  port: string;
-  color: string;
-  targetNodeName?: string;
-}
-
-const ClientRingMap = dynamic(() => import("@/components/map/ClientRingMap"), {
+const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
-  loading: () => <PageSpinner text='Loading Map...' />,
+  loading: () => <PageSpinner text="Loading Map..." />,
 });
 
 type ExtendedRingDetails = V_ringsRowSchema & {
@@ -47,6 +41,7 @@ interface PathConfigForMap {
   dest?: string;
   destPort?: string;
   fiberInfo?: string;
+  fiberMetrics?: FiberMetric[];
   cableName?: string;
   capacity?: number;
 }
@@ -76,20 +71,19 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
 
 // Helper for consistent colors based on string input (connection ID)
 const getConnectionColor = (id: string) => {
-  // A palette of distinct, readable colors
   const colors = [
-    "#dc2626", // Strong Red
-    "#ea580c", // Deep Orange
-    "#ca8a04", // Golden Amber
-    "#65a30d", // Lime Green
-    "#059669", // Emerald Green
-    "#0f766e", // Teal
-    "#0284c7", // Cyan Blue
-    "#1d4ed8", // Royal Blue
-    "#4f46e5", // Indigo
-    "#7c3aed", // Violet
-    "#c026d3", // Fuchsia
-    "#be123c", // Rose / Magenta Red
+    '#dc2626', // Strong Red
+    '#ea580c', // Deep Orange
+    '#ca8a04', // Golden Amber
+    '#65a30d', // Lime Green
+    '#059669', // Emerald Green
+    '#0f766e', // Teal
+    '#0284c7', // Cyan Blue
+    '#1d4ed8', // Royal Blue
+    '#4f46e5', // Indigo
+    '#7c3aed', // Violet
+    '#c026d3', // Fuchsia
+    '#be123c', // Rose / Magenta Red
   ];
 
   let hash = 0;
@@ -105,7 +99,7 @@ export default function RingMapPage() {
   const ringId = params.id as string;
   const supabase = createClient();
 
-  const [viewMode, setViewMode] = useState<"map" | "schematic">("map");
+  const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   // 1. Fetch Ring Details
@@ -113,16 +107,15 @@ export default function RingMapPage() {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
     refetch: refetchRing,
-  } = useRpcRecord(supabase, "v_rings", ringId, {
-    // THE FIX: Ensure we fetch fresh data when entering this page to catch "Closed Loop" updates
+  } = useRpcRecord(supabase, 'v_rings', ringId, {
     refetchOnMount: true,
   });
   const ringDetails = ringDetailsData as ExtendedRingDetails | null;
 
   // 2. Mutation
-  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, "rings", {
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
     onSuccess: () => {
-      toast.success("Topology configuration saved");
+      toast.success('Topology configuration saved');
       refetchRing();
       setIsConfigModalOpen(false);
     },
@@ -152,9 +145,9 @@ export default function RingMapPage() {
     },
     dexieTable: localDb.v_ring_nodes,
     enabled: !!ringId,
-    staleTime: 0,        // Force fresh fetch on mount
-    autoSync: true,      
-    refetchOnMount: true, // Force refresh
+    staleTime: 0,
+    autoSync: true,
+    refetchOnMount: true,
     localQueryDeps: [ringId],
   });
 
@@ -171,26 +164,26 @@ export default function RingMapPage() {
 
   // 4. Fetch Cables
   const { data: ringCables } = useQuery({
-    queryKey: ["ring-cables-physical", ringId, ringNodeIds],
+    queryKey: ['ring-cables-physical', ringId, ringNodeIds],
     queryFn: async () => {
       if (ringNodeIds.length < 2) return [];
 
-      const idList = ringNodeIds.map((id) => `'${id}'`).join(",");
+      const idList = ringNodeIds.map((id) => `'${id}'`).join(',');
       const sqlCondition = `sn_id IN (${idList}) OR en_id IN (${idList})`;
 
       const rpcFilters = {
         or: sqlCondition,
       };
 
-      const { data, error } = await supabase.rpc("get_paged_data", {
-        p_view_name: "v_ofc_cables_complete",
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ofc_cables_complete',
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
       });
 
       if (error) {
-        console.error("Error fetching ring cables:", error);
+        console.error('Error fetching ring cables:', error);
         return [];
       }
 
@@ -209,7 +202,7 @@ export default function RingMapPage() {
 
   // 5. Fetch ACTIVE Connections
   const { data: allCableConnections } = useQuery({
-    queryKey: ["ring-connections-all", ringId, ringCableIds],
+    queryKey: ['ring-connections-all', ringId, ringCableIds],
     queryFn: async () => {
       if (ringCableIds.length === 0) return [];
 
@@ -218,20 +211,52 @@ export default function RingMapPage() {
         status: true,
       };
 
-      const { data, error } = await supabase.rpc("get_paged_data", {
-        p_view_name: "v_ofc_connections_complete",
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ofc_connections_complete',
         p_limit: 5000,
         p_offset: 0,
         p_filters: buildRpcFilters(rpcFilters),
       });
 
       if (error) {
-        console.error("Error fetching connections:", error);
+        console.error('Error fetching connections:', error);
         return [];
       }
       return (data?.data as V_ofc_connections_completeRowSchema[]) || [];
     },
     enabled: ringCableIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // NEW: Extract unique Logical Path IDs from connections to fetch their names
+  const relevantLogicalPathIds = useMemo(() => {
+    if (!allCableConnections) return [];
+    const ids = new Set<string>();
+    allCableConnections.forEach((c) => {
+      if (c.logical_path_id) ids.add(c.logical_path_id);
+    });
+    return Array.from(ids);
+  }, [allCableConnections]);
+
+  // NEW: Fetch Logical Fiber Path Names
+  const { data: logicalFiberPathsMap } = useQuery({
+    queryKey: ['logical-fiber-paths-names', relevantLogicalPathIds],
+    queryFn: async () => {
+      if (relevantLogicalPathIds.length === 0) return new Map<string, string>();
+
+      const { data, error } = await supabase
+        .from('logical_fiber_paths')
+        .select('id, path_name')
+        .in('id', relevantLogicalPathIds);
+
+      if (error) {
+        console.error('Error fetching path names:', error);
+        return new Map<string, string>();
+      }
+
+      return new Map(data.map((p) => [p.id, p.path_name || 'Unnamed Path']));
+    },
+    enabled: relevantLogicalPathIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -260,7 +285,7 @@ export default function RingMapPage() {
       return data;
     },
     enabled: !!ringId,
-    refetchOnMount: true, // Force refresh for ports
+    refetchOnMount: true,
   });
 
   // 6. Calculate Segments
@@ -275,18 +300,13 @@ export default function RingMapPage() {
     const segments: Array<[RingMapNode, RingMapNode]> = [];
 
     if (hubs.length > 1) {
-      // Connect sequential hubs: 0->1, 1->2, 2->3
       for (let i = 0; i < hubs.length - 1; i++) {
         segments.push([hubs[i], hubs[i + 1]]);
       }
-
-      // Conditionally close the loop: 3->0
-      // Check for null explicitly because it could be undefined on first render
       if (ringDetails?.is_closed_loop === true) {
         segments.push([hubs[hubs.length - 1], hubs[0]]);
       }
     } else {
-      // Fallback for non-hub/flat lists (legacy)
       const allNodes = [...mappedNodes].sort(
         (a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0)
       );
@@ -341,7 +361,6 @@ export default function RingMapPage() {
       }
     });
 
-    // Helper to safely extract system name regardless of array/object structure
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getSystemName = (val: any) => {
       if (!val) return undefined;
@@ -349,10 +368,10 @@ export default function RingMapPage() {
       return val?.system_name;
     };
 
-    // Logical Paths Config
+    // A. Init configs with Logical Path Data (System info)
     pathConfigs?.forEach((p) => {
-      const sysIdA = nodeIdToSystemId.get(p.start_node_id || "");
-      const sysIdB = nodeIdToSystemId.get(p.end_node_id || "");
+      const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
+      const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
 
       if (sysIdA && sysIdB) {
         const key1 = `${sysIdA}-${sysIdB}`;
@@ -374,7 +393,7 @@ export default function RingMapPage() {
       }
     });
 
-    // Physical Fiber Info Calculation
+    // B. Enhance configs with Physical Fiber Data (Iterate Map Segments)
     allConnections.forEach(([nodeA, nodeB]) => {
       const key1 = `${nodeA.id}-${nodeB.id}`;
       const key2 = `${nodeB.id}-${nodeA.id}`;
@@ -383,6 +402,7 @@ export default function RingMapPage() {
 
       if (!physNodeA || !physNodeB) return;
 
+      // Find Physical Cables connecting these two nodes
       const matchingCables =
         ringCables?.filter(
           (c) =>
@@ -393,43 +413,87 @@ export default function RingMapPage() {
       if (matchingCables.length === 0) return;
 
       let bestCable = matchingCables[0];
-      const activeFibersInfo: string[] = [];
+      const fiberMetrics: FiberMetric[] = [];
       const contributingCableNames = new Set<string>();
+      let capacityAccumulator = 0;
 
-      // Collect ALL active fibers for this segment
+      // Scan all cables on this segment
       for (const cable of matchingCables) {
-        const systemFibers =
+        capacityAccumulator += cable.capacity || 0;
+        if (cable.route_name) contributingCableNames.add(cable.route_name);
+
+        // Find Active Fibers on this specific cable
+        const activeFibersOnCable =
           allCableConnections?.filter(
             (c) =>
-              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id)
+              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
           ) || [];
 
-        if (systemFibers.length > 0) {
+        if (activeFibersOnCable.length > 0) {
           bestCable = cable;
-          if (cable.route_name) contributingCableNames.add(cable.route_name);
 
-          systemFibers.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
+          activeFibersOnCable.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
 
-          systemFibers.forEach((fib) => {
-            if (fib.fiber_role) {
-              activeFibersInfo.push(`F${fib.fiber_no_sn} (${fib.fiber_role})`);
+          activeFibersOnCable.forEach((fib) => {
+            const isNormalOrientation = cable.sn_id === physNodeA;
+            const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
+            const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
+            // Show orientation relative to the map link (A->B)
+            const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
+
+            let distance = null;
+            let power = null;
+            if (isNormalOrientation) {
+              distance = fib.otdr_distance_sn_km;
+              power = fib.en_power_dbm;
             } else {
-              activeFibersInfo.push(`F${fib.fiber_no_sn}`);
+              distance = fib.otdr_distance_en_km;
+              power = fib.sn_power_dbm;
             }
+
+            // --- CRITICAL FIX FOR CASCADED PATHS ---
+            // Use the rich 'system_name' from the view which contains the Service Name (via join).
+            // This works even if system_id is null, as long as the logical path links to a connection.
+            let metricLabel = fib.system_name || 'Unknown Service';
+
+            // Fallback: If system_name from view is empty (edge case), try looking up the logical path name directly.
+            if (
+              (!metricLabel || metricLabel === 'Unknown Service') &&
+              fib.logical_path_id &&
+              logicalFiberPathsMap
+            ) {
+              const pathName = logicalFiberPathsMap.get(fib.logical_path_id);
+              if (pathName) metricLabel = pathName;
+            }
+
+            fiberMetrics.push({
+              label: `${metricLabel} (F ${label})`,
+              role: fib.fiber_role || 'spare',
+              direction:
+                fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
+              distance,
+              power,
+            });
           });
         }
       }
 
-      const uniqueFiberInfo = Array.from(new Set(activeFibersInfo));
+      // Deduplicate metrics if needed
+      const uniqueMetrics = fiberMetrics.filter(
+        (v, i, a) => a.findIndex((t) => t.label === v.label) === i
+      );
+
       const existing = map[key1] || {};
+
       const mergedConfig = {
         ...existing,
-        fiberInfo: uniqueFiberInfo.length > 0 ? uniqueFiberInfo.join(", ") : "No Active Fibers",
+        fiberInfo: undefined,
+        fiberMetrics: uniqueMetrics,
         cableName:
           contributingCableNames.size > 1
-            ? "Multiple Active Routes"
-            : bestCable.route_name || undefined,
-        capacity: bestCable?.capacity || undefined,
+            ? 'Multiple Active Routes'
+            : bestCable?.route_name || undefined,
+        capacity: capacityAccumulator || undefined,
       };
 
       map[key1] = mergedConfig;
@@ -437,28 +501,30 @@ export default function RingMapPage() {
     });
 
     return map;
-  }, [allConnections, ringCables, allCableConnections, pathConfigs, mappedNodes]);
+  }, [
+    allConnections,
+    ringCables,
+    allCableConnections,
+    pathConfigs,
+    mappedNodes,
+    logicalFiberPathsMap,
+  ]);
 
-  // 8. NEW: Build Node -> Active Ports Map with Colors
+  // 8. Build Node -> Active Ports Map
   const nodePortMap = useMemo(() => {
-    // Map<SYSTEM_ID, Array<{ port: string, color: string, targetNodeName: string }>>
-    // THE FIX: Changed key from NodeId to SystemId
     const map = new Map<string, PortDisplayInfo[]>();
-
     if (!rawNodes) return new Map<string, PortDisplayInfo[]>();
 
-    // 1. Map System ID -> Node Name (for target resolution)
     const systemToNodeInfo = new Map<string, { nodeId: string; nodeName: string }>();
     rawNodes.forEach((node) => {
       if (node.id && node.node_id) {
         systemToNodeInfo.set(node.id, {
           nodeId: node.node_id,
-          nodeName: node.system_node_name || node.name || "Unknown",
+          nodeName: node.system_node_name || node.name || 'Unknown',
         });
       }
     });
 
-    // Helper to add a port to a system
     const addPort = (
       systemId: string | null,
       port: string | null,
@@ -467,24 +533,19 @@ export default function RingMapPage() {
     ) => {
       if (!systemId || !port) return;
 
-      // We now key by systemId directly
       if (!map.has(systemId)) {
         map.set(systemId, []);
       }
 
       const list = map.get(systemId)!;
 
-      // Avoid duplicates
       if (!list.some((p) => p.port === port)) {
         const color = getConnectionColor(connectionId);
-
-        // Resolve target name (Node name of the target system)
-        let targetName = "Unknown";
+        let targetName = 'Unknown';
         if (targetSystemId) {
           const targetInfo = systemToNodeInfo.get(targetSystemId);
-          targetName = targetInfo ? targetInfo.nodeName : "External";
+          targetName = targetInfo ? targetInfo.nodeName : 'External';
         }
-
         list.push({ port, color, targetNodeName: targetName });
       }
     };
@@ -498,15 +559,16 @@ export default function RingMapPage() {
       });
     }
 
-    // Sort ports naturally
     map.forEach((ports) => {
       ports.sort((a, b) =>
-        a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: "base" })
+        a.port.localeCompare(b.port, undefined, { numeric: true, sensitivity: 'base' })
       );
     });
 
     return map;
   }, [rawNodes, pathConfigs]);
+
+  // ... (handleToggleSegment, handleBack, renderContent, return JSX remains the same)
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
@@ -524,7 +586,7 @@ export default function RingMapPage() {
     }
 
     const newConfig = {
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === "object"
+      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object'
         ? ringDetails.topology_config
         : {}),
       disabled_segments: newDisabled,
@@ -537,17 +599,17 @@ export default function RingMapPage() {
 
   const renderContent = () => {
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
-    if (isLoading) return <PageSpinner text='Loading Ring Data...' />;
+    if (isLoading) return <PageSpinner text="Loading Ring Data..." />;
 
     if (mappedNodes.length === 0) {
       return (
-        <div className='text-center py-12'>
-          <p className='text-gray-500'>No nodes found.</p>
+        <div className="text-center py-12">
+          <p className="text-gray-500">No nodes found.</p>
         </div>
       );
     }
 
-    if (viewMode === "schematic") {
+    if (viewMode === 'schematic') {
       return (
         <MeshDiagram
           nodes={mappedNodes}
@@ -562,7 +624,7 @@ export default function RingMapPage() {
 
     const mapNodes = mappedNodes.filter((n) => n.lat != null && n.long != null);
     if (mapNodes.length === 0) {
-      return <div className='flex justify-center h-full items-center'>No Geographic Data</div>;
+      return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
     }
 
     return (
@@ -579,49 +641,50 @@ export default function RingMapPage() {
   };
 
   return (
-    <div className='p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col'>
-      <div className='shrink-0'>
+    <div className="p-4 md:p-6 space-y-6 h-[calc(100vh-64px)] flex flex-col">
+      <div className="shrink-0">
         <PageHeader
           title={ringName}
-          description='Visualize and configure topology.'
+          description="Visualize and configure topology."
           icon={<FiMap />}
           actions={[
             {
-              label: "Configure Topology",
+              label: 'Configure Topology',
               onClick: () => setIsConfigModalOpen(true),
-              variant: "primary",
+              variant: 'primary',
               leftIcon: <FiSettings />,
               disabled: isLoadingRingDetails || isUpdating,
             },
             {
-              label: viewMode === "map" ? "Schematic View" : "Map View",
-              onClick: () => setViewMode((prev) => (prev === "map" ? "schematic" : "map")),
-              variant: "secondary",
-              leftIcon: viewMode === "map" ? <FiGrid /> : <FiMap />,
+              label: viewMode === 'map' ? 'Schematic View' : 'Map View',
+              onClick: () => setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
+              variant: 'secondary',
+              leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
             {
-              label: "Back",
+              label: 'Back',
               onClick: handleBack,
-              variant: "outline",
+              variant: 'outline',
               leftIcon: <FiArrowLeft />,
             },
           ]}
         />
       </div>
 
-      <div className='grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden'>
+      <div className="grow min-h-0 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 p-1 overflow-hidden">
         {renderContent()}
       </div>
 
       <Modal
         isOpen={isConfigModalOpen}
         onClose={() => setIsConfigModalOpen(false)}
-        title='Configure Ring Connections'>
-        <div className='p-4 space-y-4 z-50'>
-          <p className='text-sm text-gray-600 dark:text-gray-300 mb-4'>
+        title="Configure Ring Connections"
+      >
+        <div className="p-4 space-y-4 z-50">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Toggle the switches below to enable or disable specific connections between hubs.
           </p>
-          <div className='space-y-2 max-h-96 overflow-y-auto'>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
             {potentialSegments.map(([start, end], idx) => {
               const key = `${start.id}-${end.id}`;
               const reverseKey = `${end.id}-${start.id}`;
@@ -631,27 +694,29 @@ export default function RingMapPage() {
               return (
                 <div
                   key={idx}
-                  className='flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600'>
-                  <div className='flex flex-col'>
-                    <span className='font-medium text-sm text-gray-800 dark:text-gray-200'>
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium text-sm text-gray-800 dark:text-gray-200">
                       {start.name} ↔ {end.name}
                     </span>
-                    <span className='text-xs text-gray-500'>
+                    <span className="text-xs text-gray-500">
                       Order: {start.order_in_ring} ↔ {end.order_in_ring}
                     </span>
                   </div>
                   <Button
-                    size='xs'
-                    variant={isActive ? "success" : "secondary"}
+                    size="xs"
+                    variant={isActive ? 'success' : 'secondary'}
                     onClick={() => handleToggleSegment(start.id!, end.id!)}
-                    disabled={isUpdating}>
-                    {isActive ? "Connected" : "Disconnected"}
+                    disabled={isUpdating}
+                  >
+                    {isActive ? 'Connected' : 'Disconnected'}
                   </Button>
                 </div>
               );
             })}
           </div>
-          <div className='flex justify-end pt-4'>
+          <div className="flex justify-end pt-4">
             <Button onClick={() => setIsConfigModalOpen(false)}>Done</Button>
           </div>
         </div>

@@ -1,20 +1,12 @@
 // app/dashboard/inventory/page.tsx
 'use client';
 
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import {
-  FiArchive,
-  FiMinusCircle,
-  FiClock,
-  FiUpload,
-  FiGrid,
-  FiList,
-  FiSearch,
-} from 'react-icons/fi';
+import { FiArchive, FiMinusCircle, FiClock, FiUpload } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { Row } from '@/hooks/database';
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from '@/schemas/zod-schemas';
@@ -31,10 +23,10 @@ import { IssueItemFormData, useIssueInventoryItem } from '@/hooks/inventory-acti
 import { useInventoryExcelUpload } from '@/hooks/database/excel-queries/useInventoryExcelUpload';
 import { formatCurrency } from '@/utils/formatters';
 import { InventoryItemCard } from '@/components/inventory/InventoryItemCard';
-import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions, useActiveNodeOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { useLookupTypeOptions, useActiveNodeOptions } from '@/hooks/data/useDropdownOptions';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -72,11 +64,27 @@ export default function InventoryPage() {
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
   const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
 
-  // --- REFACTORED: Fetch Filter Options ---
-  const { options: categoryOptions } = useLookupTypeOptions('INVENTORY_CATEGORY');
-  const { options: locationOptions } = useActiveNodeOptions();
+  const { options: categoryOptions, isLoading: loadingCats } =
+    useLookupTypeOptions('INVENTORY_CATEGORY');
+  const { options: locationOptions, isLoading: loadingLocs } = useActiveNodeOptions();
 
-  // Permission Logic
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      { key: 'category_id', label: 'Category', options: categoryOptions, isLoading: loadingCats },
+      { key: 'location_id', label: 'Location', options: locationOptions, isLoading: loadingLocs },
+    ],
+    [categoryOptions, locationOptions, loadingCats, loadingLocs]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
+
   const canEdit = useMemo(
     () =>
       !!isSuperAdmin ||
@@ -206,63 +214,17 @@ export default function InventoryPage() {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search asset, name, desc..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Category"
-              options={categoryOptions}
-              value={filters.filters.category_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, category_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Location"
-              options={locationOptions}
-              value={filters.filters.location_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, location_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search asset, name, desc..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <BulkActions
         selectedCount={bulkActions.selectedCount}

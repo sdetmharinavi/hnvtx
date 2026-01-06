@@ -4,9 +4,8 @@
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, SubmitHandler, Resolver, SubmitErrorHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Modal } from '@/components/common/ui';
+import { Button } from '@/components/common/ui';
 import {
-  FormCard,
   FormDateInput,
   FormInput,
   FormIPAddressInput,
@@ -28,6 +27,7 @@ import {
 } from '@/hooks/data/useDropdownOptions';
 import { localDb } from '@/hooks/data/localDb';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
 
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z
@@ -78,10 +78,8 @@ export const SystemModal: FC<SystemModalProps> = ({
   const [step, setStep] = useState(1);
 
   // --- Data Fetching ---
-  // THE FIX: Deconstruct originalData to access raw fields like is_ring_based
   const { options: systemTypeOptions, originalData: systemTypesRaw } =
     useLookupTypeOptions('SYSTEM_TYPES');
-
   const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
   const { options: nodeOptions, isLoading: loadingNodes } = useActiveNodeOptions();
   const { options: maintenanceTerminalOptions } = useMaintenanceAreaOptions();
@@ -89,34 +87,31 @@ export const SystemModal: FC<SystemModalProps> = ({
   const [inferredTerminalOption, setInferredTerminalOption] = useState<Option | null>(null);
 
   // --- Form Setup ---
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-    reset,
-    control,
-    watch,
-    setValue,
-    trigger,
-  } = useForm<SystemFormValues>({
+  const form = useForm<SystemFormValues>({
     resolver: zodResolver(systemModalFormSchema) as Resolver<SystemFormValues>,
     defaultValues: createDefaultFormValues(),
     mode: 'onChange',
   });
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = form;
+
   const selectedSystemTypeId = watch('system_type_id');
   const selectedNodeId = watch('node_id');
 
-  // THE FIX: Determine isRingBased using the DB flag instead of string matching
   const isRingBasedSystem = useMemo(() => {
     if (!systemTypesRaw || !selectedSystemTypeId) return false;
-
-    // We cast to Lookup_typesRowSchema because originalData is untyped in the generic hook return currently
-    // or we can use find on the array.
     const typeRecord = (systemTypesRaw as unknown as Lookup_typesRowSchema[]).find(
       (t) => t.id === selectedSystemTypeId
     );
-
     return typeRecord?.is_ring_based === true;
   }, [systemTypesRaw, selectedSystemTypeId]);
 
@@ -130,7 +125,6 @@ export const SystemModal: FC<SystemModalProps> = ({
     return label.includes('synchronous') || label.includes('sdh');
   }, [selectedSystemTypeLabel]);
 
-  // If it's ring based OR SDH, we need the extra config step
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
   useEffect(() => {
@@ -200,13 +194,6 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
   }, [isOpen, isEditMode, rowData, reset]);
 
-  const handleClose = useCallback(() => {
-    if (isDirty) {
-      if (!window.confirm('You have unsaved changes. Close anyway?')) return;
-    }
-    onClose();
-  }, [onClose, isDirty]);
-
   const onValidSubmit: SubmitHandler<SystemFormValues> = useCallback(
     (formData) => {
       const payload = formData as unknown as SystemFormData;
@@ -236,14 +223,14 @@ export const SystemModal: FC<SystemModalProps> = ({
     }
   };
 
-  const renderFooter = () => (
+  const renderFooter = (
     <div className="flex justify-end gap-2 w-full">
       {step === 2 ? (
         <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
           Back
         </Button>
       ) : (
-        <Button type="button" variant="secondary" onClick={handleClose} disabled={isLoading}>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
           Cancel
         </Button>
       )}
@@ -252,180 +239,173 @@ export const SystemModal: FC<SystemModalProps> = ({
           Next
         </Button>
       ) : (
-        <Button type="submit" disabled={isLoading}>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          onClick={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        >
           {isEditMode ? 'Update' : 'Create'}
         </Button>
       )}
     </div>
   );
 
-  const modalTitle = isEditMode ? 'Edit System' : 'Add System';
-  const formKey = isOpen ? (rowData ? `edit-${rowData.id}` : 'new') : 'closed';
-
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
-      onClose={handleClose}
-      title={modalTitle}
-      className="h-0 w-0 bg-transparent"
-      closeOnOverlayClick={false}
-      closeOnEscape={!isDirty}
+      onClose={onClose}
+      title="System"
+      isEditMode={isEditMode}
+      isLoading={isLoading || loadingNodes}
+      form={form}
+      onSubmit={(data) => onValidSubmit(data)} // Dummy, real submit handled by custom footer
+      widthClass="w-full max-w-4xl"
+      heightClass="h-full"
+      footerContent={renderFooter}
+      subtitle={needsStep2 ? `Step ${step} of 2` : 'Basic Information'}
     >
-      <FormCard
-        key={formKey}
-        standalone
-        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        onCancel={handleClose}
-        isLoading={isLoading || loadingNodes}
-        title={modalTitle}
-        subtitle={needsStep2 ? `Step ${step} of 2` : 'Basic Information'}
-        widthClass="w-full"
-        heightClass="h-full"
-        footerContent={renderFooter()}
-      >
-        {needsStep2 && (
-          <div className="mb-6 px-4">
-            <Stepper
-              currentStep={step}
-              steps={[
-                { id: 1, label: 'Basic Info' },
-                { id: 2, label: 'Configuration' },
-              ]}
-            />
-          </div>
-        )}
+      {needsStep2 && (
+        <div className="mb-6 px-4">
+          <Stepper
+            currentStep={step}
+            steps={[
+              { id: 1, label: 'Basic Info' },
+              { id: 2, label: 'Configuration' },
+            ]}
+          />
+        </div>
+      )}
 
-        <AnimatePresence mode="wait">
-          {step === 1 ? (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <AnimatePresence mode="wait">
+        {step === 1 ? (
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormInput
+                name="system_name"
+                label="System Name"
+                register={register}
+                error={errors.system_name}
+                required
+              />
+              <FormSearchableSelect
+                name="system_type_id"
+                label="System Type"
+                control={control}
+                options={systemTypeOptions}
+                error={errors.system_type_id}
+                required
+              />
+              <FormSearchableSelect
+                name="system_capacity_id"
+                label="Capacity"
+                control={control}
+                options={capacityOptions}
+                error={errors.system_capacity_id}
+                placeholder="Select capacity"
+              />
+              <FormSearchableSelect
+                name="node_id"
+                label="Node / Location"
+                control={control}
+                options={nodeOptions}
+                error={errors.node_id}
+                required
+              />
+              {(selectedSystemTypeLabel.includes('MAAN') ||
+                selectedSystemTypeLabel.includes('Multi-Access Aggregation Node')) && (
                 <FormInput
-                  name="system_name"
-                  label="System Name"
+                  name="maan_node_id"
+                  label="MAAN Node ID"
                   register={register}
-                  error={errors.system_name}
-                  required
+                  error={errors.maan_node_id}
                 />
-                <FormSearchableSelect
-                  name="system_type_id"
-                  label="System Type"
-                  control={control}
-                  options={systemTypeOptions}
-                  error={errors.system_type_id}
-                  required
-                />
-                <FormSearchableSelect
-                  name="system_capacity_id"
-                  label="Capacity"
-                  control={control}
-                  options={capacityOptions}
-                  error={errors.system_capacity_id}
-                  placeholder="Select capacity"
-                />
-                <FormSearchableSelect
-                  name="node_id"
-                  label="Node / Location"
-                  control={control}
-                  options={nodeOptions}
-                  error={errors.node_id}
-                  required
-                />
-                {(selectedSystemTypeLabel.includes('MAAN') ||
-                  selectedSystemTypeLabel.includes('Multi-Access Aggregation Node')) && (
-                  <FormInput
-                    name="maan_node_id"
-                    label="MAAN Node ID"
-                    register={register}
-                    error={errors.maan_node_id}
-                  />
-                )}
-                <FormSearchableSelect
-                  name="maintenance_terminal_id"
-                  label="Maintenance Terminal"
-                  control={control}
-                  options={effectiveTerminalOptions}
-                  error={errors.maintenance_terminal_id}
-                />
-                <FormIPAddressInput
-                  name="ip_address"
-                  label="IP Address"
-                  control={control}
-                  error={errors.ip_address}
-                />
-                <FormDateInput
-                  name="commissioned_on"
-                  label="Commissioned On"
-                  control={control}
-                  error={errors.commissioned_on}
-                />
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {isRingBasedSystem && (
-                  <>
-                    <FormSearchableSelect
-                      name="ring_id"
-                      label="Ring"
-                      control={control}
-                      options={ringOptions}
-                      error={errors.ring_id}
-                      placeholder="Select a ring (optional)"
-                    />
-                    <FormInput
-                      name="order_in_ring"
-                      label="Order in Ring"
-                      type="number"
-                      step="0.1"
-                      register={register}
-                      error={errors.order_in_ring}
-                      placeholder="e.g. 1, 2, 2.1..."
-                    />
-                    <FormSwitch
-                      name="is_hub"
-                      label="Is Hub System"
-                      control={control}
-                      description="Acts as a major aggregation point"
-                    />
-                  </>
-                )}
-                {isSdhSystem && (
-                  <FormInput name="make" label="Make" register={register} error={errors.make} />
-                )}
-                <div className="md:col-span-2">
-                  <FormInput
-                    name="s_no"
-                    label="Serial Number"
-                    register={register}
-                    error={errors.s_no}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <FormTextarea
-                    name="remark"
-                    label="Remark"
+              )}
+              <FormSearchableSelect
+                name="maintenance_terminal_id"
+                label="Maintenance Terminal"
+                control={control}
+                options={effectiveTerminalOptions}
+                error={errors.maintenance_terminal_id}
+              />
+              <FormIPAddressInput
+                name="ip_address"
+                label="IP Address"
+                control={control}
+                error={errors.ip_address}
+              />
+              <FormDateInput
+                name="commissioned_on"
+                label="Commissioned On"
+                control={control}
+                error={errors.commissioned_on}
+              />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {isRingBasedSystem && (
+                <>
+                  <FormSearchableSelect
+                    name="ring_id"
+                    label="Ring"
                     control={control}
-                    error={errors.remark}
+                    options={ringOptions}
+                    error={errors.ring_id}
+                    placeholder="Select a ring (optional)"
                   />
-                </div>
+                  <FormInput
+                    name="order_in_ring"
+                    label="Order in Ring"
+                    type="number"
+                    step="0.1"
+                    register={register}
+                    error={errors.order_in_ring}
+                    placeholder="e.g. 1, 2, 2.1..."
+                  />
+                  <FormSwitch
+                    name="is_hub"
+                    label="Is Hub System"
+                    control={control}
+                    description="Acts as a major aggregation point"
+                  />
+                </>
+              )}
+              {isSdhSystem && (
+                <FormInput name="make" label="Make" register={register} error={errors.make} />
+              )}
+              <div className="md:col-span-2">
+                <FormInput
+                  name="s_no"
+                  label="Serial Number"
+                  register={register}
+                  error={errors.s_no}
+                />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </FormCard>
-    </Modal>
+              <div className="md:col-span-2">
+                <FormTextarea
+                  name="remark"
+                  label="Remark"
+                  control={control}
+                  error={errors.remark}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </BaseFormModal>
   );
 };

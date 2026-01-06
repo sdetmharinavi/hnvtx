@@ -3,16 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
-import {
-  FiDatabase,
-  FiUpload,
-  FiDownload,
-  FiRefreshCw,
-  FiServer,
-  FiSearch,
-  FiGrid,
-  FiList,
-} from 'react-icons/fi';
+import { FiDatabase, FiUpload, FiDownload, FiRefreshCw, FiServer } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { PageHeader, ActionButton } from '@/components/common/page-header';
 import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
@@ -44,11 +35,11 @@ import { formatDate } from '@/utils/formatters';
 import { SystemPortsManagerModal } from '@/components/systems/SystemPortsManagerModal';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
-import { Input, SearchableSelect } from '@/components/common/ui';
 import { BulkActions } from '@/components/common/BulkActions';
 import { SystemCard } from '@/components/systems/SystemCard';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 
 export default function SystemsPage() {
   const router = useRouter();
@@ -95,6 +86,58 @@ export default function SystemsPage() {
     ].includes(role as UserRole);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
+  // --- DROPDOWNS ---
+  const { options: systemTypeOptions, isLoading: loadingTypes } =
+    useLookupTypeOptions('SYSTEM_TYPES');
+  const { options: capacityOptions, isLoading: loadingCaps } =
+    useLookupTypeOptions('SYSTEM_CAPACITY');
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'system_type_id',
+        label: 'System Type',
+        options: systemTypeOptions,
+        isLoading: loadingTypes,
+      },
+      {
+        key: 'system_capacity_id',
+        label: 'Capacity',
+        options: capacityOptions,
+        isLoading: loadingCaps,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'native-select',
+        options: [
+          { value: 'true', label: 'Active' },
+          { value: 'false', label: 'Inactive' },
+        ],
+      },
+      {
+        key: 'sortBy',
+        label: 'Sort',
+        type: 'native-select',
+        options: [
+          { value: 'name', label: 'Name (A-Z)' },
+          { value: 'last_activity', label: 'Last Activity' },
+        ],
+        placeholder: 'Sort By',
+      },
+    ],
+    [systemTypeOptions, capacityOptions, loadingTypes, loadingCaps]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
+
   // --- UPLOAD / EXPORT ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
     onSuccess: (result) => {
@@ -118,10 +161,6 @@ export default function SystemsPage() {
     },
     onError: (err) => toast.error(`Failed to save system: ${err.message}`),
   });
-
-  // --- DROPDOWNS ---
-  const { options: systemTypeOptions } = useLookupTypeOptions('SYSTEM_TYPES');
-  const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
 
   const handleView = useCallback(
     (system: V_systems_completeRowSchema) => {
@@ -318,65 +357,17 @@ export default function SystemsPage() {
         accept=".xlsx, .xls, .csv"
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search system, node, IP..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="System Type"
-              options={systemTypeOptions}
-              // FIX: Use ID key for filter value
-              value={filters.filters.system_type_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_type_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Capacity"
-              options={capacityOptions}
-              // FIX: Use ID key for filter value
-              value={filters.filters.system_capacity_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, system_capacity_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search system, node, IP..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <BulkActions
         selectedCount={bulkActions.selectedCount}

@@ -2,7 +2,6 @@
 -- Description: Contains robust functions for provisioning and deprovisioning end-to-end service paths.
 
 -- FUNCTION 1: Deprovision an existing service path
--- (Moved to top to ensure availability if called internally, though we inline logic for safety)
 CREATE OR REPLACE FUNCTION public.deprovision_service_path(
     p_system_connection_id UUID
 )
@@ -58,33 +57,61 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    -- ID Variables
     v_system_id UUID;
+    v_en_id UUID;
     v_active_status_id UUID;
+    v_link_type_id UUID;
     v_working_path_id UUID;
     v_protection_path_id UUID;
     v_all_fiber_ids UUID[];
-    
-    -- Variables for Error Reporting
+
+    -- Port/Interface Variables
+    v_sn_interface TEXT;
+    v_en_interface TEXT;
+    v_sn_protection_interface TEXT;
+    v_en_protection_interface TEXT;
+
+    -- Error Reporting Variables
     v_err_fiber_no INT;
     v_err_cable_name TEXT;
     v_err_path_name TEXT;
     v_old_path_id UUID;
 BEGIN
-    -- 1. Validation and Setup
-    SELECT system_id INTO v_system_id FROM public.system_connections WHERE id = p_system_connection_id;
+    -- 1. Validation and Data Fetching
+    -- We fetch full topology details (Source/Dest Systems and Ports) + Service Type
+    SELECT 
+        sc.system_id, 
+        sc.en_id,
+        COALESCE(sc.sn_interface, sc.system_working_interface),     -- Source Working Port
+        COALESCE(sc.en_interface),                                  -- Dest Working Port
+        COALESCE(sc.system_protection_interface, sc.sn_interface, sc.system_working_interface), -- Source Protection Port (Fallback to working)
+        COALESCE(sc.en_protection_interface, sc.en_interface),      -- Dest Protection Port (Fallback to working)
+        svc.link_type_id                                            -- Map Service Link Type to Path Type
+    INTO 
+        v_system_id, 
+        v_en_id, 
+        v_sn_interface, 
+        v_en_interface, 
+        v_sn_protection_interface, 
+        v_en_protection_interface,
+        v_link_type_id
+    FROM public.system_connections sc
+    LEFT JOIN public.services svc ON sc.service_id = svc.id
+    WHERE sc.id = p_system_connection_id;
+
     IF NOT FOUND THEN RAISE EXCEPTION 'System connection with ID % not found', p_system_connection_id; END IF;
 
     SELECT id INTO v_active_status_id FROM public.lookup_types WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
-    IF v_active_status_id IS NULL THEN 
-        -- Fallback if 'active' status missing, though lookup should exist
-        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.'; 
+    IF v_active_status_id IS NULL THEN
+        RAISE NOTICE 'Operational status "active" not found, continuing without specific status ID.';
     END IF;
-    
+
     v_all_fiber_ids := p_working_tx_fiber_ids || p_working_rx_fiber_ids || p_protection_tx_fiber_ids || p_protection_rx_fiber_ids;
 
     -- 2. SMART CONFLICT CHECK
     -- Check if any selected fiber is used by a logical path that belongs to a DIFFERENT connection
-    SELECT 
+    SELECT
         oc.fiber_no_sn,
         c.route_name,
         COALESCE(lp.path_name, 'Unknown Path')
@@ -103,53 +130,93 @@ BEGIN
     END IF;
 
     -- 3. AUTO-CLEANUP (Overwrite existing provisioning for this connection)
-    -- Before applying new paths, clear any existing logical paths for this connection ID.
-    -- This allows "Updating" the allocation (e.g. adding protection fibers) without manual de-provisioning.
     FOR v_old_path_id IN SELECT id FROM public.logical_fiber_paths WHERE system_connection_id = p_system_connection_id LOOP
-        -- Release fibers associated with old paths of this connection
-        UPDATE public.ofc_connections 
-        SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_direction = NULL
+        UPDATE public.ofc_connections
+        SET logical_path_id = NULL, fiber_role = NULL, system_id = NULL, path_direction = NULL, source_port = NULL, destination_port = NULL
         WHERE logical_path_id = v_old_path_id;
-        
-        -- Delete the old logical path record
+
         DELETE FROM public.logical_fiber_paths WHERE id = v_old_path_id;
     END LOOP;
 
     -- 4. Create "Working" Logical Path
-    INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, operational_status_id, system_connection_id)
-    VALUES (p_path_name || ' (Working)', v_system_id, 'working', v_active_status_id, p_system_connection_id) 
+    -- Populate ALL topology fields
+    INSERT INTO public.logical_fiber_paths (
+        path_name, 
+        source_system_id, 
+        destination_system_id, -- Fill Dest System
+        source_port,           -- Fill Source Port
+        destination_port,      -- Fill Dest Port
+        path_type_id,          -- Fill Type
+        path_role, 
+        operational_status_id, 
+        system_connection_id
+    )
+    VALUES (
+        p_path_name || ' (Working)', 
+        v_system_id, 
+        v_en_id, 
+        v_sn_interface,
+        v_en_interface,
+        v_link_type_id,
+        'working', 
+        v_active_status_id, 
+        p_system_connection_id
+    )
     RETURNING id INTO v_working_path_id;
 
     -- 5. Assign Fibers to Working Path
-    UPDATE public.ofc_connections 
-    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx'
+    -- Also update physical ports on the fiber record for traceability
+    UPDATE public.ofc_connections
+    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'tx', source_port = v_sn_interface, destination_port = v_en_interface
     WHERE id = ANY(p_working_tx_fiber_ids);
-    
-    UPDATE public.ofc_connections 
-    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx'
+
+    UPDATE public.ofc_connections
+    SET logical_path_id = v_working_path_id, fiber_role = 'working', system_id = v_system_id, path_direction = 'rx', source_port = v_sn_interface, destination_port = v_en_interface
     WHERE id = ANY(p_working_rx_fiber_ids);
 
     -- 6. Handle Protection Path (if provided)
     IF array_length(p_protection_tx_fiber_ids, 1) > 0 THEN
-        INSERT INTO public.logical_fiber_paths (path_name, source_system_id, path_role, working_path_id, operational_status_id, system_connection_id)
-        VALUES (p_path_name || ' (Protection)', v_system_id, 'protection', v_working_path_id, v_active_status_id, p_system_connection_id) 
+        INSERT INTO public.logical_fiber_paths (
+            path_name, 
+            source_system_id, 
+            destination_system_id,
+            source_port,             -- Use Protection Ports
+            destination_port,
+            path_type_id,
+            path_role, 
+            working_path_id, 
+            operational_status_id, 
+            system_connection_id
+        )
+        VALUES (
+            p_path_name || ' (Protection)', 
+            v_system_id, 
+            v_en_id,
+            v_sn_protection_interface, 
+            v_en_protection_interface,
+            v_link_type_id,
+            'protection', 
+            v_working_path_id, 
+            v_active_status_id, 
+            p_system_connection_id
+        ) 
         RETURNING id INTO v_protection_path_id;
-        
-        UPDATE public.ofc_connections 
-        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx'
+
+        UPDATE public.ofc_connections
+        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'tx', source_port = v_sn_protection_interface, destination_port = v_en_protection_interface
         WHERE id = ANY(p_protection_tx_fiber_ids);
 
-        UPDATE public.ofc_connections 
-        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx'
+        UPDATE public.ofc_connections
+        SET logical_path_id = v_protection_path_id, fiber_role = 'protection', system_id = v_system_id, path_direction = 'rx', source_port = v_sn_protection_interface, destination_port = v_en_protection_interface
         WHERE id = ANY(p_protection_rx_fiber_ids);
     END IF;
 
     -- 7. Update Connection Record with Fiber IDs Cache
-    UPDATE public.system_connections 
-    SET 
-        working_fiber_in_ids = p_working_tx_fiber_ids, 
+    UPDATE public.system_connections
+    SET
+        working_fiber_in_ids = p_working_tx_fiber_ids,
         working_fiber_out_ids = p_working_rx_fiber_ids,
-        protection_fiber_in_ids = p_protection_tx_fiber_ids, 
+        protection_fiber_in_ids = p_protection_tx_fiber_ids,
         protection_fiber_out_ids = p_protection_rx_fiber_ids,
         updated_at = NOW()
     WHERE id = p_system_connection_id;
@@ -159,7 +226,7 @@ END;
 $$;
 
 
--- FUNCTION 3: Get structured path details for display
+-- FUNCTION 3: Get structured path details for display (Unchanged but included for completeness)
 CREATE OR REPLACE FUNCTION public.get_service_path_display(p_system_connection_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -193,12 +260,12 @@ aggregated_paths AS (
   GROUP BY path_role, path_direction
 )
 SELECT jsonb_object_agg(
-  CASE 
+  CASE
       WHEN path_role = 'working' AND path_direction = 'tx' THEN 'working_tx'
       WHEN path_role = 'working' AND path_direction = 'rx' THEN 'working_rx'
       WHEN path_role = 'protection' AND path_direction = 'tx' THEN 'protection_tx'
       WHEN path_role = 'protection' AND path_direction = 'rx' THEN 'protection_rx'
-      ELSE path_role || '_' || path_direction 
+      ELSE path_role || '_' || path_direction
   END,
   path_string
 )

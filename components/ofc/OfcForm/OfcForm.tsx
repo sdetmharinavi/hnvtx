@@ -1,9 +1,7 @@
 // path: components/ofc/OfcForm/OfcForm.tsx
-// Main OfcForm component
 import React, { useCallback, useMemo } from 'react';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { Modal } from '@/components/common/ui';
-import { FormCard } from '@/components/common/form/FormCard';
+import { Button } from '@/components/common/ui';
 import { useOfcFormData } from './hooks/useOfcFormData';
 import { useRouteGeneration } from '@/components/ofc/OfcForm/hooks/useRouteGeneration';
 import { useCapacityInference } from '@/components/ofc/OfcForm/hooks/useCapacityInference';
@@ -20,9 +18,9 @@ import {
 } from '@/schemas/zod-schemas';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useNodesData } from '@/hooks/data/useNodesData';
-// THIS IS THE FIX: Import the correct hooks for dropdown data
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { FormSearchableSelect } from '@/components/common/form';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 
 interface OfcFormProps {
   ofcCable?: Ofc_cablesRowSchema;
@@ -40,7 +38,7 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
     register,
     setValue,
     watch,
-    formState: { errors, isDirty },
+    formState: { errors },
   } = form;
 
   // Watch critical form values
@@ -49,9 +47,7 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
   const routeName = watch('route_name');
   const currentOfcTypeId = watch('ofc_type_id');
 
-  // --- DATA FETCHING (REFACTORED) ---
-
-  // 1. Fetch Nodes using the existing useCrudManager setup
+  // --- DATA FETCHING ---
   const { data: nodesData, isLoading: nodesLoading } = useCrudManager<
     'nodes',
     V_nodes_completeRowSchema
@@ -60,8 +56,6 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
     dataQueryHook: useNodesData,
   }).queryResult;
 
-  // 2. THIS IS THE FIX: Use centralized hooks that are offline-first
-  // Request descending order for OFC Types
   const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions(
     'OFC_TYPES',
     'desc'
@@ -70,7 +64,6 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
   const { options: maintenanceTerminalOptions, isLoading: maintenanceTerminalsLoading } =
     useMaintenanceAreaOptions();
 
-  // Custom hooks for complex logic
   const setValueWithType = useCallback(
     <K extends keyof Ofc_cablesInsertSchema>(
       name: K,
@@ -110,7 +103,6 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
     setValue: setValueWithType,
   });
 
-  // Memoized options to prevent unnecessary re-renders
   const nodeOptions = useMemo(
     (): Option[] =>
       nodes.map((node: V_nodes_completeRowSchema) => ({
@@ -133,93 +125,90 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
   const isLoading =
     nodesLoading ||
     ofcTypesLoading ||
-    ownersLoading || // Added owner loading state
+    ownersLoading ||
     maintenanceTerminalsLoading ||
     pageLoading ||
     routeGenerationLoading;
 
   const onValidSubmit = (data: Ofc_cablesInsertSchema) => {
-    onSubmit(data as Ofc_cablesInsertSchema);
+    onSubmit(data);
   };
 
   const onInvalidSubmit: SubmitErrorHandler<Ofc_cablesInsertSchema> = (errors, data) => {
-    console.log('Invalid form submission', errors, 'Invalid form submission', data);
+    console.log('Invalid form submission', errors, data);
   };
 
-  const handleClose = useCallback(() => {
-    if (isDirty) {
-      const confirmClose = window.confirm(
-        'You have unsaved changes. Are you sure you want to close?'
-      );
-      if (!confirmClose) return;
-    }
-    onClose();
-  }, [onClose, isDirty]);
+  // Custom footer for this complex form
+  const customFooter = (
+    <div className="flex justify-end space-x-3 w-full">
+      <Button type="button" onClick={onClose} disabled={isLoading} variant="secondary">
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        disabled={isLoading}
+        onClick={handleSubmit(onValidSubmit, onInvalidSubmit)}
+        variant="primary"
+      >
+        {isLoading ? 'Saving...' : isEdit ? 'Update Cable' : 'Create Cable'}
+      </Button>
+    </div>
+  );
 
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
-      onClose={handleClose}
-      visible={false}
+      onClose={onClose}
+      title="Optical Fiber Cable"
+      isEditMode={isEdit}
+      isLoading={isLoading}
+      form={form}
+      onSubmit={onValidSubmit}
+      size="full"
+      // This class name is now accepted by BaseFormModal
       className="h-screen w-screen transparent bg-gray-700 rounded-2xl"
-      closeOnOverlayClick={false}
-      closeOnEscape={!isDirty}
+      footerContent={customFooter}
     >
-      <FormCard
-        key={isEdit ? ofcCable?.id ?? 'edit' : 'new'}
-        title={isEdit ? 'Edit Optical Fiber Cable' : 'Add Optical Fiber Cable'}
-        subtitle={
-          isEdit
-            ? 'Update the cable details below'
-            : 'Fill in the Optical Fiber Cable details below'
-        }
-        isLoading={isLoading}
-        onCancel={handleClose}
-        onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
-        submitText={isEdit ? 'Update Optical Fiber Cable' : 'Create Optical Fiber Cable'}
-        standalone
-      >
-        <div className="p-6 relative">
-          {isLoading && <LoadingOverlay />}
+      <div className="relative">
+        {isLoading && <LoadingOverlay />}
 
-          <ExistingRoutesAlert routes={existingRoutes} />
+        <ExistingRoutesAlert routes={existingRoutes} />
 
-          <div className="space-y-8">
-            <RouteConfigurationSection
-              control={control}
-              errors={errors}
-              startingNodeOptions={startingNodeOptions}
-              endingNodeOptions={endingNodeOptions}
-              routeName={routeName}
-            />
+        <div className="space-y-8">
+          <RouteConfigurationSection
+            control={control}
+            errors={errors}
+            startingNodeOptions={startingNodeOptions}
+            endingNodeOptions={endingNodeOptions}
+            routeName={routeName}
+          />
 
-            <FormSearchableSelect
-              control={control}
-              name="ofc_owner_id"
-              label="Owner"
-              options={ownerOptions} // Use the new hook data
-              isLoading={ownersLoading} // Add loading state
-            />
+          <FormSearchableSelect
+            control={control}
+            name="ofc_owner_id"
+            label="Owner"
+            options={ownerOptions}
+            isLoading={ownersLoading}
+          />
 
-            <CableSpecificationsSection
-              control={control}
-              register={register}
-              errors={errors}
-              setValue={setValue}
-              watch={watch}
-              ofcTypeOptions={ofcTypeOptions} // Use the new hook data
-              isCapacityLocked={isCapacityLocked}
-            />
+          <CableSpecificationsSection
+            control={control}
+            register={register}
+            errors={errors}
+            setValue={setValue}
+            watch={watch}
+            ofcTypeOptions={ofcTypeOptions}
+            isCapacityLocked={isCapacityLocked}
+          />
 
-            <MaintenanceSection
-              control={control}
-              errors={errors}
-              maintenanceTerminalOptions={maintenanceTerminalOptions} // Use the new hook data
-            />
-          </div>
+          <MaintenanceSection
+            control={control}
+            errors={errors}
+            maintenanceTerminalOptions={maintenanceTerminalOptions}
+          />
         </div>
-      </FormCard>
-    </Modal>
+      </div>
+    </BaseFormModal>
   );
 };
 

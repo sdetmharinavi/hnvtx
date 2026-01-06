@@ -20,12 +20,10 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { TableAction } from '@/components/table';
 import { Row } from '@/hooks/database';
-import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
-import { Input, SearchableSelect } from '@/components/common/ui';
 import { OfcCableCard } from '@/components/ofc/OfcCableCard';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { SelectFilter } from '@/components/common/filters/FilterInputs';
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 
 const OfcPage = () => {
   const router = useRouter();
@@ -54,7 +52,6 @@ const OfcPage = () => {
     localTableName: 'v_ofc_cables_complete',
     dataQueryHook: useOfcData,
     displayNameField: 'route_name',
-    // ADDED: Set default owner to BSNL (UUID provided)
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
   });
 
@@ -67,9 +64,40 @@ const OfcPage = () => {
     role === UserRole.OFCADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- REFACTORED: Use Centralized Dropdown Hooks ---
-  const { options: ofcTypeOptions } = useLookupTypeOptions('OFC_TYPES', 'desc', 'name');
-  const { options: ofcOwnerOptions } = useLookupTypeOptions('OFC_OWNER');
+  // --- DROPDOWNS ---
+  const { options: ofcTypeOptions, isLoading: loadingTypes } = useLookupTypeOptions(
+    'OFC_TYPES',
+    'desc',
+    'name'
+  );
+  const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
+
+  // --- DRY FILTER CONFIG ---
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'sortBy',
+        label: 'Sort',
+        type: 'native-select',
+        placeholder: 'Sort By',
+        options: [
+          { value: 'name', label: 'Name (A-Z)' },
+          { value: 'last_activity', label: 'Last Activity' },
+        ],
+      },
+      { key: 'ofc_type_id', label: 'Cable Type', options: ofcTypeOptions, isLoading: loadingTypes },
+      { key: 'ofc_owner_id', label: 'Owner', options: ofcOwnerOptions, isLoading: loadingOwners },
+    ],
+    [ofcTypeOptions, ofcOwnerOptions, loadingTypes, loadingOwners]
+  );
+
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters]
+  );
+  // -------------------------
 
   const columns = OfcTableColumns(ofcData);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
@@ -137,80 +165,17 @@ const OfcPage = () => {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10">
-        <div className="w-full lg:w-96">
-          <Input
-            placeholder="Search route name, asset no..."
-            value={search.searchQuery}
-            onChange={(e) => search.setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
-            fullWidth
-            clearable
-          />
-        </div>
-
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[150px]">
-            {/* Sort Filter */}
-            <SelectFilter
-              label=""
-              filterKey="sortBy"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={[
-                { value: 'name', label: 'Name (A-Z)' },
-                { value: 'last_activity', label: 'Last Activity' },
-              ]}
-              placeholder="Sort By"
-            />
-          </div>
-
-          <div className="min-w-[160px]">
-            <SelectFilter
-              label=""
-              filterKey="ofc_type_id"
-              filters={filters.filters}
-              setFilters={filters.setFilters}
-              options={ofcTypeOptions}
-              placeholder="Cable Type"
-              sortOptions={false}
-            />
-          </div>
-          <div className="min-w-[160px]">
-            <SearchableSelect
-              placeholder="Owner"
-              options={ofcOwnerOptions}
-              value={filters.filters.ofc_owner_id as string}
-              onChange={(v) => filters.setFilters((prev) => ({ ...prev, ofc_owner_id: v }))}
-              clearable
-            />
-          </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Grid View"
-            >
-              <FiGrid />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Table View"
-            >
-              <FiList />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REUSABLE FILTER BAR */}
+      <GenericFilterBar
+        searchQuery={search.searchQuery}
+        onSearchChange={search.setSearchQuery}
+        searchPlaceholder="Search route name, asset no..."
+        filters={filters.filters}
+        onFilterChange={handleFilterChange}
+        filterConfigs={filterConfigs}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       <BulkActions
         selectedCount={bulkActions.selectedCount}

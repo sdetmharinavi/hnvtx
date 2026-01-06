@@ -13,31 +13,68 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    -- IDs
     v_system_id UUID;
+    v_en_id UUID;
     v_active_status_id UUID;
     v_logical_path_id UUID;
+    v_link_type_id UUID;
+    
+    -- Names & Ports
     v_path_name TEXT;
+    v_sn_interface TEXT;
+    v_en_interface TEXT;
+    v_target_sn_port TEXT;
+    v_target_en_port TEXT;
     v_column_name TEXT;
 BEGIN
-    -- 1. Validation: Get Connection Details
-    SELECT system_id, service_name, connected_system_name 
-    INTO v_system_id, v_path_name
-    FROM public.v_system_connections_complete 
-    WHERE id = p_connection_id;
+    -- 1. Validation: Get Connection Full Details
+    SELECT 
+        sc.system_id, 
+        sc.en_id,
+        COALESCE(sc.service_name, sc.connected_system_name, 'Path'), -- Robust name fallback
+        svc.link_type_id,
+        -- Working Interfaces
+        COALESCE(sc.sn_interface, sc.system_working_interface),
+        sc.en_interface,
+        -- Protection Interfaces
+        COALESCE(sc.system_protection_interface, sc.sn_interface, sc.system_working_interface),
+        COALESCE(sc.en_protection_interface, sc.en_interface)
+    INTO 
+        v_system_id, 
+        v_en_id, 
+        v_path_name, 
+        v_link_type_id,
+        v_sn_interface, 
+        v_en_interface,
+        -- Use temp variables for protection ports logic
+        v_target_sn_port, -- reusing var name locally logic below
+        v_target_en_port
+    FROM public.v_system_connections_complete sc
+    LEFT JOIN public.services svc ON sc.service_id = svc.id
+    WHERE sc.id = p_connection_id;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'System Connection not found.';
     END IF;
 
-    v_path_name := COALESCE(v_path_name, 'Path');
+    -- Determine correct ports based on role
+    IF p_role = 'protection' THEN
+         -- v_target_sn_port/en_port already populated with protection logic above in SELECT
+         -- Actually, let's fix the assignment logic:
+         NULL; -- Logic handled in SELECT via COALESCE priority
+    ELSE
+         -- If working, override the protection vars (which held protection logic) with working logic
+         v_target_sn_port := v_sn_interface;
+         v_target_en_port := v_en_interface;
+    END IF;
 
-    SELECT id INTO v_active_status_id FROM public.lookup_types 
+    SELECT id INTO v_active_status_id FROM public.lookup_types
     WHERE category = 'OFC_PATH_STATUS' AND name = 'active' LIMIT 1;
 
     -- 2. SMART CLEANUP: Remove this fiber ID from ALL array columns in system_connections
-    -- This handles "Moving" the fiber from one connection to another automatically.
     UPDATE public.system_connections
-    SET 
+    SET
         working_fiber_in_ids = array_remove(working_fiber_in_ids, p_fiber_id),
         working_fiber_out_ids = array_remove(working_fiber_out_ids, p_fiber_id),
         protection_fiber_in_ids = array_remove(protection_fiber_in_ids, p_fiber_id),
@@ -54,23 +91,52 @@ BEGIN
     LIMIT 1;
 
     IF v_logical_path_id IS NULL THEN
-        INSERT INTO public.logical_fiber_paths (
-            path_name, source_system_id, path_role, operational_status_id, system_connection_id
-        )
-        VALUES (
-            v_path_name || ' (' || INITCAP(p_role) || ')', 
-            v_system_id, p_role, v_active_status_id, p_connection_id
-        )
-        RETURNING id INTO v_logical_path_id;
+        -- Check if we need to link to a working path (if creating protection)
+        DECLARE 
+            v_working_parent_id UUID;
+        BEGIN
+            IF p_role = 'protection' THEN
+                SELECT id INTO v_working_parent_id FROM public.logical_fiber_paths 
+                WHERE system_connection_id = p_connection_id AND path_role = 'working' LIMIT 1;
+            END IF;
+
+            INSERT INTO public.logical_fiber_paths (
+                path_name, 
+                source_system_id, 
+                destination_system_id, -- Fill Dest
+                source_port,           -- Fill Source Port
+                destination_port,      -- Fill Dest Port
+                path_type_id,          -- Fill Type
+                path_role, 
+                operational_status_id, 
+                system_connection_id,
+                working_path_id        -- Link to parent if protection
+            )
+            VALUES (
+                v_path_name || ' (' || INITCAP(p_role) || ')',
+                v_system_id, 
+                v_en_id,
+                v_target_sn_port,
+                v_target_en_port,
+                v_link_type_id,
+                p_role, 
+                v_active_status_id, 
+                p_connection_id,
+                v_working_parent_id
+            )
+            RETURNING id INTO v_logical_path_id;
+        END;
     END IF;
 
-    -- 4. Update the Fiber Record
+    -- 4. Update the Fiber Record (ofc_connections)
     UPDATE public.ofc_connections
-    SET 
+    SET
         system_id = v_system_id,
         logical_path_id = v_logical_path_id,
         fiber_role = p_role,
         path_direction = p_direction,
+        source_port = v_target_sn_port,
+        destination_port = v_target_en_port,
         updated_at = NOW()
     WHERE id = p_fiber_id;
 
@@ -82,8 +148,8 @@ BEGIN
     END IF;
 
     EXECUTE format('
-        UPDATE public.system_connections 
-        SET %I = array_append(COALESCE(%I, ARRAY[]::uuid[]), $1) 
+        UPDATE public.system_connections
+        SET %I = array_append(COALESCE(%I, ARRAY[]::uuid[]), $1)
         WHERE id = $2', v_column_name, v_column_name)
     USING p_fiber_id, p_connection_id;
 END;
@@ -101,7 +167,7 @@ AS $$
 BEGIN
     -- 1. Remove from system_connections arrays
     UPDATE public.system_connections
-    SET 
+    SET
         working_fiber_in_ids = array_remove(working_fiber_in_ids, p_fiber_id),
         working_fiber_out_ids = array_remove(working_fiber_out_ids, p_fiber_id),
         protection_fiber_in_ids = array_remove(protection_fiber_in_ids, p_fiber_id),
@@ -113,11 +179,13 @@ BEGIN
 
     -- 2. Clear Fiber Record
     UPDATE public.ofc_connections
-    SET 
+    SET
         system_id = NULL,
         logical_path_id = NULL,
         fiber_role = NULL,
         path_direction = NULL,
+        source_port = NULL,
+        destination_port = NULL,
         updated_at = NOW()
     WHERE id = p_fiber_id;
 END;
