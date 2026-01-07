@@ -1,130 +1,29 @@
 // hooks/data/useRingsData.ts
-import { useMemo, useCallback } from 'react';
-import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
-import { V_ringsRowSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
-import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { useGenericDataQuery } from "./useGenericDataQuery";
+import { DEFAULTS } from "@/constants/constants";
 
-export const useRingsData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_ringsRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = useCallback(async (): Promise<V_ringsRowSchema[]> => {
-    
-    // FIX: Use standard SQL syntax for search
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `description ILIKE '%${term}%' OR ` +
-        `ring_type_name ILIKE '%${term}%' OR ` +
-        `maintenance_area_name ILIKE '%${term}%'` +
-      `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_rings',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-      p_order_dir: 'asc'
-    });
-    if (error) throw error;
-    return (data as { data: V_ringsRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
-
-  const localQueryFn = useCallback(() => {
-    // Sort by name locally
-    return localDb.v_rings.orderBy('name').toArray();
-  }, []);
-
-  const {
-    data: allRings = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useLocalFirstQuery<'v_rings'>({
-    queryKey: ['rings-manager-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_rings,
-  });
-
-  const processedData = useMemo(() => {
-    if (!allRings) {
-        return {
-            data: [],
-            totalCount: 0,
-            activeCount: 0,
-            inactiveCount: 0,
-        };
-    }
-
-    let filtered = allRings;
-
-    // 1. Search Filter
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (ring) =>
-          ring.name?.toLowerCase().includes(lowerQuery) ||
-          ring.description?.toLowerCase().includes(lowerQuery) ||
-          ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
-          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // 2. Exact Match Filters (Dropdowns)
+export const useRingsData = useGenericDataQuery<"v_rings">({
+  tableName: "v_rings",
+  searchFields: ["name", "description", "ring_type_name", "maintenance_area_name"],
+  defaultSortField: "name",
+  rpcLimit: DEFAULTS.PAGE_SIZE,
+  filterFn: (r, filters) => {
     if (filters.status) {
-      filtered = filtered.filter(r => String(r.status) === filters.status);
+      const statusBool = filters.status === "true";
+      if (r.status !== statusBool) return false;
     }
-    if (filters.ring_type_id) {
-        filtered = filtered.filter(r => r.ring_type_id === filters.ring_type_id);
-    }
-    if (filters.maintenance_terminal_id) {
-        filtered = filtered.filter(r => r.maintenance_terminal_id === filters.maintenance_terminal_id);
-    }
-    
-    // 3. New Status Filters
-    if (filters.ofc_status) {
-        filtered = filtered.filter(r => r.ofc_status === filters.ofc_status);
-    }
-    if (filters.spec_status) {
-        filtered = filtered.filter(r => r.spec_status === filters.spec_status);
-    }
-    if (filters.bts_status) {
-        filtered = filtered.filter(r => r.bts_status === filters.bts_status);
-    }
+    if (filters.ring_type_id && r.ring_type_id !== filters.ring_type_id) return false;
+    if (
+      filters.maintenance_terminal_id &&
+      r.maintenance_terminal_id !== filters.maintenance_terminal_id
+    )
+      return false;
 
-    // 4. Sorting
-    filtered.sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' })
-    );
+    // Status Selects
+    if (filters.ofc_status && r.ofc_status !== filters.ofc_status) return false;
+    if (filters.spec_status && r.spec_status !== filters.spec_status) return false;
+    if (filters.bts_status && r.bts_status !== filters.bts_status) return false;
 
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((r) => r.status === true).length;
-    const start = (currentPage - 1) * pageLimit;
-    const end = start + pageLimit;
-    const paginatedData = filtered.slice(start, end);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount: totalCount - activeCount,
-    };
-  }, [allRings, searchQuery, filters, currentPage, pageLimit]);
-
-  return { ...processedData, isLoading, isFetching, error, refetch };
-};
+    return true;
+  },
+});

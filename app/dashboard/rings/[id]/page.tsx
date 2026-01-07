@@ -22,7 +22,7 @@ import MeshDiagram from '@/components/map/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
-import { FiberMetric, PortDisplayInfo } from '@/components/map/ClientRingMap';
+import { FiberMetric, PathConfig, PortDisplayInfo } from '@/components/map/ClientRingMap';
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
@@ -34,17 +34,6 @@ type ExtendedRingDetails = V_ringsRowSchema & {
     disabled_segments?: string[];
   } | null;
 };
-
-interface PathConfigForMap {
-  source?: string;
-  sourcePort?: string;
-  dest?: string;
-  destPort?: string;
-  fiberInfo?: string;
-  fiberMetrics?: FiberMetric[];
-  cableName?: string;
-  capacity?: number;
-}
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   if (node.id == null || node.name == null) return null;
@@ -228,7 +217,7 @@ export default function RingMapPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // NEW: Extract unique Logical Path IDs from connections to fetch their names
+  // 6. Extract unique Logical Path IDs from connections
   const relevantLogicalPathIds = useMemo(() => {
     if (!allCableConnections) return [];
     const ids = new Set<string>();
@@ -238,29 +227,35 @@ export default function RingMapPage() {
     return Array.from(ids);
   }, [allCableConnections]);
 
-  // NEW: Fetch Logical Fiber Path Names
+  // 7. Fetch Logical Fiber Path Names AND System Connection IDs
   const { data: logicalFiberPathsMap } = useQuery({
-    queryKey: ['logical-fiber-paths-names', relevantLogicalPathIds],
+    queryKey: ['logical-fiber-paths-info', relevantLogicalPathIds],
     queryFn: async () => {
-      if (relevantLogicalPathIds.length === 0) return new Map<string, string>();
+      if (relevantLogicalPathIds.length === 0)
+        return new Map<string, { name: string; connectionId: string | null }>();
 
       const { data, error } = await supabase
         .from('logical_fiber_paths')
-        .select('id, path_name')
+        .select('id, path_name, system_connection_id')
         .in('id', relevantLogicalPathIds);
 
       if (error) {
-        console.error('Error fetching path names:', error);
-        return new Map<string, string>();
+        console.error('Error fetching path info:', error);
+        return new Map<string, { name: string; connectionId: string | null }>();
       }
 
-      return new Map(data.map((p) => [p.id, p.path_name || 'Unnamed Path']));
+      return new Map(
+        data.map((p) => [
+          p.id,
+          { name: p.path_name || 'Unnamed Path', connectionId: p.system_connection_id },
+        ])
+      );
     },
     enabled: relevantLogicalPathIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
-  // 4a. Fetch Logical Path configurations
+  // 8. Fetch Ring Logical Path configurations (Hub-to-Hub)
   const { data: pathConfigs } = useQuery({
     queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
@@ -288,7 +283,7 @@ export default function RingMapPage() {
     refetchOnMount: true,
   });
 
-  // 6. Calculate Segments
+  // 9. Calculate Topology Segments (Backbone & Spurs)
   const { potentialSegments, spurConnections } = useMemo(() => {
     if (mappedNodes.length === 0) return { potentialSegments: [], spurConnections: [] };
 
@@ -350,9 +345,9 @@ export default function RingMapPage() {
     [activeSegments, spurConnections]
   );
 
-  // 7. BUILD SEGMENT CONFIG MAP (Logic to show fibers on lines)
+  // 10. BUILD SEGMENT CONFIG MAP (Logic to show fibers on lines)
   const segmentConfigMap = useMemo(() => {
-    const map: Record<string, PathConfigForMap> = {};
+    const map: Record<string, PathConfig> = {};
 
     const nodeIdToSystemId = new Map<string, string>();
     mappedNodes.forEach((node) => {
@@ -368,8 +363,9 @@ export default function RingMapPage() {
       return val?.system_name;
     };
 
-    // A. Init configs with Logical Path Data (System info)
-    pathConfigs?.forEach((p) => {
+    // A. Init configs with Logical Ring Path Data (Hub-to-Hub definitions)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pathConfigs?.forEach((p: any) => {
       const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
       const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
 
@@ -380,13 +376,15 @@ export default function RingMapPage() {
         const srcName = getSystemName(p.source_system);
         const dstName = getSystemName(p.destination_system);
 
-        const config: PathConfigForMap = {
+        const config: PathConfig = {
           source: srcName,
           sourcePort: p.source_port,
           dest: dstName,
           destPort: p.destination_port,
           fiberInfo: undefined,
           cableName: undefined,
+          // This connectionId is for the abstract Ring Path, not the physical circuit yet
+          connectionId: p.id,
         };
         map[key1] = config;
         map[key2] = config;
@@ -426,7 +424,9 @@ export default function RingMapPage() {
         const activeFibersOnCable =
           allCableConnections?.filter(
             (c) =>
-              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
+              c.ofc_id === cable.id &&
+              c.status === true &&
+              (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
           ) || [];
 
         if (activeFibersOnCable.length > 0) {
@@ -438,8 +438,9 @@ export default function RingMapPage() {
             const isNormalOrientation = cable.sn_id === physNodeA;
             const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
             const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
-            // Show orientation relative to the map link (A->B)
-            const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
+            const label = isNormalOrientation
+              ? `${snLabel}/${enLabel}`
+              : `${enLabel}/${snLabel}`;
 
             let distance = null;
             let power = null;
@@ -451,28 +452,36 @@ export default function RingMapPage() {
               power = fib.sn_power_dbm;
             }
 
-            // --- CRITICAL FIX FOR CASCADED PATHS ---
-            // Use the rich 'system_name' from the view which contains the Service Name (via join).
-            // This works even if system_id is null, as long as the logical path links to a connection.
             let metricLabel = fib.system_name || 'Unknown Service';
+            let systemConnectionId = fib.system_id; // Default fallback
 
-            // Fallback: If system_name from view is empty (edge case), try looking up the logical path name directly.
-            if (
-              (!metricLabel || metricLabel === 'Unknown Service') &&
-              fib.logical_path_id &&
-              logicalFiberPathsMap
-            ) {
-              const pathName = logicalFiberPathsMap.get(fib.logical_path_id);
-              if (pathName) metricLabel = pathName;
+            // 1. Resolve Logical Path info if available
+            if (fib.logical_path_id && logicalFiberPathsMap) {
+              const pathInfo = logicalFiberPathsMap.get(fib.logical_path_id);
+              if (pathInfo) {
+                // Prefer logical path name over generic system name if present
+                if (!metricLabel || metricLabel === 'Unknown Service') {
+                  metricLabel = pathInfo.name;
+                }
+                // CRITICAL: Get the actual connection ID from the logical path
+                if (pathInfo.connectionId) {
+                  systemConnectionId = pathInfo.connectionId;
+                }
+              }
             }
 
             fiberMetrics.push({
               label: `${metricLabel} (F ${label})`,
               role: fib.fiber_role || 'spare',
               direction:
-                fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
+                fib.path_direction === 'tx'
+                  ? 'Tx'
+                  : fib.path_direction === 'rx'
+                  ? 'Rx'
+                  : '-',
               distance,
               power,
+              connectionId: systemConnectionId, // This allows the Popup to render PathDisplay
             });
           });
         }
@@ -507,10 +516,10 @@ export default function RingMapPage() {
     allCableConnections,
     pathConfigs,
     mappedNodes,
-    logicalFiberPathsMap,
+    logicalFiberPathsMap, // Re-runs when this map updates
   ]);
 
-  // 8. Build Node -> Active Ports Map
+  // 11. Build Node -> Active Ports Map
   const nodePortMap = useMemo(() => {
     const map = new Map<string, PortDisplayInfo[]>();
     if (!rawNodes) return new Map<string, PortDisplayInfo[]>();
@@ -555,7 +564,12 @@ export default function RingMapPage() {
       pathConfigs.forEach((p: any) => {
         const connectionId = p.id;
         addPort(p.source_system_id, p.source_port, connectionId, p.destination_system_id);
-        addPort(p.destination_system_id, p.destination_port, connectionId, p.source_system_id);
+        addPort(
+          p.destination_system_id,
+          p.destination_port,
+          connectionId,
+          p.source_system_id
+        );
       });
     }
 
@@ -567,8 +581,6 @@ export default function RingMapPage() {
 
     return map;
   }, [rawNodes, pathConfigs]);
-
-  // ... (handleToggleSegment, handleBack, renderContent, return JSX remains the same)
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
@@ -624,7 +636,9 @@ export default function RingMapPage() {
 
     const mapNodes = mappedNodes.filter((n) => n.lat != null && n.long != null);
     if (mapNodes.length === 0) {
-      return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
+      return (
+        <div className="flex justify-center h-full items-center">No Geographic Data</div>
+      );
     }
 
     return (
@@ -657,7 +671,8 @@ export default function RingMapPage() {
             },
             {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
-              onClick: () => setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
+              onClick: () =>
+                setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
               variant: 'secondary',
               leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
@@ -688,8 +703,10 @@ export default function RingMapPage() {
             {potentialSegments.map(([start, end], idx) => {
               const key = `${start.id}-${end.id}`;
               const reverseKey = `${end.id}-${start.id}`;
-              const disabledList = ringDetails?.topology_config?.disabled_segments || [];
-              const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
+              const disabledList =
+                ringDetails?.topology_config?.disabled_segments || [];
+              const isActive =
+                !disabledList.includes(key) && !disabledList.includes(reverseKey);
 
               return (
                 <div

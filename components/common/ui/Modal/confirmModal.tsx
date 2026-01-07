@@ -327,7 +327,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="px-6 py-5">
           <div id="modal-description" className="text-gray-600 dark:text-gray-300 leading-relaxed">
             {typeof message === 'string' ? (
-              <p>{message}</p>
+              <div>{message}</div>
             ) : (
               message
             )}

@@ -389,6 +389,8 @@ export default function SystemConnectionsPage() {
     [tracePath]
   );
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
+    console.log(record.id);
+    
     setDetailsConnectionId(record.id);
     setIsDetailsModalOpen(true);
   }, []);
@@ -677,7 +679,7 @@ export default function SystemConnectionsPage() {
           {sortedConnections.length === 0 && !isLoadingConnections && (
             <div className="col-span-full py-16 text-center text-gray-500">
               <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No connections found matching your criteria.</p>
+              <div>No connections found matching your criteria.</div>
             </div>
           )}
         </div>

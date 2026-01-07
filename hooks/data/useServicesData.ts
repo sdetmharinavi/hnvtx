@@ -1,137 +1,30 @@
 // hooks/data/useServicesData.ts
-import { useMemo, useCallback } from 'react';
-import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
-import { V_servicesRowSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
-import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
-import {
-  buildServerSearchString,
-  performClientSearch,
-  performClientSort,
-  performClientPagination,
-} from '@/hooks/database/search-utils';
+import { useGenericDataQuery } from "./useGenericDataQuery";
+import { DEFAULTS } from "@/constants/constants";
 
-export const useServicesData = (
-  params: DataQueryHookParams
-): DataQueryHookReturn<V_servicesRowSchema> => {
-  const { currentPage, pageLimit, filters, searchQuery } = params;
-  const supabase = createClient();
+export const useServicesData = useGenericDataQuery<"v_services">({
+  tableName: "v_services",
+  searchFields: ["name", "node_name", "end_node_name", "description", "link_type_name", "vlan"],
+  defaultSortField: "name",
+  rpcLimit: DEFAULTS.PAGE_SIZE,
+  filterFn: (s, filters) => {
+    if (filters.link_type_id && s.link_type_id !== filters.link_type_id) return false;
 
-  // Search Config
-  const searchFields = useMemo(
-    () =>
-      [
-        'name',
-        'node_name',
-        'end_node_name',
-        'description',
-        'link_type_name',
-        'vlan',
-      ] as (keyof V_servicesRowSchema)[],
-    []
-  );
-  const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
-
-  const onlineQueryFn = useCallback(async (): Promise<V_servicesRowSchema[]> => {
-    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
-
-    // Remove client-side specific filters from RPC call to avoid SQL errors
-    // allocation_status is handled on the client side because checking array length in dynamic RPC SQL is complex
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { allocation_status, ...cleanRpcFilters } = rpcFilters as Record<string, unknown>;
-
-    const { data, error } = await supabase.rpc('get_paged_data', {
-      p_view_name: 'v_services',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: cleanRpcFilters,
-      p_order_by: 'name',
-      p_order_dir: 'asc',
-    });
-
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const resultList = (data as any)?.data || [];
-    return resultList as V_servicesRowSchema[];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filters, serverSearchFields]);
-
-  const localQueryFn = useCallback(() => {
-    return localDb.v_services.orderBy('name').toArray();
-  }, []);
-
-  const {
-    data: allServices = [],
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useLocalFirstQuery<'v_services'>({
-    queryKey: ['v_services-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_services,
-  });
-
-  const processedData = useMemo(() => {
-    let filtered = allServices || [];
-
-    // 1. Search
-    filtered = performClientSearch(filtered, searchQuery, searchFields);
-
-    // 2. Filters
-    if (filters.link_type_id) {
-      filtered = filtered.filter((s) => s.link_type_id === filters.link_type_id);
-    }
     if (filters.status) {
-      const statusBool = filters.status === 'true';
-      filtered = filtered.filter((s) => s.status === statusBool);
+      const statusBool = filters.status === "true";
+      if (s.status !== statusBool) return false;
     }
 
-    // 3. Allocation Status Filter (New)
+    // Custom Allocation Status Logic
     if (filters.allocation_status) {
-      filtered = filtered.filter((s) => {
-        // Safe cast as array, assuming the view returns a JSON array
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const systems = s.allocated_systems as any[];
-        const hasSystems = Array.isArray(systems) && systems.length > 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const systems = s.allocated_systems as any[];
+      const hasSystems = Array.isArray(systems) && systems.length > 0;
 
-        if (filters.allocation_status === 'allocated') {
-          return hasSystems;
-        } else if (filters.allocation_status === 'unallocated') {
-          return !hasSystems;
-        }
-        return true;
-      });
+      if (filters.allocation_status === "allocated" && !hasSystems) return false;
+      if (filters.allocation_status === "unallocated" && hasSystems) return false;
     }
 
-    // 4. Sort
-    filtered = performClientSort(filtered, 'name');
-
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((s) => s.status === true).length;
-    const inactiveCount = totalCount - activeCount;
-
-    // 5. Paginate
-    const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
-
-    return {
-      data: paginatedData,
-      totalCount,
-      activeCount,
-      inactiveCount,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allServices, searchQuery, filters, currentPage, pageLimit]);
-
-  return {
-    ...processedData,
-    isLoading,
-    isFetching,
-    error: error as Error | null,
-    refetch,
-  };
-};
+    return true;
+  },
+});
