@@ -1,3 +1,4 @@
+// components/employee/EmployeeForm.tsx
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +14,8 @@ import {
   EmployeesInsertSchema,
   V_employeesRowSchema,
 } from '@/schemas/zod-schemas';
-import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // Import the new base
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
+import { localDb } from '@/hooks/data/localDb'; // ADDED
 
 interface EmployeeFormProps {
   isOpen: boolean;
@@ -46,6 +48,7 @@ const EmployeeForm = ({
     reset,
     register,
     control,
+    setError, // ADDED
     formState: { errors },
   } = form;
 
@@ -84,6 +87,33 @@ const EmployeeForm = ({
     }
   }, [employee, reset, isOpen]);
 
+  // NEW: Pre-submission validation
+  const handleFormSubmit = async (data: EmployeesInsertSchema) => {
+    // 1. Check for Unique Personnel Number
+    if (data.employee_pers_no && data.employee_pers_no.trim() !== '') {
+      try {
+        const existing = await localDb.employees
+          .where('employee_pers_no')
+          .equals(data.employee_pers_no.trim())
+          .first();
+
+        // If a record exists AND it's not the one we are editing
+        if (existing && (!employee || existing.id !== employee.id)) {
+          setError('employee_pers_no', {
+            type: 'manual',
+            message: 'Personnel Number is already assigned to another employee.',
+          });
+          return; // Stop submission
+        }
+      } catch (err) {
+        console.error('Validation check failed', err);
+      }
+    }
+
+    // 2. Proceed with submission
+    onSubmit(data);
+  };
+
   return (
     <BaseFormModal
       isOpen={isOpen}
@@ -92,7 +122,7 @@ const EmployeeForm = ({
       isEditMode={!!employee}
       isLoading={isLoading}
       form={form}
-      onSubmit={onSubmit}
+      onSubmit={handleFormSubmit}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

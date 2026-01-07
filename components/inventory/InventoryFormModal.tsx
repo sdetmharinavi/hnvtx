@@ -1,3 +1,4 @@
+// components/inventory/InventoryFormModal.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -20,7 +21,8 @@ import {
   useActiveNodeOptions,
   useMaintenanceAreaOptions,
 } from '@/hooks/data/useDropdownOptions';
-import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
+import { localDb } from '@/hooks/data/localDb'; // ADDED
 
 interface InventoryFormModalProps {
   isOpen: boolean;
@@ -58,6 +60,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
     register,
     control,
     reset,
+    setError, // ADDED
     formState: { errors },
   } = form;
 
@@ -88,6 +91,35 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
     }
   }, [isOpen, editingItem, reset]);
 
+  // NEW: Pre-submission validation
+  const handleFormSubmit = async (data: FormSchemaType) => {
+    // 1. Check for Unique Asset Number
+    if (data.asset_no && data.asset_no.trim() !== '') {
+      try {
+        const existing = await localDb.inventory_items
+          .where('asset_no')
+          .equals(data.asset_no.trim())
+          .first();
+
+        // If a record exists with this asset_no AND it's not the record we are currently editing
+        if (existing && (!editingItem || existing.id !== editingItem.id)) {
+          setError('asset_no', {
+            type: 'manual',
+            message: 'This Asset Number is already in use.',
+          });
+          return; // Stop submission
+        }
+      } catch (err) {
+        console.error('Validation check failed', err);
+        // We continue submitting if local check fails to avoid blocking user during DB errors,
+        // relying on server-side constraints as backup.
+      }
+    }
+
+    // 2. Proceed with submission
+    onSubmit(data as Inventory_itemsInsertSchema);
+  };
+
   return (
     <BaseFormModal
       isOpen={isOpen}
@@ -96,7 +128,8 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
       isEditMode={isEditMode}
       isLoading={isLoading}
       form={form}
-      onSubmit={(data) => onSubmit(data as Inventory_itemsInsertSchema)}
+      // Pass our wrapped handler instead of direct submit
+      onSubmit={handleFormSubmit}
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormInput
