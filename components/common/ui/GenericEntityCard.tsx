@@ -158,10 +158,10 @@ export function GenericEntityCard<T>({
                 <item.icon className="w-3.5 h-3.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] text-gray-500 dark:text-gray-500 font-medium uppercase tracking-wide leading-none mb-0.5">
+                <div className="text-gray-500 dark:text-gray-500 font-medium uppercase tracking-wide leading-none mb-0.5">
                   {item.label}
                 </div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
+                <div className=" font-medium text-gray-900 dark:text-gray-200 truncate">
                   {typeof item.value === 'string' ? (
                     <TruncateTooltip text={item.value} copyOnDoubleClick={item.copyable} />
                   ) : (
