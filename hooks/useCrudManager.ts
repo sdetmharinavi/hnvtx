@@ -1,7 +1,7 @@
 // hooks/useCrudManager.ts
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDebounce } from 'use-debounce';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/client';
@@ -26,6 +26,7 @@ import { getTable } from '@/hooks/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { UseQueryResult } from '@tanstack/react-query';
+import { FiWifiOff } from 'react-icons/fi'; // ADDED
 
 export type RecordWithId = {
   id: string | number | null;
@@ -70,7 +71,7 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   displayNameField?: (keyof V & string) | (keyof V & string)[];
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
   idType?: 'string' | 'number';
-  initialFilters?: Filters; // ADDED: Allow setting default filters on init
+  initialFilters?: Filters;
 }
 
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
@@ -81,7 +82,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   displayNameField = 'name',
   processDataForSave,
   idType = 'string',
-  initialFilters = {}, // ADDED: Default to empty object
+  initialFilters = {},
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
@@ -92,7 +93,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
   const [searchQuery, _setSearchQuery] = useState('');
 
-  // MODIFIED: Initialize state with the passed initialFilters
   const [filters, _setFilters] = useState<Filters>(initialFilters);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -145,7 +145,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- SMART SYNC HELPER (Write-Through Cache) ---
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
       const targetTable = localTableName || tableName;
@@ -325,6 +324,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'update',
               payload: { id: idToUpdate, data: processedData },
             });
+            // UPDATED: Descriptive offline toast
+            toast.warning('Update queued (Offline). Sync pending.', { icon: React.createElement(FiWifiOff) });
           } else {
             const tempId = `offline_${uuidv4()}`;
             const newRecord = { ...processedData, id: tempId };
@@ -336,10 +337,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'insert',
               payload: newRecord,
             });
+            // UPDATED: Descriptive offline toast
+            toast.warning('Created offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
           }
           refetch();
           closeModal();
-          toast.info('Saved offline. Will sync when online.');
         } catch (err) {
           toast.error(`Offline operation failed: ${(err as Error).message}`);
         }
@@ -385,7 +387,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { ids: [ids[0]] },
           });
 
-          toast.info('Deleted locally. Will sync when online.');
+          // UPDATED: Descriptive offline toast
+          toast.warning('Deleted offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
           refetch();
         });
       }
@@ -432,6 +435,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               payload: { id, data: { status: newStatus } },
             });
           }
+          // UPDATED: Descriptive offline toast
+          toast.warning('Status updated locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
           refetch();
           handleClearSelection();
         } catch (err) {
@@ -481,7 +486,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           payload: { ids: ids },
         });
 
-        toast.info(`Deleted ${ids.length} items locally. Will sync when online.`);
+        // UPDATED: Descriptive offline toast
+        toast.warning(`Deleted ${ids.length} items locally. Sync pending.`, { icon: React.createElement(FiWifiOff) });
         refetch();
         handleClearSelection();
       });
@@ -523,7 +529,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id: idToUpdate, data: { status: newStatus } },
           });
           refetch();
-          toast.info('Status changed locally.');
+          // UPDATED: Descriptive offline toast
+          toast.warning('Status changed locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
         } catch (err) {
           toast.error(`Offline status update failed: ${(err as Error).message}`);
         }
@@ -554,6 +561,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id, data: updateData },
           });
           refetch();
+          // UPDATED: Descriptive offline toast
+          toast.warning('Edit saved locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
         } catch (err) {
           toast.error(`Offline edit failed: ${(err as Error).message}`);
         }
