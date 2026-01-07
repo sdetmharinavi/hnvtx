@@ -62,6 +62,9 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
   const isLoading = isConnectionLoading || isFibersLoading;
   const hasConnectionId = !!allUniqueConnectionIds[0];
 
+  // FIX: Safely access the label with optional chaining
+  const displayLabel = config?.fiberMetrics?.[0]?.label || 'No Service Alloted';
+
   return (
     <div className="border-b border-gray-200/60 dark:border-gray-700/40 last:border-0">
       {/* Row Header */}
@@ -98,7 +101,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
                 </span>
                 <TruncateTooltip
                   className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
-                  text={config?.fiberMetrics?.[0].label || 'Service Alloted'}
+                  text={displayLabel}
                 />
               </div>
             </>
@@ -106,7 +109,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Activity size={14} className="shrink-0 text-gray-400" />
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                {config?.fiberMetrics?.[0].label || 'No Service Alloted'}
+                {displayLabel}
               </span>
             </div>
           )}

@@ -35,7 +35,6 @@ export const ringConfig: EntityConfig<RingEntity> = {
       label: 'Status',
       type: 'select',
       options: [
-        { value: '', label: 'All Status' },
         { value: 'true', label: 'Active' },
         { value: 'false', label: 'Inactive' },
       ],
