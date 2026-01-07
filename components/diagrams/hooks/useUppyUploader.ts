@@ -6,6 +6,7 @@ import Webcam from '@uppy/webcam';
 import { createClient } from "@/utils/supabase/client";
 import { createOptimizedUppy } from "@/utils/imageOptimization";
 import { smartCompress, convertToWebP, createProgressiveJPEG } from "@/utils/imageOptimization";
+import { useAuthStore } from "@/stores/authStore"; // IMPORTED
 
 export interface UploadedFile {
   public_id: string;
@@ -20,7 +21,6 @@ export interface SelectedFile {
   size: number;
 }
 
-// Export the AppUppy type so components can reference it
 export type AppUppy = Uppy<{ folderId: string | null }, Record<string, never>>;
 
 interface UseUppyUploaderProps {
@@ -44,51 +44,42 @@ export function useUppyUploader({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [processedFiles, setProcessedFiles] = useState<Set<string>>(new Set());
 
+  // GET USER FROM STORE
+  const user = useAuthStore(state => state.user);
+
   useEffect(() => {
-    // Load preferred camera from local storage
     const storedCamera = localStorage.getItem("preferredCamera");
     if (storedCamera === 'user' || storedCamera === 'environment') {
         setFacingMode(storedCamera);
     }
 
-    // Initialize Uppy
     const uppy = createOptimizedUppy({ folderId }) as unknown as AppUppy;
-
-    // THE FIX: Construct Absolute URL to prevent relative path issues
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const endpoint = `${origin}/api/upload`;
 
-    // THE FIX: Cast to 'any' to bypass strict type definition of XHRUploadOptions 
-    // which sometimes misses 'getResponseError' in specific versions
     uppy.use(XHRUpload, {
       endpoint: endpoint,
       method: "POST",
       formData: true,
       fieldName: "file",
       bundle: false,
-      // Removed retryDelays as it is not natively supported by XHRUpload in this version
       headers: {
         "x-folder-id": folderId || "",
       },
       limit: 5,
-      // THE FIX: Robust error parsing
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getResponseError(responseText: string, response: any) {
-        // console.log("Raw Upload Response:", responseText); // Debugging
         try {
             const json = JSON.parse(responseText);
             if (json.error) return new Error(json.error);
         } catch (e) {
-          console.error(e);
-          
-            // ignore JSON parse error
+            console.error(e);
         }
         return new Error(response.statusText || "Upload failed due to network or server error");
       }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    // Configure Webcam
     uppy.use(Webcam, {
       onBeforeSnapshot: () => Promise.resolve(),
       countdown: false,
@@ -100,18 +91,13 @@ export function useUppyUploader({
       showVideoSourceDropdown: true,
     });
 
-    // Removed specific webcam 'error' listener here because it was catching 
-    // general upload errors and displaying them as "Camera error".
-    // General errors are handled by 'upload-error' below.
-
-    // Pre-processing logic (Compression)
     uppy.addPreProcessor(async (fileIDs) => {
       await Promise.all(fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
         if (file?.type?.startsWith("image/") && file.data instanceof Blob) {
           try {
-            const sourceFile = file.data instanceof File 
-              ? file.data 
+            const sourceFile = file.data instanceof File
+              ? file.data
               : new File([file.data], file.name || "image", { type: file.type });
 
             let optimized = await smartCompress(sourceFile);
@@ -130,19 +116,18 @@ export function useUppyUploader({
       }));
     });
 
-    // Events
     uppy.on("upload", () => {
       setIsUploading(true);
       setCameraError(null);
-      setError(""); // Clear previous errors
+      setError("");
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     uppy.on("upload-success", async (file: UppyFile<any, any> | undefined, response: any) => {
       if (!file || processedFiles.has(file.id)) return;
-      
+
       setProcessedFiles(prev => new Set(prev).add(file.id));
-      
+
       const responseBody = response.body;
       if (!responseBody?.public_id) {
           setError("Upload failed: Missing file ID in response");
@@ -150,8 +135,8 @@ export function useUppyUploader({
       }
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
+        // PERFORMANCE FIX: Use the user object from store directly
+        if (!user || !user.id) throw new Error("Not authenticated");
 
         const fileRecord = {
             user_id: user.id,
@@ -171,7 +156,6 @@ export function useUppyUploader({
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Database save failed";
         setError(msg);
-        // Allow retry by removing from processed
         setProcessedFiles(prev => {
             const next = new Set(prev);
             next.delete(file.id);
@@ -182,7 +166,6 @@ export function useUppyUploader({
 
     uppy.on("upload-error", (_file, error) => {
         console.error("Uppy Upload Error:", error);
-        // Use the error message returned by getResponseError
         setError(error.message || "Upload failed");
         setIsUploading(false);
     });
@@ -190,7 +173,7 @@ export function useUppyUploader({
     uppy.on("complete", (result) => {
         setIsUploading(false);
         if (result && result.successful && Array.isArray(result.successful) && result.successful.length > 0) {
-            setError(""); 
+            setError("");
             setSelectedFiles([]);
             setTimeout(() => setProcessedFiles(new Set()), 1000);
         }
@@ -217,8 +200,9 @@ export function useUppyUploader({
         uppy.destroy();
         uppyRef.current = null;
     };
+  // Added 'user' to dependency array to ensure up-to-date user ID is available
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folderId, facingMode]); 
+  }, [folderId, facingMode, user]);
 
   const handleStartUpload = () => {
     if (!folderId) {
