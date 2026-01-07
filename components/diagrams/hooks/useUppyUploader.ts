@@ -74,12 +74,12 @@ export function useUppyUploader({
       // THE FIX: Robust error parsing
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getResponseError(responseText: string, response: any) {
-        console.log("Raw Upload Response:", responseText); // Debugging
+        // console.log("Raw Upload Response:", responseText); // Debugging
         try {
             const json = JSON.parse(responseText);
             if (json.error) return new Error(json.error);
         } catch (e) {
-          console.log(e);
+          console.error(e);
           
             // ignore JSON parse error
         }

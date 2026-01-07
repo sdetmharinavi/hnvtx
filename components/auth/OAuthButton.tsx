@@ -7,11 +7,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { FaGoogle } from 'react-icons/fa';
 import { LoadingSpinner } from '../common/ui/LoadingSpinner/LoadingSpinner';
 
-const debug = (...args: unknown[]) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[OAuthButton]', ...args);
-  }
-};
+// const debug = (...args: unknown[]) => {
+//   if (process.env.NODE_ENV === 'development') {
+//     console.log('[OAuthButton]', ...args);
+//   }
+// };
 
 interface OAuthButtonProps {
   provider: string;
@@ -45,30 +45,31 @@ export function OAuthButton({
   //  Remove authState and isLocalLoading from dependencies
   // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
-    debug('handleGoogleSignIn called');
+    // debug('handleGoogleSignIn called');
 
     // Prevent multiple clicks - check ref instead of state
     if (isProcessingRef.current) {
-      debug('Already processing, ignoring click');
+      // debug('Already processing, ignoring click');
       return;
     }
 
     try {
-      debug('Setting loading state');
+      // debug('Setting loading state');
       isProcessingRef.current = true;
       setIsLocalLoading(true);
       setIsOAuthInProgress(true);
       sessionStorage.setItem('oauth_in_progress', 'true');
 
-      debug('Calling signInWithGoogle');
+      // debug('Calling signInWithGoogle');
       await signInWithGoogle();
-      debug('signInWithGoogle completed');
+      // debug('signInWithGoogle completed');
     } catch (error) {
-      debug('OAuth error:', error);
+      // debug('OAuth error:', error);
+      console.error('OAuth error:', error);
       sessionStorage.removeItem('oauth_in_progress');
       setIsOAuthInProgress(false);
     } finally {
-      debug('Cleaning up');
+      // debug('Cleaning up');
       isProcessingRef.current = false;
       setIsLocalLoading(false);
       sessionStorage.removeItem('oauth_in_progress');
@@ -88,12 +89,12 @@ export function OAuthButton({
   const isButtonDisabled = disabled || isLoading;
   const config = providerConfig[provider as keyof typeof providerConfig];
 
-  debug('Rendering with state:', {
-    isLocalLoading,
-    authState,
-    isOAuthInProgress,
-    isLoading,
-  });
+  // debug('Rendering with state:', {
+  //   isLocalLoading,
+  //   authState,
+  //   isOAuthInProgress,
+  //   isLoading,
+  // });
 
   return (
     <button

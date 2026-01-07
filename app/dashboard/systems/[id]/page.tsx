@@ -389,7 +389,6 @@ export default function SystemConnectionsPage() {
     [tracePath]
   );
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
-    console.log(record.id);
     
     setDetailsConnectionId(record.id);
     setIsDetailsModalOpen(true);

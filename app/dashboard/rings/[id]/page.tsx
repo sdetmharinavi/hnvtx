@@ -424,9 +424,7 @@ export default function RingMapPage() {
         const activeFibersOnCable =
           allCableConnections?.filter(
             (c) =>
-              c.ofc_id === cable.id &&
-              c.status === true &&
-              (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
+              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
           ) || [];
 
         if (activeFibersOnCable.length > 0) {
@@ -436,11 +434,9 @@ export default function RingMapPage() {
 
           activeFibersOnCable.forEach((fib) => {
             const isNormalOrientation = cable.sn_id === physNodeA;
-            const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
-            const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
-            const label = isNormalOrientation
-              ? `${snLabel}/${enLabel}`
-              : `${enLabel}/${snLabel}`;
+            // const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
+            // const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
+            // const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
 
             let distance = null;
             let power = null;
@@ -471,14 +467,10 @@ export default function RingMapPage() {
             }
 
             fiberMetrics.push({
-              label: `${metricLabel} (F ${label})`,
+              label: `${metricLabel}`,
               role: fib.fiber_role || 'spare',
               direction:
-                fib.path_direction === 'tx'
-                  ? 'Tx'
-                  : fib.path_direction === 'rx'
-                  ? 'Rx'
-                  : '-',
+                fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
               distance,
               power,
               connectionId: systemConnectionId, // This allows the Popup to render PathDisplay
@@ -564,12 +556,7 @@ export default function RingMapPage() {
       pathConfigs.forEach((p: any) => {
         const connectionId = p.id;
         addPort(p.source_system_id, p.source_port, connectionId, p.destination_system_id);
-        addPort(
-          p.destination_system_id,
-          p.destination_port,
-          connectionId,
-          p.source_system_id
-        );
+        addPort(p.destination_system_id, p.destination_port, connectionId, p.source_system_id);
       });
     }
 
@@ -636,9 +623,7 @@ export default function RingMapPage() {
 
     const mapNodes = mappedNodes.filter((n) => n.lat != null && n.long != null);
     if (mapNodes.length === 0) {
-      return (
-        <div className="flex justify-center h-full items-center">No Geographic Data</div>
-      );
+      return <div className="flex justify-center h-full items-center">No Geographic Data</div>;
     }
 
     return (
@@ -671,8 +656,7 @@ export default function RingMapPage() {
             },
             {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',
-              onClick: () =>
-                setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
+              onClick: () => setViewMode((prev) => (prev === 'map' ? 'schematic' : 'map')),
               variant: 'secondary',
               leftIcon: viewMode === 'map' ? <FiGrid /> : <FiMap />,
             },
@@ -703,10 +687,8 @@ export default function RingMapPage() {
             {potentialSegments.map(([start, end], idx) => {
               const key = `${start.id}-${end.id}`;
               const reverseKey = `${end.id}-${start.id}`;
-              const disabledList =
-                ringDetails?.topology_config?.disabled_segments || [];
-              const isActive =
-                !disabledList.includes(key) && !disabledList.includes(reverseKey);
+              const disabledList = ringDetails?.topology_config?.disabled_segments || [];
+              const isActive = !disabledList.includes(key) && !disabledList.includes(reverseKey);
 
               return (
                 <div
