@@ -14,20 +14,19 @@ export function useMutationQueue() {
   const isProcessing = useRef(false);
 
   // Fetch all tasks for the UI list
-  const allTasks = useLiveQuery(() => 
-    localDb.mutation_queue.orderBy('timestamp').reverse().toArray(),
+  const allTasks = useLiveQuery(
+    () => localDb.mutation_queue.orderBy('timestamp').reverse().toArray(),
     []
   );
 
-  const pendingCount = allTasks?.filter(t => t.status === 'pending' || t.status === 'processing').length ?? 0;
-  const failedCount = allTasks?.filter(t => t.status === 'failed').length ?? 0;
+  const pendingCount =
+    allTasks?.filter((t) => t.status === 'pending' || t.status === 'processing').length ?? 0;
+  const failedCount = allTasks?.filter((t) => t.status === 'failed').length ?? 0;
 
   const processQueue = useCallback(async () => {
     if (isProcessing.current || !isOnline) return;
 
-    const tasksToProcess = await localDb.mutation_queue
-      .where('status').equals('pending')
-      .toArray();
+    const tasksToProcess = await localDb.mutation_queue.where('status').equals('pending').toArray();
 
     if (tasksToProcess.length === 0) return;
 
@@ -36,7 +35,10 @@ export function useMutationQueue() {
 
     for (const task of tasksToProcess) {
       try {
-        await localDb.mutation_queue.update(task.id!, { status: 'processing', lastAttempt: new Date().toISOString() });
+        await localDb.mutation_queue.update(task.id!, {
+          status: 'processing',
+          lastAttempt: new Date().toISOString(),
+        });
         let error: Error | null = null;
 
         switch (task.type) {
@@ -44,7 +46,10 @@ export function useMutationQueue() {
             ({ error } = await supabase.from(task.tableName).insert(task.payload));
             break;
           case 'update':
-            ({ error } = await supabase.from(task.tableName).update(task.payload.data).eq('id', task.payload.id));
+            ({ error } = await supabase
+              .from(task.tableName)
+              .update(task.payload.data)
+              .eq('id', task.payload.id));
             break;
           case 'delete':
             ({ error } = await supabase.from(task.tableName).delete().in('id', task.payload.ids));
@@ -52,11 +57,10 @@ export function useMutationQueue() {
         }
 
         if (error) throw error;
-        
+
         // Success
         await localDb.mutation_queue.delete(task.id!);
         console.log(`✅ [Queue] Processed task #${task.id}`);
-
       } catch (err) {
         console.error(`❌ [Queue] Failed task #${task.id}:`, err);
         await localDb.mutation_queue.update(task.id!, {
@@ -66,16 +70,19 @@ export function useMutationQueue() {
         });
       }
     }
-    
+
     // Check if any failed remaining to update toast state
     const remainingFailed = await localDb.mutation_queue.where('status').equals('failed').count();
-    
+
     if (remainingFailed > 0) {
-      toast.error(`${remainingFailed} changes failed to sync. Click the indicator to view details.`, { id: 'mutation-sync' });
+      toast.error(
+        `${remainingFailed} changes failed to sync. Click the indicator to view details.`,
+        { id: 'mutation-sync' }
+      );
     } else {
-      toast.success("All changes synced successfully!", { id: 'mutation-sync' });
+      toast.success('All changes synced successfully!', { id: 'mutation-sync' });
     }
-    
+
     isProcessing.current = false;
     await queryClient.invalidateQueries();
   }, [isOnline, supabase, queryClient]);
@@ -95,7 +102,7 @@ export function useMutationQueue() {
 
   const removeTask = async (id: number) => {
     await localDb.mutation_queue.delete(id);
-    toast.info("Change discarded from queue.");
+    toast.info('Change discarded from queue.');
   };
 
   return {
@@ -104,16 +111,18 @@ export function useMutationQueue() {
     failedCount,
     processQueue,
     retryTask,
-    removeTask
+    removeTask,
   };
 }
 
-export const addMutationToQueue = async (task: Omit<MutationTask, 'id' | 'timestamp' | 'status' | 'attempts'>): Promise<void> => {
+export const addMutationToQueue = async (
+  task: Omit<MutationTask, 'id' | 'timestamp' | 'status' | 'attempts'>
+): Promise<void> => {
   await localDb.mutation_queue.add({
     ...task,
     timestamp: new Date().toISOString(),
     status: 'pending',
     attempts: 0,
   });
-  toast.info("Offline. Change saved to queue.");
+  toast.info('Offline. Change saved to queue.');
 };

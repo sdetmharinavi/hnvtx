@@ -91,7 +91,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
     }
   }, [isOpen, editingItem, reset]);
 
-  // NEW: Pre-submission validation
+  // NEW: Pre-submission validation against localDb
   const handleFormSubmit = async (data: FormSchemaType) => {
     // 1. Check for Unique Asset Number
     if (data.asset_no && data.asset_no.trim() !== '') {
@@ -102,6 +102,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
           .first();
 
         // If a record exists with this asset_no AND it's not the record we are currently editing
+        // Note: We check against editingItem.id (View) vs existing.id (Table), which matches.
         if (existing && (!editingItem || existing.id !== editingItem.id)) {
           setError('asset_no', {
             type: 'manual',
@@ -110,9 +111,8 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
           return; // Stop submission
         }
       } catch (err) {
-        console.error('Validation check failed', err);
-        // We continue submitting if local check fails to avoid blocking user during DB errors,
-        // relying on server-side constraints as backup.
+        console.error('Local validation check failed', err);
+        // Continue to server validation if local check fails (fail-open for UX)
       }
     }
 
@@ -128,7 +128,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
       isEditMode={isEditMode}
       isLoading={isLoading}
       form={form}
-      // Pass our wrapped handler instead of direct submit
+      // Use the wrapped handler
       onSubmit={handleFormSubmit}
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
