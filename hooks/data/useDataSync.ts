@@ -19,67 +19,68 @@ interface EntitySyncConfig {
 // Configuration Map for Sync Strategies
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   // --- Incremental Sync Tables (True Append-Only / History) ---
+  // These tables act as logs and are rarely/never deleted physically, safe for incremental.
   'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
   'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
   'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
   'inventory_transactions': { strategy: 'incremental', timestampColumn: 'created_at' },
-  'user_activity_logs': { strategy: 'incremental', timestampColumn: 'created_at' }, 
-  'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' }, 
+  'user_activity_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
+  'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' },
 
-  // --- RAW TABLES (Safe for Incremental if updated_at is reliable) ---
-  'systems': { strategy: 'incremental', timestampColumn: 'updated_at' },
-  'system_connections': { strategy: 'incremental', timestampColumn: 'updated_at' },
-  'ports_management': { strategy: 'incremental', timestampColumn: 'updated_at' },
-  'ofc_connections': { strategy: 'incremental', timestampColumn: 'updated_at' }, 
-  'services': { strategy: 'incremental', timestampColumn: 'updated_at' },
+  // --- FULL SYNC TABLES (Operational Data) ---
+  // Changed from 'incremental' to 'full' to ensure deleted records are removed locally.
+  'systems': { strategy: 'full' },
+  'system_connections': { strategy: 'full' },
+  'ports_management': { strategy: 'full' },
+  'ofc_connections': { strategy: 'full' },
+  'services': { strategy: 'full' },
+  'nodes': { strategy: 'full' },
+  'rings': { strategy: 'full' },
+  'ofc_cables': { strategy: 'full' },
 
-  // --- VIEWS (Reverted to FULL SYNC to prevent stale joins) ---
-  // Views involve joins. If a joined table updates, the view row changes
-  // but the primary ID's updated_at might not. This leads to stale local data
-  // with incremental sync. Reverting to FULL for data integrity.
+  // --- VIEWS ---
+  // Views must always use full sync because a change in a joined table 
+  // might not update the 'updated_at' field of the primary ID in the view.
   'v_systems_complete': { strategy: 'full' },
   'v_system_connections_complete': { strategy: 'full' },
   'v_ports_management_complete': { strategy: 'full' },
-  'v_ofc_connections_complete': { strategy: 'full' }, 
+  'v_ofc_connections_complete': { strategy: 'full' },
   'v_services': { strategy: 'full' },
-
-  // --- Full Sync Tables (Reference / Small) ---
-  'lookup_types': { strategy: 'full' },
-  'v_lookup_types': { strategy: 'full' },
-  'employee_designations': { strategy: 'full' },
-  'user_profiles': { strategy: 'full' },
-  'v_user_profiles_extended': { strategy: 'full' },
-  'maintenance_areas': { strategy: 'full' },
-  'v_maintenance_areas': { strategy: 'full' },
-  'employees': { strategy: 'full' },
-  'v_employees': { strategy: 'full' },
-  'nodes': { strategy: 'full' },
   'v_nodes_complete': { strategy: 'full' },
   'v_ring_nodes': { strategy: 'full' },
-  'rings': { strategy: 'full' },
   'v_rings': { strategy: 'full' },
-  'ring_based_systems': { strategy: 'full' },
-  'ofc_cables': { strategy: 'full' },
   'v_ofc_cables_complete': { strategy: 'full' },
   'v_cable_utilization': { strategy: 'full' },
-  'logical_fiber_paths': { strategy: 'full' },
   'v_end_to_end_paths': { strategy: 'full' },
+  'v_inventory_items': { strategy: 'full' },
+  'v_e_files_extended': { strategy: 'full' },
+  'v_employee_designations': { strategy: 'full' },
+  'v_junction_closures_complete': { strategy: 'full' },
+  'v_cable_segments_at_jc': { strategy: 'full' },
+  'v_maintenance_areas': { strategy: 'full' },
+  'v_lookup_types': { strategy: 'full' },
+  'v_user_profiles_extended': { strategy: 'full' },
+  'v_employees': { strategy: 'full' },
+
+  // --- Reference & Small Tables ---
+  'lookup_types': { strategy: 'full' },
+  'employee_designations': { strategy: 'full' },
+  'user_profiles': { strategy: 'full' },
+  'maintenance_areas': { strategy: 'full' },
+  'employees': { strategy: 'full' },
+  'ring_based_systems': { strategy: 'full' },
+  'logical_fiber_paths': { strategy: 'full' },
   'logical_paths': { strategy: 'full' },
   'inventory_items': { strategy: 'full' },
-  'v_inventory_items': { strategy: 'full' },
   'diary_notes': { strategy: 'full' },
   'e_files': { strategy: 'full' },
-  'v_e_files_extended': { strategy: 'full' },
   'files': { strategy: 'full' },
   'folders': { strategy: 'full' },
   'cable_segments': { strategy: 'full' },
   'junction_closures': { strategy: 'full' },
   'fiber_splices': { strategy: 'full' },
   'logical_path_segments': { strategy: 'full' },
-  'sdh_connections': { strategy: 'full' },
-  'v_employee_designations': { strategy: 'full' },
-  'v_junction_closures_complete': { strategy: 'full' },
-  'v_cable_segments_at_jc': { strategy: 'full' }
+  'sdh_connections': { strategy: 'full' }
 };
 
 async function performFullSync(
@@ -151,7 +152,7 @@ async function performIncrementalSync(
   while (hasMore) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filters: any = {};
-    
+
     if (lastTimestamp) {
       filters[timestampColumn] = { operator: '>', value: lastTimestamp };
     }
@@ -161,7 +162,7 @@ async function performIncrementalSync(
       p_limit: BATCH_SIZE,
       p_offset: offset,
       p_filters: filters,
-      p_order_by: timestampColumn, 
+      p_order_by: timestampColumn,
       p_order_dir: 'asc'
     });
 
@@ -225,6 +226,7 @@ export async function syncEntity(
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
+    // We throw to let the parent Promise.allSettled or try/catch block handle the UI feedback
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -239,9 +241,9 @@ export function useDataSync() {
     queryFn: async () => {
       try {
         const failures: string[] = [];
-        
         const entitiesToSync = Object.keys(SYNC_CONFIG) as PublicTableOrViewName[];
 
+        // We process sequentially to avoid overwhelming the client/network
         for (const entity of entitiesToSync) {
           try {
               await syncEntity(supabase, localDb, entity);
