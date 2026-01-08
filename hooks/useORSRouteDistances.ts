@@ -1,6 +1,6 @@
 // path: hooks/useORSRouteDistances.ts
 import { useQueries } from '@tanstack/react-query';
-import { RingMapNode } from '@/components/map/types/node';
+import { RingMapNode } from '@/components/map/ClientRingMap/types';
 import { useMemo } from 'react';
 
 // --- Module-level Singleton for Rate-Limited Fetching ---

@@ -1,5 +1,5 @@
 // utils/mapUtils.ts
-import { MapNode } from "@/components/map/types/node";
+import { MapNode } from "@/components/map/ClientRingMap/types";
 import L from "leaflet";
 import { localDb } from "@/hooks/data/localDb";
 
