@@ -14,8 +14,7 @@ import { MapControls } from './MapControls';
 import { MapController } from './controllers/MapController';
 import { FullscreenControl } from './controllers/FullscreenControl';
 import { MapFlyToController } from './controllers/MapFlyToController';
-import { RingMapNode, MapNode } from '@/components/map/types/node';
-import { PathConfig, PortDisplayInfo } from './types';
+import { MapNode, PathConfig, PortDisplayInfo, RingMapNode } from './types';
 
 interface ClientRingMapProps {
   nodes: MapNode[];
