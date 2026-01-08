@@ -93,7 +93,8 @@ const MeshConnectionLine = ({
 
   // Apply curve only to backbone (non-spur) segments to create the ring effect
   // Offset multiplier determines the "roundness" of the ring
-  const positions = (isSpur || nodesLength !==2 ) ? [startPos, endPos] : getCurvedPath(startPos, endPos, 0.15);
+  const positions =
+    isSpur || nodesLength !== 2 ? [startPos, endPos] : getCurvedPath(startPos, endPos, 0.15);
 
   return (
     <Polyline
@@ -401,7 +402,7 @@ export default function MeshDiagram({
           return (
             <MeshConnectionLine
               key={`${nodeA.id}-${nodeB.id}-${index}`}
-              nodesLength = {nodes.length}
+              nodesLength={nodes.length}
               startPos={posA}
               endPos={posB}
               isSpur={isSpur}
