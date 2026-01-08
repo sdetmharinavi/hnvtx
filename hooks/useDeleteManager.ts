@@ -1,4 +1,4 @@
-// path: hooks/useDeleteManager.ts
+// hooks/useDeleteManager.ts
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { useTableBulkOperations } from "@/hooks/database";
@@ -24,7 +24,6 @@ interface UseDeleteManagerProps {
   onSuccess?: (deletedIds: string[]) => void;
 }
 
-// New type for custom delete handlers (e.g. offline queue)
 type CustomDeleteHandler = (ids: string[]) => Promise<void>;
 
 export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps) {
@@ -32,23 +31,18 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [itemsToDelete, setItemsToDelete] = useState<DeleteItem[]>([]);
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
   const [itemToDelete, setItemToDelete] = useState<DeleteItem | null>(null);
-
-  // NEW: State to hold a one-time custom handler for the current operation
   const [customDeleteAction, setCustomDeleteAction] = useState<CustomDeleteHandler | null>(null);
+  const [isCustomLoading, setIsCustomLoading] = useState(false);
 
   const supabase = createClient();
-
   const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(
     supabase,
     tableName
   ).bulkDelete;
   const { mutate: userDelete, isPending: isUserDeletePending } = useAdminBulkDeleteUsers();
 
-  // We manage our own loading state for custom actions
-  const [isCustomLoading, setIsCustomLoading] = useState(false);
   const isPending = isGenericDeletePending || isUserDeletePending || isCustomLoading;
 
-  // UPDATED: Accept an optional customHandler
   const deleteSingle = useCallback((item: DeleteItem, customHandler?: CustomDeleteHandler) => {
     setItemsToDelete([item]);
     setItemToDelete(item);
@@ -57,7 +51,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setIsConfirmModalOpen(true);
   }, []);
 
-  // UPDATED: Accept an optional customHandler
   const deleteMultiple = useCallback((items: DeleteItem[], customHandler?: CustomDeleteHandler) => {
     setItemsToDelete(items);
     setItemToDelete(null);
@@ -70,7 +63,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     setItemsToDelete([]);
     setItemToDelete(null);
     setBulkFilter(filter);
-    setCustomDeleteAction(null); // Bulk filter delete is complex, usually online only
+    setCustomDeleteAction(null);
     setIsConfirmModalOpen(true);
   }, []);
 
@@ -91,12 +84,11 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       setIsCustomLoading(true);
       try {
         await customDeleteAction(idsToDelete);
-        // Custom handler should handle its own toasts, but we ensure cleanup
         onSuccess?.(idsToDelete);
         handleCancel();
       } catch (error) {
         console.error("Custom delete failed:", error);
-        toast.error("Failed to delete items.");
+        // Toast is handled by UI/Action usually, but adding a fallback here
       } finally {
         setIsCustomLoading(false);
       }
@@ -117,20 +109,23 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       },
       onError: (err: Error) => {
         const pgError = err as unknown as PostgrestError;
+
+        // THE FIX: Enhanced Error Parsing for Foreign Key Violations
         if (pgError.code === "23503") {
-          const matches = pgError.message.match(/on table "([^"]+)"/g);
-          let referencingTable = "another table";
-          if (matches && matches.length >= 2) {
-            const lastMatch = matches[matches.length - 1];
-            const tableNameMatch = lastMatch.match(/"([^"]+)"/);
-            if (tableNameMatch) referencingTable = tableNameMatch[1];
-          } else if (pgError.details) {
-            const detailMatch = pgError.details.match(/from table "([^"]+)"/);
-            if (detailMatch) referencingTable = detailMatch[1];
+          // Extracts table name from: '... update or delete on table "systems" violates foreign key constraint ... on table "system_connections"'
+          const details = pgError.details || pgError.message;
+          const tableMatch = details.match(/table "([^"]+)"/g);
+
+          let blockingTable = "another record";
+          if (tableMatch && tableMatch.length >= 2) {
+            // The second match is usually the referencing (blocking) table
+            // E.g. "table "systems"" ... "table "system_connections""
+            blockingTable = tableMatch[1].replace(/"/g, "").replace("table ", "");
           }
-          toast.error("Deletion Blocked", {
-            description: `Cannot delete this item because it is currently used by records in the '${referencingTable}' table. Please delete or reassign those records first.`,
-            duration: 8000,
+
+          toast.error("Deletion Failed: Dependency Detected", {
+            description: `This record cannot be deleted because it is being used in the '${blockingTable}' table. Please remove or reassign the dependent records first.`,
+            duration: 6000, // Longer duration for reading
           });
         } else {
           toast.error(`Deletion failed: ${err.message}`);
@@ -167,7 +162,6 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   ]);
 
   const getConfirmationMessage = useCallback(() => {
-    // Customize message for offline mode
     const suffix = customDeleteAction
       ? " (Offline Mode: Will sync later)"
       : " This action cannot be undone.";
