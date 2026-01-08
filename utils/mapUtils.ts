@@ -184,3 +184,74 @@ export const fixLeafletIcons = () => {
     shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   });
 };
+
+// --- 4. COLOR GENERATION UTILS ---
+
+/**
+ * Generates a consistent HSL color based on a string ID.
+ * Used for matching connection lines with port indicators.
+ */
+export const getConnectionColor = (id: string) => {
+  const colors = [
+    '#dc2626', // Strong Red
+    '#ea580c', // Deep Orange
+    '#ca8a04', // Golden Amber
+    '#65a30d', // Lime Green
+    '#059669', // Emerald Green
+    '#0f766e', // Teal
+    '#0284c7', // Cyan Blue
+    '#1d4ed8', // Royal Blue
+    '#4f46e5', // Indigo
+    '#7c3aed', // Violet
+    '#c026d3', // Fuchsia
+    '#be123c', // Rose / Magenta Red
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+
+// --- 5. CURVE UTILS (NEW) ---
+
+/**
+ * Generates a curved path (Quadratic Bezier approximation) between two points.
+ * Useful for separating overlapping lines (e.g. A->B and B->A).
+ */
+export const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: number = 0.15) => {
+  const lat1 = start.lat;
+  const lng1 = start.lng;
+  const lat2 = end.lat;
+  const lng2 = end.lng;
+
+  // Midpoint
+  const midLat = (lat1 + lat2) / 2;
+  const midLng = (lng1 + lng2) / 2;
+
+  // Vector
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+
+  // Normal Vector (Perpendicular)
+  // Rotate 90 degrees: (x, y) -> (-y, x)
+  const normLat = -dLng;
+  const normLng = dLat;
+
+  // Offset point
+  const curveLat = midLat + normLat * offsetMultiplier;
+  const curveLng = midLng + normLng * offsetMultiplier;
+
+  return [start, new L.LatLng(curveLat, curveLng), end];
+};
+
+/**
+ * Simple euclidean distance check for co-location detection in map coordinates.
+ */
+export const isColocated = (p1: L.LatLng, p2: L.LatLng, threshold = 0.0005) => {
+    const dLat = p1.lat - p2.lat;
+    const dLng = p1.lng - p2.lng;
+    return Math.sqrt(dLat*dLat + dLng*dLng) < threshold;
+}

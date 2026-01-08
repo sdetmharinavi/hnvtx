@@ -1,4 +1,4 @@
-// path: components/map/MeshDiagram.tsx
+// components/map/MeshDiagram.tsx
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import { Maximize, Minimize, ArrowLeft, Router, Activity } from "lucide-react";
 import { useThemeStore } from "@/stores/themeStore";
 import { PathConfig, PortDisplayInfo } from "./ClientRingMap";
 import { formatIP } from "@/utils/formatters";
+import { getConnectionColor, getCurvedPath } from "@/utils/mapUtils"; // IMPORTED
 
 interface MeshDiagramProps {
   nodes: RingMapNode[];
@@ -33,37 +34,6 @@ const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
   return null;
 };
 
-// Helper to generate curved path coordinates (Quadratic Bezier approximation)
-const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: number = 0.2) => {
-  const lat1 = start.lat;
-  const lng1 = start.lng;
-  const lat2 = end.lat;
-  const lng2 = end.lng;
-
-  // Midpoint
-  const midLat = (lat1 + lat2) / 2;
-  const midLng = (lng1 + lng2) / 2;
-
-  // Vector
-  const dLat = lat2 - lat1;
-  const dLng = lng2 - lng1;
-
-  // Normal Vector (Perpendicular)
-  // Rotate 90 degrees: (x, y) -> (-y, x)
-  const normLat = -dLng;
-  const normLng = dLat;
-
-  // Offset point
-  const curveLat = midLat + normLat * offsetMultiplier;
-  const curveLng = midLng + normLng * offsetMultiplier;
-
-  // Return array of points including the control point to simulate curve
-  // Leaflet Polyline draws straight lines between points, so we add the mid-curve point
-  // For smoother curves, we could add more intermediate points, but 3 points (Start -> Curve -> End)
-  // is usually enough for a visual arc in schematic view.
-  return [start, new L.LatLng(curveLat, curveLng), end];
-};
-
 // Sub-component for rendering lines with Popups
 const MeshConnectionLine = ({
   startPos,
@@ -74,6 +44,7 @@ const MeshConnectionLine = ({
   startNodeName,
   endNodeName,
   nodesLength,
+  customColor, // NEW PROP
 }: {
   startPos: L.LatLng;
   endPos: L.LatLng;
@@ -83,18 +54,24 @@ const MeshConnectionLine = ({
   startNodeName: string;
   endNodeName: string;
   nodesLength: number;
+  customColor?: string; // NEW PROP
 }) => {
   const isDark = theme === "dark";
 
-  const color = isSpur ? (isDark ? "#b4083f" : "#ff0066") : isDark ? "#60a5fa" : "#3b82f6";
+  // COLOR LOGIC FIX: Prefer customColor > Spur color > Default
+  let color = isSpur ? (isDark ? "#b4083f" : "#ff0066") : isDark ? "#60a5fa" : "#3b82f6";
+  if (customColor) {
+     color = customColor;
+  }
+
   const hasConfig =
     config &&
     (config.source || (config.fiberMetrics && config.fiberMetrics.length > 0) || config.cableName);
 
-  // Apply curve only to backbone (non-spur) segments to create the ring effect
-  // Offset multiplier determines the "roundness" of the ring
-  const positions =
-    isSpur || nodesLength !== 2 ? [startPos, endPos] : getCurvedPath(startPos, endPos, 0.15);
+  // Use imported getCurvedPath
+  const positions = (isSpur || nodesLength !== 2) 
+      ? [startPos, endPos] 
+      : getCurvedPath(startPos, endPos, 0.15);
 
   return (
     <Polyline
@@ -140,8 +117,7 @@ const MeshConnectionLine = ({
                   <div className='text-[10px] font-bold text-green-600 dark:text-green-400 uppercase mb-2 tracking-wider flex items-center gap-1'>
                     <Activity className='w-3 h-3' /> Active Fibers
                   </div>
-
-                  {/* METRICS TABLE REPLICATION */}
+                  {/* Metrics Table Omitted for Brevity (Same as before) */}
                   <div className='overflow-x-auto'>
                     <table className='w-full text-xs text-left'>
                       <thead>
@@ -250,6 +226,7 @@ export default function MeshDiagram({
   }
 
   const { nodePositions, bounds } = useMemo(() => {
+    // ... logic remains same ...
     const positions = new Map<string, L.LatLng>();
     const CENTER_X = 1000;
     const CENTER_Y = 1000;
@@ -396,13 +373,18 @@ export default function MeshDiagram({
           const orderB = nodeB.order_in_ring || 0;
           const isSpur = orderA % 1 !== 0 || orderB % 1 !== 0;
           const key1 = `${nodeA.id}-${nodeB.id}`;
-          const key2 = `${nodeB.id}-${nodeA.id}`;
-          const config = segmentConfigs[key1] || segmentConfigs[key2];
+          const config = segmentConfigs[key1];
+
+          // COLOR LOGIC FIX
+          let lineColor = undefined;
+          if (config?.connectionId) {
+              lineColor = getConnectionColor(config.connectionId);
+          }
 
           return (
             <MeshConnectionLine
               key={`${nodeA.id}-${nodeB.id}-${index}`}
-              nodesLength={nodes.length}
+              nodesLength = {nodes.length}
               startPos={posA}
               endPos={posB}
               isSpur={isSpur}
@@ -410,6 +392,7 @@ export default function MeshDiagram({
               theme={theme}
               startNodeName={nodeA.name || "A"}
               endNodeName={nodeB.name || "B"}
+              customColor={lineColor} // Pass override
             />
           );
         })}

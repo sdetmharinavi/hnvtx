@@ -1,4 +1,4 @@
-// path: app/dashboard/rings/[id]/page.tsx
+// app/dashboard/rings/[id]/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
 import { FiberMetric, PathConfig, PortDisplayInfo } from '@/components/map/ClientRingMap';
+import { getConnectionColor } from '@/utils/mapUtils'; // IMPORTED
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
   ssr: false,
@@ -56,30 +57,6 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
     system_type_code: node.system_type_code,
     system_node_name: node.system_node_name,
   };
-};
-
-// Helper for consistent colors based on string input (connection ID)
-const getConnectionColor = (id: string) => {
-  const colors = [
-    '#dc2626', // Strong Red
-    '#ea580c', // Deep Orange
-    '#ca8a04', // Golden Amber
-    '#65a30d', // Lime Green
-    '#059669', // Emerald Green
-    '#0f766e', // Teal
-    '#0284c7', // Cyan Blue
-    '#1d4ed8', // Royal Blue
-    '#4f46e5', // Indigo
-    '#7c3aed', // Violet
-    '#c026d3', // Fuchsia
-    '#be123c', // Rose / Magenta Red
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
 };
 
 export default function RingMapPage() {
@@ -371,8 +348,10 @@ export default function RingMapPage() {
 
       if (sysIdA && sysIdB) {
         const key1 = `${sysIdA}-${sysIdB}`;
-        const key2 = `${sysIdB}-${sysIdA}`;
-
+        
+        // Only use directional key (Source -> Destination) for path config
+        // This ensures Forward path A->B doesn't overwrite Reverse path B->A
+        
         const srcName = getSystemName(p.source_system);
         const dstName = getSystemName(p.destination_system);
 
@@ -387,14 +366,13 @@ export default function RingMapPage() {
           connectionId: p.id,
         };
         map[key1] = config;
-        map[key2] = config;
       }
     });
 
     // B. Enhance configs with Physical Fiber Data (Iterate Map Segments)
     allConnections.forEach(([nodeA, nodeB]) => {
       const key1 = `${nodeA.id}-${nodeB.id}`;
-      const key2 = `${nodeB.id}-${nodeA.id}`;
+      // const key2 = `${nodeB.id}-${nodeA.id}`; // Unused in this loop now
       const physNodeA = nodeA.node_id;
       const physNodeB = nodeB.node_id;
 
@@ -434,10 +412,7 @@ export default function RingMapPage() {
 
           activeFibersOnCable.forEach((fib) => {
             const isNormalOrientation = cable.sn_id === physNodeA;
-            // const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
-            // const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
-            // const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
-
+            
             let distance = null;
             let power = null;
             if (isNormalOrientation) {
@@ -473,7 +448,7 @@ export default function RingMapPage() {
                 fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
               distance,
               power,
-              connectionId: systemConnectionId, // This allows the Popup to render PathDisplay
+              connectionId: systemConnectionId, 
             });
           });
         }
@@ -484,6 +459,7 @@ export default function RingMapPage() {
         (v, i, a) => a.findIndex((t) => t.label === v.label) === i
       );
 
+      // Only merge into existing if it exists, otherwise create new
       const existing = map[key1] || {};
 
       const mergedConfig = {
@@ -498,7 +474,8 @@ export default function RingMapPage() {
       };
 
       map[key1] = mergedConfig;
-      map[key2] = mergedConfig;
+      // Do NOT set map[key2] here automatically. 
+      // If there is a reverse path, the loop will process it in a future iteration as [nodeB, nodeA]
     });
 
     return map;
@@ -508,7 +485,7 @@ export default function RingMapPage() {
     allCableConnections,
     pathConfigs,
     mappedNodes,
-    logicalFiberPathsMap, // Re-runs when this map updates
+    logicalFiberPathsMap, 
   ]);
 
   // 11. Build Node -> Active Ports Map
@@ -541,7 +518,7 @@ export default function RingMapPage() {
       const list = map.get(systemId)!;
 
       if (!list.some((p) => p.port === port)) {
-        const color = getConnectionColor(connectionId);
+        const color = getConnectionColor(connectionId); // Using the imported helper
         let targetName = 'Unknown';
         if (targetSystemId) {
           const targetInfo = systemToNodeInfo.get(targetSystemId);
