@@ -74,8 +74,9 @@ const createLabelHtml = (
   ports: PortDisplayInfo[],
   isDark: boolean
 ) => {
-  const bgClass = isDark ? 'bg-slate-800/90 text-slate-50' : 'bg-white/90 text-slate-900';
-  const borderClass = isDark ? 'border-slate-600' : 'border-slate-200';
+  const bgClass = isDark ? 'bg-slate-800' : 'bg-white';
+  const textClass = isDark ? 'text-slate-50' : 'text-slate-900';
+  const borderClass = isDark ? 'border-slate-600' : 'border-slate-300';
   
   let portsHtml = '';
   if (ports.length > 0) {
@@ -91,15 +92,15 @@ const createLabelHtml = (
       ? `<div class="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>` 
       : '';
 
-    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-left max-w-[200px]">${portItems}${moreItem}</div>`;
+    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-[200px]">${portItems}${moreItem}</div>`;
   }
 
-  // NOTE: We don't render a CSS triangle arrow here because the label is draggable.
-  // Instead, we rely on the Polyline (Leader Line) rendered in the map loop to connect the label to the node.
-  // The transform puts the box slightly above the anchor point.
+  // UPDATED: Removed fixed arrow tail to support 360-degree positioning. 
+  // The leader line will visually connect the box to the node.
+  // Using 'pointer-events-auto' allows dragging.
   return `
-    <div class="flex flex-col items-center cursor-grab active:cursor-grabbing transform -translate-y-1/2">
-      <div class="px-2 py-1 text-[13px] font-bold rounded-md border shadow-md backdrop-blur-sm whitespace-nowrap z-10 ${bgClass} ${borderClass}">
+    <div class="relative flex flex-col items-center cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 group pointer-events-auto">
+      <div class="px-2 py-1 text-[13px] font-bold rounded-md border shadow-lg backdrop-blur-md whitespace-nowrap z-10 ${bgClass} ${textClass} ${borderClass}">
         ${name} ${ip ? `<span class="font-mono font-normal opacity-80 text-[11px] ml-1">| ${ip}</span>` : ''}
       </div>
       ${portsHtml}
@@ -330,6 +331,17 @@ export default function ClientRingMap({
 
   const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
+  // NEW: Calculate the geometric center (Centroid) of all nodes
+  const mapCenter = useMemo(() => {
+    if (displayNodes.length === 0) return { lat: 0, lng: 0 };
+    const sumLat = displayNodes.reduce((acc, node) => acc + node.displayLat, 0);
+    const sumLng = displayNodes.reduce((acc, node) => acc + node.displayLng, 0);
+    return {
+      lat: sumLat / displayNodes.length,
+      lng: sumLng / displayNodes.length
+    };
+  }, [displayNodes]);
+
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
     if (el) {
       polylineRefs.current[key] = el;
@@ -498,16 +510,32 @@ export default function ClientRingMap({
           // Original Node Position
           const nodePos: [number, number] = [node.displayLat, node.displayLng];
           
-          // Label Position (User drag state OR default slightly offset from node)
-          const defaultLabelPos: [number, number] = [node.displayLat, node.displayLng];
-          const labelPos: [number, number] = labelPositions[node.id!] || defaultLabelPos;
+          // --- RADIAL OFFSET CALCULATION ---
+          // Calculate vector from Ring Center -> Node
+          const dLat = node.displayLat - mapCenter.lat;
+          const dLng = node.displayLng - mapCenter.lng;
+          
+          // Distance from center
+          const mag = Math.sqrt(dLat*dLat + dLng*dLng);
+          
+          // Offset distance: 0.003 degrees is roughly 300 meters, good for visibility
+          const OFFSET_DISTANCE = 0.003;
+          
+          let offsetLat = 0;
+          let offsetLng = 0;
 
-          // LEADER LINE: Calculate distance to see if we should draw a line
-          // Small epsilon to avoid drawing lines when label is "on top" of node (default state)
-          // But technically in default state, the HTML has a transform -translate-y-full, so it visually sits above.
-          // If the user drags it, labelPos changes.
-          // Let's ALWAYS draw the line but make it subtle. 
-          // Actually, visually better: Draw line from Node Center to Label Anchor.
+          if (mag > 0.0001) { // Prevent divide by zero if node is exactly at center
+             // Normalize vector and scale by offset distance
+             offsetLat = (dLat / mag) * OFFSET_DISTANCE;
+             offsetLng = (dLng / mag) * OFFSET_DISTANCE;
+          } else {
+             // Fallback: Push North if it's a single node or right at center
+             offsetLat = OFFSET_DISTANCE;
+          }
+
+          // Default position is now "Exploded" outward
+          const defaultLabelPos: [number, number] = [node.displayLat + offsetLat, node.displayLng + offsetLng];
+          const labelPos: [number, number] = labelPositions[node.id!] || defaultLabelPos;
           
           const labelIcon = L.divIcon({
             html: createLabelHtml(
@@ -518,21 +546,21 @@ export default function ClientRingMap({
             ),
             className: 'bg-transparent border-none', 
             iconSize: [0, 0], 
-            iconAnchor: [0, 0] // Centered anchor simplifies line drawing logic
+            iconAnchor: [0, 0] // Centered anchor for clean lines
           });
 
           return (
             <div key={node.id! + i}>
-              {/* Leader Line (Connects Node to Label) */}
+              {/* Leader Line (Connects Node Center to Label Center) */}
               <Polyline
                 positions={[nodePos, labelPos]}
                 pathOptions={{
                    color: theme === 'dark' ? '#94a3b8' : '#64748b', // Slate 400/500
-                   weight: 1,
-                   dashArray: '3, 3',
+                   weight: 1.5,
+                   dashArray: '4, 4',
                    opacity: 0.6
                 }}
-                interactive={false} // Don't block clicks
+                interactive={false}
               />
 
               {/* 1. Node Marker (Static Anchor) */}

@@ -7,7 +7,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { RingMapNode } from "./types/node";
 import { getNodeIcon } from "@/utils/getNodeIcons";
-import { Maximize, Minimize, ArrowLeft, Router, Activity } from "lucide-react"; // Added Ruler
+import { Maximize, Minimize, ArrowLeft, Router, Activity } from "lucide-react";
 import { useThemeStore } from "@/stores/themeStore";
 import { PathConfig, PortDisplayInfo } from "./ClientRingMap";
 import { formatIP } from "@/utils/formatters";
@@ -33,6 +33,37 @@ const MeshController = ({ bounds }: { bounds: L.LatLngBoundsExpression }) => {
   return null;
 };
 
+// Helper to generate curved path coordinates (Quadratic Bezier approximation)
+const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: number = 0.2) => {
+  const lat1 = start.lat;
+  const lng1 = start.lng;
+  const lat2 = end.lat;
+  const lng2 = end.lng;
+
+  // Midpoint
+  const midLat = (lat1 + lat2) / 2;
+  const midLng = (lng1 + lng2) / 2;
+
+  // Vector
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+
+  // Normal Vector (Perpendicular)
+  // Rotate 90 degrees: (x, y) -> (-y, x)
+  const normLat = -dLng;
+  const normLng = dLat;
+
+  // Offset point
+  const curveLat = midLat + normLat * offsetMultiplier;
+  const curveLng = midLng + normLng * offsetMultiplier;
+
+  // Return array of points including the control point to simulate curve
+  // Leaflet Polyline draws straight lines between points, so we add the mid-curve point
+  // For smoother curves, we could add more intermediate points, but 3 points (Start -> Curve -> End)
+  // is usually enough for a visual arc in schematic view.
+  return [start, new L.LatLng(curveLat, curveLng), end];
+};
+
 // Sub-component for rendering lines with Popups
 const MeshConnectionLine = ({
   startPos,
@@ -42,6 +73,7 @@ const MeshConnectionLine = ({
   theme,
   startNodeName,
   endNodeName,
+  nodesLength,
 }: {
   startPos: L.LatLng;
   endPos: L.LatLng;
@@ -50,6 +82,7 @@ const MeshConnectionLine = ({
   theme: string;
   startNodeName: string;
   endNodeName: string;
+  nodesLength: number;
 }) => {
   const isDark = theme === "dark";
 
@@ -58,9 +91,13 @@ const MeshConnectionLine = ({
     config &&
     (config.source || (config.fiberMetrics && config.fiberMetrics.length > 0) || config.cableName);
 
+  // Apply curve only to backbone (non-spur) segments to create the ring effect
+  // Offset multiplier determines the "roundness" of the ring
+  const positions = (isSpur || nodesLength !==2 ) ? [startPos, endPos] : getCurvedPath(startPos, endPos, 0.15);
+
   return (
     <Polyline
-      positions={[startPos, endPos]}
+      positions={positions}
       pathOptions={{
         color: color,
         weight: isSpur ? 2 : 4,
@@ -212,7 +249,6 @@ export default function MeshDiagram({
   }
 
   const { nodePositions, bounds } = useMemo(() => {
-    // ... (same layout logic) ...
     const positions = new Map<string, L.LatLng>();
     const CENTER_X = 1000;
     const CENTER_Y = 1000;
@@ -365,6 +401,7 @@ export default function MeshDiagram({
           return (
             <MeshConnectionLine
               key={`${nodeA.id}-${nodeB.id}-${index}`}
+              nodesLength = {nodes.length}
               startPos={posA}
               endPos={posB}
               isSpur={isSpur}
@@ -447,7 +484,6 @@ export default function MeshDiagram({
                       </div>
                     )}
 
-                    {/* Render Ports in Popup */}
                     {portsList.length > 0 && (
                       <div className='mt-2 pt-1 border-t border-gray-200 dark:border-gray-600'>
                         <div className='text-xs font-semibold text-gray-500 uppercase mb-1'>
@@ -459,8 +495,8 @@ export default function MeshDiagram({
                               key={idx}
                               className='text-[16px] px-1.5 py-0.5 rounded border'
                               style={{
-                                backgroundColor: p.color + "15", // 10% opacity
-                                borderColor: p.color + "40", // 25% opacity
+                                backgroundColor: p.color + "15",
+                                borderColor: p.color + "40",
                                 color: getReadableTextColor(p.color),
                               }}
                               title={p.targetNodeName ? `→ ${p.targetNodeName}` : "Endpoint"}>
