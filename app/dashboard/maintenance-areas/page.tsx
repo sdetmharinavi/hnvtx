@@ -8,7 +8,7 @@ import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
-import { Filters, PagedQueryResult, Row } from '@/hooks/database';
+import { Filters, Row } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client'; // THIS IS THE FIX
@@ -17,7 +17,6 @@ import { FiMapPin } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
-import { UseQueryResult } from '@tanstack/react-query';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 
@@ -42,11 +41,13 @@ export default function MaintenanceAreasPage() {
     refetch,
     search,
     filters,
+    queryResult,
   } = useCrudManager<'maintenance_areas', MaintenanceAreaWithRelations>({
     tableName: 'maintenance_areas',
     dataQueryHook: useMaintenanceAreasData,
     displayNameField: 'name',
     searchColumn: ['name', 'code', 'contact_person', 'email'],
+    syncTables: ['maintenance_areas', 'v_maintenance_areas'],
   });
 
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
@@ -110,15 +111,6 @@ export default function MaintenanceAreasPage() {
     );
   }
 
-  const areasQuery: UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error> = {
-    data: { data: allAreas, count: totalCount },
-    isLoading,
-    isFetching,
-    error,
-    isError: !!error,
-    refetch,
-  } as UseQueryResult<PagedQueryResult<MaintenanceAreaWithRelations>, Error>;
-
   return (
     <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
       <PageHeader
@@ -134,7 +126,7 @@ export default function MaintenanceAreasPage() {
 
       <EntityManagementComponent<MaintenanceAreaWithRelations>
         config={areaConfig}
-        entitiesQuery={areasQuery}
+        entitiesQuery={queryResult}
         isFetching={isFetching || isMutating}
         toggleStatusMutation={{
           mutate: toggleStatusMutation.mutate,

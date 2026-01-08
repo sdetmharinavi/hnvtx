@@ -66,6 +66,7 @@ export default function OfcPage() {
     dataQueryHook: useOfcData,
     displayNameField: 'route_name',
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
+    syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization'],
   });
 
   const isInitialLoad = isLoading && ofcData.length === 0;

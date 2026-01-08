@@ -51,6 +51,7 @@ export default function NodesPage() {
     dataQueryHook: useNodesData,
     searchColumn: ['name', 'remark'],
     displayNameField: 'name',
+    syncTables: ['nodes', 'v_nodes_complete'],
   });
 
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(

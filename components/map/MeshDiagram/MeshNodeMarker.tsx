@@ -28,6 +28,9 @@ export const MeshNodeMarker = ({ node, position, portsList }: MeshNodeMarkerProp
           <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
             {node.name}
           </div>
+          <div className="px-1 py-0.5 bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-50 text-xs font-bold rounded-md border border-slate-200 dark:border-slate-600 shadow-sm backdrop-blur-xs whitespace-nowrap">
+            {formatIP(node.ip)}
+          </div>
           {portsList.length > 0 && (
             <div className="mt-0.5 flex flex-row gap-px items-center">
               {portsList.slice(0, 6).map((p, idx) => (

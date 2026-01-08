@@ -58,6 +58,7 @@ export default function LookupTypesPage() {
     tableName: 'lookup_types',
     dataQueryHook: useLookupTypesData,
     displayNameField: 'name',
+    syncTables: ['lookup_types', 'v_lookup_types'],
   });
 
   const {

@@ -3,7 +3,15 @@
 
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEdit2, FiZap, FiTrash2, FiMinusCircle } from 'react-icons/fi';
+import {
+  FiArrowLeft,
+  FiRefreshCw,
+  FiGitBranch,
+  FiEdit2,
+  FiZap,
+  FiTrash2,
+  FiMinusCircle,
+} from 'react-icons/fi';
 
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
@@ -21,6 +29,9 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { toast } from 'sonner';
 
 // Define the shape of the data returned by useRingConnectionPaths
 interface LogicalPathData {
@@ -50,7 +61,10 @@ export default function RingPathsPage() {
   const { isSuperAdmin, role } = useUser();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
+
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
+  const isOnline = useOnlineStatus();
+
   // Modal states for delete vs deprovision
   const [modalType, setModalType] = useState<'delete' | 'deprovision' | null>(null);
   const [selectedPath, setSelectedPath] = useState<LogicalPathData | null>(null);
@@ -97,12 +111,12 @@ export default function RingPathsPage() {
   const handleDeletePath = (path: LogicalPathData) => {
     setSelectedPath(path);
     setModalType('delete');
-  }
+  };
 
   const handleDeprovisionPath = (path: LogicalPathData) => {
     setSelectedPath(path);
     setModalType('deprovision');
-  }
+  };
 
   const confirmAction = () => {
     if (!selectedPath) return;
@@ -113,7 +127,7 @@ export default function RingPathsPage() {
           setModalType(null);
           setSelectedPath(null);
           refetch();
-        }
+        },
       });
     } else if (modalType === 'deprovision') {
       deprovisionMutation.mutate(selectedPath.id, {
@@ -121,10 +135,10 @@ export default function RingPathsPage() {
           setModalType(null);
           setSelectedPath(null);
           refetch();
-        }
+        },
       });
     }
-  }
+  };
 
   const handleCloseModal = () => {
     setIsEditModalOpen(false);
@@ -247,7 +261,10 @@ export default function RingPathsPage() {
         onClick: (record) => handleDeprovisionPath(record as unknown as LogicalPathData),
         variant: 'secondary',
         // Only show deprovision if it is actually configured
-        hidden: (record) => !canEdit || (record as unknown as LogicalPathData).status === 'unprovisioned' || !(record as unknown as LogicalPathData).source_system_id
+        hidden: (record) =>
+          !canEdit ||
+          (record as unknown as LogicalPathData).status === 'unprovisioned' ||
+          !(record as unknown as LogicalPathData).source_system_id,
       },
       {
         key: 'delete',
@@ -264,9 +281,21 @@ export default function RingPathsPage() {
   const customHeaderActions = [
     {
       label: 'Refresh',
-      onClick: () => refetch(),
+      // CHANGED: Update refresh handler
+      onClick: async () => {
+        if (isOnline) {
+          await syncData([
+            'logical_paths',
+            'logical_path_segments',
+            'logical_fiber_paths',
+            'ofc_connections',
+          ]);
+        }
+        refetch();
+        toast.success('Logical paths refreshed!');
+      },
       variant: 'outline' as const,
-      leftIcon: <FiRefreshCw className={isFetching ? 'animate-spin' : ''} />,
+      leftIcon: <FiRefreshCw className={isFetching || isSyncingData ? 'animate-spin' : ''} />,
     },
     ...(canEdit
       ? [
@@ -327,7 +356,8 @@ export default function RingPathsPage() {
             </h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
               It seems this ring doesn&apos;t have any logical paths defined yet. Click{' '}
-              <strong>Generate Paths</strong> to automatically create paths based on the Ring Topology (Hub-to-Hub and Hub-to-Spur).
+              <strong>Generate Paths</strong> to automatically create paths based on the Ring
+              Topology (Hub-to-Hub and Hub-to-Spur).
             </p>
             {canEdit && (
               <Button
@@ -371,21 +401,21 @@ export default function RingPathsPage() {
       )}
 
       {/* Unified Confirmation Modal */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!modalType}
         onConfirm={confirmAction}
         onCancel={() => {
-           setModalType(null);
-           setSelectedPath(null);
+          setModalType(null);
+          setSelectedPath(null);
         }}
-        title={modalType === 'delete' ? "Delete Logical Path" : "Deprovision Path"}
+        title={modalType === 'delete' ? 'Delete Logical Path' : 'Deprovision Path'}
         message={
-          modalType === 'delete' 
+          modalType === 'delete'
             ? `Are you sure you want to delete path "${selectedPath?.name}"? This action cannot be undone.`
             : `Are you sure you want to deprovision "${selectedPath?.name}"? This will clear the system assignments but keep the path definition.`
         }
-        type={modalType === 'delete' ? "danger" : "warning"}
-        confirmText={modalType === 'delete' ? "Delete Path" : "Deprovision"}
+        type={modalType === 'delete' ? 'danger' : 'warning'}
+        confirmText={modalType === 'delete' ? 'Delete Path' : 'Deprovision'}
         loading={deleteMutation.isPending || deprovisionMutation.isPending}
       />
     </div>

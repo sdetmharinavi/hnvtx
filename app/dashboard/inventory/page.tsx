@@ -1,8 +1,8 @@
+// app/dashboard/inventory/page.tsx
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import {
   FiArchive,
   FiMinusCircle,
@@ -64,6 +64,13 @@ export default function InventoryPage() {
     dataQueryHook: useInventoryData,
     displayNameField: 'name',
     searchColumn: ['name', 'description', 'asset_no'],
+    // THE FIX: Define tables to sync on refresh
+    syncTables: [
+      'inventory_items',
+      'v_inventory_items',
+      'inventory_transactions',
+      'v_inventory_transactions_extended',
+    ],
   });
 
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
@@ -173,10 +180,8 @@ export default function InventoryPage() {
 
   const headerActions = useStandardHeaderActions({
     data: inventory,
-    onRefresh: async () => {
-      await refetch();
-      toast.success('Inventory refreshed!');
-    },
+    // Pass the enhanced refetch that handles sync logic
+    onRefresh: refetch,
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading,
     exportConfig: canEdit ? { tableName: 'v_inventory_items', useRpc: true } : undefined,

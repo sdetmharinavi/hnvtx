@@ -45,6 +45,7 @@ export default function AuditLogsPage() {
     idType: 'number',
     dataQueryHook: useAuditLogsData,
     displayNameField: 'action_type',
+    syncTables: ['user_activity_logs', 'v_audit_logs'],
   });
 
   // --- DRY FILTER CONFIG ---

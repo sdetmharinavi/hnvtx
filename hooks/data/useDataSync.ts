@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { useState, useCallback } from 'react';
 
 const BATCH_SIZE = 2500;
 
@@ -19,7 +20,6 @@ interface EntitySyncConfig {
 // Configuration Map for Sync Strategies
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   // --- Incremental Sync Tables (True Append-Only / History) ---
-  // These tables act as logs and are rarely/never deleted physically, safe for incremental.
   'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
   'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
   'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
@@ -28,7 +28,6 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' },
 
   // --- FULL SYNC TABLES (Operational Data) ---
-  // Changed from 'incremental' to 'full' to ensure deleted records are removed locally.
   'systems': { strategy: 'full' },
   'system_connections': { strategy: 'full' },
   'ports_management': { strategy: 'full' },
@@ -39,8 +38,6 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'ofc_cables': { strategy: 'full' },
 
   // --- VIEWS ---
-  // Views must always use full sync because a change in a joined table 
-  // might not update the 'updated_at' field of the primary ID in the view.
   'v_systems_complete': { strategy: 'full' },
   'v_system_connections_complete': { strategy: 'full' },
   'v_ports_management_complete': { strategy: 'full' },
@@ -235,59 +232,97 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
+  
+  // Internal loading state for imperative sync
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<Error | null>(null);
 
-  const { isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['data-sync-all'],
-    queryFn: async () => {
-      try {
-        const failures: string[] = [];
-        const entitiesToSync = Object.keys(SYNC_CONFIG) as PublicTableOrViewName[];
+  // THE FIX: Renamed from 'refetch' to 'executeSync' and modified to accept tables
+  const executeSync = useCallback(async (specificTables?: PublicTableOrViewName[]) => {
+    setIsSyncing(true);
+    setSyncError(null);
+    
+    try {
+      const failures: string[] = [];
+      // Use specific tables if provided, otherwise sync ALL
+      const entitiesToSync = specificTables && specificTables.length > 0 
+        ? specificTables 
+        : (Object.keys(SYNC_CONFIG) as PublicTableOrViewName[]);
 
-        // We process sequentially to avoid overwhelming the client/network
-        for (const entity of entitiesToSync) {
-          try {
-              await syncEntity(supabase, localDb, entity);
-          } catch (e) {
-              failures.push(`${entity} (${(e as Error).message})`);
+      const isPartial = entitiesToSync.length < Object.keys(SYNC_CONFIG).length;
+
+      if (!isPartial) {
+        toast.info('Starting full sync...');
+      }
+
+      // Process sequentially to manage load and connection pool
+      for (const entity of entitiesToSync) {
+        try {
+            await syncEntity(supabase, localDb, entity);
+        } catch (e) {
+            failures.push(`${entity} (${(e as Error).message})`);
+        }
+      }
+
+      if (typeof window !== 'undefined' && !isPartial) {
+        localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
+      }
+
+      if (failures.length === 0) {
+        toast.success(isPartial ? 'Page data refreshed.' : 'All local data is up to date.');
+      } else {
+         toast.warning(`Sync completed with warnings. ${failures.length} tables failed.`);
+      }
+
+      // If partial, only invalidate specific queries related to those tables
+      if (isPartial) {
+        // We broadly invalidate queries containing the table name. 
+        // This is a heuristic but works with our key structure ['table', 'tableName'] or ['tableName-data']
+        await queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey as unknown[];
+            return entitiesToSync.some(table => 
+              // Check various key patterns
+              key.includes(table) || 
+              (typeof key[0] === 'string' && key[0].includes(table))
+            );
           }
-        }
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('query_cache_buster', `v-${Date.now()}`);
-        }
-
-        if (failures.length === 0) {
-          toast.success('Local data is up to date.');
-        } else {
-           toast.warning(`Sync completed with warnings. ${failures.length} tables failed.`);
-        }
-
+        });
+      } else {
+        // Full invalidation
         await queryClient.invalidateQueries({
           predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
-
-        if (failures.length > 0) {
-            console.error("Sync Failures:", failures);
-        }
-
-        return { lastSynced: new Date().toISOString() };
-      } catch (err) {
-        throw err;
       }
-    },
-    enabled: false,
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 60 * 24,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: false,
+
+      if (failures.length > 0) {
+          console.error("Sync Failures:", failures);
+      }
+
+      return { lastSynced: new Date().toISOString() };
+
+    } catch (err) {
+      setSyncError(err as Error);
+      toast.error("Sync process failed.");
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [supabase, queryClient]);
+
+  // Initial load check (optional, can be kept minimal)
+  const { data: globalSyncState } = useQuery({
+    queryKey: ['data-sync-all'],
+    queryFn: () => ({ lastSynced: null }), // We don't auto-sync all on mount anymore
+    enabled: false, 
+    staleTime: Infinity
   });
 
   return {
-    isSyncing: isLoading || isFetching,
-    syncError: error,
+    isSyncing,
+    syncError,
     syncStatus,
-    sync: refetch
+    sync: executeSync,
+    lastGlobalSync: globalSyncState?.lastSynced
   };
 }

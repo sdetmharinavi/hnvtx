@@ -11,6 +11,10 @@ import { HtmlContent } from '@/components/common/ui/HtmlContent';
 import { EFileMovementRow } from '@/schemas/efile-schemas';
 import { useUser } from '@/providers/UserProvider'; // THE FIX: Import useUser
 import { UserRole } from '@/types/user-roles'; // THE FIX: Import UserRole
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { FiRefreshCw } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 export default function EFileDetailsPage() {
   const { id } = useParams();
@@ -22,8 +26,11 @@ export default function EFileDetailsPage() {
   const { isSuperAdmin, role } = useUser();
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
-  const { data, isLoading, isError, error } = useEFileDetails(id as string);
+  const { data, isLoading, isError, error, refetch } = useEFileDetails(id as string);
   const closeMutation = useCloseFile();
+
+  const { sync: syncData, isSyncing } = useDataSync(); // ADDED
+  const isOnline = useOnlineStatus(); //
 
   if (isLoading) return <PageSpinner text="Loading file details..." />;
   if (isError || !data) return <ErrorDisplay error={error?.message || 'File not found'} />;
@@ -46,6 +53,25 @@ export default function EFileDetailsPage() {
           size="sm"
         >
           Back
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            if (isOnline)
+              await syncData([
+                'e_files',
+                'v_e_files_extended',
+                'file_movements',
+                'v_file_movements_extended',
+              ]);
+            refetch();
+            toast.success('File details refreshed.');
+          }}
+          disabled={isSyncing}
+          leftIcon={<FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />}
+          size="sm"
+        >
+          Refresh
         </Button>
         {file.status === 'closed' && (
           <span className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs font-bold rounded-full uppercase">

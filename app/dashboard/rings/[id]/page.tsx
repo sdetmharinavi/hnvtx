@@ -3,7 +3,7 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid, FiSettings } from 'react-icons/fi';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings, FiRefreshCw } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
@@ -28,6 +28,8 @@ import {
   RingMapNode,
 } from '@/components/map/ClientRingMap/types';
 import { getConnectionColor } from '@/utils/mapUtils'; // IMPORTED
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/ClientRingMap'), {
   ssr: false,
@@ -71,6 +73,9 @@ export default function RingMapPage() {
 
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
+  const isOnline = useOnlineStatus();
 
   // 1. Fetch Ring Details
   const {
@@ -631,6 +636,29 @@ export default function RingMapPage() {
           description="Visualize and configure topology."
           icon={<FiMap />}
           actions={[
+            {
+              // ADDED: Explicit Refresh Button
+              label: 'Refresh',
+              onClick: async () => {
+                if (isOnline) {
+                  await syncData([
+                    'rings',
+                    'v_rings',
+                    'v_ring_nodes',
+                    'ring_based_systems',
+                    'ofc_cables',
+                    'v_ofc_cables_complete',
+                  ]);
+                }
+                refetchRing();
+                // Note: You might need to manually trigger refetch for other queries if they don't auto-update via keys
+                // queryClient.invalidateQueries({ queryKey: ['ring-nodes-detail'] });
+                toast.success('Ring topology refreshed.');
+              },
+              variant: 'outline',
+              leftIcon: <FiRefreshCw className={isSyncingData ? 'animate-spin' : ''} />,
+              disabled: isLoadingRingDetails || isUpdating || isSyncingData,
+            },
             {
               label: 'Configure Topology',
               onClick: () => setIsConfigModalOpen(true),

@@ -52,6 +52,7 @@ export default function EmployeesPage() {
     localTableName: 'v_employees',
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
+    syncTables: ['employees', 'v_employees', 'employee_designations', 'v_employee_designations'],
   });
 
   const canEdit = useMemo(

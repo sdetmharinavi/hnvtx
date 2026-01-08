@@ -48,6 +48,7 @@ export default function GlobalOfcConnectionsPage() {
     dataQueryHook: useAllOfcConnectionsData,
     displayNameField: 'ofc_route_name',
     searchColumn: ['ofc_route_name', 'system_name'],
+    syncTables: ['ofc_connections', 'v_ofc_connections_complete', 'ofc_cables'],
   });
 
   const { mutate: uploadFibers, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {

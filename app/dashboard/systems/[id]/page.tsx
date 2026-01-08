@@ -54,6 +54,8 @@ import { StatsConfigModal, StatsFilterState } from '@/components/system-details/
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 // import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 // import { localDb } from '@/hooks/data/localDb';
 
@@ -65,6 +67,9 @@ export default function SystemConnectionsPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
+
+  const { sync: syncData } = useDataSync();
+  const isOnline = useOnlineStatus();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
@@ -389,7 +394,6 @@ export default function SystemConnectionsPage() {
     [tracePath]
   );
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
-    
     setDetailsConnectionId(record.id);
     setIsDetailsModalOpen(true);
   }, []);
@@ -454,7 +458,18 @@ export default function SystemConnectionsPage() {
   ]);
 
   const headerActions = useStandardHeaderActions({
-    onRefresh: () => {
+    onRefresh: async () => {
+      if (isOnline) {
+        // Sync system-specific tables
+        await syncData([
+          'system_connections',
+          'v_system_connections_complete',
+          'ports_management',
+          'v_ports_management_complete',
+          'services',
+          'v_services',
+        ]);
+      }
       refetch();
       toast.success('Connections refreshed!');
     },

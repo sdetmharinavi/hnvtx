@@ -72,6 +72,7 @@ export default function RingsPage() {
     dataQueryHook: useRingsData,
     displayNameField: 'name',
     searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
+    syncTables: ['rings', 'v_rings', 'ring_based_systems'],
   });
 
   const canEdit =

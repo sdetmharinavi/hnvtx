@@ -298,6 +298,7 @@ export default function RingManagerPage() {
     tableName: 'rings',
     dataQueryHook: useRingManagerData,
     displayNameField: 'name',
+    syncTables: ['rings', 'v_rings', 'ring_based_systems', 'systems', 'v_systems_complete'],
   });
 
   const {

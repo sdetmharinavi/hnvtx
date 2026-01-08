@@ -90,6 +90,13 @@ export default function OfcCableDetailsPage() {
     localTableName: 'v_ofc_connections_complete',
     dataQueryHook: useOfcConnectionsData(cableId as string),
     displayNameField: ['system_name', 'ofc_route_name'],
+    syncTables: [
+      'ofc_connections',
+      'v_ofc_connections_complete',
+      'ofc_cables',
+      'v_cable_utilization',
+      'v_ofc_cables_complete',
+    ],
   });
 
   const canEdit =

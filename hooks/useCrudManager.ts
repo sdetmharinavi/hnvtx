@@ -26,7 +26,8 @@ import { getTable } from '@/hooks/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { UseQueryResult } from '@tanstack/react-query';
-import { FiWifiOff } from 'react-icons/fi'; // ADDED
+import { FiWifiOff } from 'react-icons/fi';
+import { useDataSync } from '@/hooks/data/useDataSync'; // IMPORTED
 
 export type RecordWithId = {
   id: string | number | null;
@@ -72,6 +73,8 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
   idType?: 'string' | 'number';
   initialFilters?: Filters;
+  // THE FIX: New optional prop to define which tables to sync on refresh
+  syncTables?: PublicTableOrViewName[];
 }
 
 export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
@@ -83,9 +86,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   processDataForSave,
   idType = 'string',
   initialFilters = {},
+  syncTables, // Destructure new prop
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
+  
+  // Use the sync hook
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
 
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
@@ -128,6 +135,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setCurrentPage(1);
   }, [debouncedSearch, filters, setCurrentPage]);
 
+  // Execute the data query hook
   const {
     data,
     totalCount,
@@ -136,7 +144,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isLoading,
     isFetching,
     error,
-    refetch,
+    refetch, // This is the React Query refetch
     ...restHookData
   } = dataQueryHook({
     currentPage,
@@ -144,6 +152,19 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     searchQuery: debouncedSearch,
     filters: combinedFilters,
   });
+
+  // --- NEW: Enhanced Refresh Function ---
+  const handleRefresh = useCallback(async () => {
+    if (isOnline && syncTables && syncTables.length > 0) {
+        // If online and specific tables are defined, force a DB sync first
+        await syncData(syncTables);
+        // Then update the UI cache
+        refetch();
+    } else {
+        // Standard React Query refetch (hits local DB first, then online if stale)
+        refetch();
+    }
+  }, [isOnline, syncTables, syncData, refetch]);
 
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
@@ -594,14 +615,15 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       ({
         data: { data, count: totalCount },
         isLoading,
-        isFetching: isFetching ?? false,
+        isFetching: isFetching || isSyncingData, // Include sync status in fetching state
         error: error as Error | null,
         isError: !!error,
         isSuccess: !isLoading && !error,
-        refetch: refetch as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>,
+        // THE FIX: Return our enhanced handler
+        refetch: handleRefresh as unknown as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>, 
         status: isLoading ? 'pending' : error ? 'error' : 'success',
       } as UseQueryResult<PagedQueryResult<V>, Error>),
-    [data, totalCount, isLoading, isFetching, error, refetch]
+    [data, totalCount, isLoading, isFetching, isSyncingData, error, handleRefresh]
   );
 
   return {
@@ -613,7 +635,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isFetching,
     error,
     isMutating,
-    refetch,
+    refetch: handleRefresh, // EXPOSE THE ENHANCED REFRESH
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },

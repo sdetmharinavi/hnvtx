@@ -7,14 +7,7 @@ import { PageHeader } from '@/components/common/page-header/PageHeader';
 import { useStandardHeaderActions } from '@/components/common/page-header/hooks/useStandardHeaderActions';
 import { DesignationFormModal } from '@/components/designations/DesignationFormModal';
 import { designationConfig, DesignationWithRelations } from '@/config/designations';
-import {
-  Filters,
-  PagedQueryResult,
-  Row,
-  useTableInsert,
-  useTableUpdate,
-  useToggleStatus,
-} from '@/hooks/database';
+import { Filters, Row, useTableInsert, useTableUpdate, useToggleStatus } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import {
   Employee_designationsInsertSchema,
@@ -25,7 +18,6 @@ import { useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
 import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import { UseQueryResult } from '@tanstack/react-query';
 import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { Copy } from 'lucide-react';
@@ -54,11 +46,13 @@ export default function DesignationManagerPage() {
     refetch,
     search,
     filters,
+    queryResult,
   } = useCrudManager<'employee_designations', DesignationWithRelations>({
     tableName: 'employee_designations',
     dataQueryHook: useDesignationsData,
     displayNameField: 'name',
     searchColumn: 'name',
+    syncTables: ['employee_designations', 'v_employee_designations'],
   });
 
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
@@ -166,15 +160,6 @@ export default function DesignationManagerPage() {
     );
   }
 
-  const designationsQuery: UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error> = {
-    data: { data: allDesignations, count: totalCount },
-    isLoading,
-    isFetching,
-    error,
-    isError: !!error,
-    refetch,
-  } as UseQueryResult<PagedQueryResult<DesignationWithRelations>, Error>;
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden p-4 md:p-6">
       <PageHeader
@@ -189,7 +174,7 @@ export default function DesignationManagerPage() {
       />
       <EntityManagementComponent<DesignationWithRelations>
         config={designationConfig}
-        entitiesQuery={designationsQuery}
+        entitiesQuery={queryResult}
         isFetching={isFetching || isMutating}
         toggleStatusMutation={toggleStatusMutation}
         onEdit={canEdit ? handleOpenEditForm : () => {}}

@@ -79,6 +79,15 @@ export default function SystemsPage() {
     dataQueryHook: useSystemsData,
     searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: 'system_name',
+    syncTables: [
+      'systems',
+      'v_systems_complete',
+      'ring_based_systems',
+      'ports_management',
+      'v_ports_management_complete',
+      'system_connections',
+      'v_system_connections_complete',
+    ],
   });
 
   const canEdit =

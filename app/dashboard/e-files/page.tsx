@@ -31,6 +31,8 @@ import { UserRole } from '@/types/user-roles';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { ActionButton } from '@/components/common/page-header';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 // Hardcoded categories options
 const CATEGORY_OPTIONS = [
@@ -43,6 +45,9 @@ export default function EFilesPage() {
   const router = useRouter();
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
+
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync(); // ADDED hook
+  const isOnline = useOnlineStatus(); // ADDED hook
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,8 +184,23 @@ export default function EFilesPage() {
     const actions: ActionButton[] = [
       {
         label: 'Refresh',
-        onClick: () => refetch(),
+        // CHANGED: Update click handler to sync specific tables
+        onClick: async () => {
+          if (isOnline) {
+            await syncData([
+              'e_files',
+              'v_e_files_extended',
+              'file_movements',
+              'v_file_movements_extended',
+            ]);
+          }
+          refetch();
+        },
         variant: 'outline',
+        // ADDED: Show loading state during sync
+        leftIcon: isSyncingData ? (
+          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+        ) : undefined,
       },
     ];
 

@@ -26,6 +26,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { localDb } from '@/hooks/data/localDb';
 import { addMutationToQueue } from '@/hooks/data/useMutationQueue';
 import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { useDataSync } from '@/hooks/data/useDataSync';
 
 type ViewMode = 'day' | 'feed';
 
@@ -37,6 +38,9 @@ export default function DiaryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch] = useDebounce(searchQuery, 300);
 
+  const { sync: syncData } = useDataSync();
+  const isOnline = useOnlineStatus();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
@@ -44,7 +48,6 @@ export default function DiaryPage() {
   const { user } = useAuthStore();
   const { role: currentUserRole, isSuperAdmin } = useUser();
   const supabase = createClient();
-  const isOnline = useOnlineStatus();
 
   const {
     data: allNotesForMonth = [],
@@ -220,7 +223,11 @@ export default function DiaryPage() {
   const headerActions = useStandardHeaderActions({
     data: allNotesForMonth,
     onRefresh: async () => {
-      await refetch();
+      // ADDED: Conditional Granular Sync
+      if (isOnline) {
+        await syncData(['diary_notes']);
+      }
+      refetch();
       toast.success('Notes refreshed!');
     },
     onAddNew: canEdit ? openAddModal : undefined,
