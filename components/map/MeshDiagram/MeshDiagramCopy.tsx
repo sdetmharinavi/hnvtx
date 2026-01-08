@@ -9,7 +9,7 @@ import { RingMapNode } from './types/node';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { Maximize, Minimize, ArrowLeft, Router, Activity } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
-import { PathConfig, PortDisplayInfo } from './ClientRingMap';
+import { PathConfig, PortDisplayInfo } from './ClientRingMap/ClientRingMap';
 import { formatIP } from '@/utils/formatters';
 import { getConnectionColor, getCurvedPath } from '@/utils/mapUtils'; // IMPORTED
 

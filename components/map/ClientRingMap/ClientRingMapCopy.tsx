@@ -15,8 +15,8 @@ import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { getNodeIcon } from '@/utils/getNodeIcons';
-import { MapNode, RingMapNode } from './types/node';
-import { MapLegend } from './MapLegend';
+import { MapNode, RingMapNode } from '../types/node';
+import { MapLegend } from '../MapLegend';
 import { formatIP } from '@/utils/formatters';
 import { useQuery } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
@@ -30,7 +30,7 @@ import {
   isColocated,
 } from '@/utils/mapUtils';
 import { Ruler } from 'lucide-react';
-import { PopupFiberRow } from './PopupFiberRow';
+import { PopupFiberRow } from '../PopupFiberRow';
 
 export interface PortDisplayInfo {
   port: string;

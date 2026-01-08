@@ -7,7 +7,7 @@ import { usePagedData, useRpcRecord } from '@/hooks/database';
 import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { ChevronDown, ChevronRight, ExternalLink, Loader2, Activity, Cable } from 'lucide-react';
-import { PathConfig } from './ClientRingMap';
+import { PathConfig } from './ClientRingMap/ClientRingMap';
 import Link from 'next/link';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 

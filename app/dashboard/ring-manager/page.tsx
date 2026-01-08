@@ -1,11 +1,11 @@
 // app/dashboard/ring-manager/page.tsx
-"use client";
+'use client';
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { GiLinkedRings } from "react-icons/gi";
-import { FaRoute } from "react-icons/fa";
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { GiLinkedRings } from 'react-icons/gi';
+import { FaRoute } from 'react-icons/fa';
 import {
   FiUpload,
   FiEdit,
@@ -15,14 +15,14 @@ import {
   FiArrowRightCircle,
   FiGitMerge,
   FiPlus,
-} from "react-icons/fi";
+} from 'react-icons/fi';
 
-import { PageHeader, ActionButton } from "@/components/common/page-header";
-import { ConfirmModal, ErrorDisplay, Button } from "@/components/common/ui";
-import { RingModal } from "@/components/rings/RingModal";
-import { EntityManagementComponent } from "@/components/common/entity-management/EntityManagementComponent";
-import { SystemRingModal } from "@/components/ring-manager/SystemRingModal";
-import { EditSystemInRingModal } from "@/components/ring-manager/EditSystemInRingModal";
+import { PageHeader, ActionButton } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { RingModal } from '@/components/rings/RingModal';
+import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
+import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
+import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
 
 import {
   useTableInsert,
@@ -32,26 +32,26 @@ import {
   useTableQuery,
   PagedQueryResult,
   Filters,
-} from "@/hooks/database";
-import { useCrudManager } from "@/hooks/useCrudManager";
+} from '@/hooks/database';
+import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   RingsInsertSchema,
   Lookup_typesRowSchema,
   Maintenance_areasRowSchema,
   V_ringsRowSchema,
   V_systems_completeRowSchema,
-} from "@/schemas/zod-schemas";
-import { createClient } from "@/utils/supabase/client";
-import { ringConfig, RingEntity } from "@/config/ring-config";
-import { useUser } from "@/providers/UserProvider";
-import { UseQueryResult, useQueryClient } from "@tanstack/react-query";
-import { EntityConfig } from "@/components/common/entity-management/types";
-import { useRingExcelUpload } from "@/hooks/database/excel-queries/useRingExcelUpload";
-import { useRPCExcelDownload } from "@/hooks/database/excel-queries";
-import { formatDate } from "@/utils/formatters";
-import { useRingManagerData, DynamicStats } from "@/hooks/data/useRingManagerData";
-import { UserRole } from "@/types/user-roles";
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from "@/hooks/data/useDropdownOptions";
+} from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { ringConfig, RingEntity } from '@/config/ring-config';
+import { useUser } from '@/providers/UserProvider';
+import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
+import { EntityConfig } from '@/components/common/entity-management/types';
+import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { formatDate } from '@/utils/formatters';
+import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
+import { UserRole } from '@/types/user-roles';
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 
 // --- Types ---
 interface SystemToDisassociate {
@@ -65,9 +65,8 @@ interface SystemToDisassociate {
 
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
-  return useTableQuery(supabase, "ring_based_systems", {
-    // THE FIX: Explicitly fetch ALL columns that upsert_system_with_details might touch.
-    // Missing columns here = Data Loss on Save.
+  return useTableQuery(supabase, 'ring_based_systems', {
+    // THE FIX: Removed the problematic nested join. We fetch system_type_id and resolve it client-side.
     columns: `
       order_in_ring,
       ring_id,
@@ -85,13 +84,16 @@ const useRingSystems = (ringId: string | null) => {
         maintenance_terminal_id,
         commissioned_on,
         remark,
-        system_capacity_id,
-        system_type:lookup_types!systems_system_type_id_fkey (name)
+        system_capacity_id
       )
-    `,
-    filters: { ring_id: ringId || "" },
+    `
+      .replace(/\s+/g, '')
+      .trim(),
+
+    filters: { ring_id: ringId || '' },
     enabled: !!ringId,
-    orderBy: [{ column: "order_in_ring", ascending: true }],
+    orderBy: [{ column: 'order_in_ring', ascending: true }],
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     select: (result: PagedQueryResult<any>) => {
       const flattened = result.data
@@ -99,19 +101,18 @@ const useRingSystems = (ringId: string | null) => {
           const sys = item.system || item.systems;
           if (!sys) return null;
 
-          return {
+          const mappedItem = {
             id: sys.id,
             system_name: sys.system_name,
             system_type_id: sys.system_type_id,
             node_id: sys.node_id,
-            is_hub: sys.is_hub,
-            order_in_ring: item.order_in_ring,
+            is_hub: !!sys.is_hub,
+            order_in_ring: typeof item.order_in_ring === 'number' ? item.order_in_ring : null,
             ring_id: item.ring_id,
-            status: sys.status,
-            system_type_name: sys.system_type?.name || "Unknown Type",
+            status: !!sys.status,
+            system_type_name: '', // Will be populated in the UI component
             ip_address:
-              typeof sys.ip_address === "string" ? sys.ip_address.split("/")[0] : sys.ip_address,
-            // Map optional fields to ensure they exist for the update payload
+              typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
             s_no: sys.s_no,
             make: sys.make,
             maan_node_id: sys.maan_node_id,
@@ -119,7 +120,23 @@ const useRingSystems = (ringId: string | null) => {
             commissioned_on: sys.commissioned_on,
             remark: sys.remark,
             system_capacity_id: sys.system_capacity_id,
+            // Defaults to satisfy strict typing
+            created_at: null,
+            updated_at: null,
+            system_category: null,
+            system_type_code: null,
+            node_name: null,
+            node_type_name: null,
+            ring_associations: null,
+            ring_logical_area_name: null,
+            system_capacity_name: null,
+            system_maintenance_terminal_name: null,
+            is_ring_based: true,
+            latitude: null,
+            longitude: null,
           };
+
+          return mappedItem as unknown as V_systems_completeRowSchema;
         })
         .filter((item): item is V_systems_completeRowSchema => item !== null);
 
@@ -145,16 +162,24 @@ const RingAssociatedSystemsView = ({
   canDelete: boolean;
 }) => {
   const { data: systemsData, isLoading } = useRingSystems(ringId);
+  // THE FIX: Fetch System Types client-side to resolve names reliability
+  const { options: systemTypes, isLoading: isLoadingTypes } = useLookupTypeOptions(
+    'SYSTEM_TYPES',
+    'asc',
+    '',
+    'code'
+  );
+
   const systems = systemsData?.data || [];
 
-  if (isLoading)
+  if (isLoading || isLoadingTypes)
     return (
-      <div className='py-4 text-center text-sm text-gray-500'>Loading associated systems...</div>
+      <div className="py-4 text-center text-sm text-gray-500">Loading associated systems...</div>
     );
 
   if (systems.length === 0) {
     return (
-      <div className='text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700'>
+      <div className="text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700">
         No systems associated with this ring yet.
       </div>
     );
@@ -163,50 +188,55 @@ const RingAssociatedSystemsView = ({
   const hubMap = new Map<number, string>();
   systems.forEach((s) => {
     if (s.is_hub && s.order_in_ring !== null) {
-      hubMap.set(Math.floor(s.order_in_ring), s.system_name || "Unknown Hub");
+      hubMap.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
     }
   });
 
   return (
-    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2'>
+    <div className="space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
       {systems.map((system) => {
         const isSpur = !system.is_hub && system.order_in_ring !== null;
         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
         const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
         const system_ip = system.ip_address;
 
+        // THE FIX: Resolve name from client-side list
+        const typeName =
+          systemTypes.find((t) => t.value === system.system_type_id)?.label || 'Unknown Type';
+
         return (
           <div
             key={system.id}
-            className='flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors'>
+            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
+          >
             <div>
-              <div className='flex items-center gap-2'>
-                <span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
                   {system.system_name}
                 </span>
                 {system_ip && (
-                  <span className='font-mono text-xs text-gray-500 dark:text-gray-400'>
+                  <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
                     / {system_ip}
                   </span>
                 )}
-                <span className='text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800'>
-                  {system.system_type_code || system.system_type_name}
+                <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800">
+                  {typeName}
                 </span>
               </div>
 
-              <div className='flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5'>
-                <span className='font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold'>
-                  #{system.order_in_ring ?? "?"}
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                  #{system.order_in_ring ?? '?'}
                 </span>
                 {system.is_hub ? (
-                  <span className='text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
-                    <FiArrowRightCircle className='w-3 h-3' /> Hub
+                  <span className="text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
+                    <FiArrowRightCircle className="w-3 h-3" /> Hub
                   </span>
                 ) : (
-                  <span className='text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
-                    <FiGitMerge className='w-3 h-3' /> Spur
+                  <span className="text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
+                    <FiGitMerge className="w-3 h-3" /> Spur
                     {parentName && (
-                      <span className='text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal'>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal">
                         via {parentName}
                       </span>
                     )}
@@ -214,25 +244,27 @@ const RingAssociatedSystemsView = ({
                 )}
               </div>
             </div>
-            <div className='flex gap-1'>
+            <div className="flex gap-1">
               {canEdit && (
                 <Button
-                  variant='ghost'
-                  size='sm'
-                  className='h-8 w-8 p-0 text-gray-500 hover:text-blue-600'
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
                   onClick={() => onEdit(system)}
-                  title='Edit Order / Hub Status'>
-                  <FiEdit className='w-4 h-4' />
+                  title="Edit Order / Hub Status"
+                >
+                  <FiEdit className="w-4 h-4" />
                 </Button>
               )}
               {canDelete && (
                 <Button
-                  variant='ghost'
-                  size='sm'
-                  className='h-8 w-8 p-0 text-gray-500 hover:text-red-600'
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
                   onClick={() => onDelete(system)}
-                  title='Remove System from Ring'>
-                  <FiTrash2 className='w-4 h-4' />
+                  title="Remove System from Ring"
+                >
+                  <FiTrash2 className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -262,10 +294,10 @@ export default function RingManagerPage() {
   const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  const manager = useCrudManager<"rings", V_ringsRowSchema>({
-    tableName: "rings",
+  const manager = useCrudManager<'rings', V_ringsRowSchema>({
+    tableName: 'rings',
     dataQueryHook: useRingManagerData,
-    displayNameField: "name",
+    displayNameField: 'name',
   });
 
   const {
@@ -298,32 +330,32 @@ export default function RingManagerPage() {
     );
   }, [manager]);
 
-  const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, "rings");
-  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, "rings");
+  const { mutate: insertRing, isPending: isInserting } = useTableInsert(supabase, 'rings');
+  const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings');
   const { mutate: uploadRings, isPending: isUploading } = useRingExcelUpload(supabase);
   const { mutate: exportRings, isPending: isExporting } = useRPCExcelDownload(supabase);
 
   const isMutating = isCrudMutating || isInserting || isUpdating;
 
-  const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
     onSuccess: () => {
       void refetch();
-      queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
-      queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
-      queryClient.invalidateQueries({ queryKey: ["ring-systems-data"] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+      queryClient.invalidateQueries({ queryKey: ['ring-nodes-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ring_nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['ring-systems-data'] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
 
-  const disassociateSystemMutation = useRpcMutation(supabase, "disassociate_system_from_ring", {
+  const disassociateSystemMutation = useRpcMutation(supabase, 'disassociate_system_from_ring', {
     onSuccess: () => {
-      toast.success("System disassociated from ring.");
+      toast.success('System disassociated from ring.');
       void refetch();
-      queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
-      queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
-      queryClient.invalidateQueries({ queryKey: ["ring-systems-data"] });
+      queryClient.invalidateQueries({ queryKey: ['table', 'ring_based_systems'] });
+      queryClient.invalidateQueries({ queryKey: ['ring-nodes-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ring_nodes'] });
+      queryClient.invalidateQueries({ queryKey: ['ring-systems-data'] });
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
@@ -333,7 +365,7 @@ export default function RingManagerPage() {
   const handleSaveSystems = async (systemsData: any[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
-      const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+      const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
         p_id: systemData.id ?? undefined,
         p_system_name: systemData.system_name!,
         p_system_type_id: systemData.system_type_id!,
@@ -349,7 +381,7 @@ export default function RingManagerPage() {
               },
             ]
           : null,
-        p_ip_address: systemData.ip_address ? systemData.ip_address.split("/")[0] : undefined,
+        p_ip_address: systemData.ip_address ? systemData.ip_address.split('/')[0] : undefined,
         p_s_no: systemData.s_no ?? undefined,
         p_make: systemData.make ?? undefined,
         p_maan_node_id: systemData.maan_node_id ?? undefined,
@@ -362,12 +394,12 @@ export default function RingManagerPage() {
     });
     try {
       await Promise.all(promises);
-      toast.success("All system associations saved successfully!");
+      toast.success('All system associations saved successfully!');
       void refetch();
-      queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
-      queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
+      queryClient.invalidateQueries({ queryKey: ['ring-nodes-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_ring_nodes'] });
     } catch {
-      toast.error("One or more system associations failed to save.");
+      toast.error('One or more system associations failed to save.');
     }
   };
 
@@ -378,11 +410,11 @@ export default function RingManagerPage() {
     if (!systemToEdit) return;
 
     if (!systemToEdit.ring_id) {
-      toast.error("Cannot update: System is not correctly associated with a ring context.");
+      toast.error('Cannot update: System is not correctly associated with a ring context.');
       return;
     }
 
-    const payload: RpcFunctionArgs<"upsert_system_with_details"> = {
+    const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
       p_id: systemToEdit.id!,
       p_system_name: systemToEdit.system_name!,
       p_system_type_id: systemToEdit.system_type_id!,
@@ -398,14 +430,13 @@ export default function RingManagerPage() {
               : systemToEdit.order_in_ring ?? null,
         },
       ],
-      p_ip_address: systemToEdit.ip_address ? systemToEdit.ip_address.split("/")[0] : undefined,
+      p_ip_address: systemToEdit.ip_address ? systemToEdit.ip_address.split('/')[0] : undefined,
       p_s_no: systemToEdit.s_no ?? undefined,
       p_make: systemToEdit.make ?? undefined,
       p_maan_node_id: systemToEdit.maan_node_id ?? undefined,
       p_maintenance_terminal_id: systemToEdit.maintenance_terminal_id ?? undefined,
       p_commissioned_on: systemToEdit.commissioned_on ?? undefined,
       p_remark: systemToEdit.remark ?? undefined,
-      // THE FIX: Pass the capacity ID
       p_system_capacity_id: systemToEdit.system_capacity_id ?? undefined,
     };
 
@@ -420,7 +451,7 @@ export default function RingManagerPage() {
   };
 
   const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
-    useLookupTypeOptions("RING_TYPES");
+    useLookupTypeOptions('RING_TYPES');
 
   const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
     useMaintenanceAreaOptions();
@@ -435,14 +466,14 @@ export default function RingManagerPage() {
   );
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const handleMutationSuccess = (data: any) => {
-    toast.success(`Ring ${editModal.record ? "updated" : "created"} successfully.`);
+    toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
     refetch();
 
     if (editModal.record?.id) {
-      queryClient.invalidateQueries({ queryKey: ["rpc-record", "v_rings", editModal.record.id] });
+      queryClient.invalidateQueries({ queryKey: ['rpc-record', 'v_rings', editModal.record.id] });
     }
   };
 
@@ -470,45 +501,45 @@ export default function RingManagerPage() {
       uploadRings({ file });
     }
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
   const handleExportClick = useCallback(() => {
     exportRings({
       fileName: `${formatDate(new Date(), {
-        format: "dd-mm-yyyy",
+        format: 'dd-mm-yyyy',
       })}-rings-export.xlsx`,
-      sheetName: "Rings",
+      sheetName: 'Rings',
       rpcConfig: {
-        functionName: "get_rings_for_export",
+        functionName: 'get_rings_for_export',
       },
       columns: [
-        { key: "id", title: "id", dataIndex: "id" },
-        { key: "name", title: "name", dataIndex: "name" },
-        { key: "description", title: "description", dataIndex: "description" },
-        { key: "ring_type_name", title: "ring_type_name", dataIndex: "ring_type_name" },
+        { key: 'id', title: 'id', dataIndex: 'id' },
+        { key: 'name', title: 'name', dataIndex: 'name' },
+        { key: 'description', title: 'description', dataIndex: 'description' },
+        { key: 'ring_type_name', title: 'ring_type_name', dataIndex: 'ring_type_name' },
         {
-          key: "maintenance_area_name",
-          title: "maintenance_area_name",
-          dataIndex: "maintenance_area_name",
+          key: 'maintenance_area_name',
+          title: 'maintenance_area_name',
+          dataIndex: 'maintenance_area_name',
         },
-        { key: "status", title: "status", dataIndex: "status" },
-        { key: "ofc_status", title: "ofc_status", dataIndex: "ofc_status" },
-        { key: "spec_status", title: "spec_status", dataIndex: "spec_status" },
-        { key: "bts_status", title: "bts_status", dataIndex: "bts_status" },
-        { key: "total_nodes", title: "total_nodes", dataIndex: "total_nodes" },
+        { key: 'status', title: 'status', dataIndex: 'status' },
+        { key: 'ofc_status', title: 'ofc_status', dataIndex: 'ofc_status' },
+        { key: 'spec_status', title: 'spec_status', dataIndex: 'spec_status' },
+        { key: 'bts_status', title: 'bts_status', dataIndex: 'bts_status' },
+        { key: 'total_nodes', title: 'total_nodes', dataIndex: 'total_nodes' },
         {
-          key: "topology_config",
-          title: "topology_config",
-          dataIndex: "topology_config",
-          excelFormat: "json",
+          key: 'topology_config',
+          title: 'topology_config',
+          dataIndex: 'topology_config',
+          excelFormat: 'json',
         },
         {
-          key: "associated_systems",
-          title: "associated_systems",
-          dataIndex: "associated_systems",
-          excelFormat: "json",
+          key: 'associated_systems',
+          title: 'associated_systems',
+          dataIndex: 'associated_systems',
+          excelFormat: 'json',
         },
       ],
     });
@@ -517,18 +548,18 @@ export default function RingManagerPage() {
   const headerActions = useMemo(() => {
     const actions: ActionButton[] = [
       {
-        label: "Refresh",
+        label: 'Refresh',
         onClick: () => {
           refetch();
         },
-        variant: "outline",
-        leftIcon: <FiRefreshCw className={isLoading ? "animate-spin" : ""} />,
+        variant: 'outline',
+        leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
         disabled: isLoading,
       },
       {
-        label: isExporting ? "Exporting..." : "Export Rings",
+        label: isExporting ? 'Exporting...' : 'Export Rings',
         onClick: handleExportClick,
-        variant: "outline",
+        variant: 'outline',
         leftIcon: <FiDownload />,
         disabled: isExporting || isLoading,
         hideTextOnMobile: true,
@@ -537,26 +568,26 @@ export default function RingManagerPage() {
 
     if (canEdit) {
       actions.splice(1, 0, {
-        label: isUploading ? "Uploading..." : "Upload Rings",
+        label: isUploading ? 'Uploading...' : 'Upload Rings',
         onClick: handleUploadClick,
-        variant: "outline",
+        variant: 'outline',
         leftIcon: <FiUpload />,
         disabled: isUploading || isLoading,
         hideTextOnMobile: true,
       });
 
       actions.push({
-        label: "Add New Ring",
+        label: 'Add New Ring',
         onClick: editModal.openAdd,
-        variant: "primary",
+        variant: 'primary',
         leftIcon: <GiLinkedRings />,
         disabled: isLoading,
       });
 
       actions.push({
-        label: "Add Systems to Ring",
+        label: 'Add Systems to Ring',
         onClick: () => setIsSystemsModalOpen(true),
-        variant: "primary",
+        variant: 'primary',
         leftIcon: <FiPlus />,
         disabled: isLoading,
       });
@@ -576,21 +607,21 @@ export default function RingManagerPage() {
 
   const headerStats = useMemo(() => {
     return [
-      { value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`, label: "Total Rings / Nodes" },
+      { value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`, label: 'Total Rings / Nodes' },
       {
         value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`,
-        label: "Nodes On-Air / Rings Configured",
-        color: "success" as const,
+        label: 'Nodes On-Air / Rings Configured',
+        color: 'success' as const,
       },
       {
         value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
-        label: "SPEC (Issued/Pend)",
-        color: "primary" as const,
+        label: 'SPEC (Issued/Pend)',
+        color: 'primary' as const,
       },
       {
         value: `${dynamicStats.ofc.ready} / ${dynamicStats.ofc.partial} / ${dynamicStats.ofc.pending}`,
-        label: "OFC (Ready/Partial/Pend)",
-        color: "warning" as const,
+        label: 'OFC (Ready/Partial/Pend)',
+        color: 'warning' as const,
       },
     ];
   }, [dynamicStats]);
@@ -599,30 +630,31 @@ export default function RingManagerPage() {
     () => ({
       ...ringConfig,
       detailFields: [
-        ...ringConfig.detailFields.filter((f) => f.key !== "description"),
-        { key: "ofc_status", label: "OFC Status", type: "text" },
-        { key: "spec_status", label: "SPEC Status", type: "text" },
-        { key: "bts_status", label: "Working Status", type: "text" },
-        { key: "description", label: "Description", type: "html" },
+        ...ringConfig.detailFields.filter((f) => f.key !== 'description'),
+        { key: 'ofc_status', label: 'OFC Status', type: 'text' },
+        { key: 'spec_status', label: 'SPEC Status', type: 'text' },
+        { key: 'bts_status', label: 'Working Status', type: 'text' },
+        { key: 'description', label: 'Description', type: 'html' },
         {
-          key: "id",
-          label: "Path Management",
-          type: "custom",
+          key: 'id',
+          label: 'Path Management',
+          type: 'custom',
           render: (_value, entity) => (
             <Button
-              size='sm'
-              variant='primary'
-              className='w-full mb-4'
+              size="sm"
+              variant="primary"
+              className="w-full mb-4"
               leftIcon={<FaRoute />}
-              onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}>
+              onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}
+            >
               Manage Logical Paths
             </Button>
           ),
         },
         {
-          key: "id",
-          label: "Associated Systems",
-          type: "custom",
+          key: 'id',
+          label: 'Associated Systems',
+          type: 'custom',
           render: (_value, entity) => (
             <RingAssociatedSystemsView
               ringId={entity.id}
@@ -635,7 +667,7 @@ export default function RingManagerPage() {
                   ringId: entity.id,
                   systemId: system.id!,
                   ringName: entity.name,
-                  systemName: system.system_name || "this system",
+                  systemName: system.system_name || 'this system',
                 })
               }
               canEdit={canEdit}
@@ -647,27 +679,27 @@ export default function RingManagerPage() {
       filterOptions: [
         ...ringConfig.filterOptions,
         {
-          key: "ofc_status",
-          label: "OFC Status",
-          type: "select" as const,
+          key: 'ofc_status',
+          label: 'OFC Status',
+          type: 'select' as const,
           options: [
-            { value: "Ready", label: "Ready" },
-            { value: "Pending", label: "Pending" },
-            { value: "Partial Ready", label: "Partial Ready" },
+            { value: 'Ready', label: 'Ready' },
+            { value: 'Pending', label: 'Pending' },
+            { value: 'Partial Ready', label: 'Partial Ready' },
           ],
         },
         {
-          key: "bts_status",
-          label: "Working Status",
-          type: "select" as const,
+          key: 'bts_status',
+          label: 'Working Status',
+          type: 'select' as const,
           options: [
-            { value: "On-Air", label: "On-Air" },
-            { value: "Pending", label: "Pending" },
-            { value: "Configured", label: "Configured" },
+            { value: 'On-Air', label: 'On-Air' },
+            { value: 'Pending', label: 'Pending' },
+            { value: 'Configured', label: 'Configured' },
           ],
         },
       ].map((opt) => {
-        if (opt.key === "ring_type_id") {
+        if (opt.key === 'ring_type_id') {
           return {
             ...opt,
             options: (ringTypesData || [])
@@ -675,13 +707,13 @@ export default function RingManagerPage() {
                 return { value: t.id, label: t.name };
               })
               .sort((a, b) => {
-                if (a.value === "") return -1;
-                if (b.value === "") return 1;
+                if (a.value === '') return -1;
+                if (b.value === '') return 1;
                 return a.label.localeCompare(b.label);
               }),
           };
         }
-        if (opt.key === "maintenance_terminal_id") {
+        if (opt.key === 'maintenance_terminal_id') {
           return {
             ...opt,
             options: (maintenanceAreasData || []).map((m) => ({ value: m.id, label: m.name })),
@@ -696,7 +728,7 @@ export default function RingManagerPage() {
   useEffect(() => {
     if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
       const defaultType = ringTypesData.find(
-        (t) => t.code === "BBU_RINGS" || t.name === "BBU_RINGS"
+        (t) => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS'
       );
 
       if (defaultType) {
@@ -706,6 +738,7 @@ export default function RingManagerPage() {
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ringTypesData]);
 
   const uiFilters = useMemo<Record<string, string>>(() => {
@@ -715,7 +748,7 @@ export default function RingManagerPage() {
       const v: unknown = src[k as keyof typeof src];
       if (v === undefined || v === null) return;
       out[k] =
-        typeof v === "object" && "value" in v ? String((v as { value: unknown }).value) : String(v);
+        typeof v === 'object' && 'value' in v ? String((v as { value: unknown }).value) : String(v);
     });
     return out;
   }, [filters.filters]);
@@ -729,27 +762,27 @@ export default function RingManagerPage() {
   }, [systemToDisassociate, disassociateSystemMutation]);
 
   if (error)
-    return <ErrorDisplay error={error.message} actions={[{ label: "Retry", onClick: refetch }]} />;
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <div className='p-4 md:p-6 h-full flex flex-col'>
+    <div className="p-4 md:p-6 h-full flex flex-col">
       <input
-        type='file'
+        type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        className='hidden'
-        accept='.xlsx, .xls'
+        className="hidden"
+        accept=".xlsx, .xls"
       />
       <PageHeader
-        title='Ring Manager'
-        description='Manage network rings, status, and topology.'
+        title="Ring Manager"
+        description="Manage network rings, status, and topology."
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}
       />
-      <div className='grow mt-6'>
+      <div className="grow mt-6">
         <EntityManagementComponent
           config={dynamicFilterConfig}
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
@@ -813,20 +846,20 @@ export default function RingManagerPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
+        title="Confirm Deletion"
         message={deleteModal.message}
         loading={deleteModal.loading}
-        type='danger'
+        type="danger"
       />
 
       <ConfirmModal
         isOpen={!!systemToDisassociate}
         onConfirm={handleConfirmDisassociation}
         onCancel={() => setSystemToDisassociate(null)}
-        title='Confirm Disassociation'
+        title="Confirm Disassociation"
         message={`Are you sure you want to remove the system "${systemToDisassociate?.systemName}" from the ring "${systemToDisassociate?.ringName}"?`}
         loading={disassociateSystemMutation.isPending}
-        type='danger'
+        type="danger"
       />
     </div>
   );

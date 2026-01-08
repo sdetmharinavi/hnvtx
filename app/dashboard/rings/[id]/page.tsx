@@ -18,14 +18,14 @@ import {
   V_ofc_connections_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
-import MeshDiagram from '@/components/map/MeshDiagram';
+import MeshDiagram from '@/components/map/MeshDiagram/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
-import { FiberMetric, PathConfig, PortDisplayInfo } from '@/components/map/ClientRingMap';
+import { FiberMetric, PathConfig, PortDisplayInfo } from '@/components/map/ClientRingMap/types';
 import { getConnectionColor } from '@/utils/mapUtils'; // IMPORTED
 
-const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap'), {
+const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });

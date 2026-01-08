@@ -140,12 +140,13 @@ export function useDropdownOptions({
 export const useLookupTypeOptions = (
   category: string,
   orderDir: "asc" | "desc" = "asc",
-  orderBy: string = "sort_order"
+  orderBy: string = "sort_order",
+  labelField: string = "name"
 ) => {
   const { options, isLoading, originalData } = useDropdownOptions({
     tableName: "lookup_types",
     valueField: "id",
-    labelField: "name",
+    labelField: labelField,
     filters: { category, status: true },
     orderBy,
     orderDir,
