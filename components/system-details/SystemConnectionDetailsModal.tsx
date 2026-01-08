@@ -54,6 +54,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     isLoading,
     refetch,
   } = useRpcRecord(supabase, 'v_system_connections_complete', connectionId);
+  
 
   const allocatedFiberIds = useMemo(() => {
     if (!connection) return [];
@@ -84,6 +85,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     },
     { enabled: allocatedFiberIds.length > 0 }
   );
+  
 
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
