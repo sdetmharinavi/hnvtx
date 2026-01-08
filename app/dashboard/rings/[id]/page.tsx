@@ -348,10 +348,9 @@ export default function RingMapPage() {
 
       if (sysIdA && sysIdB) {
         const key1 = `${sysIdA}-${sysIdB}`;
-        
-        // Only use directional key (Source -> Destination) for path config
-        // This ensures Forward path A->B doesn't overwrite Reverse path B->A
-        
+        // THE FIX: Do NOT set key2 (reverse path). Path configs are now strictly directional.
+        // const key2 = `${sysIdB}-${sysIdA}`;
+
         const srcName = getSystemName(p.source_system);
         const dstName = getSystemName(p.destination_system);
 
@@ -366,6 +365,7 @@ export default function RingMapPage() {
           connectionId: p.id,
         };
         map[key1] = config;
+        // map[key2] = config; // Removed
       }
     });
 
@@ -412,7 +412,10 @@ export default function RingMapPage() {
 
           activeFibersOnCable.forEach((fib) => {
             const isNormalOrientation = cable.sn_id === physNodeA;
-            
+            // const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
+            // const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
+            // const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
+
             let distance = null;
             let power = null;
             if (isNormalOrientation) {
@@ -448,7 +451,7 @@ export default function RingMapPage() {
                 fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
               distance,
               power,
-              connectionId: systemConnectionId, 
+              connectionId: systemConnectionId, // This allows the Popup to render PathDisplay
             });
           });
         }
@@ -474,7 +477,7 @@ export default function RingMapPage() {
       };
 
       map[key1] = mergedConfig;
-      // Do NOT set map[key2] here automatically. 
+      // Do NOT set map[key2] here automatically.
       // If there is a reverse path, the loop will process it in a future iteration as [nodeB, nodeA]
     });
 
@@ -485,7 +488,7 @@ export default function RingMapPage() {
     allCableConnections,
     pathConfigs,
     mappedNodes,
-    logicalFiberPathsMap, 
+    logicalFiberPathsMap,
   ]);
 
   // 11. Build Node -> Active Ports Map

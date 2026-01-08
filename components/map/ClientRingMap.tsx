@@ -9,7 +9,6 @@ import {
   Polyline,
   useMap,
   LayersControl,
-  ZoomControl,
 } from 'react-leaflet';
 import L, { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -25,10 +24,10 @@ import {
   fetchOrsDistance,
   fixLeafletIcons,
   applyJitterToNodes,
-  getConnectionColor, // IMPORTED
+  getConnectionColor,
   DisplayNode,
-  getCurvedPath, // IMPORTED
-  isColocated    // IMPORTED
+  getCurvedPath,
+  isColocated,
 } from '@/utils/mapUtils';
 import { Ruler } from 'lucide-react';
 import { PopupFiberRow } from './PopupFiberRow';
@@ -70,7 +69,6 @@ function getReadableTextColor(bgColor: string): string {
   return brightness > 150 ? '#000000' : '#ffffff';
 }
 
-// --- HELPER: Create HTML String for DivIcon ---
 const createLabelHtml = (
   name: string,
   ip: string | null,
@@ -80,20 +78,23 @@ const createLabelHtml = (
   const bgClass = isDark ? 'bg-slate-800' : 'bg-white';
   const textClass = isDark ? 'text-slate-50' : 'text-slate-900';
   const borderClass = isDark ? 'border-slate-600' : 'border-slate-300';
-  
+
   let portsHtml = '';
   if (ports.length > 0) {
     const visiblePorts = ports.slice(0, 6);
     const hiddenCount = ports.length - 6;
-    
-    const portItems = visiblePorts.map(p => {
-       const textColor = getReadableTextColor(p.color);
-       return `<div class="px-1 font-bold py-px text-[12px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap" style="background-color: ${p.color}; color: ${textColor}; border-color: rgba(255,255,255,0.3)"><span>${p.port}</span></div>`;
-    }).join('');
 
-    const moreItem = hiddenCount > 0 
-      ? `<div class="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>` 
-      : '';
+    const portItems = visiblePorts
+      .map((p) => {
+        const textColor = getReadableTextColor(p.color);
+        return `<div class="px-1 font-bold py-px text-[12px] font-mono rounded border shadow-sm flex items-center gap-1 backdrop-blur-xs whitespace-nowrap" style="background-color: ${p.color}; color: ${textColor}; border-color: rgba(255,255,255,0.3)"><span>${p.port}</span></div>`;
+      })
+      .join('');
+
+    const moreItem =
+      hiddenCount > 0
+        ? `<div class="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>`
+        : '';
 
     portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-[200px]">${portItems}${moreItem}</div>`;
   }
@@ -101,18 +102,18 @@ const createLabelHtml = (
   return `
     <div class="relative flex flex-col items-center cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 group pointer-events-auto">
       <div class="px-2 py-1 text-[13px] font-bold rounded-md border shadow-lg backdrop-blur-md whitespace-nowrap z-10 ${bgClass} ${textClass} ${borderClass}">
-        ${name} ${ip ? `<span class="font-mono font-normal opacity-80 text-[11px] ml-1">| ${ip}</span>` : ''}
+        ${name} ${
+    ip ? `<span class="font-mono font-normal opacity-80 text-[11px] ml-1">| ${ip}</span>` : ''
+  }
       </div>
       ${portsHtml}
     </div>
   `;
 };
 
-// --- SUB-COMPONENT: Connection Line ---
 interface ConnectionLineProps {
   start: MapNode;
   end: MapNode;
-  // New props for calculated positions
   startPos: L.LatLng;
   endPos: L.LatLng;
   type: 'solid' | 'dashed';
@@ -121,6 +122,7 @@ interface ConnectionLineProps {
   setPolylineRef: (key: string, el: L.Polyline | null) => void;
   config?: PathConfig;
   customColor?: string;
+  hasReverse: boolean; // NEW
 }
 
 const ConnectionLine = ({
@@ -134,6 +136,7 @@ const ConnectionLine = ({
   setPolylineRef,
   config,
   customColor,
+  hasReverse,
 }: ConnectionLineProps) => {
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
@@ -145,10 +148,15 @@ const ConnectionLine = ({
     staleTime: Infinity,
   });
 
-  const defaultColor = type === 'solid'
-      ? theme === 'dark' ? '#3b82f6' : '#2563eb'
-      : theme === 'dark' ? '#ef4444' : '#dc2626';
-      
+  const defaultColor =
+    type === 'solid'
+      ? theme === 'dark'
+        ? '#3b82f6'
+        : '#2563eb'
+      : theme === 'dark'
+      ? '#ef4444'
+      : '#dc2626';
+
   const color = customColor || defaultColor;
 
   const distanceText = isLoading ? (
@@ -170,20 +178,27 @@ const ConnectionLine = ({
       config.cableName ||
       config.fiberInfo);
 
-  // --- CURVE LOGIC FOR MAP ---
-  // If the nodes are jittered but originate from the same location (co-located),
-  // apply a significant curve to avoid lines crossing directly through the cluster.
-  // Or if it's a loopback (same node).
-  const isCluster = isColocated(startPos, endPos, 0.005); // Threshold for "visual closeness"
-  
-  const positions = isCluster 
-     ? getCurvedPath(startPos, endPos, 0.5) // High curvature for short/co-located links
-     : [startPos, endPos]; // Straight line for distant nodes
+  // CURVE LOGIC
+  const isCluster = isColocated(startPos, endPos, 0.005);
+
+  let positions;
+  if (isCluster) {
+    positions = getCurvedPath(startPos, endPos, 0.5);
+  } else if (hasReverse) {
+    positions = getCurvedPath(startPos, endPos, 0.15);
+  } else {
+    positions = [startPos, endPos];
+  }
 
   return (
     <Polyline
       positions={positions}
-      pathOptions={{ color, weight: type === 'solid' ? 4 : 2.5, opacity: type === 'solid' ? 1 : 0.7, dashArray: type === 'dashed' ? '6' : undefined }}
+      pathOptions={{
+        color,
+        weight: type === 'solid' ? 4 : 2.5,
+        opacity: type === 'solid' ? 1 : 0.7,
+        dashArray: type === 'dashed' ? '6' : undefined,
+      }}
       eventHandlers={{
         click: () => setIsInteracted(true),
         popupopen: () => setIsInteracted(true),
@@ -329,22 +344,18 @@ export default function ClientRingMap({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
-  
-  // New state to track draggable label positions
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
 
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
-  // 1. Calculate Jittered Positions
   const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
-  // 2. Create Lookup Map for Jittered Positions
   const nodePosMap = useMemo(() => {
     const map = new Map<string, L.LatLng>();
-    displayNodes.forEach(n => {
-      if(n.id) map.set(n.id, new L.LatLng(n.displayLat, n.displayLng));
+    displayNodes.forEach((n) => {
+      if (n.id) map.set(n.id, new L.LatLng(n.displayLat, n.displayLng));
     });
     return map;
   }, [displayNodes]);
@@ -355,9 +366,15 @@ export default function ClientRingMap({
     const sumLng = displayNodes.reduce((acc, node) => acc + node.displayLng, 0);
     return {
       lat: sumLat / displayNodes.length,
-      lng: sumLng / displayNodes.length
+      lng: sumLng / displayNodes.length,
     };
   }, [displayNodes]);
+
+  const solidLineSet = useMemo(() => {
+    const set = new Set<string>();
+    solidLines?.forEach(([s, e]) => set.add(`${s.id}-${e.id}`));
+    return set;
+  }, [solidLines]);
 
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
     if (el) {
@@ -399,12 +416,12 @@ export default function ClientRingMap({
   }, [displayNodes]);
 
   const handleLabelDragEnd = useCallback((e: L.LeafletEvent, nodeId: string) => {
-      const marker = e.target;
-      const position = marker.getLatLng();
-      setLabelPositions(prev => ({
-          ...prev,
-          [nodeId]: [position.lat, position.lng]
-      }));
+    const marker = e.target;
+    const position = marker.getLatLng();
+    setLabelPositions((prev) => ({
+      ...prev,
+      [nodeId]: [position.lat, position.lng],
+    }));
   }, []);
 
   if (displayNodes.length === 0)
@@ -471,7 +488,6 @@ export default function ClientRingMap({
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {/* Lines Rendering - UPDATED TO USE JITTERED POSITIONS */}
         {solidLines
           .filter(
             ([start, end]) =>
@@ -479,34 +495,34 @@ export default function ClientRingMap({
           )
           .map(([start, end], i) => {
             const key1 = `${start.id}-${end.id}`;
-            const config = enhancedSegmentConfigs
-              ? enhancedSegmentConfigs[key1]
-              : undefined;
+            const config = enhancedSegmentConfigs ? enhancedSegmentConfigs[key1] : undefined;
 
             let lineColor = undefined;
             if (config?.connectionId) {
-                lineColor = getConnectionColor(config.connectionId);
+              lineColor = getConnectionColor(config.connectionId);
             }
 
-            // GET JITTERED POSITIONS
             const startPos = nodePosMap.get(start.id!);
             const endPos = nodePosMap.get(end.id!);
 
             if (!startPos || !endPos) return null;
+
+            const hasReverse = solidLineSet.has(`${end.id}-${start.id}`);
 
             return (
               <ConnectionLine
                 key={`solid-${start.id}-${end.id}-${i}`}
                 start={start}
                 end={end}
-                startPos={startPos} // Pass calculated Pos
-                endPos={endPos}     // Pass calculated Pos
+                startPos={startPos}
+                endPos={endPos}
                 type="solid"
                 theme={theme}
                 showPopup={showAllLinePopups}
                 setPolylineRef={setPolylineRef}
                 config={config}
                 customColor={lineColor}
+                hasReverse={hasReverse}
               />
             );
           })}
@@ -520,14 +536,13 @@ export default function ClientRingMap({
               target.long !== null
           )
           .map(([source, target], i) => {
-            // GET JITTERED POSITIONS
             const startPos = nodePosMap.get(source.id!);
             const endPos = nodePosMap.get(target.id!);
 
             if (!startPos || !endPos) return null;
 
             return (
-                <ConnectionLine
+              <ConnectionLine
                 key={`dashed-${source.id}-${target.id}-${i}`}
                 start={source}
                 end={target}
@@ -537,46 +552,49 @@ export default function ClientRingMap({
                 theme={theme}
                 showPopup={showAllLinePopups}
                 setPolylineRef={setPolylineRef}
-                />
+                hasReverse={false}
+              />
             );
           })}
 
-        {/* Node & Label Rendering (Unchanged) */}
         {displayNodes.map((node: DisplayNode<RingMapNode>, i) => {
-           const isHighlighted = highlightedNodeIds?.includes(node.id!);
+          const isHighlighted = highlightedNodeIds?.includes(node.id!);
           const displayIp = formatIP(node.ip);
           const portsList = nodePorts?.get(node.id!) || [];
-          
+
           const nodePos: [number, number] = [node.displayLat, node.displayLng];
-          
+
           const dLat = node.displayLat - mapCenter.lat;
           const dLng = node.displayLng - mapCenter.lng;
-          const mag = Math.sqrt(dLat*dLat + dLng*dLng);
-          
+          const mag = Math.sqrt(dLat * dLat + dLng * dLng);
+
           const OFFSET_DISTANCE = 0.003;
           let offsetLat = 0;
           let offsetLng = 0;
 
-          if (mag > 0.0001) { 
-             offsetLat = (dLat / mag) * OFFSET_DISTANCE;
-             offsetLng = (dLng / mag) * OFFSET_DISTANCE;
+          if (mag > 0.0001) {
+            offsetLat = (dLat / mag) * OFFSET_DISTANCE;
+            offsetLng = (dLng / mag) * OFFSET_DISTANCE;
           } else {
-             offsetLat = OFFSET_DISTANCE;
+            offsetLat = OFFSET_DISTANCE;
           }
 
-          const defaultLabelPos: [number, number] = [node.displayLat + offsetLat, node.displayLng + offsetLng];
+          const defaultLabelPos: [number, number] = [
+            node.displayLat + offsetLat,
+            node.displayLng + offsetLng,
+          ];
           const labelPos: [number, number] = labelPositions[node.id!] || defaultLabelPos;
-          
+
           const labelIcon = L.divIcon({
             html: createLabelHtml(
-              node.system_node_name || node.name || 'Unknown', 
-              displayIp, 
-              portsList, 
+              node.system_node_name || node.name || 'Unknown',
+              displayIp,
+              portsList,
               theme === 'dark'
             ),
-            className: 'bg-transparent border-none', 
-            iconSize: [0, 0], 
-            iconAnchor: [0, 0] 
+            className: 'bg-transparent border-none',
+            iconSize: [0, 0],
+            iconAnchor: [0, 0],
           });
 
           return (
@@ -584,14 +602,13 @@ export default function ClientRingMap({
               <Polyline
                 positions={[nodePos, labelPos]}
                 pathOptions={{
-                   color: theme === 'dark' ? '#94a3b8' : '#64748b', 
-                   weight: 1.5,
-                   dashArray: '4, 4',
-                   opacity: 0.6
+                  color: theme === 'dark' ? '#94a3b8' : '#64748b',
+                  weight: 1.5,
+                  dashArray: '4, 4',
+                  opacity: 0.6,
                 }}
                 interactive={false}
               />
-
               <Marker
                 position={nodePos}
                 icon={getNodeIcon(node.system_type, node.type, !!isHighlighted)}
@@ -626,7 +643,7 @@ export default function ClientRingMap({
                               style={{
                                 backgroundColor: p.color + '15',
                                 borderColor: p.color + '40',
-                                color: p.color,
+                                color: getReadableTextColor(p.color),
                               }}
                               title={p.targetNodeName ? `→ ${p.targetNodeName}` : 'Endpoint'}
                             >
@@ -642,14 +659,11 @@ export default function ClientRingMap({
                   </div>
                 </Popup>
               </Marker>
-
               <Marker
                 position={labelPos}
                 icon={labelIcon}
                 draggable={true}
-                eventHandlers={{
-                  dragend: (e) => handleLabelDragEnd(e, node.id!)
-                }}
+                eventHandlers={{ dragend: (e) => handleLabelDragEnd(e, node.id!) }}
                 zIndexOffset={1000}
                 opacity={1}
               />
