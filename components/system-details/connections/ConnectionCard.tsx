@@ -260,6 +260,17 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 />
               </div>
             )}
+            {connection.unique_id && (
+              <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                  UNIQUE ID
+                </div>
+                <TruncateTooltip
+                  text={connection.unique_id}
+                  className="font-mono font-semibold text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            )}
             {connection.media_type_name && (
               <div className="bg-white dark:bg-gray-800/50 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
