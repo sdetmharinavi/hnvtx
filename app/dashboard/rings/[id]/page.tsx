@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic';
 import { localDb } from '@/hooks/data/localDb';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
-import { RingMapNode } from '@/components/map/types/node';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import {
@@ -22,7 +21,12 @@ import MeshDiagram from '@/components/map/MeshDiagram/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
-import { FiberMetric, PathConfig, PortDisplayInfo } from '@/components/map/ClientRingMap/types';
+import {
+  FiberMetric,
+  PathConfig,
+  PortDisplayInfo,
+  RingMapNode,
+} from '@/components/map/ClientRingMap/types';
 import { getConnectionColor } from '@/utils/mapUtils'; // IMPORTED
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/ClientRingMap'), {
