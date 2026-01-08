@@ -1,14 +1,14 @@
 // path: components/ring-manager/EditSystemInRingModal.tsx
-'use client';
+"use client";
 
-import { FC } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { FormInput, FormSwitch } from '@/components/common/form';
-import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
-import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
-import { useEffect } from 'react';
+import { FC } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { FormInput, FormSwitch } from "@/components/common/form";
+import { V_systems_completeRowSchema } from "@/schemas/zod-schemas";
+import { BaseFormModal } from "@/components/common/form/BaseFormModal"; // IMPORT
+import { useEffect } from "react";
 
 const editSystemInRingSchema = z.object({
   order_in_ring: z.number().nullable(),
@@ -60,24 +60,23 @@ export const EditSystemInRingModal: FC<EditSystemInRingModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="System Ring Config"
+      title='System Ring Config'
       isEditMode={true}
       isLoading={isLoading}
       form={form}
       onSubmit={onSubmit}
-      heightClass="h-auto"
-      subtitle={system?.system_name}
-    >
-      <div className="space-y-4">
+      heightClass='h-auto'
+      subtitle={system?.system_name}>
+      <div className='space-y-4'>
         <FormInput
-          name="order_in_ring"
-          label="Order in Ring"
-          type="number"
-          step="0.1"
+          name='order_in_ring'
+          label='Order in Ring'
+          type='number'
+          step='0.1'
           register={register}
           error={errors.order_in_ring}
         />
-        <FormSwitch name="is_hub" label="Is Hub System" control={control} />
+        <FormSwitch name='is_hub' label='Is Hub System' control={control} />
       </div>
     </BaseFormModal>
   );
