@@ -5,9 +5,8 @@ import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { getReadableTextColor } from './utils/labelUtils';
 import { createLabelHtml } from './utils/labelUtils';
-import { RingMapNode } from '@/components/map/types/node';
 import { DisplayNode } from '@/utils/mapUtils';
-import { PortDisplayInfo } from './types';
+import { PortDisplayInfo, RingMapNode } from './types';
 
 interface NodeMarkerProps {
   node: DisplayNode<RingMapNode>;

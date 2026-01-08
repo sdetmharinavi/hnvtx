@@ -8,8 +8,7 @@ import { ButtonSpinner } from '@/components/common/ui';
 import { Ruler } from 'lucide-react';
 import { PopupFiberRow } from '../PopupFiberRow';
 import { fetchOrsDistance, isColocated, getCurvedPath } from '@/utils/mapUtils';
-import { PathConfig } from './types';
-import { RingMapNode } from '@/components/map/types/node';
+import { PathConfig, RingMapNode } from './types';
 
 interface ConnectionLineProps {
   start: RingMapNode;
