@@ -1,11 +1,11 @@
 // path: hooks/useDeleteManager.ts
-import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
-import { useTableBulkOperations } from '@/hooks/database';
-import { createClient } from '@/utils/supabase/client';
-import { Database } from '@/types/supabase-types';
-import { useAdminBulkDeleteUsers } from '@/hooks/data/useAdminUserMutations';
-import { PostgrestError } from '@supabase/supabase-js';
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { useTableBulkOperations } from "@/hooks/database";
+import { createClient } from "@/utils/supabase/client";
+import { Database } from "@/types/supabase-types";
+import { useAdminBulkDeleteUsers } from "@/hooks/data/useAdminUserMutations";
+import { PostgrestError } from "@supabase/supabase-js";
 
 interface DeleteItem {
   id: string;
@@ -20,7 +20,7 @@ interface BulkDeleteFilter {
 }
 
 interface UseDeleteManagerProps {
-  tableName: keyof Database['public']['Tables'];
+  tableName: keyof Database["public"]["Tables"];
   onSuccess?: (deletedIds: string[]) => void;
 }
 
@@ -32,15 +32,18 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   const [itemsToDelete, setItemsToDelete] = useState<DeleteItem[]>([]);
   const [bulkFilter, setBulkFilter] = useState<BulkDeleteFilter | null>(null);
   const [itemToDelete, setItemToDelete] = useState<DeleteItem | null>(null);
-  
+
   // NEW: State to hold a one-time custom handler for the current operation
   const [customDeleteAction, setCustomDeleteAction] = useState<CustomDeleteHandler | null>(null);
 
   const supabase = createClient();
 
-  const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(supabase, tableName).bulkDelete;
+  const { mutate: genericBulkDelete, isPending: isGenericDeletePending } = useTableBulkOperations(
+    supabase,
+    tableName
+  ).bulkDelete;
   const { mutate: userDelete, isPending: isUserDeletePending } = useAdminBulkDeleteUsers();
-  
+
   // We manage our own loading state for custom actions
   const [isCustomLoading, setIsCustomLoading] = useState(false);
   const isPending = isGenericDeletePending || isUserDeletePending || isCustomLoading;
@@ -81,7 +84,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
   }, []);
 
   const handleConfirm = useCallback(async () => {
-    const idsToDelete = itemsToDelete.map(item => item.id);
+    const idsToDelete = itemsToDelete.map((item) => item.id);
 
     // 1. Handle Custom Logic (e.g. Offline Queue)
     if (customDeleteAction) {
@@ -103,9 +106,10 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     // 2. Standard Online Logic
     const mutationOptions = {
       onSuccess: () => {
-        const successMessage = itemsToDelete.length === 1
-          ? `Successfully deleted "${itemsToDelete[0].name}"`
-          : itemsToDelete.length > 1
+        const successMessage =
+          itemsToDelete.length === 1
+            ? `Successfully deleted "${itemsToDelete[0].name}"`
+            : itemsToDelete.length > 1
             ? `Successfully deleted ${itemsToDelete.length} items.`
             : `Successfully performed bulk delete.`;
         toast.success(successMessage);
@@ -113,16 +117,16 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       },
       onError: (err: Error) => {
         const pgError = err as unknown as PostgrestError;
-        if (pgError.code === '23503') { 
+        if (pgError.code === "23503") {
           const matches = pgError.message.match(/on table "([^"]+)"/g);
-          let referencingTable = 'another table';
+          let referencingTable = "another table";
           if (matches && matches.length >= 2) {
-             const lastMatch = matches[matches.length - 1];
-             const tableNameMatch = lastMatch.match(/"([^"]+)"/);
-             if (tableNameMatch) referencingTable = tableNameMatch[1];
+            const lastMatch = matches[matches.length - 1];
+            const tableNameMatch = lastMatch.match(/"([^"]+)"/);
+            if (tableNameMatch) referencingTable = tableNameMatch[1];
           } else if (pgError.details) {
-             const detailMatch = pgError.details.match(/from table "([^"]+)"/);
-             if (detailMatch) referencingTable = detailMatch[1];
+            const detailMatch = pgError.details.match(/from table "([^"]+)"/);
+            if (detailMatch) referencingTable = detailMatch[1];
           }
           toast.error("Deletion Blocked", {
             description: `Cannot delete this item because it is currently used by records in the '${referencingTable}' table. Please delete or reassign those records first.`,
@@ -134,10 +138,10 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       },
       onSettled: () => {
         handleCancel();
-      }
+      },
     };
 
-    if (tableName === 'user_profiles') {
+    if (tableName === "user_profiles") {
       if (itemsToDelete.length > 0) {
         userDelete({ user_ids: idsToDelete }, mutationOptions);
       } else {
@@ -151,11 +155,22 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         genericBulkDelete({ filters: { [bulkFilter.column]: bulkFilter.value } }, mutationOptions);
       }
     }
-  }, [tableName, itemsToDelete, onSuccess, userDelete, handleCancel, bulkFilter, genericBulkDelete, customDeleteAction]);
+  }, [
+    tableName,
+    itemsToDelete,
+    onSuccess,
+    userDelete,
+    handleCancel,
+    bulkFilter,
+    genericBulkDelete,
+    customDeleteAction,
+  ]);
 
   const getConfirmationMessage = useCallback(() => {
     // Customize message for offline mode
-    const suffix = customDeleteAction ? " (Offline Mode: Will sync later)" : " This action cannot be undone.";
+    const suffix = customDeleteAction
+      ? " (Offline Mode: Will sync later)"
+      : " This action cannot be undone.";
 
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
@@ -166,12 +181,18 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     if (bulkFilter) {
       return `Are you sure you want to delete all items in "${bulkFilter.displayName}"?${suffix}`;
     }
-    return 'Are you sure you want to proceed?';
+    return "Are you sure you want to proceed?";
   }, [itemsToDelete, bulkFilter, customDeleteAction]);
 
   return {
-    deleteSingle, deleteMultiple, deleteBulk, handleConfirm, handleCancel,
-    isConfirmModalOpen, isPending, confirmationMessage: getConfirmationMessage(),
+    deleteSingle,
+    deleteMultiple,
+    deleteBulk,
+    handleConfirm,
+    handleCancel,
+    isConfirmModalOpen,
+    isPending,
+    confirmationMessage: getConfirmationMessage(),
     itemToDelete: itemToDelete || (itemsToDelete.length > 0 ? itemsToDelete[0] : null),
   };
 }
