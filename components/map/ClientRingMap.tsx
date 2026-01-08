@@ -91,7 +91,7 @@ const createLabelHtml = (
       ? `<div class="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>` 
       : '';
 
-    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-[200px]">${portItems}${moreItem}</div>`;
+    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-left max-w-[200px]">${portItems}${moreItem}</div>`;
   }
 
   // NOTE: We don't render a CSS triangle arrow here because the label is draggable.
