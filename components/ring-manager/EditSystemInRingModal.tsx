@@ -1,4 +1,4 @@
-// path: components/ring-manager/EditSystemInRingModal.tsx
+// components/ring-manager/EditSystemInRingModal.tsx
 "use client";
 
 import { FC } from "react";

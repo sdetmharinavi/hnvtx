@@ -1,4 +1,4 @@
-// path: app/dashboard/ring-manager/page.tsx
+// app/dashboard/ring-manager/page.tsx
 "use client";
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
@@ -66,6 +66,8 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, "ring_based_systems", {
+    // THE FIX: Explicitly fetch ALL columns that upsert_system_with_details might touch.
+    // Missing columns here = Data Loss on Save.
     columns: `
       order_in_ring,
       ring_id,
@@ -100,8 +102,8 @@ const useRingSystems = (ringId: string | null) => {
           return {
             id: sys.id,
             system_name: sys.system_name,
-            system_type_id: sys.system_type_id, // Mapped
-            node_id: sys.node_id, // Mapped
+            system_type_id: sys.system_type_id,
+            node_id: sys.node_id,
             is_hub: sys.is_hub,
             order_in_ring: item.order_in_ring,
             ring_id: item.ring_id,
@@ -166,7 +168,7 @@ const RingAssociatedSystemsView = ({
   });
 
   return (
-    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-2 gap-1'>
+    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2'>
       {systems.map((system) => {
         const isSpur = !system.is_hub && system.order_in_ring !== null;
         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
@@ -183,12 +185,12 @@ const RingAssociatedSystemsView = ({
                   {system.system_name}
                 </span>
                 {system_ip && (
-                  <span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
+                  <span className='font-mono text-xs text-gray-500 dark:text-gray-400'>
                     / {system_ip}
                   </span>
                 )}
                 <span className='text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800'>
-                  {system.system_type_code}
+                  {system.system_type_code || system.system_type_name}
                 </span>
               </div>
 
@@ -260,7 +262,6 @@ export default function RingManagerPage() {
   const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // Use the extracted hook via CrudManager
   const manager = useCrudManager<"rings", V_ringsRowSchema>({
     tableName: "rings",
     dataQueryHook: useRingManagerData,
@@ -283,7 +284,6 @@ export default function RingManagerPage() {
     actions: crudActions,
   } = manager;
 
-  // Safely extract 'stats' from the hook result
   const dynamicStats = useMemo<DynamicStats>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const s = (manager as any).stats;
@@ -308,10 +308,10 @@ export default function RingManagerPage() {
   const upsertSystemMutation = useRpcMutation(supabase, "upsert_system_with_details", {
     onSuccess: () => {
       void refetch();
-      // Invalidate specific node data to ensure Ring Paths map is updated
       queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
       queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
       queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
+      queryClient.invalidateQueries({ queryKey: ["ring-systems-data"] });
     },
     onError: (err) => toast.error(`Failed to save a system: ${err.message}`),
   });
@@ -323,6 +323,7 @@ export default function RingManagerPage() {
       queryClient.invalidateQueries({ queryKey: ["table", "ring_based_systems"] });
       queryClient.invalidateQueries({ queryKey: ["ring-nodes-detail"] });
       queryClient.invalidateQueries({ queryKey: ["paged-data", "v_ring_nodes"] });
+      queryClient.invalidateQueries({ queryKey: ["ring-systems-data"] });
       setSystemToDisassociate(null);
     },
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
@@ -404,6 +405,7 @@ export default function RingManagerPage() {
       p_maintenance_terminal_id: systemToEdit.maintenance_terminal_id ?? undefined,
       p_commissioned_on: systemToEdit.commissioned_on ?? undefined,
       p_remark: systemToEdit.remark ?? undefined,
+      // THE FIX: Pass the capacity ID
       p_system_capacity_id: systemToEdit.system_capacity_id ?? undefined,
     };
 
@@ -417,32 +419,28 @@ export default function RingManagerPage() {
     });
   };
 
-  // --- REPLACED MANUAL OFFLINE QUERY WITH CENTRALIZED HOOKS ---
   const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
     useLookupTypeOptions("RING_TYPES");
 
   const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
     useMaintenanceAreaOptions();
 
-  // Cast raw data
   const ringTypesData = useMemo(
     () => (ringTypesRaw || []) as Lookup_typesRowSchema[],
-    [ringTypesRaw] // Only recreate if ringTypesRaw changes
+    [ringTypesRaw]
   );
   const maintenanceAreasData = useMemo(
     () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
     [maintenanceAreasRaw]
   );
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
-  // -----------------------------------------------------------
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleMutationSuccess = (data: any) => {
     toast.success(`Ring ${editModal.record ? "updated" : "created"} successfully.`);
     editModal.close();
     refetch();
 
-    // THE FIX: Invalidate specific ring details if we updated one
     if (editModal.record?.id) {
       queryClient.invalidateQueries({ queryKey: ["rpc-record", "v_rings", editModal.record.id] });
     }
@@ -674,9 +672,6 @@ export default function RingManagerPage() {
             ...opt,
             options: (ringTypesData || [])
               .map((t) => {
-                // if (t.name === "DEFAULT") {
-                //   return { value: "", label: "All" };
-                // }
                 return { value: t.id, label: t.name };
               })
               .sort((a, b) => {
@@ -699,7 +694,6 @@ export default function RingManagerPage() {
   );
 
   useEffect(() => {
-    // Only set if data is loaded and no filter is currently set
     if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
       const defaultType = ringTypesData.find(
         (t) => t.code === "BBU_RINGS" || t.name === "BBU_RINGS"
@@ -712,7 +706,6 @@ export default function RingManagerPage() {
         }));
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ringTypesData]);
 
   const uiFilters = useMemo<Record<string, string>>(() => {
