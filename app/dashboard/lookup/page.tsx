@@ -2,9 +2,9 @@
 'use client';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { Card } from '@/components/common/ui/card';
-import { LookupModal } from '@/components/lookup/LookupModal';
+import dynamic from 'next/dynamic';
 import {
   ErrorState,
   LoadingState,
@@ -27,6 +27,11 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { snakeToTitleCase } from '@/utils/formatters';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+
+const LookupModal = dynamic(
+  () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
+  { loading: () => <PageSpinner text="Loading Lookup Form..." /> }
+);
 
 export default function LookupTypesPage() {
   const {
