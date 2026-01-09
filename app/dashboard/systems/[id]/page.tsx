@@ -29,10 +29,6 @@ import { useDeprovisionServicePath } from '@/hooks/database/system-connection-ho
 import { toPgBoolean, toPgDate } from '@/config/helper-functions';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
-import { SystemConnectionFormModal } from '@/components/system-details/SystemConnectionFormModal';
-import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
-import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
-import { SystemConnectionDetailsModal } from '@/components/system-details/SystemConnectionDetailsModal';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useQueryClient } from '@tanstack/react-query';
@@ -56,8 +52,37 @@ import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-// import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-// import { localDb } from '@/hooks/data/localDb';
+import dynamic from 'next/dynamic'; // Import dynamic
+
+// DYNAMIC IMPORTS
+const SystemConnectionFormModal = dynamic(
+  () =>
+    import('@/components/system-details/SystemConnectionFormModal').then(
+      (mod) => mod.SystemConnectionFormModal
+    ),
+  { loading: () => <PageSpinner text="Loading Form..." /> }
+);
+
+const FiberAllocationModal = dynamic(
+  () =>
+    import('@/components/system-details/FiberAllocationModal').then(
+      (mod) => mod.FiberAllocationModal
+    ),
+  { loading: () => <PageSpinner text="Loading Ports..." /> }
+);
+
+const SystemFiberTraceModal = dynamic(
+  () => import('@/components/system-details/SystemFiberTraceModal').then((mod) => mod.default),
+  { ssr: false }
+);
+
+const SystemConnectionDetailsModal = dynamic(
+  () =>
+    import('@/components/system-details/SystemConnectionDetailsModal').then(
+      (mod) => mod.SystemConnectionDetailsModal
+    ),
+  { ssr: false }
+);
 
 type UpsertConnectionPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 

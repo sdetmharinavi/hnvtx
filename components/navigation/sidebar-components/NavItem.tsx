@@ -1,14 +1,15 @@
-"use client";
+// components/navigation/sidebar-components/NavItem.tsx
+'use client';
 
-import { motion, AnimatePresence } from "framer-motion";
-import { usePathname, useRouter } from "next/navigation";
-import { FiChevronDown } from "react-icons/fi";
-import { NavItem as NavItemType, submenuVariants } from "./sidebar-types";
-import { toast } from "sonner";
-import { UserRole } from "@/types/user-roles";
-import { ButtonSpinner } from "@/components/common/ui/LoadingSpinner";
-import { useState, useEffect } from "react";
-import { useUser } from "@/providers/UserProvider";
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname, useRouter } from 'next/navigation';
+import { FiChevronDown } from 'react-icons/fi';
+import { NavItem as NavItemType, submenuVariants } from './sidebar-types';
+import { toast } from 'sonner';
+import { UserRole } from '@/types/user-roles';
+import { ButtonSpinner } from '@/components/common/ui/LoadingSpinner';
+import { useState, useEffect } from 'react';
+import { useUser } from '@/providers/UserProvider';
 
 interface NavItemProps {
   item: NavItemType;
@@ -33,27 +34,27 @@ export const NavItem = ({
   const [isLoading, setIsLoading] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
-  // UPDATED: Accept readonly array of strings or UserRoles
+  // Check Permissions
   const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
     return roles.includes(role as UserRole);
   };
 
-  const isActive = () => {
-    if (!item.href) return false;
-    if (item.external) return false;
-    if (item.href === "/dashboard") {
-      return pathname === "/dashboard";
-    }
-    return pathname.startsWith(item.href);
-  };
-
   const active = isActive();
   const hasChildren = item.children && item.children.length > 0;
   const isExpanded = expandedItems.includes(item.id);
 
-  // Clear loading state when the route changes
+  function isActive() {
+    if (!item.href) return false;
+    if (item.external) return false;
+    if (item.href === '/dashboard') {
+      return pathname === '/dashboard';
+    }
+    return pathname.startsWith(item.href);
+  }
+
+  // Clear loading state when the route changes successfully
   useEffect(() => {
     if (pathname === navigatingTo) {
       setIsLoading(false);
@@ -66,12 +67,44 @@ export const NavItem = ({
   const itemContentClasses = `
     flex cursor-pointer items-center justify-between py-3 text-sm font-medium
     transition-all duration-200 rounded-lg mx-2 mb-1
-    ${active
-      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm"
-      : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm"
+    ${
+      active
+        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm'
+        : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm'
     }
-    ${isCollapsed ? "justify-center px-4" : `pr-4 ${depth > 0 ? "pl-8" : "pl-4"}`}
+    ${isCollapsed ? 'justify-center px-4' : `pr-4 ${depth > 0 ? 'pl-8' : 'pl-4'}`}
   `;
+
+  // OPTIMIZATION: Prefetch the route code and data on hover
+  const handlePrefetch = () => {
+    if (item.href && !item.external && !hasChildren) {
+      router.prefetch(item.href);
+    }
+  };
+
+  // Internal Navigation Handler
+  const handleInternalClick = async (e: React.MouseEvent) => {
+    // If it has children, just toggle expansion
+    if (hasChildren) {
+      e.preventDefault();
+      toggleExpanded(item.id);
+      return;
+    }
+
+    // Perform navigation
+    if (item.href) {
+      try {
+        setNavigatingTo(item.href);
+        setIsLoading(true);
+        await router.push(item.href);
+      } catch (error) {
+        console.error('Navigation error:', error);
+        toast.error('Failed to navigate. Please try again.');
+        setIsLoading(false);
+        setNavigatingTo(null);
+      }
+    }
+  };
 
   const renderContent = () => (
     <>
@@ -88,17 +121,14 @@ export const NavItem = ({
       {!isCollapsed && hasChildren && (
         <button
           onClick={(e) => {
-            e.preventDefault(); // Prevent nav if clicking chevron
+            e.preventDefault(); // Prevent bubbling to parent click
             e.stopPropagation();
             toggleExpanded(item.id);
           }}
           className="p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 z-10"
-          aria-label={isExpanded ? "Collapse" : "Expand"}
+          aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
-          <motion.div
-            animate={{ rotate: isExpanded ? 0 : -90 }}
-            transition={{ duration: 0.2 }}
-          >
+          <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
             <FiChevronDown className="w-4 h-4" />
           </motion.div>
         </button>
@@ -118,21 +148,20 @@ export const NavItem = ({
         <a
           href={item.href}
           target="_blank"
-          // If preferNative is true, we remove 'noreferrer' to allow the OS to potentially
-          // use the referrer or context to hand off to an installed app.
-          rel={item.preferNative ? undefined : "noopener noreferrer"}
+          // If preferNative is true, remove 'noreferrer' to allow OS handoff
+          rel={item.preferNative ? undefined : 'noopener noreferrer'}
           className={itemContentClasses}
           onClick={(e) => {
             if (hasChildren) {
-               e.preventDefault();
-               toggleExpanded(item.id);
+              e.preventDefault();
+              toggleExpanded(item.id);
             }
           }}
         >
           {renderContent()}
         </a>
 
-        {/* Submenu rendering for external items (unlikely but safe to include) */}
+        {/* External Submenu (Rare, but supported) */}
         {!isCollapsed && hasChildren && (
           <AnimatePresence initial={false}>
             {isExpanded && (
@@ -166,33 +195,19 @@ export const NavItem = ({
   }
 
   // --- INTERNAL NAVIGATION RENDERING ---
-  const handleInternalClick = async (e: React.MouseEvent) => {
-    if (hasChildren) {
-      e.preventDefault();
-      toggleExpanded(item.id);
-      return;
-    }
-
-    if (item.href) {
-      try {
-        setNavigatingTo(item.href);
-        setIsLoading(true);
-        await router.push(item.href);
-      } catch (error) {
-        console.error("Navigation error:", error);
-        toast.error("Failed to navigate. Please try again.");
-        setIsLoading(false);
-        setNavigatingTo(null);
-      }
-    }
-  };
-
   return (
     <div
       key={item.id}
       className="relative"
-      onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
-      onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
+      onMouseEnter={() => {
+        // Handle hover menu for collapsed state
+        if (isCollapsed && hasChildren) setHoveredItem(item);
+        // Trigger Next.js Prefetch
+        handlePrefetch();
+      }}
+      onMouseLeave={() => {
+        if (isCollapsed && hasChildren) setHoveredItem(null);
+      }}
     >
       <div
         onClick={handleInternalClick}
@@ -200,7 +215,7 @@ export const NavItem = ({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             handleInternalClick(e as unknown as React.MouseEvent);
           }
@@ -209,6 +224,7 @@ export const NavItem = ({
         {renderContent()}
       </div>
 
+      {/* Recursive Children Rendering */}
       {!isCollapsed && hasChildren && (
         <AnimatePresence initial={false}>
           {isExpanded && (

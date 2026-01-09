@@ -29,7 +29,6 @@ import {
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { SystemModal } from '@/components/systems/SystemModal';
 import { SystemFormData } from '@/schemas/system-schemas';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import {
@@ -42,13 +41,33 @@ import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { formatDate, formatIP } from '@/utils/formatters';
-import { SystemPortsManagerModal } from '@/components/systems/SystemPortsManagerModal';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
-import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
+
+import dynamic from 'next/dynamic'; // Import dynamic
+import { PageSpinner } from '@/components/common/ui';
+
+// DYNAMIC IMPORTS
+const SystemModal = dynamic(
+  () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
+  { loading: () => <PageSpinner text="Loading Form..." /> }
+);
+
+const SystemPortsManagerModal = dynamic(
+  () =>
+    import('@/components/systems/SystemPortsManagerModal').then(
+      (mod) => mod.SystemPortsManagerModal
+    ),
+  { loading: () => <PageSpinner text="Loading Ports..." /> }
+);
+
+const UploadResultModal = dynamic(
+  () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
+  { ssr: false }
+);
 
 export default function SystemsPage() {
   const router = useRouter();

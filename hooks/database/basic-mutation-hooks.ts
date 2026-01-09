@@ -1,15 +1,17 @@
+// hooks/database/basic-mutation-hooks.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase-types";
-import { 
-  PublicTableName, 
-  TableRow, 
-  TableInsert, 
-  TableUpdate, 
-  OptimisticContext, 
-  UseTableMutationOptions, 
-  PagedQueryResult 
+import { v4 as uuidv4 } from 'uuid';
+import {
+  PublicTableName,
+  TableRow,
+  TableInsert,
+  TableUpdate,
+  OptimisticContext,
+  UseTableMutationOptions,
+  PagedQueryResult
 } from "./queries-type-helpers";
 
 // Helper to check if the cache data is in Paged format
@@ -19,8 +21,8 @@ function isPagedResult<T>(data: any): data is PagedQueryResult<T> {
 
 // Generic toggle status hook
 export function useToggleStatus<T extends PublicTableName>(
-  supabase: SupabaseClient<Database>, 
-  tableName: T, 
+  supabase: SupabaseClient<Database>,
+  tableName: T,
   options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>
 ) {
   const queryClient = useQueryClient();
@@ -41,13 +43,13 @@ export function useToggleStatus<T extends PublicTableName>(
       ? async ({ id, status }) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
-          
+
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
             if (!old) return old;
 
-            const updateItem = (item: any) => 
-              ("id" in item && item.id === id) 
-                ? { ...item, status, updated_at: new Date().toISOString() } 
+            const updateItem = (item: any) =>
+              ("id" in item && item.id === id)
+                ? { ...item, status, updated_at: new Date().toISOString() }
                 : item;
 
             if (isPagedResult(old)) {
@@ -60,7 +62,7 @@ export function useToggleStatus<T extends PublicTableName>(
             }
             return old;
           });
-          
+
           return { previousData };
         }
       : undefined,
@@ -81,8 +83,8 @@ export function useToggleStatus<T extends PublicTableName>(
 
 // Optimized insert mutation with batching
 export function useTableInsert<T extends PublicTableName>(
-  supabase: SupabaseClient<Database>, 
-  tableName: T, 
+  supabase: SupabaseClient<Database>,
+  tableName: T,
   options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>
 ) {
   const queryClient = useQueryClient();
@@ -119,16 +121,21 @@ export function useTableInsert<T extends PublicTableName>(
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
           const newItems = Array.isArray(newData) ? newData : [newData];
-          const optimisticItems = newItems.map((item, index) => ({
-            ...item,
-            id: `temp-${Date.now()}-${index}`, // Temp ID
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }));
+          const optimisticItems = newItems.map((item) => {
+             // THE FIX: Cast to any to safely access potentially missing 'id' property
+             // and allow injection of fields even if they don't exist on the type (for join tables)
+             const baseItem = item as any;
+             return {
+                ...baseItem,
+                id: baseItem.id || uuidv4(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+             };
+          });
 
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
             if (!old) {
-                return optimisticItems; 
+                return optimisticItems;
             }
 
             if (isPagedResult(old)) {
@@ -163,8 +170,8 @@ export function useTableInsert<T extends PublicTableName>(
 
 // Enhanced update mutation with optimizations
 export function useTableUpdate<T extends PublicTableName>(
-  supabase: SupabaseClient<Database>, 
-  tableName: T, 
+  supabase: SupabaseClient<Database>,
+  tableName: T,
   options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>
 ) {
   const queryClient = useQueryClient();
@@ -186,14 +193,14 @@ export function useTableUpdate<T extends PublicTableName>(
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
 
-          const updateItem = (item: any) => 
-            ("id" in item && item.id === id) 
-              ? { ...item, ...newData, updated_at: new Date().toISOString() } 
+          const updateItem = (item: any) =>
+            ("id" in item && item.id === id)
+              ? { ...item, ...newData, updated_at: new Date().toISOString() }
               : item;
 
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
             if (!old) return old;
-            
+
             if (isPagedResult(old)) {
               return {
                 ...old,
@@ -225,8 +232,8 @@ export function useTableUpdate<T extends PublicTableName>(
 
 // Enhanced delete mutation
 export function useTableDelete<T extends PublicTableName>(
-  supabase: SupabaseClient<Database>, 
-  tableName: T, 
+  supabase: SupabaseClient<Database>,
+  tableName: T,
   options?: UseTableMutationOptions<void, string | string[], OptimisticContext>
 ) {
   const queryClient = useQueryClient();
@@ -258,7 +265,7 @@ export function useTableDelete<T extends PublicTableName>(
       ? async (id) => {
           await queryClient.cancelQueries({ queryKey: ["table", tableName] });
           const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
-          
+
           const idsToDelete = Array.isArray(id) ? id : [id];
 
           queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {

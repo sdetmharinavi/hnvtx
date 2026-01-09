@@ -4,7 +4,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
 import { Serwist } from "serwist";
-import { NetworkFirst, CacheFirst, NetworkOnly } from "@serwist/strategies";
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from "@serwist/strategies"; // CHANGED
 import { ExpirationPlugin } from "@serwist/expiration";
 
 declare global {
@@ -15,11 +15,9 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope;
 
-// --- CUSTOM CACHING STRATEGIES ---
-
 const customCache: RuntimeCaching[] = [
-  // 1. API/RPC Calls: Network Only
-  // THE FIX: We strictly disable SW caching for API/Supabase calls.
+  // 1. API/Supabase/Auth: Network Only (No Caching)
+// THE FIX: We strictly disable SW caching for API/Supabase calls.
   // Our 'useLocalFirstQuery' + Dexie architecture handles offline data persistence at the application layer.
   // Caching here causes stale data issues and conflicts with optimistic UI updates.
   {
@@ -40,9 +38,8 @@ const customCache: RuntimeCaching[] = [
     },
     handler: new NetworkOnly(),
   },
-  
+
   // 2. Static Assets (Images, Fonts): CacheFirst
-  // These rarely change. Serve immediately from cache.
   {
     matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|avif|ico|woff2?)$/i,
     handler: new CacheFirst({
@@ -56,19 +53,18 @@ const customCache: RuntimeCaching[] = [
     }),
   },
 
-  // 3. Navigation (HTML Pages): NetworkFirst with Short Timeout
-  // Keeps the App Shell fresh but loads fast.
+  // 3. Navigation (HTML Pages): StaleWhileRevalidate
+  // THE FIX: Instant load from cache, update in background
   {
     matcher: ({ request }) => request.mode === 'navigate',
-    handler: new NetworkFirst({
+    handler: new StaleWhileRevalidate({
       cacheName: 'pages-cache',
       plugins: [
         new ExpirationPlugin({
-          maxEntries: 50, 
-          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 Days
+          maxEntries: 50,
+          maxAgeSeconds: 60 * 60 * 24, // 24 Hours
         }),
       ],
-      networkTimeoutSeconds: 3, 
     }),
   },
 ];
@@ -79,7 +75,7 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [...customCache, ...defaultCache],
-  disableDevLogs: true, 
+  disableDevLogs: true,
 });
 
 // Push Notification Listeners (Unchanged)

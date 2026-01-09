@@ -1,3 +1,4 @@
+// components/common/ui/GenericEntityCard.tsx
 import React from 'react';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { Button } from '@/components/common/ui/Button';
@@ -17,7 +18,7 @@ interface GenericEntityCardProps<T> {
   entity: T;
   title: string;
   subtitle?: string;
-  subBadge?: React.ReactNode; // e.g., "HUB" or ID pill
+  subBadge?: React.ReactNode;
   status?: boolean | string | null;
   dataItems: EntityCardItem[];
 
@@ -31,14 +32,14 @@ interface GenericEntityCardProps<T> {
   canDelete?: boolean;
 
   // Custom slots
-  customHeader?: React.ReactNode; // For extra rows in the body before data items
-  customFooter?: React.ReactNode; // For remarks block
-  extraActions?: React.ReactNode; // For extra buttons (e.g. "Manage Ports")
+  customHeader?: React.ReactNode;
+  customFooter?: React.ReactNode;
+  extraActions?: React.ReactNode;
 
   // Styling overrides
-  avatarColor?: string; // e.g. "from-blue-500 to-blue-600"
+  avatarColor?: string;
   initials?: string;
-  headerIcon?: React.ReactNode; // For non-avatar icons (e.g. Node Pin, System Server)
+  headerIcon?: React.ReactNode;
 }
 
 export function GenericEntityCard<T>({
@@ -62,10 +63,22 @@ export function GenericEntityCard<T>({
 }: GenericEntityCardProps<T>) {
   const isAvatarStyle = !!initials;
 
+  // Handler for keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onView && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onView(entity);
+    }
+  };
+
   return (
     <div
       onClick={() => onView && onView(entity)}
-      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden"
+      // THE FIX: Add accessibility attributes
+      role={onView ? 'button' : undefined}
+      tabIndex={onView ? 0 : undefined}
+      onKeyDown={handleKeyDown}
+      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 flex flex-col h-full group cursor-pointer relative overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
     >
       {/* 1. Header Section */}
       {isAvatarStyle ? (
@@ -180,7 +193,7 @@ export function GenericEntityCard<T>({
       {/* 3. Footer / Actions */}
       <div
         className="px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-between gap-2"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // Prevent card click when actions are clicked
       >
         <div className="flex-1 flex gap-2">{extraActions}</div>
 
