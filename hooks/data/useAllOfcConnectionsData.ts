@@ -1,8 +1,7 @@
-// hooks/data/useAllOfcConnectionsData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useAllOfcConnectionsData = useGenericDataQuery<"v_ofc_connections_complete">({
+export const useAllOfcConnectionsData = createGenericDataQuery<"v_ofc_connections_complete">({
   tableName: "v_ofc_connections_complete",
   searchFields: [
     "ofc_route_name",

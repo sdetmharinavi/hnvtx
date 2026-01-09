@@ -1,14 +1,13 @@
-// hooks/data/useNodesData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useNodesData = useGenericDataQuery<"v_nodes_complete">({
+export const useNodesData = createGenericDataQuery<"v_nodes_complete">({
   tableName: "v_nodes_complete",
   searchFields: ["name", "node_type_code", "remark", "latitude", "longitude"],
   // Server search needs text casting for numbers
   serverSearchFields: ["name", "node_type_code", "remark", "latitude::text", "longitude::text"],
   defaultSortField: "name",
-  rpcLimit: DEFAULTS.PAGE_SIZE, // Use generic page size
+  rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (node, filters) => {
     // 1. Standard Filters
     if (filters.node_type_id && node.node_type_id !== filters.node_type_id) return false;

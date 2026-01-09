@@ -1,8 +1,7 @@
-// hooks/data/useRingsData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useRingsData = useGenericDataQuery<"v_rings">({
+export const useRingsData = createGenericDataQuery<"v_rings">({
   tableName: "v_rings",
   searchFields: ["name", "description", "ring_type_name", "maintenance_area_name"],
   defaultSortField: "name",

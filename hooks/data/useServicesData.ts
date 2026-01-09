@@ -1,8 +1,7 @@
-// hooks/data/useServicesData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useServicesData = useGenericDataQuery<"v_services">({
+export const useServicesData = createGenericDataQuery<"v_services">({
   tableName: "v_services",
   searchFields: ["name", "node_name", "end_node_name", "description", "link_type_name", "vlan"],
   defaultSortField: "name",

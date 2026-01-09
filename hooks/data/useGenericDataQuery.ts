@@ -1,18 +1,17 @@
 // hooks/data/useGenericDataQuery.ts
-import { useMemo, useCallback } from "react";
-import { DataQueryHookParams, DataQueryHookReturn } from "@/hooks/useCrudManager";
-import { createClient } from "@/utils/supabase/client";
-import { localDb } from "@/hooks/data/localDb";
-import { buildRpcFilters, PublicTableOrViewName, Row } from "@/hooks/database";
-import { useLocalFirstQuery } from "./useLocalFirstQuery";
-import { DEFAULTS } from "@/constants/constants";
+import { useMemo, useCallback } from 'react';
+import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { buildRpcFilters, PublicTableOrViewName, Row } from '@/hooks/database';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
 import {
   buildServerSearchString,
   performClientSearch,
   performClientSort,
   performClientPagination,
-} from "@/hooks/database/search-utils";
-import { Table } from "dexie";
+} from '@/hooks/database/search-utils';
+import { Table } from 'dexie';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FilterFunction<T> = (item: T, filters: Record<string, any>) => boolean;
@@ -25,19 +24,22 @@ interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   filterFn?: FilterFunction<Row<T>>;
   rpcName?: string; // Default 'get_paged_data'
   rpcLimit?: number; // Default 6000
+  orderBy?: "asc" | "desc";
 }
 
-export function useGenericDataQuery<T extends PublicTableOrViewName>(
+// CHANGED: Renamed from useGenericDataQuery to createGenericDataQuery
+export function createGenericDataQuery<T extends PublicTableOrViewName>(
   options: GenericDataQueryOptions<T>
 ) {
   const {
     tableName,
     searchFields,
     serverSearchFields,
-    defaultSortField = "name" as keyof Row<T>,
+    defaultSortField = 'name' as keyof Row<T>,
     filterFn,
-    rpcName = "get_paged_data",
+    rpcName = 'get_paged_data',
     rpcLimit = 6000,
+    orderBy = "asc",
   } = options;
 
   // This returns the actual hook function expected by useCrudManager
@@ -56,17 +58,16 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
       const searchString = buildServerSearchString(searchQuery, actualServerSearchFields);
 
       // FIX: Cast to Record<string, any> to allow object properties manipulation (delete/in operator).
-      // buildRpcFilters returns Json type (which includes primitives), but we know it returns a filter object.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rpcFilters = buildRpcFilters({
         ...filters,
         or: searchString,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as Record<string, any>;
 
       // Remove complex client-side keys from RPC call to prevent SQL errors
       if (rpcFilters) {
-        if ("coordinates_status" in rpcFilters) delete rpcFilters.coordinates_status;
-        if ("sortBy" in rpcFilters) delete rpcFilters.sortBy;
+        if ('coordinates_status' in rpcFilters) delete rpcFilters.coordinates_status;
+        if ('sortBy' in rpcFilters) delete rpcFilters.sortBy;
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,7 +77,7 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
         p_offset: 0,
         p_filters: rpcFilters,
         p_order_by: String(defaultSortField),
-        p_order_dir: "asc",
+        p_order_dir: orderBy,
       });
 
       if (error) throw error;
@@ -128,13 +129,13 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
       } else {
         // Default generic filter logic (exact matches for basic keys)
         Object.entries(filters).forEach(([key, value]) => {
-          if (value && key !== "or" && key !== "sortBy") {
+          if (value && key !== 'or' && key !== 'sortBy') {
             filtered = filtered.filter((item) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const itemVal = (item as any)[key];
               // Handle boolean strings from selects
-              if (value === "true") return itemVal === true;
-              if (value === "false") return itemVal === false;
+              if (value === 'true') return itemVal === true;
+              if (value === 'false') return itemVal === false;
               return String(itemVal) === String(value);
             });
           }
@@ -144,9 +145,9 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
       // Sort
       // Special handling for 'sortBy' filter if present
       if (
-        filters.sortBy === "last_activity" &&
+        filters.sortBy === 'last_activity' &&
         filtered.length > 0 &&
-        "last_activity_at" in (filtered[0] as object)
+        'last_activity_at' in (filtered[0] as object)
       ) {
         filtered = filtered.sort((a, b) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -164,7 +165,7 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
       const totalCount = filtered.length;
 
       let activeCount = totalCount;
-      if (filtered.length > 0 && "status" in (filtered[0] as object)) {
+      if (filtered.length > 0 && 'status' in (filtered[0] as object)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         activeCount = filtered.filter((i) => (i as any).status === true).length;
       }
@@ -180,7 +181,6 @@ export function useGenericDataQuery<T extends PublicTableOrViewName>(
         activeCount,
         inactiveCount,
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allData, searchQuery, filters, currentPage, pageLimit]);
 
     return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };

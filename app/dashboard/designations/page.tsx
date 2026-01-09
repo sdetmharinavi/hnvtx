@@ -1,11 +1,11 @@
 // app/dashboard/designations/page.tsx
 'use client';
 
+import dynamic from 'next/dynamic';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header/PageHeader';
 import { useStandardHeaderActions } from '@/components/common/page-header/hooks/useStandardHeaderActions';
-import { DesignationFormModal } from '@/components/designations/DesignationFormModal';
 import { designationConfig, DesignationWithRelations } from '@/config/designations';
 import { Filters, Row, useTableInsert, useTableUpdate, useToggleStatus } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
@@ -23,6 +23,14 @@ import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { Copy } from 'lucide-react';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+
+const DesignationFormModal = dynamic(
+  () =>
+    import('@/components/designations/DesignationFormModal').then(
+      (mod) => mod.DesignationFormModal
+    ),
+  { loading: () => <PageSpinner text="Loading Form..." /> }
+);
 
 export default function DesignationManagerPage() {
   const supabase = createClient();

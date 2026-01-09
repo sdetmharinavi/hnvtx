@@ -2,15 +2,15 @@
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { FiBookOpen, FiUpload, FiCalendar, FiPrinter } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useDebounce } from 'use-debounce';
 import { v4 as uuidv4 } from 'uuid';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
 import { DiaryEntryCard } from '@/components/diary/DiaryEntryCard';
-import { DiaryFormModal } from '@/components/diary/DiaryFormModal';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
 import { Diary_notesRowSchema, Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { useAuthStore } from '@/stores/authStore';
@@ -27,6 +27,11 @@ import { localDb } from '@/hooks/data/localDb';
 import { addMutationToQueue } from '@/hooks/data/useMutationQueue';
 import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 import { useDataSync } from '@/hooks/data/useDataSync';
+
+const DiaryFormModal = dynamic(
+  () => import('@/components/diary/DiaryFormModal').then((mod) => mod.DiaryFormModal),
+  { loading: () => <PageSpinner text="Loading Form..." /> }
+);
 
 type ViewMode = 'day' | 'feed';
 

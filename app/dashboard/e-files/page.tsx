@@ -2,15 +2,11 @@
 'use client';
 
 import { useState, useRef, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable } from '@/components/table';
 import { useEFiles, useDeleteFile } from '@/hooks/data/useEFilesData';
-import {
-  InitiateFileModal,
-  ForwardFileModal,
-  EditFileModal,
-} from '@/components/efile/ActionModals';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useRouter } from 'next/navigation';
 import { FileText, Eye, Plus, Send, Edit, Trash2, Database } from 'lucide-react';
 import { EFileRow } from '@/schemas/efile-schemas';
@@ -33,6 +29,21 @@ import { ActionButton } from '@/components/common/page-header';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+
+const InitiateFileModal = dynamic(
+  () => import('@/components/efile/ActionModals').then((mod) => mod.InitiateFileModal),
+  { loading: () => <PageSpinner text="Loading File Form..." /> }
+);
+
+const ForwardFileModal = dynamic(
+  () => import('@/components/efile/ActionModals').then((mod) => mod.ForwardFileModal),
+  { loading: () => <PageSpinner text="Loading Forward Form..." /> }
+);
+
+const EditFileModal = dynamic(
+  () => import('@/components/efile/ActionModals').then((mod) => mod.EditFileModal),
+  { loading: () => <PageSpinner text="Loading Edit Form..." /> }
+);
 
 // Hardcoded categories options
 const CATEGORY_OPTIONS = [

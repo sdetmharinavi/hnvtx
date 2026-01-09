@@ -1,8 +1,7 @@
-// hooks/data/useAllSystemConnectionsData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useAllSystemConnectionsData = useGenericDataQuery<"v_system_connections_complete">({
+export const useAllSystemConnectionsData = createGenericDataQuery<"v_system_connections_complete">({
   tableName: "v_system_connections_complete",
   searchFields: [
     "service_name",
@@ -17,7 +16,6 @@ export const useAllSystemConnectionsData = useGenericDataQuery<"v_system_connect
     "remark",
     "vlan",
   ],
-  // Explicitly cast IP fields to text for server-side search compatibility
   serverSearchFields: [
     "service_name",
     "system_name",

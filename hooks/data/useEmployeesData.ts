@@ -1,8 +1,7 @@
-// hooks/data/useEmployeesData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useEmployeesData = useGenericDataQuery<"v_employees">({
+export const useEmployeesData = createGenericDataQuery<"v_employees">({
   tableName: "v_employees",
   searchFields: [
     "employee_name",

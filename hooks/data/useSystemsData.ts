@@ -1,8 +1,7 @@
-// hooks/data/useSystemsData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useSystemsData = useGenericDataQuery<"v_systems_complete">({
+export const useSystemsData = createGenericDataQuery<"v_systems_complete">({
   tableName: "v_systems_complete",
   searchFields: [
     "system_name",
@@ -17,7 +16,7 @@ export const useSystemsData = useGenericDataQuery<"v_systems_complete">({
     "system_name",
     "system_type_name",
     "node_name",
-    "ip_address::text", // Special cast
+    "ip_address::text",
     "make",
     "s_no",
     "remark",

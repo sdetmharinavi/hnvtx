@@ -2,9 +2,9 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import EmployeeForm from '@/components/employee/EmployeeForm';
 import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -22,8 +22,13 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useMaintenanceAreaOptions, useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 import { FiUsers, FiPhone, FiMail, FiMapPin, FiMessageSquare } from 'react-icons/fi';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+
+const EmployeeForm = dynamic(
+  () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
+  { loading: () => <PageSpinner text="Loading Employee Form..." /> }
+);
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');

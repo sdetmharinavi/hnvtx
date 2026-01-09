@@ -2,6 +2,7 @@
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   FiArchive,
@@ -16,10 +17,7 @@ import { FaQrcode } from 'react-icons/fa';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import { InventoryFormModal } from '@/components/inventory/InventoryFormModal';
-import { IssueItemModal } from '@/components/inventory/IssueItemModal';
-import { InventoryHistoryModal } from '@/components/inventory/InventoryHistoryModal';
+import { Button, ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { getInventoryTableColumns } from '@/config/table-columns/InventoryTableColumns';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -33,7 +31,27 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import { EnhancedUploadResult } from '@/hooks/database';
-import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
+
+const InventoryFormModal = dynamic(
+  () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
+  { loading: () => <PageSpinner text="Loading Inventory Form..." /> }
+);
+
+const IssueItemModal = dynamic(
+  () => import('@/components/inventory/IssueItemModal').then((mod) => mod.IssueItemModal),
+  { loading: () => <PageSpinner text="Loading Issue Form..." /> }
+);
+
+const InventoryHistoryModal = dynamic(
+  () =>
+    import('@/components/inventory/InventoryHistoryModal').then((mod) => mod.InventoryHistoryModal),
+  { loading: () => <PageSpinner text="Loading History..." /> }
+);
+
+const UploadResultModal = dynamic(
+  () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
+  { loading: () => <PageSpinner text="Loading Import Report..." /> }
+);
 
 export default function InventoryPage() {
   const router = useRouter();

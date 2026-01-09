@@ -1,8 +1,7 @@
-// hooks/data/useInventoryData.ts
-import { useGenericDataQuery } from "./useGenericDataQuery";
+import { createGenericDataQuery } from "./useGenericDataQuery";
 import { DEFAULTS } from "@/constants/constants";
 
-export const useInventoryData = useGenericDataQuery<"v_inventory_items">({
+export const useInventoryData = createGenericDataQuery<"v_inventory_items">({
   tableName: "v_inventory_items",
   searchFields: ["name", "description", "asset_no"],
   defaultSortField: "name",
