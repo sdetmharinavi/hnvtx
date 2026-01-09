@@ -77,7 +77,7 @@ export function UserCreateModal({ isOpen, onClose, onCreate, isLoading }: UserCr
       isLoading={isLoading}
       form={form}
       onSubmit={onValidSubmit}
-      widthClass="max-w-lg"
+      widthClass="max-w-screen"
     >
       <div className="space-y-4">
         <FormInput

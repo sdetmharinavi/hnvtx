@@ -1,12 +1,13 @@
-"use client";
+// components/diary/DiaryFormModal.tsx
+'use client';
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { diary_notesInsertSchema, Diary_notesInsertSchema } from "@/schemas/zod-schemas";
-import { Modal } from "@/components/common/ui";
-import { FormCard, FormDateInput, FormRichTextEditor, FormInput } from "@/components/common/form";
-import { useCallback, useEffect } from "react";
-import { z } from "zod";
+import { useForm, Resolver } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { diary_notesInsertSchema, Diary_notesInsertSchema } from '@/schemas/zod-schemas';
+import { FormDateInput, FormRichTextEditor, FormInput } from '@/components/common/form';
+import { useEffect } from 'react';
+import { z } from 'zod';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 
 interface DiaryFormModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ const diaryFormSchema = diary_notesInsertSchema
   .pick({ note_date: true, content: true, tags: true })
   .extend({
     tagString: z.string().optional(),
-    content: z.string().max(500000, "Note is too long").nullable().optional(),
+    content: z.string().max(500000, 'Note is too long').nullable().optional(),
   });
 
 type DiaryFormValues = z.infer<typeof diaryFormSchema>;
@@ -34,26 +35,25 @@ export const DiaryFormModal = ({
   editingNote,
   selectedDate,
 }: DiaryFormModalProps) => {
-  const {
-    control,
-    handleSubmit,
-    reset,
-    register,
-    formState: { errors, isDirty }, // Extract isDirty
-  } = useForm<DiaryFormValues>({
-    resolver: zodResolver(diaryFormSchema),
+  const isEditMode = !!editingNote;
+
+  const form = useForm<DiaryFormValues>({
+    // FIX: Explicit cast for strict type safety
+    resolver: zodResolver(diaryFormSchema) as unknown as Resolver<DiaryFormValues>,
+    defaultValues: {
+      note_date: '',
+      content: '',
+      tags: [],
+      tagString: '',
+    },
   });
 
-  // --- THE FIX: Intercept Close Action ---
-  const handleClose = useCallback(() => {
-    if (isDirty) {
-      const confirmClose = window.confirm(
-        "You have unsaved changes. Are you sure you want to close?"
-      );
-      if (!confirmClose) return;
-    }
-    onClose();
-  }, [isDirty, onClose]);
+  const {
+    control,
+    reset,
+    register,
+    formState: { errors },
+  } = form;
 
   useEffect(() => {
     if (isOpen) {
@@ -62,13 +62,13 @@ export const DiaryFormModal = ({
           note_date: editingNote.note_date,
           content: editingNote.content,
           tags: editingNote.tags || [],
-          tagString: editingNote.tags?.join(", ") || "",
+          tagString: editingNote.tags?.join(', ') || '',
         });
       } else {
         const formatLocalYMD = (d: Date) => {
           const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, "0");
-          const day = String(d.getDate()).padStart(2, "0");
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
           return `${y}-${m}-${day}`;
         };
         const base = selectedDate ? new Date(selectedDate.getTime()) : new Date();
@@ -76,18 +76,18 @@ export const DiaryFormModal = ({
         const dateToSet = formatLocalYMD(base);
         reset({
           note_date: dateToSet,
-          content: "",
+          content: '',
           tags: [],
-          tagString: "",
+          tagString: '',
         });
       }
     }
   }, [isOpen, editingNote, selectedDate, reset]);
 
   const onFormSubmit = (data: DiaryFormValues) => {
-    const tagString = data.tagString || "";
+    const tagString = data.tagString || '';
     const tags = tagString
-      .split(",")
+      .split(',')
       .map((t: string) => t.trim())
       .filter((t: string) => t.length > 0);
 
@@ -99,47 +99,44 @@ export const DiaryFormModal = ({
   };
 
   return (
-    <Modal
+    <BaseFormModal
       isOpen={isOpen}
-      onClose={handleClose} // Use handleClose wrapper
-      title={editingNote ? "Edit Diary Note" : "Add New Note"}
-      className='w-0 h-0 bg-transparent'
-      closeOnOverlayClick={false} // Prevent accidental clicks outside
+      onClose={onClose}
+      title="Diary Note"
+      isEditMode={isEditMode}
+      isLoading={isLoading}
+      form={form}
+      onSubmit={onFormSubmit}
+      heightClass="h-auto"
     >
-      <FormCard
-        onSubmit={handleSubmit(onFormSubmit)}
-        onCancel={handleClose} // Use handleClose wrapper
-        isLoading={isLoading}
-        title={editingNote ? "Edit Diary Note" : "Add New Note"}
-        standalone>
-        <div className='space-y-4'>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <FormDateInput
-              name='note_date'
-              label='Note Date'
-              control={control}
-              error={errors.note_date}
-              required
-              pickerProps={{ readOnly: !editingNote }}
-            />
-            <FormInput
-              name='tagString'
-              label='Tags'
-              register={register}
-              placeholder='e.g. maintenance, critical, fiber cut'
-              error={errors.tagString}
-            />
-          </div>
-
-          <FormRichTextEditor
-            name='content'
-            label='Content'
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormDateInput
+            name="note_date"
+            label="Note Date"
             control={control}
-            error={errors.content}
-            placeholder='Write your daily notes here...'
+            error={errors.note_date}
+            required
+            // Only allow date editing if creating a new note (optional logic, can be removed to allow moving notes)
+            pickerProps={{ readOnly: false }}
+          />
+          <FormInput
+            name="tagString"
+            label="Tags"
+            register={register}
+            placeholder="e.g. maintenance, critical, fiber cut"
+            error={errors.tagString}
           />
         </div>
-      </FormCard>
-    </Modal>
+
+        <FormRichTextEditor
+          name="content"
+          label="Content"
+          control={control}
+          error={errors.content}
+          placeholder="Write your daily notes here..."
+        />
+      </div>
+    </BaseFormModal>
   );
 };

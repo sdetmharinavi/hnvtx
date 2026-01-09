@@ -1,18 +1,18 @@
-// path: components/route-manager/JcFormModal.tsx
+// components/route-manager/JcFormModal.tsx
 'use client';
 
 import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, Resolver } from 'react-hook-form'; // Added Resolver
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Modal } from '@/components/common/ui';
-import { FormCard, FormInput, FormSearchableSelect } from '@/components/common/form';
+import { FormInput, FormSearchableSelect } from '@/components/common/form';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { junction_closuresInsertSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { JointBox } from '@/schemas/custom-schemas';
 import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 
 interface JcFormModalProps {
   isOpen: boolean;
@@ -34,7 +34,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   const supabase = createClient();
   const isEditMode = !!editingJc;
 
-  // 1. Fetch ALL active nodes
   const { originalData: allNodesRaw, isLoading: isLoadingNodes } = useDropdownOptions({
     tableName: 'v_nodes_complete',
     valueField: 'id',
@@ -44,15 +43,9 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   });
 
   const jcOptions: Option[] = useMemo(() => {
-    // Cast to correct type
     const nodes = (allNodesRaw || []) as unknown as V_nodes_completeRowSchema[];
-
-    // Debugging: Check what data is actually loaded
-    console.log('JcFormModal: Loaded Nodes:', nodes.length, nodes);
-
     if (nodes.length === 0) return [];
 
-    // 2. Strict Filter: Look for specific types
     const filteredNodes = nodes.filter((n) => {
       const typeName = n.node_type_name?.toLowerCase() || '';
       const typeCode = n.node_type_code?.toUpperCase() || '';
@@ -67,22 +60,15 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
         typeName.includes('chamber') ||
         typeName.includes('handhole') ||
         typeName.includes('manhole') ||
-        // Fallback: If the node name itself suggests it's a joint
         nodeName.includes('jc') ||
         nodeName.includes('joint')
       );
     });
 
-    // 3. Fallback Strategy:
-    // If strict filtering returns nothing, show ALL nodes so the user isn't blocked.
-    // Otherwise, show the filtered list.
     const finalNodes = filteredNodes.length > 0 ? filteredNodes : nodes;
-
-    console.log(finalNodes);
 
     return finalNodes.map((n) => ({
       value: n.id!,
-      // Show type in label to help distinguish if we fallback to showing all
       label: `${n.name} (${n.node_type_name || 'Unknown Type'})`,
     }));
   }, [allNodesRaw]);
@@ -94,19 +80,21 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   });
   type JcFormValues = z.infer<typeof junction_closuresFormSchema>;
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors, isSubmitting },
-  } = useForm<JcFormValues>({
-    resolver: zodResolver(junction_closuresFormSchema),
+  const form = useForm<JcFormValues>({
+    // THE FIX: Explicitly cast the resolver
+    resolver: zodResolver(junction_closuresFormSchema) as unknown as Resolver<JcFormValues>,
     defaultValues: {
       node_id: '',
       position_km: null,
     },
   });
+
+  const {
+    reset,
+    control,
+    register,
+    formState: { errors },
+  } = form;
 
   useEffect(() => {
     if (isOpen) {
@@ -173,44 +161,39 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   };
 
   return (
-    <Modal
+    // THE FIX: Pass generic type
+    <BaseFormModal<JcFormValues>
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
+      title="Junction Closure"
+      isEditMode={isEditMode}
+      isLoading={isLoadingNodes}
+      form={form}
+      onSubmit={handleValidSubmit}
+      heightClass="max-h-[80vh] overflow-y-auto"
     >
-      <FormCard
-        title={isEditMode ? 'Edit Junction Closure' : 'Add Junction Closure'}
-        onSubmit={handleSubmit(handleValidSubmit, () =>
-          toast.error('Please fix the highlighted fields')
-        )}
-        onCancel={onClose}
-        isLoading={isSubmitting || isLoadingNodes}
-        heightClass="max-h-[80vh] overflow-y-auto"
-        standalone
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormSearchableSelect
-            name="node_id"
-            label="Junction Closure"
-            control={control}
-            options={jcOptions}
-            error={errors.node_id}
-            required
-            placeholder={isLoadingNodes ? 'Loading options...' : 'Select a Junction Closure'}
-            isLoading={isLoadingNodes}
-            searchPlaceholder="Search Nodes..."
-          />
-          <FormInput
-            name="position_km"
-            label="Position on Route (km)"
-            type="number"
-            step="0.001"
-            register={register}
-            error={errors.position_km}
-            placeholder="e.g., 12.5"
-          />
-        </div>
-      </FormCard>
-    </Modal>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormSearchableSelect
+          name="node_id"
+          label="Junction Closure"
+          control={control}
+          options={jcOptions}
+          error={errors.node_id}
+          required
+          placeholder={isLoadingNodes ? 'Loading options...' : 'Select a Junction Closure'}
+          isLoading={isLoadingNodes}
+          searchPlaceholder="Search Nodes..."
+        />
+        <FormInput
+          name="position_km"
+          label="Position on Route (km)"
+          type="number"
+          step="0.001"
+          register={register}
+          error={errors.position_km}
+          placeholder="e.g., 12.5"
+        />
+      </div>
+    </BaseFormModal>
   );
 };

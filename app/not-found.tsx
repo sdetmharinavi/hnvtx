@@ -9,7 +9,7 @@ import { Button } from '@/components/common/ui/Button';
 export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <div className="max-w-lg w-full text-center">
+      <div className="max-w-screen w-full text-center">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

@@ -1,3 +1,4 @@
+// components/common/form/RichTextEditor.tsx
 'use client';
 
 import { useEditor, EditorContent, Editor, Mark, mergeAttributes } from '@tiptap/react';
@@ -102,10 +103,7 @@ const FontSize = Mark.create({
       unsetFontSize:
         () =>
         ({ chain }) => {
-          // THE FIX: Removed .removeEmptyTextStyle() call
-          return chain()
-            .setMark('textStyle', { fontSize: null })
-            .run();
+          return chain().setMark('textStyle', { fontSize: null }).run();
         },
     };
   },
@@ -331,9 +329,10 @@ export const RichTextEditor = ({
       extensions: [
         StarterKit.configure({ link: false }),
         TextStyle, // Custom inline
-        FontSize,  // Custom inline
+        FontSize, // Custom inline
         LinkExtension.configure({
           openOnClick: false,
+          autolink: false, // THE FIX: Disabled auto-linking on typing
           HTMLAttributes: { class: 'text-blue-500 hover:underline cursor-pointer' },
         }),
         Table.configure({

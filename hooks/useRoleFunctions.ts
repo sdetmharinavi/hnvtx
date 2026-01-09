@@ -1,17 +1,17 @@
-// path: hooks/useRoleFunctions.ts
+// hooks/useRoleFunctions.ts
 'use client';
 
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { v_user_profiles_extendedRowSchema, V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
-import { z } from 'zod';
+import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { Json } from '@/types/supabase-types';
 import { createClient } from '@/utils/supabase/client';
 import { localDb, StoredVUserProfilesExtended } from '@/hooks/data/localDb';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { UseQueryResult } from '@tanstack/react-query';
+import { parseJson } from '@/config/helper-functions'; // ADDED IMPORT
 
-type UserPermissionsData = z.infer<typeof v_user_profiles_extendedRowSchema> | null;
+type UserPermissionsData = V_user_profiles_extendedRowSchema | null;
 
 interface UserPermissions {
   profile: UserPermissionsData;
@@ -26,16 +26,8 @@ interface UserPermissions {
 type UserRole = string | null;
 type SuperAdminStatus = boolean | null;
 
-const safeJsonParse = (input: unknown): Json | null => {
-  if (input === null || input === undefined) return null;
-  if (typeof input === 'object') return input as Json;
-  if (typeof input === 'string') {
-    const trimmed = input.trim();
-    if (trimmed === '[object Object]' || trimmed === '') return null;
-    try { return JSON.parse(trimmed); } catch { return null; }
-  }
-  return null;
-};
+// REMOVED: Duplicate safeJsonParse function
+// const safeJsonParse = ...
 
 export const useUserPermissionsExtended = () => {
   const supabase = createClient();
@@ -44,21 +36,22 @@ export const useUserPermissionsExtended = () => {
   // 1. Online Query Function
   const onlineQueryFn = React.useCallback(async (): Promise<V_user_profiles_extendedRowSchema[]> => {
     if (!user?.id) return [];
-    
+
     const { data, error } = await supabase.rpc('get_my_user_details');
-    
+
     if (error) throw error;
     if (!data || data.length === 0) return [];
 
     const profileData = data[0];
-    
+
     // Transform RPC result to match Schema
     const transformedData = {
         ...profileData,
         id: profileData.id,
         email: profileData.email,
-        address: safeJsonParse(profileData.address),
-        preferences: safeJsonParse(profileData.preferences),
+        // CHANGED: Use shared utility
+        address: parseJson(profileData.address) as Json,
+        preferences: parseJson(profileData.preferences) as Json,
         status: profileData.status || 'inactive',
         created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
         updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
@@ -75,7 +68,7 @@ export const useUserPermissionsExtended = () => {
         raw_user_meta_data: null,
         full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
     };
-    
+
     return [transformedData as V_user_profiles_extendedRowSchema];
   }, [user?.id, supabase]);
 
@@ -93,10 +86,8 @@ export const useUserPermissionsExtended = () => {
     localQueryFn,
     dexieTable: localDb.v_user_profiles_extended,
     enabled: authState === 'authenticated' && !!user?.id,
-    staleTime: 5 * 60 * 1000, 
-    // THE FIX: Force autoSync to true for permissions. 
-    // We want to check roles in the background on load to ensure security.
-    autoSync: true 
+    staleTime: 5 * 60 * 1000,
+    autoSync: true
   });
 
   const profile = profiles[0] || null;
