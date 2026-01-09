@@ -2,17 +2,17 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
-import OfcForm from '@/components/ofc/OfcForm/OfcForm';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useUser } from '@/providers/UserProvider';
@@ -22,6 +22,11 @@ import { Row } from '@/hooks/database';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+
+const OfcForm = dynamic(
+  () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
+  { loading: () => <PageSpinner text="Loading OFC Form..." /> }
+);
 
 // Helper to format "Last Activity" timestamp
 const formatUpdatedAt = (timestamp: string | null | undefined) => {

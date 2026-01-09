@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import { PageSpinner, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common/ui/tabs';
-import { JcFormModal } from '@/components/route-manager/JcFormModal';
 import RouteVisualization from '@/components/route-manager/ui/RouteVisualization';
 import { FiberSpliceManager } from '@/components/route-manager/FiberSpliceManager';
 import { JointBox } from '@/schemas/custom-schemas';
@@ -22,6 +22,11 @@ import { ActionButton } from '@/components/common/page-header';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+
+const JcFormModal = dynamic(
+  () => import('@/components/route-manager/JcFormModal').then((mod) => mod.JcFormModal),
+  { loading: () => <PageSpinner text="Loading JC Form..." /> }
+);
 
 export default function RouteManagerPage() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);

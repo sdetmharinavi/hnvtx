@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { NodeFormModal } from '@/components/nodes/NodeFormModal';
 import { NodeDetailsModal } from '@/config/node-details-config';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
@@ -22,6 +22,11 @@ import { toast } from 'sonner';
 import { createStandardActions } from '@/components/table/action-helpers';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
+
+const NodeFormModal = dynamic(
+  () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
+  { loading: () => <PageSpinner text="Loading Node Form..." /> }
+);
 
 export default function NodesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');

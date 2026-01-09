@@ -2,6 +2,7 @@
 'use client';
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
@@ -16,13 +17,9 @@ import {
   FiGitMerge,
   FiPlus,
 } from 'react-icons/fi';
-
 import { PageHeader, ActionButton } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
-import { RingModal } from '@/components/rings/RingModal';
+import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
-import { SystemRingModal } from '@/components/ring-manager/SystemRingModal';
-import { EditSystemInRingModal } from '@/components/ring-manager/EditSystemInRingModal';
 
 import {
   useTableInsert,
@@ -52,6 +49,24 @@ import { formatDate } from '@/utils/formatters';
 import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+
+const RingModal = dynamic(
+  () => import('@/components/rings/RingModal').then((mod) => mod.RingModal),
+  { loading: () => <PageSpinner text="Loading Ring Form..." /> }
+);
+
+const SystemRingModal = dynamic(
+  () => import('@/components/ring-manager/SystemRingModal').then((mod) => mod.SystemRingModal),
+  { loading: () => <PageSpinner text="Loading System-Ring Form..." /> }
+);
+
+const EditSystemInRingModal = dynamic(
+  () =>
+    import('@/components/ring-manager/EditSystemInRingModal').then(
+      (mod) => mod.EditSystemInRingModal
+    ),
+  { loading: () => <PageSpinner text="Loading Edit System Form..." /> }
+);
 
 // --- Types ---
 interface SystemToDisassociate {

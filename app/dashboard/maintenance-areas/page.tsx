@@ -3,8 +3,8 @@
 
 import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
-import { AreaFormModal } from '@/components/maintenance-areas/AreaFormModal';
+import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
+import dynamic from 'next/dynamic';
 import { useMaintenanceAreasMutations } from '@/components/maintenance-areas/useMaintenanceAreasMutations';
 import { areaConfig, MaintenanceAreaWithRelations } from '@/config/areas';
 import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-config';
@@ -19,6 +19,11 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+
+const AreaFormModal = dynamic(
+  () => import('@/components/maintenance-areas/AreaFormModal').then((mod) => mod.AreaFormModal),
+  { loading: () => <PageSpinner text="Loading Area Form..." /> }
+);
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
