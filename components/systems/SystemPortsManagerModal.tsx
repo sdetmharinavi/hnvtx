@@ -23,7 +23,7 @@ import {
 } from '@/config/table-columns/PortsManagementTableColumns';
 import { PortsFormModal } from '@/components/systems/PortsFormModal';
 import { PortTemplateModal } from '@/components/systems/PortTemplateModal';
-import { useTableBulkOperations, usePagedData } from '@/hooks/database';
+import { useTableBulkOperations, usePagedData, EnhancedUploadResult } from '@/hooks/database';
 import { usePortsExcelUpload } from '@/hooks/database/excel-queries/usePortsExcelUpload';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
@@ -38,6 +38,7 @@ import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
+import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
@@ -210,10 +211,17 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
   }, [ports]);
 
   // 6. Mutations
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
+
   const { mutate: uploadPorts, isPending: isUploading } = usePortsExcelUpload(supabase, {
+    showToasts: false, // Handle via modal
     onSuccess: (result) => {
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
       if (result.successCount > 0) refetch();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(
@@ -428,6 +436,13 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           onChange={handleFileChange}
           className="hidden"
           accept=".xlsx, .xls"
+        />
+
+        <UploadResultModal
+          isOpen={isUploadResultOpen}
+          onClose={() => setIsUploadResultOpen(false)}
+          result={uploadResult}
+          title="Ports Upload Report"
         />
 
         <PageHeader

@@ -32,6 +32,8 @@ import { formatCurrency } from '@/utils/formatters';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import { EnhancedUploadResult } from '@/hooks/database';
+import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -74,6 +76,10 @@ export default function InventoryPage() {
   });
 
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
+
   const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
 
   const { options: categoryOptions, isLoading: loadingCats } =
@@ -383,6 +389,13 @@ export default function InventoryPage() {
             onChange={handleFileChange}
             className="hidden"
             accept=".xlsx, .xls"
+          />
+
+          <UploadResultModal
+            isOpen={isUploadResultOpen}
+            onClose={() => setIsUploadResultOpen(false)}
+            result={uploadResult}
+            title="Inventory Import Report"
           />
 
           <InventoryFormModal

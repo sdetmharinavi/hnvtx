@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Database, Json } from '@/types/supabase-types';
 import { RingsInsertSchema } from '@/schemas/zod-schemas';
 import { toPgBoolean } from '@/config/helper-functions';
-import { EnhancedUploadResult, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, ValidationError } from '@/hooks/database/queries-type-helpers';
 import { parseExcelFile } from '@/utils/excel-parser';
 
 interface RingUploadOptions {

@@ -7,12 +7,12 @@ import { Database } from '@/types/supabase-types';
 import {
   UploadColumnMapping,
   UseExcelUploadOptions,
-  TableInsert
+  TableInsert,
+  EnhancedUploadResult,
+  ValidationError
 } from '@/hooks/database/queries-type-helpers';
 import {
-  EnhancedUploadResult,
   validateValue,
-  ValidationError,
 } from './excel-helpers';
 import { parseExcelFile } from '@/utils/excel-parser';
 

@@ -18,7 +18,8 @@ import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { Filters } from '@/hooks/database';
+import { EnhancedUploadResult, Filters } from '@/hooks/database';
+import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 
 export default function GlobalOfcConnectionsPage() {
   const supabase = createClient();
@@ -51,10 +52,17 @@ export default function GlobalOfcConnectionsPage() {
     syncTables: ['ofc_connections', 'v_ofc_connections_complete', 'ofc_cables'],
   });
 
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
+
   const { mutate: uploadFibers, isPending: isUploading } = useOfcConnectionsExcelUpload(supabase, {
+    showToasts: false,
     onSuccess: (result) => {
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
       if (result.successCount > 0) refetch();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -129,6 +137,13 @@ export default function GlobalOfcConnectionsPage() {
         onChange={handleFileChange}
         className="hidden"
         accept=".xlsx, .xls, .csv"
+      />
+
+      <UploadResultModal
+        isOpen={isUploadResultOpen}
+        onClose={() => setIsUploadResultOpen(false)}
+        result={uploadResult}
+        title="Fiber Connections Upload Report"
       />
 
       <PageHeader

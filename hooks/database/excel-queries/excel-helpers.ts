@@ -1,6 +1,6 @@
 // path: hooks/database/excel-queries/excel-helpers.ts
 import * as ExcelJS from 'exceljs';
-import { Filters, UploadResult } from '@/hooks/database';
+import { Filters, ProcessingLog,  ValidationError } from '@/hooks/database';
 import { TableOrViewName, Row } from '@/hooks/database';
 
 export interface Column<T> {
@@ -60,27 +60,27 @@ export interface UseExcelDownloadOptions<T extends TableOrViewName = TableOrView
   batchSize?: number;
   defaultRPCConfig?: RPCConfig;
 }
-export interface ValidationError {
-  rowIndex: number;
-  column: string;
-  value: unknown;
-  error: string;
-  data?: Record<string, unknown>;
-}
-export interface ProcessingLog {
-  rowIndex: number;
-  excelRowNumber: number;
-  originalData: Record<string, unknown>;
-  processedData: Record<string, unknown>;
-  validationErrors: ValidationError[];
-  isSkipped: boolean;
-  skipReason?: string;
-}
-export interface EnhancedUploadResult extends UploadResult {
-  processingLogs: ProcessingLog[];
-  validationErrors: ValidationError[];
-  skippedRows: number;
-}
+// export interface ValidationError {
+//   rowIndex: number;
+//   column: string;
+//   value: unknown;
+//   error: string;
+//   data?: Record<string, unknown>;
+// }
+// export interface ProcessingLog {
+//   rowIndex: number;
+//   excelRowNumber: number;
+//   originalData: Record<string, unknown>;
+//   processedData: Record<string, unknown>;
+//   validationErrors: ValidationError[];
+//   isSkipped: boolean;
+//   skipReason?: string;
+// }
+// export interface EnhancedUploadResult extends UploadResult {
+//   processingLogs: ProcessingLog[];
+//   validationErrors: ValidationError[];
+//   skippedRows: number;
+// }
 
 export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   type: 'pattern',

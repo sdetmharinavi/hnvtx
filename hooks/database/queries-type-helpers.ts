@@ -76,7 +76,7 @@ export type PerformanceOptions = { useIndex?: string; explain?: boolean; timeout
 export type RowWithCount<T> = T & { total_count?: number };
 
 // --- HOOK OPTIONS INTERFACES (Unchanged) ---
-export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>> 
+export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>>
   extends Omit<UseQueryOptions<PagedQueryResult<Row<T>>, Error, TData>, "queryKey" | "queryFn"> {
   columns?: string;
   filters?: Filters;
@@ -119,21 +119,49 @@ export interface UploadOptions<T extends TableOrViewName> {
     columns: UploadColumnMapping<T>[];
     uploadType?: UploadType;
     conflictColumn?: T extends PublicTableName ? keyof TableInsert<T> & string : never;
-    // NEW: Allow injecting static data (e.g. user_id)
     staticData?: Partial<TableInsert<T extends PublicTableName ? T : never>>;
 }
+
+export interface ValidationError {
+  rowIndex: number;
+  column: string;
+  value: unknown;
+  error: string;
+  data?: Record<string, unknown>;
+}
+
+export interface ProcessingLog {
+  rowIndex: number;
+  excelRowNumber: number;
+  originalData: Record<string, unknown>;
+  processedData: Record<string, unknown>;
+  validationErrors: ValidationError[];
+  isSkipped: boolean;
+  skipReason?: string;
+}
+
 export interface UploadResult {
     successCount: number;
     errorCount: number;
     totalRows: number;
     errors: { rowIndex: number; data: unknown; error: string }[];
 }
+
+// MOVED HERE: The enhanced type that includes detailed logs
+export interface EnhancedUploadResult extends UploadResult {
+  processingLogs: ProcessingLog[];
+  validationErrors: ValidationError[];
+  skippedRows: number;
+}
+
+// UPDATED: Now uses EnhancedUploadResult in the success callback
 export interface UseExcelUploadOptions<T extends TableOrViewName> {
-    onSuccess?: (data: UploadResult, variables: UploadOptions<T>) => void;
+    onSuccess?: (data: EnhancedUploadResult, variables: UploadOptions<T>) => void;
     onError?: (error: Error, variables: UploadOptions<T>) => void;
     showToasts?: boolean;
     batchSize?: number;
 }
+
 export type DashboardOverviewData = {
   system_status_counts: { [key: string]: number };
   node_status_counts: { [key: string]: number };

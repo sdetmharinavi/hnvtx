@@ -24,6 +24,7 @@ import {
   buildRpcFilters,
   Row,
   TableOrViewName,
+  EnhancedUploadResult,
 } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
@@ -47,12 +48,15 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
+import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 
 export default function SystemsPage() {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
 
   const { isSuperAdmin, role } = useUser();
 
@@ -153,8 +157,20 @@ export default function SystemsPage() {
 
   // --- Upload / Export ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
+    // Disable default toasts to show modal instead for completion
+    showToasts: false,
     onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
+      if (result.successCount > 0) {
+        refetch();
+        toast.success(`Processed ${result.totalRows} rows.`);
+      } else {
+        toast.warning('Upload completed with no successful inserts.');
+      }
+    },
+    onError: (err) => {
+      toast.error(`Upload failed: ${err.message}`);
     },
   });
   const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
@@ -445,6 +461,13 @@ export default function SystemsPage() {
             onChange={handleFileChange}
             className="hidden"
             accept=".xlsx, .xls, .csv"
+          />
+
+          <UploadResultModal
+            isOpen={isUploadResultOpen}
+            onClose={() => setIsUploadResultOpen(false)}
+            result={uploadResult}
+            title="Systems Upload Report"
           />
 
           <SystemModal

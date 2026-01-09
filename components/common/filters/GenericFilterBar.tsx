@@ -1,3 +1,4 @@
+// components/common/filters/GenericFilterBar.tsx
 'use client';
 
 import React, { memo } from 'react';
@@ -74,7 +75,7 @@ export const GenericFilterBar = memo(
         </div>
 
         {/* Filters & Toggles Section */}
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center">
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center no-scrollbar">
           {filterConfigs.map((config) => {
             // 1. Multi-Select
             if (config.type === 'multi-select') {
@@ -142,7 +143,8 @@ export const GenericFilterBar = memo(
 
           {/* View Mode Toggle */}
           {viewMode && onViewModeChange && (
-            <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 ml-auto lg:ml-0">
+            // THE FIX: Changed 'hidden sm:flex' to 'flex' to make it visible on mobile
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 ml-auto lg:ml-0">
               <button
                 onClick={() => onViewModeChange('grid')}
                 className={`p-2 rounded-md transition-all ${

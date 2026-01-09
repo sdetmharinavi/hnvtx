@@ -2,16 +2,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
-import { EnhancedUploadResult, ProcessingLog, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, ProcessingLog, UseExcelUploadOptions, ValidationError } from '@/hooks/database/queries-type-helpers';
 import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 interface InventoryUploadOptions {
   file: File;
 }
 
-export function useInventoryExcelUpload() {
+export function useInventoryExcelUpload( options?: UseExcelUploadOptions<'v_inventory_items'>) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { showToasts = true, ...mutationOptions } = options || {}; // Destructure
 
   return useMutation<EnhancedUploadResult, Error, InventoryUploadOptions>({
     mutationFn: async ({ file }) => {
@@ -142,13 +143,23 @@ export function useInventoryExcelUpload() {
 
       return uploadResult;
     },
-    onSuccess: () => {
+     onSuccess: (result, variables) => {
+        // Invalidate queries
         queryClient.invalidateQueries({ queryKey: ['inventory_items-data'] });
         queryClient.invalidateQueries({ queryKey: ['v_inventory_items'] });
         queryClient.invalidateQueries({ queryKey: ['inventory-history'] });
+        
+        // Trigger custom onSuccess if provided (to open modal)
+        if (mutationOptions.onSuccess) {
+            mutationOptions.onSuccess(result, { ...variables, columns: [] }); // Dummy columns to satisfy type
+        }
     },
-    onError: (err) => {
-        toast.error(`Import failed: ${err.message}`);
+    onError: (err, variables) => {
+        if (showToasts) toast.error(`Import failed: ${err.message}`);
+         // Trigger custom onError
+        if (mutationOptions.onError) {
+             mutationOptions.onError(err, { ...variables, columns: [] });
+        }
     }
   });
 }

@@ -2,8 +2,8 @@
 import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { UploadColumnMapping, UseExcelUploadOptions } from '@/hooks/database/queries-type-helpers';
-import { EnhancedUploadResult, validateValue, ValidationError } from './excel-helpers';
+import { EnhancedUploadResult, UploadColumnMapping, UseExcelUploadOptions, ValidationError } from '@/hooks/database/queries-type-helpers';
+import { validateValue } from './excel-helpers';
 import { Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
 import { createClient } from '@/utils/supabase/client'; // THE FIX: Import createClient
