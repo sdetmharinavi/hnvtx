@@ -11,14 +11,41 @@ import {
   useMap,
   TileLayerProps,
 } from 'react-leaflet';
-import { LatLngBounds } from 'leaflet';
+import { LatLngBounds, LatLngExpression } from 'leaflet';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 import 'leaflet/dist/leaflet.css';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
-import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils'; 
+import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
 
+// --- NEW CONTROLLER COMPONENT ---
+// Automatically zooms map to fit visible nodes when they change
+const MapAutoFit = ({ nodes }: { nodes: BsnlNode[] }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (nodes.length === 0) return;
+
+    const latLngs: LatLngExpression[] = nodes
+      .filter((n) => n.latitude != null && n.longitude != null)
+      .map((n) => [n.latitude!, n.longitude!]);
+
+    if (latLngs.length > 0) {
+      const bounds = new LatLngBounds(latLngs);
+      map.fitBounds(bounds, {
+        padding: [50, 50], // Add padding so markers aren't on the edge
+        maxZoom: 15, // Prevent zooming in too close on single nodes
+        animate: true,
+        duration: 1, // Smooth 1s animation
+      });
+    }
+  }, [nodes, map]);
+
+  return null;
+};
+
+// ... (MapEventHandler remains the same)
 function MapEventHandler({
   setBounds,
   setZoom,
@@ -74,6 +101,7 @@ const MapContent = ({
   mapAttribution,
   setMapBounds,
   setZoom,
+  filteredNodes, // Pass the *filtered* nodes (not just visible in bounds) for auto-fit
 }: {
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
@@ -84,6 +112,7 @@ const MapContent = ({
   mapAttribution: string;
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
+  filteredNodes: BsnlNode[];
 }) => {
   // USE UTILITY FUNCTION FOR JITTER (Typed for BsnlNode)
   const displayNodes = useMemo(() => applyJitterToNodes<BsnlNode>(visibleNodes), [visibleNodes]);
@@ -91,6 +120,10 @@ const MapContent = ({
   return (
     <>
       <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
+
+      {/* ADD THE AUTO-FIT CONTROLLER */}
+      <MapAutoFit nodes={filteredNodes} />
+
       <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
 
       {visibleLayers.cables &&
@@ -107,7 +140,6 @@ const MapContent = ({
             return (
               <Polyline
                 key={cable.id}
-                // Use original coordinates for lines (we want lines to go to the true geographic center, not the jittered point)
                 positions={[
                   [startNode.latitude, startNode.longitude],
                   [endNode.latitude, endNode.longitude],
@@ -184,7 +216,7 @@ interface OptimizedNetworkMapProps {
 }
 
 export function OptimizedNetworkMap({
-  nodes,
+  nodes, // These are the FILTERED nodes from the parent component
   cables,
   systems,
   visibleLayers = { nodes: true, cables: true, systems: true },
@@ -196,7 +228,6 @@ export function OptimizedNetworkMap({
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
   useEffect(() => {
-    // USE CENTRALIZED LEAFLET FIX
     fixLeafletIcons();
   }, []);
 
@@ -209,6 +240,7 @@ export function OptimizedNetworkMap({
     }
   }, [isFullScreen]);
 
+  // Initial bounds logic is kept as fallback
   const initialBounds = useMemo(() => {
     if (nodes.length === 0) return null;
     const lats = nodes.map((n) => n.latitude ?? 0).filter((lat) => lat !== 0 && isFinite(lat));
@@ -242,8 +274,7 @@ export function OptimizedNetworkMap({
   }, [systems]);
 
   const visibleNodes = useMemo(() => {
-    if (!mapBounds || !visibleLayers.nodes) return [];
-    // Optimization: Limit rendered nodes based on zoom level to maintain performance
+    if (!mapBounds || !visibleLayers.nodes) return nodes; // Default to all if no bounds yet
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
     return nodes.slice(0, maxItems).filter((node) => {
       const lat = node.latitude;
@@ -287,6 +318,8 @@ export function OptimizedNetworkMap({
 
         <MapContainer
           key="normal"
+          // We use the initial bounds just for the first render.
+          // The MapAutoFit component will take over for updates.
           bounds={initialBounds!}
           className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800"
         >
@@ -294,6 +327,7 @@ export function OptimizedNetworkMap({
             cables={cables}
             visibleLayers={visibleLayers}
             visibleNodes={visibleNodes}
+            filteredNodes={nodes} // PASS ALL FILTERED NODES
             nodeMap={nodeMap}
             nodeSystemMap={nodeSystemMap}
             mapUrl={mapUrl}
@@ -322,6 +356,7 @@ export function OptimizedNetworkMap({
               cables={cables}
               visibleLayers={visibleLayers}
               visibleNodes={visibleNodes}
+              filteredNodes={nodes} // PASS ALL FILTERED NODES
               nodeMap={nodeMap}
               nodeSystemMap={nodeSystemMap}
               mapUrl={mapUrl}

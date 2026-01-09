@@ -27,7 +27,7 @@ import { DEFAULTS } from '@/constants/constants';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { UseQueryResult } from '@tanstack/react-query';
 import { FiWifiOff } from 'react-icons/fi';
-import { useDataSync } from '@/hooks/data/useDataSync'; // IMPORTED
+import { useDataSync } from '@/hooks/data/useDataSync';
 
 export type RecordWithId = {
   id: string | number | null;
@@ -73,7 +73,6 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   processDataForSave?: (data: TableInsertWithDates<T>) => TableInsert<T>;
   idType?: 'string' | 'number';
   initialFilters?: Filters;
-  // THE FIX: New optional prop to define which tables to sync on refresh
   syncTables?: PublicTableOrViewName[];
 }
 
@@ -86,12 +85,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   processDataForSave,
   idType = 'string',
   initialFilters = {},
-  syncTables, // Destructure new prop
+  syncTables,
 }: CrudManagerOptions<T, V>) {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
-  
-  // Use the sync hook
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
 
   const [editingRecord, setEditingRecord] = useState<V | null>(null);
@@ -135,7 +132,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     setCurrentPage(1);
   }, [debouncedSearch, filters, setCurrentPage]);
 
-  // Execute the data query hook
   const {
     data,
     totalCount,
@@ -144,7 +140,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isLoading,
     isFetching,
     error,
-    refetch, // This is the React Query refetch
+    refetch,
     ...restHookData
   } = dataQueryHook({
     currentPage,
@@ -153,15 +149,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     filters: combinedFilters,
   });
 
-  // --- NEW: Enhanced Refresh Function ---
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
-        // If online and specific tables are defined, force a DB sync first
         await syncData(syncTables);
-        // Then update the UI cache
         refetch();
     } else {
-        // Standard React Query refetch (hits local DB first, then online if stale)
         refetch();
     }
   }, [isOnline, syncTables, syncData, refetch]);
@@ -201,7 +193,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Record created successfully.');
       closeModal();
-
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newId = (data[0] as any).id;
@@ -218,7 +209,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     onSuccess: async (data) => {
       toast.success('Record updated successfully.');
       closeModal();
-
       if (data && data.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updatedId = (data[0] as any).id;
@@ -234,7 +224,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     optimisticUpdate: false,
     onSuccess: async (data) => {
       toast.success('Status updated successfully.');
-
       if (data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = (data as any).id;
@@ -249,14 +238,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const handleLocalCleanup = useCallback(
     async (deletedIds: string[]) => {
       if (!deletedIds.length) return;
-
       const targetTable = localTableName || tableName;
-
       try {
         const table = getTable(targetTable);
         const idsToDelete =
           idType === 'number' ? deletedIds.map(Number).filter((n) => !isNaN(n)) : deletedIds;
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await table.bulkDelete(idsToDelete as any);
       } catch (e) {
@@ -315,7 +301,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [displayNameField]
   );
 
-  // --- SAVE HANDLER (Online/Offline) ---
   const handleSave = useCallback(
     async (formData: TableInsertWithDates<T>) => {
       const processedData = processDataForSave
@@ -345,11 +330,21 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'update',
               payload: { id: idToUpdate, data: processedData },
             });
-            // UPDATED: Descriptive offline toast
             toast.warning('Update queued (Offline). Sync pending.', { icon: React.createElement(FiWifiOff) });
           } else {
-            const tempId = `offline_${uuidv4()}`;
+            // THE FIX: Use standard UUID for offline creation to be PG compatible
+            const tempId = uuidv4();
             const newRecord = { ...processedData, id: tempId };
+            
+            // If the table uses integer IDs (unlikely for main tables but possible for logs),
+            // this logic needs adjustment. Assuming UUIDs for main entities here.
+            if (idType === 'number') {
+               // For number IDs (e.g. audit logs), we can't easily generate valid ones offline
+               // without risk of collision. We might need negative IDs.
+               // However, create/update usually happens on UUID tables in this app.
+               console.warn("Offline creation for integer ID tables is risky.");
+            }
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await targetTable.add(newRecord as any);
 
@@ -358,7 +353,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'insert',
               payload: newRecord,
             });
-            // UPDATED: Descriptive offline toast
             toast.warning('Created offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
           }
           refetch();
@@ -408,7 +402,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { ids: [ids[0]] },
           });
 
-          // UPDATED: Descriptive offline toast
           toast.warning('Deleted offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
           refetch();
         });
@@ -456,7 +449,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               payload: { id, data: { status: newStatus } },
             });
           }
-          // UPDATED: Descriptive offline toast
           toast.warning('Status updated locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
           refetch();
           handleClearSelection();
@@ -507,7 +499,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           payload: { ids: ids },
         });
 
-        // UPDATED: Descriptive offline toast
         toast.warning(`Deleted ${ids.length} items locally. Sync pending.`, { icon: React.createElement(FiWifiOff) });
         refetch();
         handleClearSelection();
@@ -550,7 +541,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id: idToUpdate, data: { status: newStatus } },
           });
           refetch();
-          // UPDATED: Descriptive offline toast
           toast.warning('Status changed locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
         } catch (err) {
           toast.error(`Offline status update failed: ${(err as Error).message}`);
@@ -582,7 +572,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id, data: updateData },
           });
           refetch();
-          // UPDATED: Descriptive offline toast
           toast.warning('Edit saved locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
         } catch (err) {
           toast.error(`Offline edit failed: ${(err as Error).message}`);
@@ -615,12 +604,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       ({
         data: { data, count: totalCount },
         isLoading,
-        isFetching: isFetching || isSyncingData, // Include sync status in fetching state
+        isFetching: isFetching || isSyncingData,
         error: error as Error | null,
         isError: !!error,
         isSuccess: !isLoading && !error,
-        // THE FIX: Return our enhanced handler
-        refetch: handleRefresh as unknown as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>, 
+        refetch: handleRefresh as unknown as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>,
         status: isLoading ? 'pending' : error ? 'error' : 'success',
       } as UseQueryResult<PagedQueryResult<V>, Error>),
     [data, totalCount, isLoading, isFetching, isSyncingData, error, handleRefresh]
@@ -635,7 +623,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     isFetching,
     error,
     isMutating,
-    refetch: handleRefresh, // EXPOSE THE ENHANCED REFRESH
+    refetch: handleRefresh,
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },

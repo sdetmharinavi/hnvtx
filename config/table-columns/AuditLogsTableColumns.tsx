@@ -11,8 +11,9 @@ const ActionBadge = ({ action }: { action: string }) => {
     DELETE: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     LOGIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   };
-  const className = colors[action] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-  
+  const className =
+    colors[action] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+
   return (
     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${className}`}>
       {action}
@@ -40,29 +41,32 @@ export const AuditLogsTableColumns = (data: V_audit_logsRowSchema[]) => {
         width: 200,
         render: (_, record) => (
           <div className="flex items-center gap-2">
-             {record.performed_by_avatar ? (
-                <Image 
-                  src={record.performed_by_avatar} 
-                  alt="avatar" 
-                  width={24} height={24} 
-                  className="rounded-full" 
-                />
-             ) : (
-                <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs">
-                  {record.performed_by_name?.charAt(0) || '?'}
-                </div>
-             )}
-             <div className="flex flex-col">
-               <span className="text-sm font-medium">{record.performed_by_name || 'Unknown'}</span>
-               <span className="text-xs text-gray-500">{record.performed_by_email}</span>
-             </div>
+            {record.performed_by_avatar ? (
+              <Image
+                src={record.performed_by_avatar}
+                alt="avatar"
+                width={24}
+                height={24}
+                className="rounded-full"
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs">
+                {record.performed_by_name?.charAt(0) || '?'}
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">{record.performed_by_name || 'Unknown'}</span>
+              <span className="text-xs text-gray-500">{record.performed_by_email}</span>
+            </div>
           </div>
-        )
+        ),
       },
       created_at: {
         title: 'Timestamp',
         width: 180,
-        render: (val) => formatDate(val as string, { format: 'dd-mm-yyyy', hour: '2-digit', minute: '2-digit' }),
+        sortable: true,
+        render: (val) =>
+          formatDate(val as string, { format: 'dd-mm-yyyy', hour: '2-digit', minute: '2-digit' }),
       },
     },
   });
