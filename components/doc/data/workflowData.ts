@@ -36,10 +36,29 @@ export const workflowSections: WorkflowSection[] = [
           '**Context:** `UserProvider` fetches `v_user_profiles_extended` to check `preferences->needsOnboarding`.',
         ],
       },
+      {
+        title: '2. Admin User Creation (Manual)',
+        userSteps: [
+          'Navigate to `/dashboard/users`.',
+          "Click 'Add New' (Restricted to Super Admin / Admin Pro).",
+          "Fill in email, password, name, and select a Role (e.g. 'OFC Admin').",
+          "Optionally check 'Confirm Email Immediately' to bypass verification.",
+          "Click 'Create User'.",
+        ],
+        uiSteps: [
+          'The modal closes and the user list refreshes.',
+          'A success toast confirms the creation.',
+        ],
+        techSteps: [
+          '**API Route:** POST to `/api/admin/users`.',
+          '**Security:** Server-side `createAdminClient` bypasses RLS to insert into `auth.users`.',
+          '**Safety:** Metadata is stored in `app_metadata` to prevent user tampering.',
+        ],
+      },
     ],
   },
-  // ============================================================================
-  // MODULE: OFFLINE & SYNC (UPDATED)
+// ============================================================================
+  // MODULE: OFFLINE & SYNC
   // ============================================================================
   {
     value: 'offline_sync',
@@ -88,23 +107,25 @@ export const workflowSections: WorkflowSection[] = [
         ],
       },
       {
-        title: '3. Synchronization Queue',
+        title: '3. Safe Synchronization & Manual Control', // UPDATED TITLE
         userSteps: [
-          'Changes made while offline are stored in a "Pending Queue".',
-          'When internet restores, the app automatically processes this queue.',
-          '**Visual Feedback:** The bottom bar turns Blue ("Syncing...") then Green ("Data Synced").',
+          'When internet restores, the app performs a "Safe Sync".',
+          '**Automatic:** It uploads pending changes sequentially.',
+          '**Conflict Protection:** If you edited a record offline, the app preserves YOUR change locally until it is successfully uploaded.',
+          '**Manual Discard:** You can click the **Sync Status Bar** (bottom) to see queued items. Click **Discard** (Trash Icon) to remove a pending change. The app will then revert to the server version on the next refresh.',
         ],
         uiSteps: [
           'Header Cloud icon animates (Blue) during processing.',
-          'If a sync fails (e.g. conflict), the bar turns Red. Click to retry or discard.',
+          'If an item is Discarded, it immediately vanishes from the queue.',
         ],
         techSteps: [
-          '**Queue:** `mutation_queue` table in Dexie stores payloads.',
-          '**Process:** `useMutationQueue` replays requests sequentially when `useOnlineStatus` becomes true.',
+          '**Logic:** `performFullSync` checks `mutation_queue` for pending changes.',
+          '**Discard:** Removing a task from `mutation_queue` allows `useLocalFirstQuery` to overwrite the local dirty record with server data on the next fetch.',
         ],
       },
     ],
   },
+  
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
@@ -639,7 +660,7 @@ export const workflowSections: WorkflowSection[] = [
           "Click on a cable card or the 'View' icon.",
           '**Header:** Shows Summary (Asset No, Route Name) and Metadata (Owner, Comm. Date).',
           "**Visualization:** Switch to 'Route Visualization' to add JCs (Joints).",
-          '**Fibers:** The table below shows the status of every fiber strand (Available/Occupied).',
+          '**Fibers:** The table below shows the status of every fiber strand (1 to Capacity).',
         ],
         uiSteps: ["Utilization stats are shown in the header (e.g., '12/24 Used')."],
         techSteps: ['**View:** `v_ofc_connections_complete` joins detailed fiber status.'],

@@ -6,7 +6,7 @@ export const featuresData: FeatureItem[] = [
     id: "feat-mobile-ux",
     title: "Mobile-First Operations",
     subtitle: "Optimized for Field Engineers",
-    icon: "Smartphone", // Lucide icon
+    icon: "Smartphone",
     color: "violet",
     description: "The entire application adapts intelligently to your device. Complex data tables automatically transform into rich, easy-to-read cards on mobile devices, ensuring field engineers can access and update critical data without horizontal scrolling or zooming.",
     benefits: [
@@ -22,21 +22,21 @@ export const featuresData: FeatureItem[] = [
   },
   {
     id: "feat-offline-architecture",
-    title: "Offline-First Resilience",
-    subtitle: "Zero downtime, anywhere access",
+    title: "Safe Sync & Offline Mode",
+    subtitle: "Zero data loss connectivity",
     icon: "WifiOff",
     color: "rose",
-    description: "Never let a poor internet connection stop your maintenance work. Our system ensures you can read, search, and even modify critical network data in the remotest field locations without a signal.",
+    description: "Our advanced 'Safe Sync' engine ensures you never lose work. If you edit data while offline, changes are queued locally. When you reconnect, the system merges your pending changes with the latest server data, preventing accidental overwrites.",
     benefits: [
       "Works completely without internet access.",
+      "Safe Sync: Pending local edits are preserved during refresh.",
       "Automatic background synchronization when online.",
-      "Conflict-free data queuing ensures no data is lost.",
     ],
     technicalHighlights: [
       "IndexedDB (Dexie.js) local storage",
-      "Optimistic UI updates",
-      "Background Mutation Queue replay",
-      "Stale-While-Revalidate caching strategy",
+      "Mutation Queue for optimistic writes",
+      "Conflict-aware hydration strategy",
+      "Stale-While-Revalidate caching",
     ],
   },
   {
@@ -72,7 +72,7 @@ export const featuresData: FeatureItem[] = [
       "Auto-provisioning for straight-through joints.",
     ],
     technicalHighlights: [
-      "Recursive SQL CTEs for path tracing", //Common Table Expression
+      "Recursive SQL CTEs for path tracing",
       "Dynamic segmentation logic",
       "Graph-based data modeling",
       "Atomic provisioning transactions",
@@ -82,7 +82,7 @@ export const featuresData: FeatureItem[] = [
     id: "feat-excel-import",
     title: "Bulk Excel Integration",
     subtitle: "Seamless migration & mass updates",
-    icon: "FileSpreadsheet", // Mapped in FeatureCard
+    icon: "FileSpreadsheet",
     color: "green",
     description: "Eliminate manual data entry. Our robust import engine allows you to upload thousands of records—Systems, Cables, or Connections—in seconds, with real-time validation to prevent bad data from entering your system.",
     benefits: [
@@ -92,7 +92,7 @@ export const featuresData: FeatureItem[] = [
       "Export any table to Excel.",
     ],
     technicalHighlights: [
-      "Client-side parsing via `xlsx` (lazy loaded)",
+      "Client-side parsing via `xlsx` (Web Worker)",
       "Batch processing (500 rows/chunk) for performance",
       "Zod schema validation per row",
       "Transactional database commits",
@@ -140,20 +140,20 @@ export const featuresData: FeatureItem[] = [
   },
   {
     id: "feat-audit-logs",
-    title: "Comprehensive Auditing",
+    title: "Security & Auditing",
     subtitle: "Total accountability & history",
-    icon: "FileClock", // Mapped in FeatureCard
+    icon: "ShieldCheck",
     color: "violet",
-    description: "Keep your critical infrastructure data secure. Every action—create, update, or delete—is immutably recorded, allowing you to trace changes back to specific users and timestamps.",
+    description: "Keep your critical infrastructure data secure. Every action is immutably recorded, and user management is protected by server-side verification.",
     benefits: [
       "Visual Diff Viewer: See exactly what changed (Before vs. After).",
       "Filter logs by User, Action Type, or Date.",
-      "Indestructible records: Logs cannot be deleted by standard users.",
+      "Secure User Creation: Direct API integration bypasses client-side vulnerabilities.",
       "Detailed metadata tracking (IP, Device).",
     ],
     technicalHighlights: [
       "Database-level Triggers (PostgreSQL)",
-      "JSONB storage for flexible schema versioning",
+      "Supabase Admin API for user management",
       "Read-only SQL Views for security",
       "Optimized indexing for fast history lookup",
     ],
