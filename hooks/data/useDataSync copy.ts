@@ -3,34 +3,31 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTMDatabase, getTable, MutationTask } from '@/hooks/data/localDb';
-import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
+import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
+import { PublicTableOrViewName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { useState, useCallback } from 'react';
 
-const BATCH_SIZE = 2000; // Reduced slightly to ensure stability on mobile
+const BATCH_SIZE = 2500;
 
 type SyncStrategy = 'full' | 'incremental';
 
 interface EntitySyncConfig {
   strategy: SyncStrategy;
-  timestampColumn?: string;
-  // Map View Name to underlying Table Name to check mutation queue
-  relatedTable?: PublicTableName;
+  timestampColumn?: string; // e.g., 'created_at' or 'updated_at'
 }
 
 // Configuration Map for Sync Strategies
-// Added 'relatedTable' to map Views to their writable Tables for conflict checking
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  // --- Incremental Sync Tables ---
-  'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'user_activity_logs' },
-  'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'inventory_transactions' },
-  'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'file_movements' },
+  // --- Incremental Sync Tables (True Append-Only / History) ---
+  'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
+  'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
+  'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at' },
   'inventory_transactions': { strategy: 'incremental', timestampColumn: 'created_at' },
   'user_activity_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
   'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' },
 
-  // --- FULL SYNC TABLES ---
+  // --- FULL SYNC TABLES (Operational Data) ---
   'systems': { strategy: 'full' },
   'system_connections': { strategy: 'full' },
   'ports_management': { strategy: 'full' },
@@ -39,6 +36,30 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'nodes': { strategy: 'full' },
   'rings': { strategy: 'full' },
   'ofc_cables': { strategy: 'full' },
+
+  // --- VIEWS ---
+  'v_systems_complete': { strategy: 'full' },
+  'v_system_connections_complete': { strategy: 'full' },
+  'v_ports_management_complete': { strategy: 'full' },
+  'v_ofc_connections_complete': { strategy: 'full' },
+  'v_services': { strategy: 'full' },
+  'v_nodes_complete': { strategy: 'full' },
+  'v_ring_nodes': { strategy: 'full' },
+  'v_rings': { strategy: 'full' },
+  'v_ofc_cables_complete': { strategy: 'full' },
+  'v_cable_utilization': { strategy: 'full' },
+  'v_end_to_end_paths': { strategy: 'full' },
+  'v_inventory_items': { strategy: 'full' },
+  'v_e_files_extended': { strategy: 'full' },
+  'v_employee_designations': { strategy: 'full' },
+  'v_junction_closures_complete': { strategy: 'full' },
+  'v_cable_segments_at_jc': { strategy: 'full' },
+  'v_maintenance_areas': { strategy: 'full' },
+  'v_lookup_types': { strategy: 'full' },
+  'v_user_profiles_extended': { strategy: 'full' },
+  'v_employees': { strategy: 'full' },
+
+  // --- Reference & Small Tables ---
   'lookup_types': { strategy: 'full' },
   'employee_designations': { strategy: 'full' },
   'user_profiles': { strategy: 'full' },
@@ -56,101 +77,22 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'junction_closures': { strategy: 'full' },
   'fiber_splices': { strategy: 'full' },
   'logical_path_segments': { strategy: 'full' },
-  'sdh_connections': { strategy: 'full' },
-
-  // --- VIEWS (Mapped to Tables) ---
-  'v_systems_complete': { strategy: 'full', relatedTable: 'systems' },
-  'v_system_connections_complete': { strategy: 'full', relatedTable: 'system_connections' },
-  'v_ports_management_complete': { strategy: 'full', relatedTable: 'ports_management' },
-  'v_ofc_connections_complete': { strategy: 'full', relatedTable: 'ofc_connections' },
-  'v_services': { strategy: 'full', relatedTable: 'services' },
-  'v_nodes_complete': { strategy: 'full', relatedTable: 'nodes' },
-  'v_ring_nodes': { strategy: 'full', relatedTable: 'systems' }, // Complex join, primary is system
-  'v_rings': { strategy: 'full', relatedTable: 'rings' },
-  'v_ofc_cables_complete': { strategy: 'full', relatedTable: 'ofc_cables' },
-  'v_cable_utilization': { strategy: 'full', relatedTable: 'ofc_cables' },
-  'v_end_to_end_paths': { strategy: 'full', relatedTable: 'logical_fiber_paths' },
-  'v_inventory_items': { strategy: 'full', relatedTable: 'inventory_items' },
-  'v_e_files_extended': { strategy: 'full', relatedTable: 'e_files' },
-  'v_employee_designations': { strategy: 'full', relatedTable: 'employee_designations' },
-  'v_junction_closures_complete': { strategy: 'full', relatedTable: 'junction_closures' },
-  'v_cable_segments_at_jc': { strategy: 'full', relatedTable: 'cable_segments' },
-  'v_maintenance_areas': { strategy: 'full', relatedTable: 'maintenance_areas' },
-  'v_lookup_types': { strategy: 'full', relatedTable: 'lookup_types' },
-  'v_user_profiles_extended': { strategy: 'full', relatedTable: 'user_profiles' },
-  'v_employees': { strategy: 'full', relatedTable: 'employees' },
+  'sdh_connections': { strategy: 'full' }
 };
-
-/**
- * Re-applies pending local changes on top of fresh server data
- * to ensure the UI doesn't revert during a sync.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
-  const merged = [...serverData];
-  const serverIdMap = new Map(merged.map((item, index) => [item.id, index]));
-
-  pendingTasks.forEach(task => {
-    // 1. Handle INSERT
-    if (task.type === 'insert') {
-      // If server doesn't have it yet, add it
-      if (!serverIdMap.has(task.payload.id)) {
-        merged.push(task.payload);
-      }
-    }
-    // 2. Handle UPDATE
-    else if (task.type === 'update') {
-      const targetId = task.payload.id;
-      const index = serverIdMap.get(targetId);
-      if (index !== undefined) {
-        // Merge the update on top of server data
-        merged[index] = { ...merged[index], ...task.payload.data };
-      }
-    }
-    // 3. Handle DELETE
-    else if (task.type === 'delete') {
-      // Remove from the dataset
-      const idsToDelete = new Set(task.payload.ids);
-      for (let i = merged.length - 1; i >= 0; i--) {
-        if (idsToDelete.has(merged[i].id)) {
-          merged.splice(i, 1);
-        }
-      }
-    }
-  });
-
-  return merged;
-}
 
 async function performFullSync(
     supabase: SupabaseClient,
     db: HNVTMDatabase,
-    entityName: PublicTableOrViewName,
-    config: EntitySyncConfig
+    entityName: PublicTableOrViewName
   ) {
     const table = getTable(entityName);
     let offset = 0;
     let hasMore = true;
-    let totalSynced = 0;
 
-    // 1. Fetch pending mutations for this entity (to preserve optimistic state)
-    let pendingTasks: MutationTask[] = [];
-    if (config.relatedTable) {
-       pendingTasks = await db.mutation_queue
-         .where('tableName')
-         .equals(config.relatedTable)
-         .toArray();
-       // Only care about pending or processing tasks
-       pendingTasks = pendingTasks.filter(t => t.status === 'pending' || t.status === 'processing');
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allFetchedData: any[] = [];
 
-    // 2. Clear table at the start of a full sync
-    // We do this in a transaction to ensure we don't leave the table empty if fetch fails immediately
-    await db.transaction('rw', table, async () => {
-       await table.clear();
-    });
-
-    // 3. Fetch and Write in Batches (Stream-like) to prevent OOM
+    // 1. Fetch all data from server in batches
     while (hasMore) {
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
         p_view_name: entityName,
@@ -162,44 +104,29 @@ async function performFullSync(
       if (rpcError) throw rpcError;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let batchData = (rpcResponse as { data: any[] })?.data || [];
-      const validDataCount = batchData.length;
+      const responseData = (rpcResponse as { data: any[] })?.data || [];
+      const validData = responseData.filter(item => item.id != null);
 
-      if (validDataCount > 0) {
-        // 4. Merge Pending Mutations into this batch
-        // (This ensures if a record in this batch was updated locally, we keep the local version)
-        if (pendingTasks.length > 0) {
-            batchData = mergePendingMutations(batchData, pendingTasks);
-        }
-
-        // 5. Bulk Put Batch
-        await db.transaction('rw', table, async () => {
-            await table.bulkPut(batchData);
-        });
-
-        totalSynced += batchData.length;
+      if (validData.length > 0) {
+        allFetchedData.push(...validData);
       }
 
-      if (validDataCount < BATCH_SIZE) {
+      if (responseData.length < BATCH_SIZE) {
         hasMore = false;
       } else {
         offset += BATCH_SIZE;
       }
     }
 
-    // 6. Final Step: Re-apply INSERT mutations that might not have come from server yet
-    // (e.g. newly created items offline that aren't in the server batches)
-    if (pendingTasks.length > 0) {
-        const inserts = pendingTasks.filter(t => t.type === 'insert').map(t => t.payload);
-        if (inserts.length > 0) {
-            await db.transaction('rw', table, async () => {
-                await table.bulkPut(inserts);
-            });
-            totalSynced += inserts.length;
-        }
-    }
+    // 2. Atomic Replacement in Local DB
+    await db.transaction('rw', table, async () => {
+      await table.clear();
+      if (allFetchedData.length > 0) {
+        await table.bulkPut(allFetchedData);
+      }
+    });
 
-    return totalSynced;
+    return allFetchedData.length;
 }
 
 async function performIncrementalSync(
@@ -209,6 +136,7 @@ async function performIncrementalSync(
   timestampColumn: string = 'created_at'
 ) {
   const table = getTable(entityName);
+
   const latestRecord = await table.orderBy(timestampColumn).last();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,6 +149,7 @@ async function performIncrementalSync(
   while (hasMore) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filters: any = {};
+
     if (lastTimestamp) {
       filters[timestampColumn] = { operator: '>', value: lastTimestamp };
     }
@@ -241,7 +170,6 @@ async function performIncrementalSync(
     const validData = responseData.filter(item => item.id != null);
 
     if (validData.length > 0) {
-      // Incremental doesn't need complex merge logic usually as it's append-only history
       await table.bulkPut(validData);
       totalSynced += validData.length;
 
@@ -271,13 +199,11 @@ export async function syncEntity(
 
     let count = 0;
     const config = SYNC_CONFIG[entityName];
-    // If config missing, default to full sync without mutation preservation (safe fallback)
-    const safeConfig = config || { strategy: 'full' };
 
-    if (safeConfig.strategy === 'incremental') {
-      count = await performIncrementalSync(supabase, db, entityName, safeConfig.timestampColumn);
+    if (config?.strategy === 'incremental') {
+      count = await performIncrementalSync(supabase, db, entityName, config.timestampColumn);
     } else {
-      count = await performFullSync(supabase, db, entityName, safeConfig);
+      count = await performFullSync(supabase, db, entityName);
     }
 
     await db.sync_status.put({
@@ -297,7 +223,7 @@ export async function syncEntity(
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
-    // Propagate error for UI handling
+    // We throw to let the parent Promise.allSettled or try/catch block handle the UI feedback
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -306,18 +232,21 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
-
+  
+  // Internal loading state for imperative sync
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<Error | null>(null);
 
+  // THE FIX: Renamed from 'refetch' to 'executeSync' and modified to accept tables
   const executeSync = useCallback(async (specificTables?: PublicTableOrViewName[]) => {
     setIsSyncing(true);
     setSyncError(null);
-
+    
     try {
       const failures: string[] = [];
-      const entitiesToSync = specificTables && specificTables.length > 0
-        ? specificTables
+      // Use specific tables if provided, otherwise sync ALL
+      const entitiesToSync = specificTables && specificTables.length > 0 
+        ? specificTables 
         : (Object.keys(SYNC_CONFIG) as PublicTableOrViewName[]);
 
       const isPartial = entitiesToSync.length < Object.keys(SYNC_CONFIG).length;
@@ -326,6 +255,7 @@ export function useDataSync() {
         toast.info('Starting full sync...');
       }
 
+      // Process sequentially to manage load and connection pool
       for (const entity of entitiesToSync) {
         try {
             await syncEntity(supabase, localDb, entity);
@@ -339,23 +269,27 @@ export function useDataSync() {
       }
 
       if (failures.length === 0) {
-        toast.success(isPartial ? 'Data refreshed.' : 'All local data is up to date.');
+        toast.success(isPartial ? 'Page data refreshed.' : 'All local data is up to date.');
       } else {
          toast.warning(`Sync completed with warnings. ${failures.length} tables failed.`);
       }
 
-      // Smart Invalidation
+      // If partial, only invalidate specific queries related to those tables
       if (isPartial) {
+        // We broadly invalidate queries containing the table name. 
+        // This is a heuristic but works with our key structure ['table', 'tableName'] or ['tableName-data']
         await queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey as unknown[];
-            return entitiesToSync.some(table =>
-              key.includes(table) ||
+            return entitiesToSync.some(table => 
+              // Check various key patterns
+              key.includes(table) || 
               (typeof key[0] === 'string' && key[0].includes(table))
             );
           }
         });
       } else {
+        // Full invalidation
         await queryClient.invalidateQueries({
           predicate: (query) => query.queryKey[0] !== 'data-sync-all'
         });
@@ -376,11 +310,11 @@ export function useDataSync() {
     }
   }, [supabase, queryClient]);
 
-  // Initial load check
+  // Initial load check (optional, can be kept minimal)
   const { data: globalSyncState } = useQuery({
     queryKey: ['data-sync-all'],
-    queryFn: () => ({ lastSynced: null }),
-    enabled: false,
+    queryFn: () => ({ lastSynced: null }), // We don't auto-sync all on mount anymore
+    enabled: false, 
     staleTime: Infinity
   });
 
