@@ -1,7 +1,7 @@
 // path: providers/UserProvider.tsx
 "use client";
 
-import { createContext, useContext, ReactNode, useEffect } from 'react';
+import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
 import { UserRole } from '@/types/user-roles';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
@@ -10,7 +10,7 @@ import { useThemeStore, Theme } from '@/stores/themeStore';
 import { useTableUpdate } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useDataSync } from '@/hooks/data/useDataSync'; // IMPORTED
+import { useDataSync } from '@/hooks/data/useDataSync';
 
 interface UserContextType {
   profile: V_user_profiles_extendedRowSchema | null;
@@ -30,7 +30,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { theme, setTheme } = useThemeStore();
   const queryClient = useQueryClient();
   const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
-  const { sync: syncData } = useDataSync(); // USE HOOK
+  const { sync: syncData } = useDataSync();
+
+  // THE FIX: Track the last synced user ID to prevent duplicate syncs on navigation
+  const syncedUserIdRef = useRef<string | null>(null);
 
   // Effect 1: Sync from DB Profile -> Zustand Store on profile load
   useEffect(() => {
@@ -71,11 +74,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [user?.id, profile, updateProfile, queryClient]);
 
-  // Effect 3: Auto-Sync User Profiles on Login (Background)
-  // THE FIX: This ensures the admin list is fresh upon login.
+  // Effect 3: Auto-Sync User Profiles on Login (Once per session)
   useEffect(() => {
-    if (user?.id) {
-       // Fire and forget - don't await, let it happen in background
+    const currentUserId = user?.id;
+
+    // If user logs out, reset the ref so they sync again upon next login
+    if (!currentUserId) {
+        syncedUserIdRef.current = null;
+        return;
+    }
+
+    // Only sync if we haven't synced for this specific user ID yet
+    if (syncedUserIdRef.current !== currentUserId) {
+       syncedUserIdRef.current = currentUserId;
+       
+       // Fire and forget - background sync
        syncData(['v_user_profiles_extended']);
     }
   }, [user?.id, syncData]);
