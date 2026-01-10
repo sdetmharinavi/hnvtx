@@ -741,21 +741,21 @@ export default function RingManagerPage() {
     [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
   );
 
-  useEffect(() => {
-    if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
-      const defaultType = ringTypesData.find(
-        (t) => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS'
-      );
+  // useEffect(() => {
+  //   if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
+  //     const defaultType = ringTypesData.find(
+  //       (t) => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS'
+  //     );
 
-      if (defaultType) {
-        filters.setFilters((prev) => ({
-          ...prev,
-          ring_type_id: defaultType.id,
-        }));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ringTypesData]);
+  //     if (defaultType) {
+  //       filters.setFilters((prev) => ({
+  //         ...prev,
+  //         ring_type_id: defaultType.id,
+  //       }));
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [ringTypesData]);
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
