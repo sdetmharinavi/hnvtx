@@ -1,3 +1,4 @@
+// components/map/MeshDiagram/MeshDiagram.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -90,6 +91,9 @@ export default function MeshDiagram({
               startNodeName={nodeA.name || 'A'}
               endNodeName={nodeB.name || 'B'}
               customColor={lineColor}
+              // ADDED: Pass the full node objects
+              start={nodeA}
+              end={nodeB}
             />
           );
         })}

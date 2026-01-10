@@ -214,6 +214,9 @@ export default function RingMapPage() {
     return Array.from(ids);
   }, [allCableConnections]);
 
+  console.log("relevantLogicalPathIds", relevantLogicalPathIds);
+  
+
   // 7. Fetch Logical Fiber Path Names AND System Connection IDs
   const { data: logicalFiberPathsMap } = useQuery({
     queryKey: ['logical-fiber-paths-info', relevantLogicalPathIds],
@@ -230,10 +233,6 @@ export default function RingMapPage() {
         console.error('Error fetching path info:', error);
         return new Map<string, { name: string; connectionId: string | null }>();
       }
-
-      
-      console.log("connectionId from rings id: ", data);
-      
       
       return new Map(
         data.map((p) => {
@@ -247,6 +246,9 @@ export default function RingMapPage() {
     enabled: relevantLogicalPathIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
+
+  console.log(logicalFiberPathsMap);
+  
 
   // 8. Fetch Ring Logical Path configurations (Hub-to-Hub)
   const { data: pathConfigs } = useQuery({

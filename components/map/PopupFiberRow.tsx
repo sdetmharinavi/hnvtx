@@ -13,25 +13,24 @@ import { PathConfig } from '@/components/map/ClientRingMap/types';
 
 interface PopupFiberRowProps {
   config?: PathConfig;
+  connectionId?: string;
 }
 
-export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
+export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config, connectionId }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const supabase = createClient();
-
-  console.log(config);
   
 
-  const allUniqueConnectionIds = useMemo(() => {
-    if (!config?.fiberMetrics) return [];
-    return Array.from(new Set(config.fiberMetrics.map((fm) => fm.connectionId).filter(Boolean)));
-  }, [config]);
+  // const allUniqueConnectionIds = useMemo(() => {
+  //   if (!config?.fiberMetrics) return [];
+  //   return Array.from(new Set(config.fiberMetrics.map((fm) => fm.connectionId).filter(Boolean)));
+  // }, [config]);
 
   const { data: connection, isLoading: isConnectionLoading } = useRpcRecord(
     supabase,
     'v_system_connections_complete',
-    allUniqueConnectionIds[0] ?? null,
-    { enabled: isExpanded && !!allUniqueConnectionIds[0] }
+    connectionId ?? null,
+    { enabled: isExpanded && !!connectionId }
   );
 
   const allocatedFiberIds = useMemo(() => {
@@ -63,7 +62,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
     );
 
   const isLoading = isConnectionLoading || isFibersLoading;
-  const hasConnectionId = !!allUniqueConnectionIds[0];
+  const hasConnectionId = !!connectionId;
 
   // FIX: Safely access the label with optional chaining
   const displayLabel = config?.fiberMetrics?.[0]?.label || 'No Service Alloted';
@@ -141,7 +140,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
                   <div className="h-px flex-1 bg-linear-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent" />
                 </div>
                 <div className="bg-white dark:bg-gray-900/50 rounded-lg border border-gray-200/80 dark:border-gray-700/60 shadow-sm p-3 hover:shadow-md transition-shadow">
-                  <PathDisplay systemConnectionId={allUniqueConnectionIds[0] || null} />
+                  <PathDisplay systemConnectionId={connectionId || null} />
                 </div>
               </div>
 

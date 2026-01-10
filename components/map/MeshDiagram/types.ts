@@ -1,6 +1,7 @@
-// Add to existing types.ts in components/map/types.ts
+// components/map/MeshDiagram/types.ts
 
 import { PathConfig, PortDisplayInfo, RingMapNode } from "@/components/map/ClientRingMap/types";
+import L from 'leaflet'; // Ensure Leaflet types are imported if used in props
 
 export interface MeshDiagramProps {
   nodes: RingMapNode[];
@@ -21,4 +22,7 @@ export interface MeshConnectionLineProps {
   endNodeName: string;
   nodesLength: number;
   customColor?: string;
+  // ADDED: Full node objects
+  start: RingMapNode; 
+  end: RingMapNode;
 }
