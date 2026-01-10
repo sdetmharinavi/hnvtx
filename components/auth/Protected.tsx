@@ -22,10 +22,15 @@ const ProtectedContent = ({
   children: ReactNode;
   allowedRoles?: UserRole[];
 }) => {
-  // THE FIX: Get all user data from the single, consolidated useUser context.
   const { canAccess, isSuperAdmin, role, isLoading: isUserLoading } = useUser();
 
-  if (isUserLoading) {
+  // THE FIX:
+  // We add `|| !role` to the loading check.
+  // Since this component is only rendered when `authState === 'authenticated'`,
+  // the user MUST have a role eventually (even if just 'viewer').
+  // If role is null, the profile data hasn't synced from the DB/Cache yet.
+  // We keep the spinner visible until the role is resolved to prevent the "Access Denied" flash.
+  if (isUserLoading || !role) {
     return <PageSpinner text="Verifying permissions..." />;
   }
 

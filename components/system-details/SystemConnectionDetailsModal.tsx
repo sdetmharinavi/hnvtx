@@ -54,6 +54,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     isLoading,
     refetch,
   } = useRpcRecord(supabase, 'v_system_connections_complete', connectionId);
+
+
+  console.log("connectionId: ", connectionId);
   
 
   const allocatedFiberIds = useMemo(() => {

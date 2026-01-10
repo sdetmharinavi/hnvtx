@@ -35,6 +35,7 @@ interface StandardActionsConfig<T extends PublicTableOrViewName> {
   onAddNew?: () => void;
   exportConfig?: ExportConfig<T>;
   isLoading?: boolean;
+  isFetching?: boolean; // ADDED PROP
   data?: Row<T>[];
 }
 
@@ -43,6 +44,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   onAddNew,
   exportConfig,
   isLoading,
+  isFetching, // ADDED
   data,
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
@@ -137,14 +139,17 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   return useMemo(() => {
     const actions: ActionButton[] = [];
     const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
+    // THE FIX: Combine loading states. If fetching in background, show spinner.
+    const isBusy = isLoading || isFetching;
 
     if (onRefresh) {
       actions.push({
         label: 'Refresh',
         onClick: onRefresh,
         variant: 'outline',
-        leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
-        disabled: isLoading,
+        // THE FIX: Use isBusy for animation class
+        leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+        disabled: isBusy, 
         // MOBILE OPTIMIZATION: Hide text by default for Refresh
         hideTextOnMobile: true,
       });
@@ -212,6 +217,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     onAddNew,
     exportConfig,
     isLoading,
+    isFetching, // Add to dependency array
     handleExport,
     tableExcelDownload.isPending,
     rpcExcelDownload.isPending,

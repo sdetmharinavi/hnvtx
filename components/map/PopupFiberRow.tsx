@@ -19,6 +19,9 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const supabase = createClient();
 
+  console.log(config);
+  
+
   const allUniqueConnectionIds = useMemo(() => {
     if (!config?.fiberMetrics) return [];
     return Array.from(new Set(config.fiberMetrics.map((fm) => fm.connectionId).filter(Boolean)));

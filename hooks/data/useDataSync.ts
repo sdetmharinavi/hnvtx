@@ -7,30 +7,25 @@ import { localDb, HNVTMDatabase, getTable, MutationTask } from '@/hooks/data/loc
 import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { useState, useCallback } from 'react';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
 
-const BATCH_SIZE = 2000; // Reduced slightly to ensure stability on mobile
+const BATCH_SIZE = 2000;
 
 type SyncStrategy = 'full' | 'incremental';
 
 interface EntitySyncConfig {
   strategy: SyncStrategy;
   timestampColumn?: string;
-  // Map View Name to underlying Table Name to check mutation queue
   relatedTable?: PublicTableName;
 }
 
-// Configuration Map for Sync Strategies
-// Added 'relatedTable' to map Views to their writable Tables for conflict checking
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  // --- Incremental Sync Tables ---
   'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'user_activity_logs' },
   'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'inventory_transactions' },
   'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'file_movements' },
   'inventory_transactions': { strategy: 'incremental', timestampColumn: 'created_at' },
   'user_activity_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
   'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' },
-
-  // --- FULL SYNC TABLES ---
   'systems': { strategy: 'full' },
   'system_connections': { strategy: 'full' },
   'ports_management': { strategy: 'full' },
@@ -57,15 +52,13 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'fiber_splices': { strategy: 'full' },
   'logical_path_segments': { strategy: 'full' },
   'sdh_connections': { strategy: 'full' },
-
-  // --- VIEWS (Mapped to Tables) ---
   'v_systems_complete': { strategy: 'full', relatedTable: 'systems' },
   'v_system_connections_complete': { strategy: 'full', relatedTable: 'system_connections' },
   'v_ports_management_complete': { strategy: 'full', relatedTable: 'ports_management' },
   'v_ofc_connections_complete': { strategy: 'full', relatedTable: 'ofc_connections' },
   'v_services': { strategy: 'full', relatedTable: 'services' },
   'v_nodes_complete': { strategy: 'full', relatedTable: 'nodes' },
-  'v_ring_nodes': { strategy: 'full', relatedTable: 'systems' }, // Complex join, primary is system
+  'v_ring_nodes': { strategy: 'full', relatedTable: 'systems' },
   'v_rings': { strategy: 'full', relatedTable: 'rings' },
   'v_ofc_cables_complete': { strategy: 'full', relatedTable: 'ofc_cables' },
   'v_cable_utilization': { strategy: 'full', relatedTable: 'ofc_cables' },
@@ -81,35 +74,24 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'v_employees': { strategy: 'full', relatedTable: 'employees' },
 };
 
-/**
- * Re-applies pending local changes on top of fresh server data
- * to ensure the UI doesn't revert during a sync.
- */
+// ... (mergePendingMutations helper remains the same) ...
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
   const serverIdMap = new Map(merged.map((item, index) => [item.id, index]));
 
   pendingTasks.forEach(task => {
-    // 1. Handle INSERT
     if (task.type === 'insert') {
-      // If server doesn't have it yet, add it
       if (!serverIdMap.has(task.payload.id)) {
         merged.push(task.payload);
       }
-    }
-    // 2. Handle UPDATE
-    else if (task.type === 'update') {
+    } else if (task.type === 'update') {
       const targetId = task.payload.id;
       const index = serverIdMap.get(targetId);
       if (index !== undefined) {
-        // Merge the update on top of server data
         merged[index] = { ...merged[index], ...task.payload.data };
       }
-    }
-    // 3. Handle DELETE
-    else if (task.type === 'delete') {
-      // Remove from the dataset
+    } else if (task.type === 'delete') {
       const idsToDelete = new Set(task.payload.ids);
       for (let i = merged.length - 1; i >= 0; i--) {
         if (idsToDelete.has(merged[i].id)) {
@@ -118,10 +100,10 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
       }
     }
   });
-
   return merged;
 }
 
+// ... (performFullSync and performIncrementalSync helper functions remain the same) ...
 async function performFullSync(
     supabase: SupabaseClient,
     db: HNVTMDatabase,
@@ -133,24 +115,19 @@ async function performFullSync(
     let hasMore = true;
     let totalSynced = 0;
 
-    // 1. Fetch pending mutations for this entity (to preserve optimistic state)
     let pendingTasks: MutationTask[] = [];
     if (config.relatedTable) {
        pendingTasks = await db.mutation_queue
          .where('tableName')
          .equals(config.relatedTable)
          .toArray();
-       // Only care about pending or processing tasks
        pendingTasks = pendingTasks.filter(t => t.status === 'pending' || t.status === 'processing');
     }
 
-    // 2. Clear table at the start of a full sync
-    // We do this in a transaction to ensure we don't leave the table empty if fetch fails immediately
     await db.transaction('rw', table, async () => {
        await table.clear();
     });
 
-    // 3. Fetch and Write in Batches (Stream-like) to prevent OOM
     while (hasMore) {
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
         p_view_name: entityName,
@@ -166,13 +143,10 @@ async function performFullSync(
       const validDataCount = batchData.length;
 
       if (validDataCount > 0) {
-        // 4. Merge Pending Mutations into this batch
-        // (This ensures if a record in this batch was updated locally, we keep the local version)
         if (pendingTasks.length > 0) {
             batchData = mergePendingMutations(batchData, pendingTasks);
         }
 
-        // 5. Bulk Put Batch
         await db.transaction('rw', table, async () => {
             await table.bulkPut(batchData);
         });
@@ -187,8 +161,6 @@ async function performFullSync(
       }
     }
 
-    // 6. Final Step: Re-apply INSERT mutations that might not have come from server yet
-    // (e.g. newly created items offline that aren't in the server batches)
     if (pendingTasks.length > 0) {
         const inserts = pendingTasks.filter(t => t.type === 'insert').map(t => t.payload);
         if (inserts.length > 0) {
@@ -241,7 +213,6 @@ async function performIncrementalSync(
     const validData = responseData.filter(item => item.id != null);
 
     if (validData.length > 0) {
-      // Incremental doesn't need complex merge logic usually as it's append-only history
       await table.bulkPut(validData);
       totalSynced += validData.length;
 
@@ -271,7 +242,6 @@ export async function syncEntity(
 
     let count = 0;
     const config = SYNC_CONFIG[entityName];
-    // If config missing, default to full sync without mutation preservation (safe fallback)
     const safeConfig = config || { strategy: 'full' };
 
     if (safeConfig.strategy === 'incremental') {
@@ -297,7 +267,6 @@ export async function syncEntity(
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
-    // Propagate error for UI handling
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -306,13 +275,21 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus(); // ADDED
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<Error | null>(null);
 
   const executeSync = useCallback(async (specificTables?: PublicTableOrViewName[]) => {
+    // 1. Online Check
+    if (!isOnline) {
+        toast.error("Cannot sync while offline.");
+        return;
+    }
+
     setIsSyncing(true);
     setSyncError(null);
+    const startTime = Date.now(); // Track start time
 
     try {
       const failures: string[] = [];
@@ -372,11 +349,16 @@ export function useDataSync() {
       toast.error("Sync process failed.");
       throw err;
     } finally {
+      // 2. Minimum Spin Time (e.g. 1000ms) to ensure user sees feedback
+      const elapsed = Date.now() - startTime;
+      const minDuration = 1000;
+      if (elapsed < minDuration) {
+          await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
+      }
       setIsSyncing(false);
     }
-  }, [supabase, queryClient]);
+  }, [supabase, queryClient, isOnline]);
 
-  // Initial load check
   const { data: globalSyncState } = useQuery({
     queryKey: ['data-sync-all'],
     queryFn: () => ({ lastSynced: null }),

@@ -1,4 +1,4 @@
-// path: components/dashboard/DashboardHeader.tsx
+// components/dashboard/DashboardHeader.tsx
 "use client";
 
 import AuthButton from "@/components/auth/authButton";
@@ -18,10 +18,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SyncStatusModal } from "./SyncStatusModal";
 import { FontSizeToggle } from "../common/ui/FontSizeToggle";
 import { useAppSettingsStore } from "@/stores/appSettingsStore";
+import { cn } from "@/lib/utils"; // THE FIX: Import cn utility
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
-  // title?: string;
 }
 
 const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
@@ -68,7 +68,6 @@ const SyncStatusIndicator = ({ onClick }: { onClick: () => void }) => {
 
 export default function DashboardHeader({
   onMenuClick,
-  // title,
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const { isSyncing, sync } = useDataSync();
@@ -97,39 +96,38 @@ export default function DashboardHeader({
       <header className="border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Left side - Only Menu Button (no title) */}
+            {/* Left side */}
             <div className="flex items-center">
               <MenuButton onClick={onMenuClick} />
               <Link href="/">
-                {/* THE FIX: Use width=0/height=0 + sizes="100vw" + CSS width/height: auto to fully control aspect ratio via CSS without prop conflict */}
-                <Image 
-                  src="/logo.png" 
-                  alt="Logo" 
+                <Image
+                  src="/logo.png"
+                  alt="Logo"
                   width={0}
                   height={0}
                   sizes="100vw"
-                  className="ml-2" 
-                  style={{ width: 'auto', height: isMobile ? '30px' : '60px' }} 
-                  priority // Good practice for LCP element
+                  className="ml-2"
+                  style={{ width: 'auto', height: isMobile ? '30px' : '60px' }}
+                  priority
                 />
               </Link>
             </div>
-            {/* Logo */}
 
-            {/* Right side - Actions and User Menu */}
+            {/* Right side */}
             <div className="relative flex items-center space-x-2 sm:space-x-4">
-              {/* THE FIX: Offline Simulation Toggle */}
               <button
                 onClick={toggleSimulatedOffline}
-                className={`p-2 rounded-full transition-colors ${
-                    isSimulatedOffline 
-                        ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
-                }`}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  isSimulatedOffline
+                    ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                )}
                 title={isSimulatedOffline ? "Go Online" : "Simulate Offline"}
               >
                 {isSimulatedOffline ? <WifiOff size={18} /> : <Wifi size={18} />}
               </button>
+              
               <SyncStatusIndicator onClick={() => setIsSyncModalOpen(true)} />
 
               <button
@@ -138,7 +136,8 @@ export default function DashboardHeader({
                 className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh all data"
               >
-                <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin' : ''}`} />
+                {/* THE FIX: Use cn for class merging */}
+                <RefreshCw className={cn("h-5 w-5", isSyncing && "animate-spin")} />
               </button>
 
               {isMobile ? (

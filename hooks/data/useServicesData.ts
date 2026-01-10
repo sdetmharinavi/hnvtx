@@ -3,7 +3,7 @@ import { DEFAULTS } from "@/constants/constants";
 
 export const useServicesData = createGenericDataQuery<"v_services">({
   tableName: "v_services",
-  searchFields: ["name", "node_name", "end_node_name", "description", "link_type_name", "vlan"],
+  searchFields: ["name", "node_name", "end_node_name", "description", "link_type_name", "vlan", "unique_id"],
   defaultSortField: "name",
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (s, filters) => {
