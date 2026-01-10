@@ -10,8 +10,8 @@ interface ViewSettingsContextType {
 const ViewSettingsContext = createContext<ViewSettingsContextType | undefined>(undefined);
 
 export function ViewSettingsProvider({ children }: { children: ReactNode }) {
-  const [showHeader, setShowHeader] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const [showToolbar, setShowToolbar] = useState(true);
 
   return (
     <ViewSettingsContext.Provider value={{ showHeader, setShowHeader, showToolbar, setShowToolbar }}>
