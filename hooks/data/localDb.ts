@@ -179,8 +179,7 @@ export class HNVTMDatabase extends Dexie {
   file_movements!: Table<File_movementsRowSchema, string>;
   v_e_files_extended!: Table<V_e_files_extendedRowSchema, string>;
   v_file_movements_extended!: Table<V_file_movements_extendedRowSchema, string>;
-  
-  // Missing Tables Added Here
+
   user_activity_logs!: Table<User_activity_logsRowSchema, number>;
   v_lookup_types!: Table<V_lookup_typesRowSchema, string>;
   logical_path_segments!: Table<Logical_path_segmentsRowSchema, string>;
@@ -195,11 +194,11 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
 
-    // BUMP VERSION TO 36 to force schema update
-    this.version(36).stores({
+    // BUMP VERSION TO 38 to force schema update and fix missing index on mutation_queue
+    this.version(38).stores({
       // --- MASTER DATA ---
       lookup_types: '&id, category, name, sort_order, status',
-      v_lookup_types: '&id, category, name', // Added
+      v_lookup_types: '&id, category, name',
 
       maintenance_areas: '&id, name, parent_id, area_type_id, status',
       v_maintenance_areas: '&id, name, area_type_id, status',
@@ -216,77 +215,72 @@ export class HNVTMDatabase extends Dexie {
       // --- OFC NETWORK ---
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
-      
-      // Added updated_at index for incremental sync
-      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status, updated_at', 
+
+      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status, updated_at',
       v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name, status, updated_at',
 
       cable_segments: '&id, original_cable_id',
       junction_closures: '&id, node_id, ofc_cable_id',
       fiber_splices: '&id, jc_id',
-      
-      // Added missing views/tables
+
       v_cable_utilization: 'cable_id',
       v_junction_closures_complete: '&id, node_id, ofc_cable_id',
       v_cable_segments_at_jc: '&id, original_cable_id',
-      
+
       // --- SYSTEMS & LOGICAL ---
       rings: '&id, name, ring_type_id, status',
       v_rings: '&id, name, ring_type_id, maintenance_terminal_id, status',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       v_ring_nodes: '&[id+ring_id], ring_id, node_id',
 
-      // Added updated_at index for incremental sync
       systems: '&id, system_name, node_id, status, updated_at',
       v_systems_complete: '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address], updated_at',
-      
+
       system_connections: '&id, system_id, status, updated_at',
       v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at, status, updated_at',
-      
+
       ports_management: '&id, [system_id+port], system_id, updated_at',
       v_ports_management_complete: '&id, system_id, port, port_admin_status, port_utilization, updated_at',
-      
+
       services: '&id, name, updated_at',
       v_services: '&id, name, node_name, link_type_id, status, updated_at',
 
       logical_fiber_paths: '&id, path_name, system_connection_id',
-      logical_path_segments: '&id, logical_path_id', // Added
+      logical_path_segments: '&id, logical_path_id',
       logical_paths: '&id, ring_id, start_node_id, end_node_id',
       v_end_to_end_paths: '&path_id, path_name',
-      
-      sdh_connections: '&system_connection_id', // Added
+
+      sdh_connections: '&system_connection_id',
 
       // --- INVENTORY ---
       inventory_items: '&id, asset_no, name',
       v_inventory_items: '&id, asset_no, name, category_id, location_id',
-      
-      // Logs - Incremental sync needs created_at index
-      inventory_transactions: '&id, inventory_item_id, created_at', 
+
+      inventory_transactions: '&id, inventory_item_id, created_at',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
 
       // --- E-FILES ---
       e_files: '&id, file_number, current_holder_employee_id, status',
       v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at',
-      
-      // Incremental sync for movements
-      file_movements: '&id, file_id, created_at', 
+
+      file_movements: '&id, file_id, created_at',
       v_file_movements_extended: '&id, file_id, created_at',
 
       // --- USERS & DOCS ---
       user_profiles: '&id, first_name, last_name, role, status',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       diary_notes: '&id, &[user_id+note_date], note_date',
-      
+
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
-      
-      // Added Activity Logs - Incremental needs created_at
+
       user_activity_logs: '&id, action_type, table_name, created_at',
       v_audit_logs: '&id, action_type, table_name, created_at',
 
       // --- SYSTEM TABLES ---
       sync_status: 'tableName',
-      mutation_queue: '++id, timestamp, status',
+      // THE FIX: Added tableName index to mutation_queue
+      mutation_queue: '++id, timestamp, status, tableName',
       route_distances: 'id, timestamp'
     });
   }
@@ -298,8 +292,7 @@ export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<R
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const table = (localDb as any)[tableName];
     if (!table) {
-        // Fallback or error if table is genuinely missing from Dexie class definition
-        console.warn(`Table ${tableName} not defined in localDb class, creating dynamic proxy or throwing error.`);
+        console.warn(`Table ${tableName} not defined in localDb class.`);
         throw new Error(`Table ${tableName} does not exist in localDb`);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
