@@ -224,7 +224,7 @@ export const ConnectionLine = ({
         weight: type === 'solid' ? 4 : 2.5,
         opacity: type === 'solid' ? 1 : 0.7,
         // Ensure dash array is visible
-        dashArray: type === 'dashed' ? '10, 10' : undefined,
+        dashArray: type === 'dashed' ? '20, 20' : undefined,
       }}
       eventHandlers={{
         click: () => setIsInteracted(true),

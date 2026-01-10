@@ -14,7 +14,8 @@ export const createLabelHtml = (
   name: string,
   ip: string | null,
   ports: PortDisplayInfo[],
-  isDark: boolean
+  isDark: boolean,
+  rotation: number = 0 // Added parameter
 ) => {
   const bgClass = isDark ? 'bg-slate-800' : 'bg-white';
   const textClass = isDark ? 'text-slate-50' : 'text-slate-900';
@@ -40,8 +41,11 @@ export const createLabelHtml = (
     portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-[200px]">${portItems}${moreItem}</div>`;
   }
 
+  // Calculate counter-rotation to keep text upright
+  const transformStyle = rotation !== 0 ? `transform: rotate(${-rotation}deg);` : '';
+
   return `
-    <div class="relative flex flex-col items-center cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 group pointer-events-auto">
+    <div class="relative flex flex-col items-center cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 group pointer-events-auto" style="${transformStyle}">
       <div class="px-2 py-1 text-[13px] font-bold rounded-md border shadow-lg backdrop-blur-md whitespace-nowrap z-10 ${bgClass} ${textClass} ${borderClass}">
         ${name} ${
     ip ? `<span class="font-mono font-normal opacity-80 text-[11px] ml-1">| ${ip}</span>` : ''

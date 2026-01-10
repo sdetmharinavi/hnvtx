@@ -7,12 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { formatIP } from '@/utils/formatters';
-import {
-  applyJitterToNodes,
-  getConnectionColor,
-  DisplayNode,
-  getMultiLineCurveOffset,
-} from '@/utils/mapUtils';
+import { applyJitterToNodes, getConnectionColor, getMultiLineCurveOffset } from '@/utils/mapUtils';
 import { MapLegend } from '../MapLegend';
 import { ConnectionLine } from './ConnectionLine';
 import { NodeMarker } from './NodeMarker';
@@ -21,6 +16,7 @@ import { MapController } from './controllers/MapController';
 import { FullscreenControl } from './controllers/FullscreenControl';
 import { MapFlyToController } from './controllers/MapFlyToController';
 import { MapNode, PortDisplayInfo, RingMapNode, SegmentConfigMap } from './types';
+import { RotatedDragOverlay } from './controllers/RotatedDragOverlay';
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -31,16 +27,15 @@ interface ClientRingMapProps {
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
-  segmentConfigs?: SegmentConfigMap; // Updated type
+  segmentConfigs?: SegmentConfigMap;
   nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
-// Helper to group parallel lines regardless of direction (A->B and B->A are same group)
+// Helper to group parallel lines
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
   const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
   lines.forEach((line) => {
     const [start, end] = line;
-    // Consistent key regardless of direction to group parallel lines
     const key = [start.id, end.id].sort().join('-');
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(line);
@@ -66,6 +61,13 @@ export default function ClientRingMap({
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
 
+  // Rotation State
+  const [rotation, setRotation] = useState(0);
+
+  // Container Dimensions State
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
@@ -90,7 +92,6 @@ export default function ClientRingMap({
     };
   }, [displayNodes]);
 
-  // Group solid lines to calculate curves
   const groupedSolidLines = useMemo(() => groupLines(solidLines), [solidLines]);
 
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
@@ -109,6 +110,26 @@ export default function ClientRingMap({
   }, []);
 
   useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+      }
+    };
+    updateDimensions();
+
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(updateDimensions);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [isFullScreen]);
+
+  useEffect(() => {
     Object.values(markerRefs.current).forEach((marker) =>
       showAllNodePopups ? marker.openPopup() : marker.closePopup()
     );
@@ -119,6 +140,26 @@ export default function ClientRingMap({
       showAllLinePopups ? polyline.openPopup() : polyline.closePopup()
     );
   }, [showAllLinePopups]);
+
+  useEffect(() => {
+    if (isFullScreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      setRotation(0);
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullScreen]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 300);
+    }
+  }, [dimensions, rotation]);
 
   const bounds = useMemo(() => {
     if (displayNodes.length === 0) return null;
@@ -139,15 +180,41 @@ export default function ClientRingMap({
     }));
   }, []);
 
+  const handleRotate = (deg: number) => {
+    setRotation((prev) => prev + deg);
+  };
+
+  const handleZoomIn = () => mapRef.current?.zoomIn();
+  const handleZoomOut = () => mapRef.current?.zoomOut();
+
   if (displayNodes.length === 0)
     return <div className="py-10 text-center">No nodes to display</div>;
 
-  const mapContainerClass = isFullScreen
-    ? 'fixed inset-0 z-[100]'
-    : 'relative h-full w-full rounded-lg overflow-hidden';
+  const isRotated90 = Math.abs(rotation) % 180 === 90;
+
+  const containerStyle = isRotated90
+    ? {
+        width: `${dimensions.height}px`,
+        height: `${dimensions.width}px`,
+        position: 'absolute' as const,
+        top: '50%',
+        left: '50%',
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+        transition: 'transform 0.5s ease-in-out, width 0.3s, height 0.3s',
+      }
+    : {
+        width: '100%',
+        height: '100%',
+        transform: `rotate(${rotation}deg)`,
+        transition: 'transform 0.5s ease-in-out',
+      };
+
+  const wrapperClass = isFullScreen
+    ? 'fixed inset-0 z-[100] bg-gray-100 dark:bg-gray-900 overflow-hidden'
+    : 'relative h-full w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900';
 
   return (
-    <div className={mapContainerClass}>
+    <div className={wrapperClass} ref={containerRef}>
       <MapLegend />
       {showControls && (
         <MapControls
@@ -156,134 +223,130 @@ export default function ClientRingMap({
           setShowAllNodePopups={setShowAllNodePopups}
           showAllLinePopups={showAllLinePopups}
           setShowAllLinePopups={setShowAllLinePopups}
+          onRotate={handleRotate}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
         />
       )}
 
-      <MapContainer
-        center={bounds?.getCenter() || [22.57, 88.36]}
-        bounds={bounds || undefined}
-        zoom={13}
-        ref={mapRef}
-        style={{ height: '100%', width: '100%' }}
-        className="z-0"
-      >
-        <MapController isFullScreen={isFullScreen} />
-        <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
-        <MapFlyToController coords={flyToCoordinates} />
+      <div style={containerStyle}>
+        <MapContainer
+          center={bounds?.getCenter() || [22.57, 88.36]}
+          bounds={bounds || undefined}
+          zoom={13}
+          ref={mapRef}
+          style={{ height: '100%', width: '100%' }}
+          className="z-0 bg-gray-200 dark:bg-gray-800"
+          closePopupOnClick={false}
+          zoomControl={false}
+        >
+          <MapController isFullScreen={isFullScreen} />
+          <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
+          <MapFlyToController coords={flyToCoordinates} />
+          <RotatedDragOverlay rotation={rotation} />
 
-        <LayersControl position="bottomright">
-          <LayersControl.BaseLayer checked name="Street View">
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Satellite View">
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
-            />
-          </LayersControl.BaseLayer>
-        </LayersControl>
-
-        {/* Render SOLID lines using grouped logic for curves */}
-        {Array.from(groupedSolidLines.values()).map((groupLines) => {
-          return groupLines.map(([start, end], index) => {
-            // THE FIX: Use sorted key to retrieve the correct array of configs
-            const sortedKey = [start.id, end.id].sort().join('-');
-            const configs = segmentConfigs[sortedKey] || [];
-
-            // Retrieve the config corresponding to this line index
-            const config = configs[index] || configs[0]; // Fallback to first if index mismatch
-
-            let lineColor = undefined;
-            // USE THE EXPLICIT COLOR FROM CONFIG
-            if (config?.color) {
-              lineColor = config.color;
-            } else if (config?.connectionId) {
-              lineColor = getConnectionColor(config.connectionId);
-            }
-
-            const startPos = nodePosMap.get(start.id!);
-            const endPos = nodePosMap.get(end.id!);
-
-            if (!startPos || !endPos) return null;
-
-            const curveOffset = getMultiLineCurveOffset(index, groupLines.length);
-
-            return (
-              <ConnectionLine
-                key={`solid-${start.id}-${end.id}-${index}`}
-                start={start}
-                end={end}
-                startPos={startPos}
-                endPos={endPos}
-                type="solid"
-                theme={theme}
-                showPopup={showAllLinePopups}
-                setPolylineRef={setPolylineRef}
-                config={config}
-                customColor={lineColor}
-                curveOffset={curveOffset}
+          <LayersControl position="bottomright">
+            <LayersControl.BaseLayer checked name="Street View">
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
-            );
-          });
-        })}
+            </LayersControl.BaseLayer>
+            <LayersControl.BaseLayer name="Satellite View">
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
 
-        {dashedLines
-          .filter(
-            ([source, target]) =>
-              source.lat !== null &&
-              source.long !== null &&
-              target.lat !== null &&
-              target.long !== null
-          )
-          .map(([source, target], i) => {
-            const startPos = nodePosMap.get(source.id!);
-            const endPos = nodePosMap.get(target.id!);
+          {Array.from(groupedSolidLines.values()).map((groupLines) => {
+            return groupLines.map(([start, end], index) => {
+              const sortedKey = [start.id, end.id].sort().join('-');
+              const configs = segmentConfigs[sortedKey] || [];
+              const config = configs[index] || configs[0];
 
-            if (!startPos || !endPos) return null;
+              let lineColor = undefined;
+              if (config?.color) {
+                lineColor = config.color;
+              } else if (config?.connectionId) {
+                lineColor = getConnectionColor(config.connectionId);
+              }
+
+              const startPos = nodePosMap.get(start.id!);
+              const endPos = nodePosMap.get(end.id!);
+
+              if (!startPos || !endPos) return null;
+
+              const curveOffset = getMultiLineCurveOffset(index, groupLines.length);
+
+              return (
+                <ConnectionLine
+                  key={`solid-${start.id}-${end.id}-${index}`}
+                  start={start}
+                  end={end}
+                  startPos={startPos}
+                  endPos={endPos}
+                  type="solid"
+                  theme={theme}
+                  showPopup={showAllLinePopups}
+                  setPolylineRef={setPolylineRef}
+                  config={config}
+                  customColor={lineColor}
+                  curveOffset={curveOffset}
+                />
+              );
+            });
+          })}
+
+          {dashedLines
+            .filter(([s, t]) => s.lat != null && t.lat != null)
+            .map(([source, target], i) => {
+              const startPos = nodePosMap.get(source.id!);
+              const endPos = nodePosMap.get(target.id!);
+              if (!startPos || !endPos) return null;
+              return (
+                <ConnectionLine
+                  key={`dashed-${source.id}-${target.id}-${i}`}
+                  start={source}
+                  end={target}
+                  startPos={startPos}
+                  endPos={endPos}
+                  type="dashed"
+                  theme={theme}
+                  showPopup={showAllLinePopups}
+                  setPolylineRef={setPolylineRef}
+                  hasReverse={false}
+                />
+              );
+            })}
+
+          {displayNodes.map((node, i) => {
+            const isHighlighted = highlightedNodeIds?.includes(node.id!);
+            const displayIp = formatIP(node.ip);
+            const portsList = nodePorts?.get(node.id!) || [];
+            const nodePos: [number, number] = [node.displayLat, node.displayLng];
 
             return (
-              <ConnectionLine
-                key={`dashed-${source.id}-${target.id}-${i}`}
-                start={source}
-                end={target}
-                startPos={startPos}
-                endPos={endPos}
-                type="dashed"
+              <NodeMarker
+                key={node.id! + i}
+                node={node}
+                nodePos={nodePos}
+                labelPos={labelPositions[node.id!]}
+                mapCenter={mapCenter}
                 theme={theme}
-                showPopup={showAllLinePopups}
-                setPolylineRef={setPolylineRef}
-                hasReverse={false}
+                isHighlighted={isHighlighted}
+                portsList={portsList}
+                displayIp={displayIp}
+                markerRefs={markerRefs}
+                onNodeClick={onNodeClick}
+                onLabelDragEnd={handleLabelDragEnd}
+                rotation={rotation}
               />
             );
           })}
-
-        {displayNodes.map((node: DisplayNode<RingMapNode>, i) => {
-          const isHighlighted = highlightedNodeIds?.includes(node.id!);
-          const displayIp = formatIP(node.ip);
-          const portsList = nodePorts?.get(node.id!) || [];
-          const nodePos: [number, number] = [node.displayLat, node.displayLng];
-
-          return (
-            <NodeMarker
-              key={node.id! + i}
-              node={node}
-              nodePos={nodePos}
-              labelPos={labelPositions[node.id!]}
-              mapCenter={mapCenter}
-              theme={theme}
-              isHighlighted={isHighlighted}
-              portsList={portsList}
-              displayIp={displayIp}
-              markerRefs={markerRefs}
-              onNodeClick={onNodeClick}
-              onLabelDragEnd={handleLabelDragEnd}
-            />
-          );
-        })}
-      </MapContainer>
+        </MapContainer>
+      </div>
     </div>
   );
 }

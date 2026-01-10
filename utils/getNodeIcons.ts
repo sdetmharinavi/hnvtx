@@ -1,22 +1,26 @@
 // path: utils/getNodeIcons.ts
 import L from 'leaflet';
 
-// Helper to create a DivIcon with consistent sizing
+// Helper to create a DivIcon that wraps content in a rotating container
 const createSvgDivIcon = (
-  svg: string,
+  svgOrImg: string,
   size: [number, number] = [25, 41],
-  anchor: [number, number] = [12, 41]
-) =>
-  L.divIcon({
-    className: 'leaflet-inline-svg-icon',
+  anchor: [number, number] = [12, 41],
+  isImage = false,
+  rotation = 0
+) => {
+  const content = isImage
+    ? `<img src="${svgOrImg}" style="width:100%;height:100%;object-fit:contain;transform:rotate(${-rotation}deg);transition:transform 0.5s;" />`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform:rotate(${-rotation}deg);transition:transform 0.5s;">${svgOrImg}</div>`;
+
+  return L.divIcon({
+    className: 'leaflet-inline-icon', // Generic class to avoid conflicts
     iconSize: size,
     iconAnchor: anchor,
-    html: `
-      <div style="width:${size[0]}px;height:${size[1]}px;display:flex;align-items:center;justify-content:center">
-        ${svg}
-      </div>
-    `,
+    // The wrapper div maintains the position, the inner content rotates
+    html: `<div style="width:${size[0]}px;height:${size[1]}px;">${content}</div>`,
   });
+};
 
 // --- EXPORTED SVGs (For MapLegend) ---
 
@@ -118,94 +122,68 @@ export const SVG_CALCULATOR = `
 </svg>`;
 
 // --- ICONS (PNG Fallbacks) ---
-export const MaanIcon = L.icon({
-  iconUrl: '/images/switch_image.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-});
-
-export const BTSIcon = L.icon({
-  iconUrl: '/images/bts_image.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-});
-
-export const BTSRLIcon = L.icon({
-  iconUrl: '/images/bts_rl_image.png',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-});
-
-export const DefaultIcon = L.icon({
-  iconUrl: '/images/marker-icon.png',
-  shadowUrl: '/images/marker-shadow.png',
-  iconSize: [36, 41],
-  iconAnchor: [18, 38],
-});
-
-export const HighlightedIcon = L.icon({
-  iconUrl: '/images/marker-icon-highlight.png',
-  shadowUrl: '/images/marker-shadow.png',
-  iconSize: [28, 46],
-  iconAnchor: [14, 46],
-});
-
-// --- SVG DIVICONS (Using consistent size from your specific design) ---
-const IconMAAN = createSvgDivIcon(SVG_NETWORK_SWITCH);
-const IconNetwork = createSvgDivIcon(SVG_NETWORK_NODE);
-const IconDefault = createSvgDivIcon(SVG_COMPASS);
+// Image Paths
+const IMG_MAAN = '/images/switch_image.png';
+const IMG_BTS = '/images/bts_image.png';
+const IMG_BTSRL = '/images/bts_rl_image.png';
+const IMG_DEFAULT = '/images/marker-icon.png';
+const IMG_HIGHLIGHT = '/images/marker-icon-highlight.png';
 
 // Updated logic to check both System Type and Node Type
 export const getNodeIcon = (
   systemType: string | null | undefined,
   nodeType: string | null | undefined,
-  isHighlighted: boolean
+  isHighlighted: boolean,
+  rotation: number = 0
 ) => {
-  if (isHighlighted) return HighlightedIcon;
+  // Always use DivIcon wrapper to allow CSS rotation of the content
+  if (isHighlighted) {
+    return createSvgDivIcon(IMG_HIGHLIGHT, [28, 46], [14, 46], true, rotation);
+  }
 
   const sType = (systemType || '').toLowerCase();
   const nType = (nodeType || '').toLowerCase();
 
-  // 1. Priority: System Type specific equipment (MAAN, CPAN)
+  // 1. MAAN
   if (
-    sType.includes('maan') || 
-    sType.includes('metro access') || 
+    sType.includes('maan') ||
+    sType.includes('metro access') ||
     sType.includes('multi-access')
   ) {
-    return MaanIcon; // Using PNG for MAAN as per previous preference, or swich to IconMAAN
+    return createSvgDivIcon(IMG_MAAN, [40, 40], [20, 20], true, rotation);
   }
 
   if (
-    sType.includes('cpan') || 
-    sType.includes('compact passive') || 
+    sType.includes('cpan') ||
+    sType.includes('compact passive') ||
     sType.includes('converged packet')
   ) {
-    return IconMAAN; // Using the Gray/Green SVG
+    return createSvgDivIcon(SVG_NETWORK_SWITCH, [25, 41], [12, 41], false, rotation);
   }
 
-  // 2. Priority: Radio/Microwave (checked in both system and node types)
+  // 2. Radio/Microwave
   if (
-    sType.includes('radiolink') || 
-    sType.includes('microwave') || 
+    sType.includes('radiolink') ||
+    sType.includes('microwave') ||
     nType.includes('radiolink') ||
     nType.includes('microwave')
   ) {
-    return BTSRLIcon;
+    return createSvgDivIcon(IMG_BTSRL, [40, 40], [20, 20], true, rotation);
   }
 
-  // 3. Priority: BTS / Towers (checked in both)
+  // 3. BTS
   if (
-    sType.includes('bts') || 
-    sType.includes('base transceiver') || 
+    sType.includes('bts') ||
+    sType.includes('base transceiver') ||
     sType.includes('baseband') ||
-    nType.includes('bts') || 
+    nType.includes('bts') ||
     nType.includes('base transceiver') ||
     nType.includes('tower')
   ) {
-    return BTSIcon;
+    return createSvgDivIcon(IMG_BTS, [40, 40], [20, 20], true, rotation);
   }
 
-  // 4. Priority: Core Nodes / Exchanges / Offices
+  // 4. Exchanges
   if (
     nType.includes('exchange') ||
     nType.includes('exch.') ||
@@ -214,14 +192,14 @@ export const getNodeIcon = (
     nType.includes('core') ||
     nType.includes('office')
   ) {
-    return IconDefault; // Using the Purple Compass SVG
+    return createSvgDivIcon(SVG_COMPASS, [25, 41], [12, 41], false, rotation);
   }
-  
-  // 5. Priority: OLTs
+
+  // 5. OLT
   if (sType.includes('olt') || nType.includes('olt')) {
-      return IconNetwork; // Using the Green Network Node SVG
+    return createSvgDivIcon(SVG_NETWORK_NODE, [25, 41], [12, 41], false, rotation);
   }
 
   // Fallback
-  return DefaultIcon;
+  return createSvgDivIcon(IMG_DEFAULT, [25, 41], [12, 41], true, rotation);
 };

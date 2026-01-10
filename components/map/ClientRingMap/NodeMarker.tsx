@@ -20,6 +20,7 @@ interface NodeMarkerProps {
   polylineRefs?: React.MutableRefObject<{ [key: string]: L.Polyline }>;
   onNodeClick?: (nodeId: string) => void;
   onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
+  rotation: number; // Added prop
 }
 
 export const NodeMarker = ({
@@ -34,6 +35,7 @@ export const NodeMarker = ({
   markerRefs,
   onNodeClick,
   onLabelDragEnd,
+  rotation, // Added prop
 }: NodeMarkerProps) => {
   const dLat = node.displayLat - mapCenter.lat;
   const dLng = node.displayLng - mapCenter.lng;
@@ -56,12 +58,14 @@ export const NodeMarker = ({
   ];
   const finalLabelPos = labelPos || defaultLabelPos;
 
+  // Pass rotation to label generator so text stays horizontal
   const labelIcon = L.divIcon({
     html: createLabelHtml(
       node.system_node_name || node.name || 'Unknown',
       displayIp,
       portsList,
-      theme === 'dark'
+      theme === 'dark',
+      rotation // Pass rotation
     ),
     className: 'bg-transparent border-none',
     iconSize: [0, 0],
@@ -95,7 +99,11 @@ export const NodeMarker = ({
           className={theme === 'dark' ? 'dark-popup' : ''}
           offset={[0, -20]}
         >
-          <div className="text-sm">
+          <div
+            className="text-sm"
+            // Counter-rotate popup contents if needed, or rely on global CSS var
+            style={{ transform: `rotate(${-rotation}deg)` }}
+          >
             <h4 className="font-bold">{node.name}</h4>
             <div className="text-xs text-gray-500 mb-1">{node.system_node_name}</div>
             {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}

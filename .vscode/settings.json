@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
       "ADMINPRO",
+      "Aerogrid",
+      "baseband",
+      "BTSRL",
       "CPANADMIN",
       "datatable",
       "dexie",
@@ -20,11 +23,13 @@
       "pers",
       "popupopen",
       "Qrcode",
+      "radiolink",
       "reauthentication",
       "refetches",
       "serwist",
       "treeify",
       "unprovisioned",
+      "USGS",
       "uuidv",
       "zoomend"
     ],
