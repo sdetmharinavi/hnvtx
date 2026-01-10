@@ -142,28 +142,18 @@ export default function NodesPage() {
       {nodes.map((node) => {
         // Icon rendering logic for the card
         const iconRaw = getNodeIcon(null, node.node_type_name, false);
-        let iconElement: React.ReactNode;
-        if (iconRaw instanceof L.DivIcon) {
-          iconElement = (
-            <div
-              dangerouslySetInnerHTML={{
-                __html: ((iconRaw.options as L.DivIconOptions).html || '') as string,
-              }}
-              className="scale-90 origin-center"
-            />
-          );
-        } else if (iconRaw instanceof L.Icon && (iconRaw.options as L.IconOptions).iconUrl) {
-          iconElement = (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={(iconRaw.options as L.IconOptions).iconUrl!}
-              alt="Node Icon"
-              className="w-8 h-8 object-contain"
-            />
-          );
-        } else {
-          iconElement = <FiMapPin className="w-7 h-7 text-gray-900 dark:text-gray-100" />;
-        }
+        const iconHtml = (iconRaw.options as L.DivIconOptions).html as string | undefined;
+
+        const iconElement: React.ReactNode = iconHtml ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: iconHtml,
+            }}
+            className="scale-90 origin-center"
+          />
+        ) : (
+          <FiMapPin className="w-7 h-7 text-gray-900 dark:text-gray-100" />
+        );
 
         const coords =
           node.latitude && node.longitude

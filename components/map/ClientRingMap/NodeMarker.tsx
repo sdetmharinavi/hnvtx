@@ -6,6 +6,7 @@ import { getNodeIcon } from '@/utils/getNodeIcons';
 import { createLabelHtml } from './utils/labelUtils';
 import { DisplayNode } from '@/utils/mapUtils';
 import { PortDisplayInfo, RingMapNode } from './types';
+import { useEffect, useRef } from 'react';
 
 interface NodeMarkerProps {
   node: DisplayNode<RingMapNode>;
@@ -20,7 +21,7 @@ interface NodeMarkerProps {
   polylineRefs?: React.MutableRefObject<{ [key: string]: L.Polyline }>;
   onNodeClick?: (nodeId: string) => void;
   onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
-  rotation: number; // Added prop
+  rotation: number;
 }
 
 export const NodeMarker = ({
@@ -35,7 +36,7 @@ export const NodeMarker = ({
   markerRefs,
   onNodeClick,
   onLabelDragEnd,
-  rotation, // Added prop
+  rotation,
 }: NodeMarkerProps) => {
   const dLat = node.displayLat - mapCenter.lat;
   const dLng = node.displayLng - mapCenter.lng;
@@ -58,19 +59,46 @@ export const NodeMarker = ({
   ];
   const finalLabelPos = labelPos || defaultLabelPos;
 
-  // Pass rotation to label generator so text stays horizontal
+  // Label counter-rotation
   const labelIcon = L.divIcon({
     html: createLabelHtml(
       node.system_node_name || node.name || 'Unknown',
       displayIp,
       portsList,
       theme === 'dark',
-      rotation // Pass rotation
+      rotation
     ),
     className: 'bg-transparent border-none',
     iconSize: [0, 0],
     iconAnchor: [0, 0],
   });
+
+  // Icon counter-rotation (passed to util which wraps in rotated div)
+  const markerIcon = getNodeIcon(node.system_type, node.type, !!isHighlighted, rotation);
+
+  // Popup counter-rotation ref
+  const popupRef = useRef<L.Popup>(null);
+
+  useEffect(() => {
+    if (popupRef.current) {
+      const el = popupRef.current.getElement();
+      if (el) {
+        // Find wrapper to rotate
+        const wrapper = el.querySelector('.leaflet-popup-content-wrapper') as HTMLElement;
+        const tip = el.querySelector('.leaflet-popup-tip-container') as HTMLElement;
+
+        if (wrapper) {
+          wrapper.style.transform = `rotate(${-rotation}deg)`;
+          wrapper.style.transition = 'transform 0.5s';
+        }
+
+        // Hide the tip when rotated as the geometry looks broken
+        if (tip) {
+          tip.style.opacity = rotation !== 0 ? '0' : '1';
+        }
+      }
+    }
+  }, [rotation]);
 
   return (
     <div key={node.id!}>
@@ -86,7 +114,7 @@ export const NodeMarker = ({
       />
       <Marker
         position={nodePos}
-        icon={getNodeIcon(node.system_type, node.type, !!isHighlighted)}
+        icon={markerIcon}
         eventHandlers={{ click: () => onNodeClick?.(node.id!) }}
         ref={(el) => {
           if (el && node.id) markerRefs.current[node.id] = el;
@@ -94,16 +122,13 @@ export const NodeMarker = ({
         zIndexOffset={100}
       >
         <Popup
+          ref={popupRef}
           autoClose={false}
           closeOnClick={false}
           className={theme === 'dark' ? 'dark-popup' : ''}
-          offset={[0, -20]}
+          offset={[0, -25]}
         >
-          <div
-            className="text-sm"
-            // Counter-rotate popup contents if needed, or rely on global CSS var
-            style={{ transform: `rotate(${-rotation}deg)` }}
-          >
+          <div className="text-sm">
             <h4 className="font-bold">{node.name}</h4>
             <div className="text-xs text-gray-500 mb-1">{node.system_node_name}</div>
             {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
