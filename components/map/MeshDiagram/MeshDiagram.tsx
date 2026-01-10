@@ -91,7 +91,6 @@ export default function MeshDiagram({
               startNodeName={nodeA.name || 'A'}
               endNodeName={nodeB.name || 'B'}
               customColor={lineColor}
-              // ADDED: Pass the full node objects
               start={nodeA}
               end={nodeB}
             />

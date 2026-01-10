@@ -9,17 +9,15 @@ import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { ChevronDown, ChevronRight, ExternalLink, Loader2, Activity, Cable } from 'lucide-react';
 import Link from 'next/link';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { PathConfig } from '@/components/map/ClientRingMap/types';
 
 interface PopupFiberRowProps {
-  config?: PathConfig;
   connectionId?: string;
+  allotedService?: string;
 }
 
-export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config, connectionId }) => {
+export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allotedService }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const supabase = createClient();
-  
 
   // const allUniqueConnectionIds = useMemo(() => {
   //   if (!config?.fiberMetrics) return [];
@@ -65,7 +63,8 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config, connection
   const hasConnectionId = !!connectionId;
 
   // FIX: Safely access the label with optional chaining
-  const displayLabel = config?.fiberMetrics?.[0]?.label || 'No Service Alloted';
+  const displayLabel =
+    allotedService?.replace(/\s*\(Working\)\s*/g, '').trim() || 'No Service Alloted';
 
   return (
     <div className="border-b border-gray-200/60 dark:border-gray-700/40 last:border-0">
@@ -185,9 +184,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ config, connection
                             <div className="flex flex-wrap items-center gap-1.5">
                               <span className="inline-flex items-center gap-1 font-mono bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-[10px] font-medium">
                                 F{seg.updated_fiber_no_sn} → F{seg.updated_fiber_no_en}
-                              </span>
-                              <span className="inline-flex items-center font-mono bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded text-[10px] font-medium">
-                                {seg.fiber_role}
                               </span>
                               <span className="inline-flex items-center font-mono bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded text-[10px] font-medium capitalize">
                                 {seg.path_direction}

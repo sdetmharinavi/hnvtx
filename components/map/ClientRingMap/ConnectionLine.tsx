@@ -40,16 +40,16 @@ export const ConnectionLine = ({
 }: ConnectionLineProps) => {
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
-  
-  
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
     enabled: shouldFetch,
     staleTime: Infinity,
   });
-  const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const supabase = createClient();
+  const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
+  const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
 
   // 2. Fetch Logical Fiber Paths between these two systems (Bi-directional)
   type LogicalPath = {
@@ -60,7 +60,7 @@ export const ConnectionLine = ({
     bandwidth_gbps: number | null;
   };
 
-  const { data: logicalPaths = [], isLoading: isLoadingPaths } = useQuery<LogicalPath[]>({
+  const { data: logicalPaths = [] } = useQuery<LogicalPath[]>({
     queryKey: ['logical-paths-segment', start.id, end.id, config?.sourcePort, config?.destPort],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
@@ -73,35 +73,34 @@ export const ConnectionLine = ({
       if (srcPort && dstPort) {
         // Direction 1: DB Source matches Map Start
         const dir1 = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id},source_port.eq.${srcPort},destination_port.eq.${dstPort})`;
-        
+
         // Direction 2: DB Source matches Map End (Reverse)
         // Note: The DB's 'source_port' must match the map's 'end' port in this case
         const dir2 = `and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id},source_port.eq.${dstPort},destination_port.eq.${srcPort})`;
-        
+
         filter = `${dir1},${dir2}`;
       } else {
         // Fallback: System-only matching if ports aren't defined
         filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
       }
-      
+
       const { data, error } = await supabase
         .from('logical_fiber_paths')
         .select('id, path_name, path_role, system_connection_id, bandwidth_gbps')
         .or(filter);
-        
+
       if (error) throw error;
       return data;
     },
     enabled: shouldFetch, // Lazy load only on interaction
-    staleTime: 1000 * 60 * 5 // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   useEffect(() => {
     if (!logicalPaths.length) return;
     setConnectionId(logicalPaths[0].system_connection_id || undefined);
+    setAllotedService(logicalPaths[0].path_name || undefined);
   }, [logicalPaths]);
-
-  
 
   const defaultColor =
     type === 'solid'
@@ -175,7 +174,7 @@ export const ConnectionLine = ({
           {hasConfig ? (
             <div className="mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                <PopupFiberRow config={config} connectionId={connectionId} />
+                <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
               </div>
             </div>
           ) : (

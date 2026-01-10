@@ -73,7 +73,6 @@ export default function RingMapPage() {
 
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [globalConnectionId, setGlobalConnectionId] = useState<string | undefined>(undefined);
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -214,9 +213,6 @@ export default function RingMapPage() {
     return Array.from(ids);
   }, [allCableConnections]);
 
-  console.log("relevantLogicalPathIds", relevantLogicalPathIds);
-  
-
   // 7. Fetch Logical Fiber Path Names AND System Connection IDs
   const { data: logicalFiberPathsMap } = useQuery({
     queryKey: ['logical-fiber-paths-info', relevantLogicalPathIds],
@@ -233,22 +229,19 @@ export default function RingMapPage() {
         console.error('Error fetching path info:', error);
         return new Map<string, { name: string; connectionId: string | null }>();
       }
-      
+
       return new Map(
         data.map((p) => {
-          setGlobalConnectionId(p.system_connection_id)
           return [
-          p.id,
-          { name: p.path_name || 'Unnamed Path', connectionId: p.system_connection_id },
-        ]})
+            p.id,
+            { name: p.path_name || 'Unnamed Path', connectionId: p.system_connection_id },
+          ];
+        })
       );
     },
     enabled: relevantLogicalPathIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
-
-  console.log(logicalFiberPathsMap);
-  
 
   // 8. Fetch Ring Logical Path configurations (Hub-to-Hub)
   const { data: pathConfigs } = useQuery({
@@ -358,9 +351,6 @@ export default function RingMapPage() {
       return val?.system_name;
     };
 
-    console.log("pathConfigs: ", pathConfigs);
-    
-
     // A. Init configs with Logical Ring Path Data (Hub-to-Hub definitions)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pathConfigs?.forEach((p: any) => {
@@ -382,8 +372,6 @@ export default function RingMapPage() {
           destPort: p.destination_port,
           fiberInfo: undefined,
           cableName: undefined,
-          // This connectionId is for the abstract Ring Path, not the physical circuit yet
-          connectionId: globalConnectionId,
         };
         map[key1] = config;
         // map[key2] = config; // Removed
@@ -449,7 +437,6 @@ export default function RingMapPage() {
 
             let metricLabel = fib.system_name || 'Unknown Service';
             let systemConnectionId = fib.system_id; // Default fallback
-            
 
             // 1. Resolve Logical Path info if available
             if (fib.logical_path_id && logicalFiberPathsMap) {
@@ -661,6 +648,7 @@ export default function RingMapPage() {
                     'ring_based_systems',
                     'ofc_cables',
                     'v_ofc_cables_complete',
+                    'v_system_connections_complete',
                   ]);
                 }
                 refetchRing();
