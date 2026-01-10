@@ -3,7 +3,6 @@
 import { Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
-import { getReadableTextColor } from './utils/labelUtils';
 import { createLabelHtml } from './utils/labelUtils';
 import { DisplayNode } from '@/utils/mapUtils';
 import { PortDisplayInfo, RingMapNode } from './types';
@@ -101,33 +100,6 @@ export const NodeMarker = ({
             <div className="text-xs text-gray-500 mb-1">{node.system_node_name}</div>
             {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
             {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
-
-            {portsList.length > 0 && (
-              <div className="mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
-                <div className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                  Active Interfaces
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {portsList.map((p, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] px-1.5 py-0.5 rounded border"
-                      style={{
-                        backgroundColor: p.color + '15',
-                        borderColor: p.color + '40',
-                        color: getReadableTextColor(p.color),
-                      }}
-                      title={p.targetNodeName ? `→ ${p.targetNodeName}` : 'Endpoint'}
-                    >
-                      <span className="font-mono font-bold">{p.port}</span>
-                      {p.targetNodeName && (
-                        <span className="ml-1 opacity-70">→ {p.targetNodeName}</span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </Popup>
       </Marker>

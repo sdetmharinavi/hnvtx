@@ -58,9 +58,11 @@ export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): Displa
         isCluster: false,
       });
     } else {
-      const radius = 0.0002;
+      // Increased radius slightly to make clusters more distinct at zoom 13
+      const radius = 0.0003; 
       const angleStep = (2 * Math.PI) / nodesAtLoc.length;
-      const startAngle = Math.PI / 2;
+      // Offset start angle so the first node isn't always directly north
+      const startAngle = Math.PI / 4; 
 
       nodesAtLoc.forEach((node, i) => {
         const angle = startAngle + i * angleStep;
@@ -162,19 +164,20 @@ export const fixLeafletIcons = () => {
 // --- 4. VISUALIZATION UTILS ---
 
 export const getConnectionColor = (id: string) => {
+  // Consistent palette matching Tailwind classes used elsewhere
   const colors = [
     '#dc2626', // Strong Red
     '#ea580c', // Deep Orange
     '#ca8a04', // Golden Amber
-    '#65a30d', // Lime Green
+    '#16a34a', // Green
     '#059669', // Emerald Green
-    '#0f766e', // Teal
-    '#0284c7', // Cyan Blue
-    '#1d4ed8', // Royal Blue
+    '#0891b2', // Cyan
+    '#0284c7', // Sky Blue
+    '#2563eb', // Royal Blue
     '#4f46e5', // Indigo
     '#7c3aed', // Violet
     '#c026d3', // Fuchsia
-    '#be123c', // Rose / Magenta Red
+    '#be123c', // Rose
   ];
 
   let hash = 0;
@@ -184,7 +187,11 @@ export const getConnectionColor = (id: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: number = 0.15) => {
+export const getCurvedPath = (
+    start: L.LatLng, 
+    end: L.LatLng, 
+    offsetMultiplier: number = 0.15
+) => {
   const lat1 = start.lat;
   const lng1 = start.lng;
   const lat2 = end.lat;
@@ -207,6 +214,25 @@ export const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: 
   const curveLng = midLng + normLng * offsetMultiplier;
 
   return [start, new L.LatLng(curveLat, curveLng), end];
+};
+
+/**
+ * Calculates curve parameters for multiple parallel lines between two points.
+ * @param index The 0-based index of this line among the parallel group.
+ * @param total The total number of parallel lines.
+ * @returns The offset multiplier to use with getCurvedPath.
+ */
+export const getMultiLineCurveOffset = (index: number, total: number): number => {
+    if (total <= 1) return 0;
+    
+    // Spread evenly around 0
+    // e.g. Total 2: -0.1, 0.1
+    // e.g. Total 3: -0.15, 0, 0.15
+    const spread = 0.3; // Maximum arc amplitude
+    const step = spread / (total - 1 || 1);
+    const start = -spread / 2;
+    
+    return start + (index * step);
 };
 
 export const isColocated = (p1: L.LatLng, p2: L.LatLng, threshold = 0.0005) => {

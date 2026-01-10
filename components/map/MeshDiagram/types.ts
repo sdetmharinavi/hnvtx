@@ -1,14 +1,14 @@
 // components/map/MeshDiagram/types.ts
 
-import { PathConfig, PortDisplayInfo, RingMapNode } from "@/components/map/ClientRingMap/types";
-import L from 'leaflet'; // Ensure Leaflet types are imported if used in props
+import { PathConfig, PortDisplayInfo, RingMapNode, SegmentConfigMap } from "@/components/map/ClientRingMap/types";
+import L from 'leaflet';
 
 export interface MeshDiagramProps {
   nodes: RingMapNode[];
   connections: Array<[RingMapNode, RingMapNode]>;
   ringName?: string;
   onBack?: () => void;
-  segmentConfigs?: Record<string, PathConfig>;
+  segmentConfigs?: SegmentConfigMap; // Updated to use the correct type
   nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
@@ -22,7 +22,7 @@ export interface MeshConnectionLineProps {
   endNodeName: string;
   nodesLength: number;
   customColor?: string;
-  // ADDED: Full node objects
   start: RingMapNode; 
   end: RingMapNode;
+  curveOffset?: number; // Added
 }

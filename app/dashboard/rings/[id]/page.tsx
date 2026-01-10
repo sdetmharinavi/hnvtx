@@ -22,12 +22,12 @@ import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
 import {
-  FiberMetric,
   PathConfig,
   PortDisplayInfo,
   RingMapNode,
+  SegmentConfigMap,
 } from '@/components/map/ClientRingMap/types';
-import { getConnectionColor } from '@/utils/mapUtils'; // IMPORTED
+import { getConnectionColor } from '@/utils/mapUtils';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
@@ -41,6 +41,20 @@ type ExtendedRingDetails = V_ringsRowSchema & {
     disabled_segments?: string[];
   } | null;
 };
+
+// Distinct color palette for parallel connections
+const COLOR_PALETTE = [
+  '#dc2626', // Red
+  '#2563eb', // Blue
+  '#16a34a', // Green
+  '#d97706', // Amber
+  '#9333ea', // Purple
+  '#0891b2', // Cyan
+  '#db2777', // Pink
+  '#4f46e5', // Indigo
+  '#ca8a04', // Yellow
+  '#059669', // Emerald
+];
 
 const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   if (node.id == null || node.name == null) return null;
@@ -137,6 +151,11 @@ export default function RingMapPage() {
     return rawNodes.map((n) => n.node_id).filter((id): id is string => !!id);
   }, [rawNodes]);
 
+  const ringSystemIds = useMemo(() => {
+    if (!mappedNodes) return [];
+    return mappedNodes.map((n) => n.id).filter((id): id is string => !!id);
+  }, [mappedNodes]);
+
   // 4. Fetch Cables
   const { data: ringCables } = useQuery({
     queryKey: ['ring-cables-physical', ringId, ringNodeIds],
@@ -203,6 +222,30 @@ export default function RingMapPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // 5.5 Fetch Direct Intra-Ring Connections (Service level, without cable)
+  const { data: intraRingConnections } = useQuery({
+    queryKey: ['intra-ring-connections', ringId, ringSystemIds],
+    queryFn: async () => {
+      if (ringSystemIds.length < 2) return [];
+
+      // Fetch connections where both ends are in the ring
+      const { data, error } = await supabase
+        .from('v_system_connections_complete')
+        .select('id, system_id, en_id, service_name, system_name, connected_system_name')
+        .in('system_id', ringSystemIds)
+        .in('en_id', ringSystemIds)
+        .eq('status', true);
+
+      if (error) {
+        console.error('Error fetching intra-ring connections:', error);
+        return [];
+      }
+      return data;
+    },
+    enabled: ringSystemIds.length >= 2,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // 6. Extract unique Logical Path IDs from connections
   const relevantLogicalPathIds = useMemo(() => {
     if (!allCableConnections) return [];
@@ -252,6 +295,7 @@ export default function RingMapPage() {
         .select(
           `
            id,
+           name,
            start_node_id,
            end_node_id,
            source_system:source_system_id(system_name),
@@ -319,30 +363,53 @@ export default function RingMapPage() {
     return { potentialSegments: segments, spurConnections: spurs };
   }, [mappedNodes, ringDetails]);
 
-  const activeSegments = useMemo(() => {
+  // --- NEW: Generate Unique Colors Map ---
+  const connectionColorMap = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    const uniqueIds = new Set<string>();
+
+    // 1. Gather Logical Path IDs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pathConfigs?.forEach((p: any) => uniqueIds.add(p.id));
+
+    // 2. Gather Direct Link IDs
+    intraRingConnections?.forEach((c) => uniqueIds.add(c.id));
+
+    // 3. Gather Physical/Service IDs from cables
+    allCableConnections?.forEach((c) => {
+      if (c.logical_path_id) {
+        const info = logicalFiberPathsMap?.get(c.logical_path_id);
+        if (info?.connectionId) uniqueIds.add(info.connectionId);
+      } else if (c.system_id) {
+        uniqueIds.add(c.system_id);
+      }
+    });
+
+    // Assign colors sequentially to prevent hash collision
+    Array.from(uniqueIds).forEach((id, index) => {
+      const color = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      colorMap.set(id, color);
+    });
+
+    return colorMap;
+  }, [pathConfigs, intraRingConnections, allCableConnections, logicalFiberPathsMap]);
+
+  // 10. PREPARE MULTI-LINE DATA (Consolidated Logic)
+  // This calculates BOTH the line definitions and their configurations.
+  const { allSolidLines, configMap } = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
-    return potentialSegments.filter(([start, end]) => {
+
+    // Filter active segments from potential segments
+    const activeTopology = potentialSegments.filter(([start, end]) => {
       const key1 = `${start.id}-${end.id}`;
       const key2 = `${end.id}-${start.id}`;
       return !disabledKeys.has(key1) && !disabledKeys.has(key2);
     });
-  }, [potentialSegments, ringDetails]);
 
-  const allConnections = useMemo(
-    () => [...activeSegments, ...spurConnections],
-    [activeSegments, spurConnections]
-  );
+    const lines: Array<[RingMapNode, RingMapNode]> = [];
+    const map: SegmentConfigMap = {};
 
-  // 10. BUILD SEGMENT CONFIG MAP (Logic to show fibers on lines)
-  const segmentConfigMap = useMemo(() => {
-    const map: Record<string, PathConfig> = {};
-
-    const nodeIdToSystemId = new Map<string, string>();
-    mappedNodes.forEach((node) => {
-      if (node.node_id && node.id) {
-        nodeIdToSystemId.set(node.node_id, node.id);
-      }
-    });
+    const nodeMap = new Map(mappedNodes.map((n) => [n.id!, n]));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const getSystemName = (val: any) => {
@@ -351,153 +418,103 @@ export default function RingMapPage() {
       return val?.system_name;
     };
 
-    // A. Init configs with Logical Ring Path Data (Hub-to-Hub definitions)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    pathConfigs?.forEach((p: any) => {
-      const sysIdA = nodeIdToSystemId.get(p.start_node_id || '');
-      const sysIdB = nodeIdToSystemId.get(p.end_node_id || '');
+    // -- A. Explicit Logical Paths --
+    // If we have defined logical paths (from pathConfigs), add a line for each one.
+    // This solves the parallel connection issue.
+    if (pathConfigs && pathConfigs.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pathConfigs.forEach((pc: any) => {
+        const start = nodeMap.get(pc.source_system_id);
+        const end = nodeMap.get(pc.destination_system_id);
 
-      if (sysIdA && sysIdB) {
-        const key1 = `${sysIdA}-${sysIdB}`;
-        // THE FIX: Do NOT set key2 (reverse path). Path configs are now strictly directional.
-        // const key2 = `${sysIdB}-${sysIdA}`;
+        if (start && end) {
+          lines.push([start, end]);
 
-        const srcName = getSystemName(p.source_system);
-        const dstName = getSystemName(p.destination_system);
+          // Use consistent sorting key
+          const sortedKey = [start.id, end.id].sort().join('-');
 
-        const config: PathConfig = {
-          source: srcName,
-          sourcePort: p.source_port,
-          dest: dstName,
-          destPort: p.destination_port,
-          fiberInfo: undefined,
-          cableName: undefined,
-        };
-        map[key1] = config;
-        // map[key2] = config; // Removed
-      }
-    });
+          const config: PathConfig = {
+            source: getSystemName(pc.source_system),
+            dest: getSystemName(pc.destination_system),
+            sourcePort: pc.source_port,
+            destPort: pc.destination_port,
+            connectionId: pc.id, // Explicit ID for color
+            cableName: pc.name,
+            // Explicitly inject resolved color
+            color: connectionColorMap.get(pc.id),
+          };
 
-    // B. Enhance configs with Physical Fiber Data (Iterate Map Segments)
-    allConnections.forEach(([nodeA, nodeB]) => {
-      const key1 = `${nodeA.id}-${nodeB.id}`;
-      // const key2 = `${nodeB.id}-${nodeA.id}`; // Unused in this loop now
-      const physNodeA = nodeA.node_id;
-      const physNodeB = nodeB.node_id;
+          // Append to array
+          if (!map[sortedKey]) map[sortedKey] = [];
+          map[sortedKey].push(config);
+        }
+      });
+    }
 
-      if (!physNodeA || !physNodeB) return;
+    // -- B. Default Topology Fallback --
+    // If no logical paths are defined for a segment, ensure at least one line is drawn based on topology.
+    activeTopology.forEach(([start, end]) => {
+      const sortedKey = [start.id, end.id].sort().join('-');
 
-      // Find Physical Cables connecting these two nodes
-      const matchingCables =
-        ringCables?.filter(
-          (c) =>
-            (c.sn_id === physNodeA && c.en_id === physNodeB) ||
-            (c.sn_id === physNodeB && c.en_id === physNodeA)
-        ) || [];
+      // Only add if no logical paths were added for this pair
+      if (!map[sortedKey] || map[sortedKey].length === 0) {
+        lines.push([start, end]);
 
-      if (matchingCables.length === 0) return;
+        // Try to infer config from physical data
+        // (Reuse existing logic for physical fallback)
+        const physNodeA = start.node_id;
+        const physNodeB = end.node_id;
 
-      let bestCable = matchingCables[0];
-      const fiberMetrics: FiberMetric[] = [];
-      const contributingCableNames = new Set<string>();
-      let capacityAccumulator = 0;
+        let bestCableName: string | undefined;
+        let primaryConnectionId: string | null = null;
 
-      // Scan all cables on this segment
-      for (const cable of matchingCables) {
-        capacityAccumulator += cable.capacity || 0;
-        if (cable.route_name) contributingCableNames.add(cable.route_name);
-
-        // Find Active Fibers on this specific cable
-        const activeFibersOnCable =
-          allCableConnections?.filter(
+        // Logic to find ANY valid connection ID on this segment for coloring
+        if (ringCables && physNodeA && physNodeB) {
+          const matchingCables = ringCables.filter(
             (c) =>
-              c.ofc_id === cable.id && c.status === true && (!!c.system_id || !!c.logical_path_id) // Must be assigned to something
-          ) || [];
-
-        if (activeFibersOnCable.length > 0) {
-          bestCable = cable;
-
-          activeFibersOnCable.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
-
-          activeFibersOnCable.forEach((fib) => {
-            const isNormalOrientation = cable.sn_id === physNodeA;
-            // const snLabel = fib.updated_fiber_no_sn || fib.fiber_no_sn;
-            // const enLabel = fib.updated_fiber_no_en || fib.fiber_no_en;
-            // const label = isNormalOrientation ? `${snLabel}/${enLabel}` : `${enLabel}/${snLabel}`;
-
-            let distance = null;
-            let power = null;
-            if (isNormalOrientation) {
-              distance = fib.otdr_distance_sn_km;
-              power = fib.en_power_dbm;
-            } else {
-              distance = fib.otdr_distance_en_km;
-              power = fib.sn_power_dbm;
-            }
-
-            let metricLabel = fib.system_name || 'Unknown Service';
-            let systemConnectionId = fib.system_id; // Default fallback
-
-            // 1. Resolve Logical Path info if available
-            if (fib.logical_path_id && logicalFiberPathsMap) {
-              const pathInfo = logicalFiberPathsMap.get(fib.logical_path_id);
-              if (pathInfo) {
-                // Prefer logical path name over generic system name if present
-                if (!metricLabel || metricLabel === 'Unknown Service') {
-                  metricLabel = pathInfo.name;
-                }
-                // CRITICAL: Get the actual connection ID from the logical path
-                if (pathInfo.connectionId) {
-                  systemConnectionId = pathInfo.connectionId;
-                }
+              (c.sn_id === physNodeA && c.en_id === physNodeB) ||
+              (c.sn_id === physNodeB && c.en_id === physNodeA)
+          );
+          if (matchingCables.length > 0) {
+            bestCableName = matchingCables[0]?.route_name ?? undefined;
+            // Check connections on first cable
+            const cableId = matchingCables[0].id;
+            const conns = allCableConnections?.filter(
+              (c) => c.ofc_id === cableId && (c.system_id || c.logical_path_id)
+            );
+            if (conns && conns.length > 0) {
+              const firstConn = conns[0];
+              if (firstConn.logical_path_id && logicalFiberPathsMap) {
+                primaryConnectionId =
+                  logicalFiberPathsMap.get(firstConn.logical_path_id)?.connectionId || null;
+              } else {
+                primaryConnectionId = firstConn.system_id;
               }
             }
-
-            fiberMetrics.push({
-              label: `${metricLabel}`,
-              role: fib.fiber_role || 'spare',
-              direction:
-                fib.path_direction === 'tx' ? 'Tx' : fib.path_direction === 'rx' ? 'Rx' : '-',
-              distance,
-              power,
-              connectionId: systemConnectionId, // This allows the Popup to render PathDisplay
-            });
-          });
+          }
         }
+
+        const config: PathConfig = {
+          cableName: bestCableName || 'Physical Link',
+          connectionId: primaryConnectionId || undefined,
+          color: primaryConnectionId ? connectionColorMap.get(primaryConnectionId) : undefined,
+        };
+
+        if (!map[sortedKey]) map[sortedKey] = [];
+        map[sortedKey].push(config);
       }
-
-      // Deduplicate metrics if needed
-      const uniqueMetrics = fiberMetrics.filter(
-        (v, i, a) => a.findIndex((t) => t.label === v.label) === i
-      );
-
-      // Only merge into existing if it exists, otherwise create new
-      const existing = map[key1] || {};
-
-      const mergedConfig = {
-        ...existing,
-        fiberInfo: undefined,
-        fiberMetrics: uniqueMetrics,
-        cableName:
-          contributingCableNames.size > 1
-            ? 'Multiple Active Routes'
-            : bestCable?.route_name || undefined,
-        capacity: capacityAccumulator || undefined,
-      };
-
-      map[key1] = mergedConfig;
-      // Do NOT set map[key2] here automatically.
-      // If there is a reverse path, the loop will process it in a future iteration as [nodeB, nodeA]
     });
 
-    return map;
+    return { allSolidLines: lines, configMap: map };
   }, [
-    allConnections,
-    ringCables,
-    allCableConnections,
+    ringDetails,
+    potentialSegments,
     pathConfigs,
     mappedNodes,
+    ringCables,
+    allCableConnections,
     logicalFiberPathsMap,
+    connectionColorMap,
   ]);
 
   // 11. Build Node -> Active Ports Map
@@ -530,7 +547,9 @@ export default function RingMapPage() {
       const list = map.get(systemId)!;
 
       if (!list.some((p) => p.port === port)) {
-        const color = getConnectionColor(connectionId); // Using the imported helper
+        // Use the consistent color map
+        const color = connectionColorMap.get(connectionId) || getConnectionColor(connectionId);
+
         let targetName = 'Unknown';
         if (targetSystemId) {
           const targetInfo = systemToNodeInfo.get(targetSystemId);
@@ -540,6 +559,7 @@ export default function RingMapPage() {
       }
     };
 
+    // Add ports from Logical Paths
     if (pathConfigs) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pathConfigs.forEach((p: any) => {
@@ -556,7 +576,7 @@ export default function RingMapPage() {
     });
 
     return map;
-  }, [rawNodes, pathConfigs]);
+  }, [rawNodes, pathConfigs, connectionColorMap]);
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
@@ -601,10 +621,10 @@ export default function RingMapPage() {
       return (
         <MeshDiagram
           nodes={mappedNodes}
-          connections={allConnections}
+          connections={allSolidLines}
           ringName={ringName}
           onBack={handleBack}
-          segmentConfigs={segmentConfigMap}
+          segmentConfigs={configMap}
           nodePorts={nodePortMap}
         />
       );
@@ -618,11 +638,11 @@ export default function RingMapPage() {
     return (
       <ClientRingMap
         nodes={mapNodes}
-        solidLines={activeSegments}
+        solidLines={allSolidLines}
         dashedLines={spurConnections}
         onBack={handleBack}
         showControls={true}
-        segmentConfigs={segmentConfigMap}
+        segmentConfigs={configMap}
         nodePorts={nodePortMap}
       />
     );
@@ -637,7 +657,6 @@ export default function RingMapPage() {
           icon={<FiMap />}
           actions={[
             {
-              // ADDED: Explicit Refresh Button
               label: 'Refresh',
               onClick: async () => {
                 if (isOnline) {
@@ -649,11 +668,11 @@ export default function RingMapPage() {
                     'ofc_cables',
                     'v_ofc_cables_complete',
                     'v_system_connections_complete',
+                    'logical_paths',
+                    'logical_fiber_paths',
                   ]);
                 }
                 refetchRing();
-                // Note: You might need to manually trigger refetch for other queries if they don't auto-update via keys
-                // queryClient.invalidateQueries({ queryKey: ['ring-nodes-detail'] });
                 toast.success('Ring topology refreshed.');
               },
               variant: 'outline',

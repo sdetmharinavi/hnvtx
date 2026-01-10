@@ -19,11 +19,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
   const [isExpanded, setIsExpanded] = useState(false);
   const supabase = createClient();
 
-  // const allUniqueConnectionIds = useMemo(() => {
-  //   if (!config?.fiberMetrics) return [];
-  //   return Array.from(new Set(config.fiberMetrics.map((fm) => fm.connectionId).filter(Boolean)));
-  // }, [config]);
-
   const { data: connection, isLoading: isConnectionLoading } = useRpcRecord(
     supabase,
     'v_system_connections_complete',

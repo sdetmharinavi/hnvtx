@@ -1,3 +1,4 @@
+// components/map/ClientRingMap/ClientRingMap.tsx
 'use client';
 
 import { MapContainer, TileLayer, LayersControl } from 'react-leaflet';
@@ -6,7 +7,12 @@ import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { formatIP } from '@/utils/formatters';
-import { applyJitterToNodes, getConnectionColor, DisplayNode } from '@/utils/mapUtils';
+import {
+  applyJitterToNodes,
+  getConnectionColor,
+  DisplayNode,
+  getMultiLineCurveOffset,
+} from '@/utils/mapUtils';
 import { MapLegend } from '../MapLegend';
 import { ConnectionLine } from './ConnectionLine';
 import { NodeMarker } from './NodeMarker';
@@ -14,7 +20,7 @@ import { MapControls } from './MapControls';
 import { MapController } from './controllers/MapController';
 import { FullscreenControl } from './controllers/FullscreenControl';
 import { MapFlyToController } from './controllers/MapFlyToController';
-import { MapNode, PathConfig, PortDisplayInfo, RingMapNode } from './types';
+import { MapNode, PortDisplayInfo, RingMapNode, SegmentConfigMap } from './types';
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -25,9 +31,22 @@ interface ClientRingMapProps {
   onBack?: () => void;
   flyToCoordinates?: [number, number] | null;
   showControls?: boolean;
-  segmentConfigs?: Record<string, PathConfig>;
+  segmentConfigs?: SegmentConfigMap; // Updated type
   nodePorts?: Map<string, PortDisplayInfo[]>;
 }
+
+// Helper to group parallel lines regardless of direction (A->B and B->A are same group)
+const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
+  const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
+  lines.forEach((line) => {
+    const [start, end] = line;
+    // Consistent key regardless of direction to group parallel lines
+    const key = [start.id, end.id].sort().join('-');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(line);
+  });
+  return groups;
+};
 
 export default function ClientRingMap({
   nodes,
@@ -46,7 +65,6 @@ export default function ClientRingMap({
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
-  
 
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
@@ -72,11 +90,8 @@ export default function ClientRingMap({
     };
   }, [displayNodes]);
 
-  const solidLineSet = useMemo(() => {
-    const set = new Set<string>();
-    solidLines?.forEach(([s, e]) => set.add(`${s.id}-${e.id}`));
-    return set;
-  }, [solidLines]);
+  // Group solid lines to calculate curves
+  const groupedSolidLines = useMemo(() => groupLines(solidLines), [solidLines]);
 
   const setPolylineRef = (key: string, el: L.Polyline | null) => {
     if (el) {
@@ -104,10 +119,6 @@ export default function ClientRingMap({
       showAllLinePopups ? polyline.openPopup() : polyline.closePopup()
     );
   }, [showAllLinePopups]);
-
-  const enhancedSegmentConfigs = useMemo(() => {
-    return segmentConfigs;
-  }, [segmentConfigs]);
 
   const bounds = useMemo(() => {
     if (displayNodes.length === 0) return null;
@@ -175,17 +186,21 @@ export default function ClientRingMap({
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {solidLines
-          .filter(
-            ([start, end]) =>
-              start.lat !== null && start.long !== null && end.lat !== null && end.long !== null
-          )
-          .map(([start, end], i) => {
-            const key1 = `${start.id}-${end.id}`;
-            const config = enhancedSegmentConfigs ? enhancedSegmentConfigs[key1] : undefined;
+        {/* Render SOLID lines using grouped logic for curves */}
+        {Array.from(groupedSolidLines.values()).map((groupLines) => {
+          return groupLines.map(([start, end], index) => {
+            // THE FIX: Use sorted key to retrieve the correct array of configs
+            const sortedKey = [start.id, end.id].sort().join('-');
+            const configs = segmentConfigs[sortedKey] || [];
+
+            // Retrieve the config corresponding to this line index
+            const config = configs[index] || configs[0]; // Fallback to first if index mismatch
 
             let lineColor = undefined;
-            if (config?.connectionId) {
+            // USE THE EXPLICIT COLOR FROM CONFIG
+            if (config?.color) {
+              lineColor = config.color;
+            } else if (config?.connectionId) {
               lineColor = getConnectionColor(config.connectionId);
             }
 
@@ -194,11 +209,11 @@ export default function ClientRingMap({
 
             if (!startPos || !endPos) return null;
 
-            const hasReverse = solidLineSet.has(`${end.id}-${start.id}`);
+            const curveOffset = getMultiLineCurveOffset(index, groupLines.length);
 
             return (
               <ConnectionLine
-                key={`solid-${start.id}-${end.id}-${i}`}
+                key={`solid-${start.id}-${end.id}-${index}`}
                 start={start}
                 end={end}
                 startPos={startPos}
@@ -209,10 +224,11 @@ export default function ClientRingMap({
                 setPolylineRef={setPolylineRef}
                 config={config}
                 customColor={lineColor}
-                hasReverse={hasReverse}
+                curveOffset={curveOffset}
               />
             );
-          })}
+          });
+        })}
 
         {dashedLines
           .filter(
