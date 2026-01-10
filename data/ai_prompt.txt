@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all check if system_connection_id being saved on logical_fiber_paths table is same from all places, I mean from system connection details fiber allocation or from fiber connections page etc. Also check why getting connectionId undefined in console.log("config: ", config); In fiber connections we are alloting services and services are being used in system connections. 
+Let's begin! First of all as we are detecting colors for ports between two nodes in client ring map and mesh diagram, we should show same connecting color to the polyline between those nodes.For the situations like two systems at same node like in screenshot, we need to solve for that situation also. 
