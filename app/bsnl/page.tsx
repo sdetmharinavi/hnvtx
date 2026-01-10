@@ -86,6 +86,9 @@ export default function ScalableFiberNetworkDashboard() {
     });
   }, []);
 
+  // Generate a stable key for filters to control auto-zoom behavior
+  const filterKey = useMemo(() => JSON.stringify(filters), [filters]);
+
   const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
     const allSystemTypes = [
       ...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean)),
@@ -285,7 +288,7 @@ export default function ScalableFiberNetworkDashboard() {
             <div className="space-y-6">
               <DashboardStatsGrid filters={filters} />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                {/* THE FIX: Added the systems prop here */}
+                {/* THE FIX: Added filterKey to control auto-zoom */}
                 <OptimizedNetworkMap
                   nodes={data.nodes}
                   cables={data.ofcCables}
@@ -296,6 +299,7 @@ export default function ScalableFiberNetworkDashboard() {
                   zoom={zoom}
                   onBoundsChange={handleBoundsChange}
                   onZoomChange={handleZoomChange}
+                  filterKey={filterKey}
                 />
               </div>
             </div>

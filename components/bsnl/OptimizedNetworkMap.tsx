@@ -1,7 +1,7 @@
 // components/bsnl/OptimizedNetworkMap.tsx
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -20,32 +20,42 @@ import { MapLegend } from '@/components/map/MapLegend';
 import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
 
 // --- NEW CONTROLLER COMPONENT ---
-// Automatically zooms map to fit visible nodes when they change
-const MapAutoFit = ({ nodes }: { nodes: BsnlNode[] }) => {
+// Automatically zooms map to fit visible nodes ONLY when filters change or on mount.
+// It ignores updates caused by panning/zooming which updates the 'nodes' list via viewport filtering.
+const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: string }) => {
   const map = useMap();
+  const isFirstRender = useRef(true);
+  const prevFilterKey = useRef(filterKey);
 
   useEffect(() => {
     if (nodes.length === 0) return;
 
-    const latLngs: LatLngExpression[] = nodes
-      .filter((n) => n.latitude != null && n.longitude != null)
-      .map((n) => [n.latitude!, n.longitude!]);
+    // Check if filter has actually changed
+    const hasFilterChanged = prevFilterKey.current !== filterKey;
 
-    if (latLngs.length > 0) {
-      const bounds = new LatLngBounds(latLngs);
-      map.fitBounds(bounds, {
-        padding: [50, 50], // Add padding so markers aren't on the edge
-        maxZoom: 15, // Prevent zooming in too close on single nodes
-        animate: true,
-        duration: 1, // Smooth 1s animation
-      });
+    if (isFirstRender.current || hasFilterChanged) {
+      const latLngs: LatLngExpression[] = nodes
+        .filter((n) => n.latitude != null && n.longitude != null)
+        .map((n) => [n.latitude!, n.longitude!]);
+
+      if (latLngs.length > 0) {
+        const bounds = new LatLngBounds(latLngs);
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 15,
+          animate: true,
+          duration: 1,
+        });
+      }
+
+      isFirstRender.current = false;
+      prevFilterKey.current = filterKey;
     }
-  }, [nodes, map]);
+  }, [nodes, map, filterKey]);
 
   return null;
 };
 
-// ... (MapEventHandler remains the same)
 function MapEventHandler({
   setBounds,
   setZoom,
@@ -101,7 +111,8 @@ const MapContent = ({
   mapAttribution,
   setMapBounds,
   setZoom,
-  filteredNodes, // Pass the *filtered* nodes (not just visible in bounds) for auto-fit
+  filteredNodes,
+  filterKey, // Added prop
 }: {
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
@@ -113,16 +124,16 @@ const MapContent = ({
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
   filteredNodes: BsnlNode[];
+  filterKey?: string; // Added prop type
 }) => {
-  // USE UTILITY FUNCTION FOR JITTER (Typed for BsnlNode)
   const displayNodes = useMemo(() => applyJitterToNodes<BsnlNode>(visibleNodes), [visibleNodes]);
 
   return (
     <>
       <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
 
-      {/* ADD THE AUTO-FIT CONTROLLER */}
-      <MapAutoFit nodes={filteredNodes} />
+      {/* Pass filterKey to MapAutoFit */}
+      <MapAutoFit nodes={filteredNodes} filterKey={filterKey} />
 
       <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
 
@@ -172,7 +183,7 @@ const MapContent = ({
         return (
           <Marker
             key={node.id}
-            position={[node.displayLat, node.displayLng]} // Use jittered coords for markers
+            position={[node.displayLat, node.displayLng]}
             icon={icon}
             riseOnHover={true}
             zIndexOffset={10}
@@ -185,7 +196,6 @@ const MapContent = ({
                 {systemTypesAtNode && (
                   <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>
                 )}
-                {/* Display original geographic coordinates */}
                 {node.latitude && (
                   <p className="text-sm mt-1 text-gray-500">
                     {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
@@ -213,10 +223,11 @@ interface OptimizedNetworkMapProps {
   zoom: number;
   onBoundsChange: (bounds: LatLngBounds | null) => void;
   onZoomChange: (zoom: number) => void;
+  filterKey?: string; // Added prop definition
 }
 
 export function OptimizedNetworkMap({
-  nodes, // These are the FILTERED nodes from the parent component
+  nodes,
   cables,
   systems,
   visibleLayers = { nodes: true, cables: true, systems: true },
@@ -224,6 +235,7 @@ export function OptimizedNetworkMap({
   zoom,
   onBoundsChange,
   onZoomChange,
+  filterKey, // Destructure filterKey
 }: OptimizedNetworkMapProps) {
   const [isFullScreen, setIsFullScreen] = React.useState(false);
 
@@ -240,7 +252,6 @@ export function OptimizedNetworkMap({
     }
   }, [isFullScreen]);
 
-  // Initial bounds logic is kept as fallback
   const initialBounds = useMemo(() => {
     if (nodes.length === 0) return null;
     const lats = nodes.map((n) => n.latitude ?? 0).filter((lat) => lat !== 0 && isFinite(lat));
@@ -274,7 +285,7 @@ export function OptimizedNetworkMap({
   }, [systems]);
 
   const visibleNodes = useMemo(() => {
-    if (!mapBounds || !visibleLayers.nodes) return nodes; // Default to all if no bounds yet
+    if (!mapBounds || !visibleLayers.nodes) return nodes;
     const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
     return nodes.slice(0, maxItems).filter((node) => {
       const lat = node.latitude;
@@ -318,8 +329,6 @@ export function OptimizedNetworkMap({
 
         <MapContainer
           key="normal"
-          // We use the initial bounds just for the first render.
-          // The MapAutoFit component will take over for updates.
           bounds={initialBounds!}
           className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800"
         >
@@ -327,13 +336,14 @@ export function OptimizedNetworkMap({
             cables={cables}
             visibleLayers={visibleLayers}
             visibleNodes={visibleNodes}
-            filteredNodes={nodes} // PASS ALL FILTERED NODES
+            filteredNodes={nodes}
             nodeMap={nodeMap}
             nodeSystemMap={nodeSystemMap}
             mapUrl={mapUrl}
             mapAttribution={mapAttribution}
             setMapBounds={onBoundsChange}
             setZoom={onZoomChange}
+            filterKey={filterKey} // Pass it down
           />
         </MapContainer>
         <button
@@ -356,13 +366,14 @@ export function OptimizedNetworkMap({
               cables={cables}
               visibleLayers={visibleLayers}
               visibleNodes={visibleNodes}
-              filteredNodes={nodes} // PASS ALL FILTERED NODES
+              filteredNodes={nodes}
               nodeMap={nodeMap}
               nodeSystemMap={nodeSystemMap}
               mapUrl={mapUrl}
               mapAttribution={mapAttribution}
               setMapBounds={onBoundsChange}
               setZoom={onZoomChange}
+              filterKey={filterKey} // Pass it down
             />
           </MapContainer>
           <button

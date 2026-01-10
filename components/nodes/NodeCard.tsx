@@ -53,14 +53,14 @@ export const NodeCard: React.FC<NodeCardProps> = ({
           <div className="relative">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-200">
               {/* Icon rendering logic */}
-              {icon instanceof L.DivIcon ? (
+              {icon && (icon.options as L.DivIconOptions).html ? (
                 <div
                   dangerouslySetInnerHTML={{
                     __html: ((icon.options as L.DivIconOptions).html || '') as string,
                   }}
                   className="scale-90 origin-center"
                 />
-              ) : icon instanceof L.Icon && (icon.options as L.IconOptions).iconUrl ? (
+              ) : icon && (icon.options as L.IconOptions).iconUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={(icon.options as L.IconOptions).iconUrl!}

@@ -8,7 +8,7 @@ const createSvgDivIcon = (
   anchor: [number, number] = [12, 41],
   isImage = false,
   rotation = 0
-) => {
+): L.DivIcon => {
   const content = isImage
     ? `<img src="${svgOrImg}" style="width:100%;height:100%;object-fit:contain;transform:rotate(${-rotation}deg);transition:transform 0.5s;" />`
     : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform:rotate(${-rotation}deg);transition:transform 0.5s;">${svgOrImg}</div>`;
