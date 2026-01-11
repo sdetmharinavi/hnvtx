@@ -38,14 +38,15 @@ export async function GET(request: Request) {
     console.error('Session Exchange Error:', exchangeError.message);
     const redirectUrl = new URL(`${origin}/login`);
     redirectUrl.searchParams.append('error', 'session_exchange_failed');
-    
+
     // Provide a user-friendly message based on common errors
     let description = 'Could not exchange authorization code for a session. Please try again.';
     if (exchangeError.message.includes('invalid grant')) {
-        description = 'Authorization grant is invalid. This often means the Redirect URL in your Supabase project settings does not exactly match the one used by the application. Please check your Supabase URL Configuration.';
+      description =
+        'Authorization grant is invalid. This often means the Redirect URL in your Supabase project settings does not exactly match the one used by the application. Please check your Supabase URL Configuration.';
     }
     redirectUrl.searchParams.append('error_description', description);
-    
+
     return NextResponse.redirect(redirectUrl);
   }
 

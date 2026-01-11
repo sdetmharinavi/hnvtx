@@ -1,11 +1,11 @@
 // path: app/sw.ts
 /// <reference lib="webworker" />
 
-import { defaultCache } from "@serwist/next/worker";
-import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
-import { Serwist } from "serwist";
-import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from "@serwist/strategies"; // CHANGED
-import { ExpirationPlugin } from "@serwist/expiration";
+import { defaultCache } from '@serwist/next/worker';
+import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from 'serwist';
+import { Serwist } from 'serwist';
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from '@serwist/strategies'; // CHANGED
+import { ExpirationPlugin } from '@serwist/expiration';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -17,18 +17,20 @@ declare const self: ServiceWorkerGlobalScope;
 
 const customCache: RuntimeCaching[] = [
   // 1. API/Supabase/Auth: Network Only (No Caching)
-// THE FIX: We strictly disable SW caching for API/Supabase calls.
+  // THE FIX: We strictly disable SW caching for API/Supabase calls.
   // Our 'useLocalFirstQuery' + Dexie architecture handles offline data persistence at the application layer.
   // Caching here causes stale data issues and conflicts with optimistic UI updates.
   {
     matcher: ({ url }) => {
       const isApiRoute = url.pathname.startsWith('/api/');
-      const isSupabaseApi = url.hostname.includes('supabase.co') && 
-                            (url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'));
-      
+      const isSupabaseApi =
+        url.hostname.includes('supabase.co') &&
+        (url.pathname.startsWith('/rest/') || url.pathname.startsWith('/rpc/'));
+
       // THE FIX START: Exclude auth routes from service worker interception.
       // This allows OAuth redirects (`/auth/v1/authorize`) to function correctly.
-      const isSupabaseAuth = url.hostname.includes('supabase.co') && url.pathname.startsWith('/auth/');
+      const isSupabaseAuth =
+        url.hostname.includes('supabase.co') && url.pathname.startsWith('/auth/');
       if (isSupabaseAuth) {
         return false; // Let the browser handle this navigation.
       }
@@ -43,7 +45,7 @@ const customCache: RuntimeCaching[] = [
   {
     matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|avif|ico|woff2?)$/i,
     handler: new CacheFirst({
-      cacheName: "static-assets-cache",
+      cacheName: 'static-assets-cache',
       plugins: [
         new ExpirationPlugin({
           maxEntries: 200,
@@ -90,13 +92,13 @@ self.addEventListener('push', (event) => {
       data: {
         dateOfArrival: Date.now(),
         primaryKey: '1',
-        url: data.url || 'https://hnvtm.vercel.app'
+        url: data.url || 'https://hnvtm.vercel.app',
       },
     };
     event.waitUntil(self.registration.showNotification(data.title, options));
   }
 });
- 
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(

@@ -50,17 +50,23 @@ export async function POST(req: Request) {
 
     const createdAuthUser = authUserRows[0];
     if (!createdAuthUser) {
-      throw new Error("Failed to create user in auth.users");
+      throw new Error('Failed to create user in auth.users');
     }
 
     return NextResponse.json({ user: createdAuthUser });
-
   } catch (err: unknown) {
     console.error('Error inserting user:', err);
-    const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during user creation.';
-    if (typeof errorMessage === 'string' && errorMessage.includes('duplicate key value violates unique constraint "users_email_key"')) {
-        const { email } = await req.json();
-        return NextResponse.json({ error: `A user with the email "${email}" already exists.` }, { status: 409 });
+    const errorMessage =
+      err instanceof Error ? err.message : 'An unknown error occurred during user creation.';
+    if (
+      typeof errorMessage === 'string' &&
+      errorMessage.includes('duplicate key value violates unique constraint "users_email_key"')
+    ) {
+      const { email } = await req.json();
+      return NextResponse.json(
+        { error: `A user with the email "${email}" already exists.` },
+        { status: 409 }
+      );
     }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   } finally {
@@ -68,12 +74,13 @@ export async function POST(req: Request) {
   }
 }
 
-
 // DELETE function remains the same
 export async function DELETE(req: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Forbidden: Authentication required.' }, { status: 401 });
@@ -87,7 +94,10 @@ export async function DELETE(req: Request) {
     }
 
     if (!isSuperAdmin) {
-      return NextResponse.json({ error: 'Forbidden: You do not have permission to perform this action.' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have permission to perform this action.' },
+        { status: 403 }
+      );
     }
 
     const { userIds } = await req.json();
@@ -108,14 +118,16 @@ export async function DELETE(req: Request) {
     }
 
     if (deletionErrors.length > 0) {
-      return NextResponse.json({
-        message: `Completed with ${deletionErrors.length} errors.`,
-        errors: deletionErrors,
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          message: `Completed with ${deletionErrors.length} errors.`,
+          errors: deletionErrors,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ message: 'Users deleted successfully' });
-
   } catch (err: unknown) {
     console.error('Error processing delete request:', err);
     return NextResponse.json(

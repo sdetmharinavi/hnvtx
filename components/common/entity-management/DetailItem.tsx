@@ -20,7 +20,6 @@ export function DetailItem<T extends BaseEntity>({
   if (!value && type !== 'status') return null;
 
   const renderValue = () => {
-
     if (render) {
       return render(value as T[keyof T], entity);
     }
@@ -31,11 +30,11 @@ export function DetailItem<T extends BaseEntity>({
           <span
             className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
               value
-                ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200"
-                : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
             }`}
           >
-            {value ? "Active" : "Inactive"}
+            {value ? 'Active' : 'Inactive'}
           </span>
         );
 
@@ -45,7 +44,10 @@ export function DetailItem<T extends BaseEntity>({
           : 'No parent';
 
       case 'date':
-        if (value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)) {
+        if (
+          value &&
+          (typeof value === 'string' || typeof value === 'number' || value instanceof Date)
+        ) {
           return new Date(value).toLocaleDateString();
         }
         return 'N/A';
@@ -67,9 +69,7 @@ export function DetailItem<T extends BaseEntity>({
   return (
     <div className="py-2">
       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
-        {renderValue()}
-      </dd>
+      <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{renderValue()}</dd>
     </div>
   );
 }

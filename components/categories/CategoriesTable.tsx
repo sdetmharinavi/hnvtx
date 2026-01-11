@@ -1,9 +1,9 @@
-import Link from "next/link";
-import { FiEdit2, FiInfo, FiTrash2 } from "react-icons/fi";
-import { Button } from "@/components/common/ui/Button";
-import { Card } from "@/components/common/ui/card";
-import { formatCategoryName } from "@/components/categories/utils";
-import { Categories, CategoryInfo } from "./categories-types";
+import Link from 'next/link';
+import { FiEdit2, FiInfo, FiTrash2 } from 'react-icons/fi';
+import { Button } from '@/components/common/ui/Button';
+import { Card } from '@/components/common/ui/card';
+import { formatCategoryName } from '@/components/categories/utils';
+import { Categories, CategoryInfo } from './categories-types';
 
 interface CategoriesTableProps {
   categories: Categories[];
@@ -28,7 +28,6 @@ export function CategoriesTable({
   canEdit,
   canDelete,
 }: CategoriesTableProps) {
-
   return (
     <Card className="overflow-hidden dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700/50">
@@ -63,12 +62,9 @@ export function CategoriesTable({
               {categories.map((category) => {
                 const categoryInfo = categoryLookupCounts[category.category];
                 const hasDefaults = categoryInfo?.hasSystemDefaults;
-                
+
                 return (
-                  <tr
-                    key={category.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                  >
+                  <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">
                       {formatCategoryName(category)}
                     </td>
@@ -76,9 +72,7 @@ export function CategoriesTable({
                       {category.category}
                     </td>
                     <td className="px-6 py-4 text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
-                      <Link
-                        href={`/dashboard/lookup?category=${category.category}`}
-                      >
+                      <Link href={`/dashboard/lookup?category=${category.category}`}>
                         <span className="inline-flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400">
                           {categoryInfo?.lookupCount ?? 0}
                           {categoryInfo?.lookupCount > 0 && (
@@ -94,11 +88,11 @@ export function CategoriesTable({
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                           hasDefaults
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                         }`}
                       >
-                        {hasDefaults ? "Yes" : "No"}
+                        {hasDefaults ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
@@ -122,8 +116,8 @@ export function CategoriesTable({
                             className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 dark:border-gray-600 dark:hover:bg-gray-700"
                             disabled={isDeleting || hasDefaults}
                             title={
-                              hasDefaults 
-                                ? "Cannot delete category with system defaults" 
+                              hasDefaults
+                                ? 'Cannot delete category with system defaults'
                                 : `Delete "${category.category}"`
                             }
                           >
@@ -142,7 +136,7 @@ export function CategoriesTable({
         <div className="py-8 text-center text-gray-500 dark:text-gray-400">
           {searchTerm
             ? `No unique categories found matching "${searchTerm}".`
-            : "No unique categories found."}
+            : 'No unique categories found.'}
         </div>
       )}
     </Card>

@@ -8,7 +8,7 @@ export type Categories = z.infer<typeof lookup_typesRowSchema>;
 export type GroupedLookupsByCategory = Record<string, Categories[]>;
 
 export interface CategoryInfo {
-    name: string;
-    lookupCount: number;
-    hasSystemDefaults: boolean;
+  name: string;
+  lookupCount: number;
+  hasSystemDefaults: boolean;
 }
