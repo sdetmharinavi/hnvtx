@@ -60,7 +60,7 @@ export const GenericFilterBar = memo(
   }: GenericFilterBarProps) => {
     return (
       <div
-        className={`bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 ${className}`}
+        className={`bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row flex-wrap gap-4 justify-between items-center sticky top-20 z-10 ${className}`}
       >
         {/* Search Section */}
         <div className="w-full lg:w-96">
@@ -75,7 +75,7 @@ export const GenericFilterBar = memo(
         </div>
 
         {/* Filters & Toggles Section */}
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center no-scrollbar">
+        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center no-scrollbar flex-wrap">
           {filterConfigs.map((config) => {
             // 1. Multi-Select
             if (config.type === 'multi-select') {

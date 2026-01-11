@@ -40,6 +40,7 @@ export default function MeshDiagram({
   const isDark = theme === 'dark';
   const bgColor = isDark ? '#0f172a' : '#f8fafc';
 
+  // Layout calculation is memoized inside the hook
   const { nodePositions, bounds } = useMeshLayout(nodes);
 
   // Group connections to handle parallels

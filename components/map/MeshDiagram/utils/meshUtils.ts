@@ -31,13 +31,13 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
     }
   });
 
-  // Fallback: If everything is a spur or everything is a hub (rare edge cases)
+  // Fallback
   if (backboneNodes.length === 0 && spurNodes.length === 0) {
     backboneNodes.push(...nodes);
   }
 
   const angleStep = (2 * Math.PI) / Math.max(1, backboneNodes.length);
-  const startAngle = -Math.PI / 2;
+  const startAngle = -Math.PI / 2; // Start at top
 
   backboneNodes.forEach((node, index) => {
     const angle = startAngle + index * angleStep;
@@ -84,7 +84,6 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
   const lats = Array.from(positions.values()).map((p) => p.lat);
   const lngs = Array.from(positions.values()).map((p) => p.lng);
 
-  // Default bounds if no nodes
   if (lats.length === 0) {
     return {
       nodePositions: positions,
@@ -110,6 +109,5 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
 
 export const useMeshLayout = (nodes: RingMapNode[]) => {
   // THE FIX: Memoize the calculation based on the nodes input.
-  // Since 'nodes' comes from a React Query / Memoized parent source, this reference check is stable.
   return useMemo(() => computeMeshLayout(nodes), [nodes]);
 };

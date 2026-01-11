@@ -7,7 +7,7 @@ import { getNodeIcon } from '@/utils/getNodeIcons';
 import { formatIP } from '@/utils/formatters';
 import { PortDisplayInfo, RingMapNode } from '@/components/map/ClientRingMap/types';
 import { createLabelHtml } from '@/components/map/ClientRingMap/utils/labelUtils';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 interface MeshNodeMarkerProps {
   node: RingMapNode;
@@ -21,7 +21,7 @@ interface MeshNodeMarkerProps {
 // Center of the mesh layout (matches utils/meshUtils.ts)
 const MESH_CENTER_X = 1000;
 const MESH_CENTER_Y = 1000;
-const LABEL_OFFSET_DISTANCE = 80; // Distance to push label away from node
+const LABEL_OFFSET_DISTANCE = 80;
 
 export const MeshNodeMarker = ({
   node,
@@ -32,8 +32,9 @@ export const MeshNodeMarker = ({
   onLabelDragEnd,
 }: MeshNodeMarkerProps) => {
   const isDark = theme === 'dark';
+  const markerRef = useRef<L.Marker>(null);
 
-  // 1. Calculate Smart Initial Label Position
+  // 1. Calculate Smart Initial Label Position (Radial Push)
   const finalLabelPos = useMemo(() => {
     if (labelPosition) return labelPosition;
 
@@ -42,19 +43,21 @@ export const MeshNodeMarker = ({
     const dy = position.lat - MESH_CENTER_Y;
     const magnitude = Math.sqrt(dx * dx + dy * dy);
 
-    // If node is exactly at center (rare), push up
+    // If node is exactly at center, push down (rare edge case)
     if (magnitude < 1) {
       return new L.LatLng(position.lat + LABEL_OFFSET_DISTANCE, position.lng);
     }
 
-    // Normalize and scale vector
+    // Normalize and scale vector to push OUTWARD
     const offsetX = (dx / magnitude) * LABEL_OFFSET_DISTANCE;
     const offsetY = (dy / magnitude) * LABEL_OFFSET_DISTANCE;
 
     return new L.LatLng(position.lat + offsetY, position.lng + offsetX);
   }, [position, labelPosition]);
 
-  // 2. Create Custom DivIcon for the Label (Reusing existing utility)
+  // 2. Create Custom DivIcon for the Label
+  // FIX: Provide a small non-zero size to ensure hit-testing works for drag
+  // The CSS in createLabelHtml centers the content regardless of this size via absolute positioning
   const labelIcon = useMemo(() => {
     return L.divIcon({
       html: createLabelHtml(
@@ -62,11 +65,11 @@ export const MeshNodeMarker = ({
         formatIP(node.ip),
         portsList,
         isDark,
-        0 // No rotation for schematic view
+        0 // No rotation
       ),
       className: 'bg-transparent border-none',
-      iconSize: [0, 0],
-      iconAnchor: [0, 0], // Center on position
+      iconSize: [20, 20], // Small hit box center
+      iconAnchor: [10, 10], // Centered
     });
   }, [node.name, node.ip, portsList, isDark]);
 
@@ -80,8 +83,8 @@ export const MeshNodeMarker = ({
           weight: 1,
           dashArray: '4, 4',
           opacity: 0.5,
+          interactive: false, // Ensure line doesn't block clicks
         }}
-        interactive={false}
       />
 
       {/* Node Icon Marker (Static position) */}
@@ -95,7 +98,6 @@ export const MeshNodeMarker = ({
             <div className="bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
               <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">{node.name}</h3>
             </div>
-
             <div className="space-y-2 p-3 text-slate-600 dark:text-slate-300">
               {node.ip && (
                 <div className="flex items-center justify-between">
@@ -125,13 +127,20 @@ export const MeshNodeMarker = ({
 
       {/* Label Marker (Draggable) */}
       <Marker
+        ref={markerRef}
         position={finalLabelPos}
         icon={labelIcon}
         draggable={true}
         eventHandlers={{
-          dragend: (e) => onLabelDragEnd(e, node.id!),
+          dragend: (e) => {
+            // Use requestAnimationFrame to defer the state update slightly
+            // This can help prevent layout trashing if multiple events fire
+            requestAnimationFrame(() => {
+              onLabelDragEnd(e, node.id!);
+            });
+          },
         }}
-        zIndexOffset={1000} // Keep label on top
+        zIndexOffset={1000}
         opacity={1}
       />
     </>
