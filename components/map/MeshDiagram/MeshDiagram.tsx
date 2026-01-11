@@ -15,7 +15,6 @@ import { useMeshLayout } from './utils/meshUtils';
 import { MeshDiagramProps } from './types';
 import { RingMapNode } from '@/components/map/ClientRingMap/types';
 
-// Helper to group parallel lines
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
   const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
   lines.forEach((line) => {
@@ -35,18 +34,16 @@ export default function MeshDiagram({
   nodePorts,
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [labelPositions, setLabelPositions] = useState<Record<string, L.LatLngExpression>>({}); // NEW: Track label positions
+  const [labelPositions, setLabelPositions] = useState<Record<string, L.LatLngExpression>>({});
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const bgColor = isDark ? '#0f172a' : '#f8fafc';
 
-  // Layout calculation is memoized inside the hook
+  // Memoized Layout Calculation (Prevents zoom reset on label move)
   const { nodePositions, bounds } = useMeshLayout(nodes);
 
-  // Group connections to handle parallels
   const groupedConnections = useMemo(() => groupLines(connections), [connections]);
 
-  // NEW: Handle Label Dragging
   const handleLabelDragEnd = useCallback((e: L.LeafletEvent, nodeId: string) => {
     const marker = e.target;
     const position = marker.getLatLng();
@@ -98,7 +95,6 @@ export default function MeshDiagram({
             if (!posA || !posB) return null;
 
             const isSpur = !nodeA.is_hub || !nodeB.is_hub;
-
             const sortedKey = [nodeA.id, nodeB.id].sort().join('-');
             const configs = segmentConfigs[sortedKey] || [];
             const config = configs[index] || configs[0];
@@ -144,8 +140,7 @@ export default function MeshDiagram({
               position={pos}
               portsList={portsList}
               theme={theme}
-              // NEW: Pass label props
-              labelPosition={labelPositions[nodeId]}
+              labelPosition={labelPositions[nodeId]} // Pass custom position if set
               onLabelDragEnd={handleLabelDragEnd}
             />
           );

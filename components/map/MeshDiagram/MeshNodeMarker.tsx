@@ -15,7 +15,7 @@ interface MeshNodeMarkerProps {
   portsList: PortDisplayInfo[];
   theme: string;
   labelPosition?: L.LatLngExpression;
-  onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
+  onLabelDragEnd?: (e: L.LeafletEvent, nodeId: string) => void;
 }
 
 // Center of the mesh layout (matches utils/meshUtils.ts)
@@ -32,9 +32,10 @@ export const MeshNodeMarker = ({
   onLabelDragEnd,
 }: MeshNodeMarkerProps) => {
   const isDark = theme === 'dark';
-  const markerRef = useRef<L.Marker>(null);
+  const labelMarkerRef = useRef<L.Marker>(null);
 
   // 1. Calculate Smart Initial Label Position (Radial Push)
+  // This pushes the label OUTWARD from the center, so it doesn't overlap the lines converging on the node.
   const finalLabelPos = useMemo(() => {
     if (labelPosition) return labelPosition;
 
@@ -43,7 +44,7 @@ export const MeshNodeMarker = ({
     const dy = position.lat - MESH_CENTER_Y;
     const magnitude = Math.sqrt(dx * dx + dy * dy);
 
-    // If node is exactly at center, push down (rare edge case)
+    // If node is exactly at center (rare), push down
     if (magnitude < 1) {
       return new L.LatLng(position.lat + LABEL_OFFSET_DISTANCE, position.lng);
     }
@@ -56,8 +57,7 @@ export const MeshNodeMarker = ({
   }, [position, labelPosition]);
 
   // 2. Create Custom DivIcon for the Label
-  // FIX: Provide a small non-zero size to ensure hit-testing works for drag
-  // The CSS in createLabelHtml centers the content regardless of this size via absolute positioning
+  // Using a small iconSize ensures the drag handle is centered but the HTML content can overflow visibly
   const labelIcon = useMemo(() => {
     return L.divIcon({
       html: createLabelHtml(
@@ -68,26 +68,26 @@ export const MeshNodeMarker = ({
         0 // No rotation
       ),
       className: 'bg-transparent border-none',
-      iconSize: [20, 20], // Small hit box center
-      iconAnchor: [10, 10], // Centered
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
     });
   }, [node.name, node.ip, portsList, isDark]);
 
   return (
     <>
-      {/* Dashed Line connecting Node to Label */}
+      {/* Dashed Connector Line: Node Icon -> Label */}
       <Polyline
         positions={[position, finalLabelPos]}
         pathOptions={{
           color: isDark ? '#94a3b8' : '#64748b',
           weight: 1,
           dashArray: '4, 4',
-          opacity: 0.5,
-          interactive: false, // Ensure line doesn't block clicks
+          opacity: 0.4,
+          interactive: false, // Line should not block clicks
         }}
       />
 
-      {/* Node Icon Marker (Static position) */}
+      {/* Node Icon Marker (Static, Lower Z-Index) */}
       <Marker
         position={position}
         icon={getNodeIcon(node.system_type, node.type, false)}
@@ -113,34 +113,26 @@ export const MeshNodeMarker = ({
                   <span className="text-xs">{node.system_type}</span>
                 </div>
               )}
-              {node.is_hub && (
-                <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-600">
-                  <span className="inline-block px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-100 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-md">
-                    🔗 HUB NODE
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </Popup>
       </Marker>
 
-      {/* Label Marker (Draggable) */}
+      {/* Label Marker (Draggable, Higher Z-Index) */}
       <Marker
-        ref={markerRef}
+        ref={labelMarkerRef}
         position={finalLabelPos}
         icon={labelIcon}
         draggable={true}
         eventHandlers={{
           dragend: (e) => {
-            // Use requestAnimationFrame to defer the state update slightly
-            // This can help prevent layout trashing if multiple events fire
+            // Defer update to prevent potential render thrashing
             requestAnimationFrame(() => {
-              onLabelDragEnd(e, node.id!);
+              onLabelDragEnd?.(e, node.id!);
             });
           },
         }}
-        zIndexOffset={1000}
+        zIndexOffset={1000} // Ensure labels are always on top
         opacity={1}
       />
     </>
