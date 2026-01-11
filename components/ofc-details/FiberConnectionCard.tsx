@@ -216,18 +216,18 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
             className={`flex items-center justify-between text-sm px-3 py-2 rounded-lg border shadow-sm ${
               isFaulty
                 ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'
+                : 'bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-800/50'
             }`}
           >
             <div className="flex items-center gap-2">
               <FiZap
                 className={`w-4 h-4 shrink-0 ${
-                  isFaulty ? 'text-red-600' : 'text-amber-600 dark:text-amber-400'
+                  isFaulty ? 'text-red-600' : 'text-gray-600 dark:text-gray-400'
                 }`}
               />
               <span
                 className={`font-bold uppercase text-xs tracking-wide ${
-                  isFaulty ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'
+                  isFaulty ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-400'
                 }`}
               >
                 Route Loss
@@ -235,7 +235,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
             </div>
             <span
               className={`font-mono font-bold ${
-                isFaulty ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200'
+                isFaulty ? 'text-red-800 dark:text-red-200' : 'text-gray-600 dark:text-gray-400'
               }`}
             >
               {fiber.route_loss_db ? `${fiber.route_loss_db} dB` : '-'}
@@ -243,7 +243,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
           </div>
 
           {fiber.remark && (
-            <div className="bg-gray-50 dark:bg-gray-900/20 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800/50 text-xs text-gray-600 dark:text-gray-400 italic">
+            <div className="bg-gray-50 dark:bg-gray-900/20 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800/50 text-xs  text-amber-600 dark:text-amber-400 italic">
               <TruncateTooltip text={fiber.remark} />
             </div>
           )}

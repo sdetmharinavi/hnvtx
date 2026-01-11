@@ -161,7 +161,7 @@ export default function OfcPage() {
                   <FiClock className="w-3.5 h-3.5" />
                   <span>Activity {timeAgo}</span>
                 </div>
-                <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950">
                   {cable.current_rkm} km
                 </span>
               </div>
