@@ -297,6 +297,7 @@ export default function DocSidebar({ sections, features }: DocSidebarProps) {
                     <div className="flex items-center">
                       <Link
                         href={`/doc/${section.value}`}
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         onClick={(e) => {
                           if (hasChildren && !isExpanded) {
                             // Optionally prevent nav if just expanding, but usually we want to nav to parent doc too
