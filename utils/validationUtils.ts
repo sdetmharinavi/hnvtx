@@ -28,20 +28,21 @@ export interface PasswordOptions {
 // Enhanced email validation with more comprehensive regex
 export const isValidEmail = (email: string): boolean => {
   if (!email || typeof email !== 'string') return false;
-  
+
   // More comprehensive email regex following RFC 5322 guidelines
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  
+  const emailRegex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
   // Additional checks
   if (email.length > 254) return false; // RFC 5321 limit
   if (email.includes('..')) return false; // Consecutive dots not allowed
-  
+
   return emailRegex.test(email.trim().toLowerCase());
 };
 
 // Enhanced password validation with configurable options
 export const validatePassword = (
-  password: string, 
+  password: string,
   options: PasswordOptions = {}
 ): ValidationResult => {
   const {
@@ -50,11 +51,11 @@ export const validatePassword = (
     requireLowercase = true,
     requireNumbers = true,
     requireSpecialChars = true,
-    maxLength = 128
+    maxLength = 128,
   } = options;
 
   const errors: string[] = [];
-  
+
   if (!password || typeof password !== 'string') {
     errors.push('Password is required');
     return { isValid: false, errors };
@@ -67,19 +68,19 @@ export const validatePassword = (
   if (password.length > maxLength) {
     errors.push(`Password must be no more than ${maxLength} characters long`);
   }
-  
+
   if (requireUppercase && !/[A-Z]/.test(password)) {
     errors.push('Password must contain at least one uppercase letter');
   }
-  
+
   if (requireLowercase && !/[a-z]/.test(password)) {
     errors.push('Password must contain at least one lowercase letter');
   }
-  
+
   if (requireNumbers && !/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
-  
+
   if (requireSpecialChars && !/[!@#$%^&*(),.?":{}|<>_+=\-\[\]\\;'\/~`]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
@@ -95,34 +96,37 @@ export const validatePassword = (
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
 // Enhanced phone number validation with country code support
 export const isValidPhoneNumber = (phone: string, countryCode?: string): boolean => {
   if (!phone || typeof phone !== 'string') return false;
-  
+
   // Remove all non-digit characters except +
   const cleanPhone = phone.replace(/[^\d+]/g, '');
-  
+
   // Basic international format validation
   if (countryCode === 'US') {
     // US phone number: 10 digits
     const usPhoneRegex = /^(\+1)?[2-9]\d{2}[2-9]\d{2}\d{4}$/;
     return usPhoneRegex.test(cleanPhone);
   }
-  
+
   // International format: + followed by 1-15 digits
   const intlPhoneRegex = /^\+[1-9]\d{1,14}$/;
   // National format: 7-15 digits
   const nationalPhoneRegex = /^[1-9]\d{6,14}$/;
-  
+
   return intlPhoneRegex.test(cleanPhone) || nationalPhoneRegex.test(cleanPhone);
 };
 
 // Enhanced name validation
-export const isValidName = (name: string, options: { minLength?: number; maxLength?: number } = {}): ValidationResult => {
+export const isValidName = (
+  name: string,
+  options: { minLength?: number; maxLength?: number } = {}
+): ValidationResult => {
   const { minLength = 2, maxLength = 50 } = options;
   const errors: string[] = [];
 
@@ -132,11 +136,11 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
   }
 
   const trimmedName = name.trim();
-  
+
   if (trimmedName.length < minLength) {
     errors.push(`Name must be at least ${minLength} characters long`);
   }
-  
+
   if (trimmedName.length > maxLength) {
     errors.push(`Name must be no more than ${maxLength} characters long`);
   }
@@ -153,28 +157,28 @@ export const isValidName = (name: string, options: { minLength?: number; maxLeng
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
 // Enhanced URL validation
 export const isValidUrl = (url: string, options: { allowedProtocols?: string[] } = {}): boolean => {
   if (!url || typeof url !== 'string') return false;
-  
+
   const { allowedProtocols = ['http:', 'https:'] } = options;
-  
+
   try {
     const parsedUrl = new URL(url.trim());
-    
+
     // Check if protocol is allowed
     if (!allowedProtocols.includes(parsedUrl.protocol)) {
       return false;
     }
-    
+
     // Additional security checks
     if (parsedUrl.hostname === '') return false;
     if (parsedUrl.hostname.includes('..')) return false;
-    
+
     return true;
   } catch {
     return false;
@@ -195,7 +199,7 @@ export const isRequired = (value: unknown): boolean => {
 // Enhanced numeric validation
 export const isValidNumber = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-  
+
   let num: number;
   if (typeof value === 'string') {
     num = parseFloat(value.trim());
@@ -205,30 +209,30 @@ export const isValidNumber = (value: unknown, min?: number, max?: number): Valid
     errors.push('Value must be a number');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(num) || !isFinite(num)) {
     errors.push('Value must be a valid number');
     return { isValid: false, errors };
   }
-  
+
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-  
+
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
 // Enhanced integer validation
 export const isValidInteger = (value: unknown, min?: number, max?: number): ValidationResult => {
   const errors: string[] = [];
-  
+
   let num: number;
   if (typeof value === 'string') {
     num = parseInt(value.trim(), 10);
@@ -238,32 +242,32 @@ export const isValidInteger = (value: unknown, min?: number, max?: number): Vali
     errors.push('Value must be an integer');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(num) || !Number.isInteger(num)) {
     errors.push('Value must be a valid integer');
     return { isValid: false, errors };
   }
-  
+
   if (min !== undefined && num < min) {
     errors.push(`Value must be at least ${min}`);
   }
-  
+
   if (max !== undefined && num > max) {
     errors.push(`Value must be no more than ${max}`);
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
 // Enhanced date validation
 export const isValidDate = (date: string | Date): ValidationResult => {
   const errors: string[] = [];
-  
+
   let parsedDate: Date;
-  
+
   if (date instanceof Date) {
     parsedDate = date;
   } else if (typeof date === 'string') {
@@ -276,7 +280,7 @@ export const isValidDate = (date: string | Date): ValidationResult => {
     errors.push('Date must be a string or Date object');
     return { isValid: false, errors };
   }
-  
+
   if (isNaN(parsedDate.getTime())) {
     errors.push('Invalid date format');
   }
@@ -289,7 +293,7 @@ export const isValidDate = (date: string | Date): ValidationResult => {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 };
 
@@ -297,13 +301,13 @@ export const isValidDate = (date: string | Date): ValidationResult => {
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   if (bytes < 0) return 'Invalid size';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   if (i >= sizes.length) return 'File too large';
-  
+
   const size = bytes / Math.pow(k, i);
   return `${size.toFixed(i === 0 ? 0 : 2)} ${sizes[i]}`;
 };
@@ -319,7 +323,7 @@ const validationUtils = {
   isValidNumber,
   isValidInteger,
   isValidDate,
-  formatFileSize
+  formatFileSize,
 };
 
 export default validationUtils;

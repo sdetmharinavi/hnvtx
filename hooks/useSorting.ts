@@ -38,7 +38,7 @@ type SortableValue = string | number | Date | boolean | null | undefined;
 function getNestedValue(obj: Record<string, unknown>, path: string): SortableValue {
   const keys = path.split('.');
   let current: unknown = obj;
-  
+
   for (const key of keys) {
     if (current === null || current === undefined) {
       return undefined;
@@ -49,7 +49,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
       return undefined;
     }
   }
-  
+
   // Type guard to ensure we return only sortable values
   if (
     typeof current === 'string' ||
@@ -61,20 +61,20 @@ function getNestedValue(obj: Record<string, unknown>, path: string): SortableVal
   ) {
     return current as SortableValue;
   }
-  
+
   // Convert other types to string for comparison
   return String(current);
 }
 
 // Helper function to compare values
 function compareValues(
-  a: SortableValue, 
-  b: SortableValue, 
-  direction: SortDirection, 
+  a: SortableValue,
+  b: SortableValue,
+  direction: SortDirection,
   options: SortOptions = {}
 ): number {
   const { caseSensitive = false, numericSort = true, locale = 'en' } = options;
-  
+
   // Handle null/undefined values
   if (a == null && b == null) return 0;
   if (a == null) return direction === 'asc' ? -1 : 1;
@@ -84,13 +84,13 @@ function compareValues(
   if (typeof a === 'string' && typeof b === 'string') {
     const valueA = caseSensitive ? a : a.toLowerCase();
     const valueB = caseSensitive ? b : b.toLowerCase();
-    
+
     // Use localeCompare for proper string sorting
     const result = valueA.localeCompare(valueB, locale, {
       numeric: numericSort,
-      sensitivity: caseSensitive ? 'case' : 'base'
+      sensitivity: caseSensitive ? 'case' : 'base',
     });
-    
+
     return direction === 'asc' ? result : -result;
   }
 
@@ -117,9 +117,9 @@ function compareValues(
   const stringB = String(b);
   const result = stringA.localeCompare(stringB, locale, {
     numeric: numericSort,
-    sensitivity: caseSensitive ? 'case' : 'base'
+    sensitivity: caseSensitive ? 'case' : 'base',
   });
-  
+
   return direction === 'asc' ? result : -result;
 }
 
@@ -128,12 +128,11 @@ export function useSorting<T extends Record<string, unknown>>({
   data,
   defaultSortKey,
   defaultDirection = 'asc',
-  options = {}
+  options = {},
 }: UseSortingProps<T>): UseSortingReturn<T> {
-  
   const [sortConfig, setSortConfig] = useState<SortConfig<T>>({
     key: defaultSortKey || '',
-    direction: defaultSortKey ? defaultDirection : null
+    direction: defaultSortKey ? defaultDirection : null,
   });
 
   // Memoized sorted data
@@ -145,14 +144,14 @@ export function useSorting<T extends Record<string, unknown>>({
     return [...data].sort((a, b) => {
       const valueA = getNestedValue(a, String(sortConfig.key));
       const valueB = getNestedValue(b, String(sortConfig.key));
-      
+
       return compareValues(valueA, valueB, sortConfig.direction, options);
     });
   }, [data, sortConfig, options]);
 
   // Handle sort column click
   const handleSort = useCallback((key: keyof T | string) => {
-    setSortConfig(prevConfig => {
+    setSortConfig((prevConfig) => {
       if (prevConfig.key === key) {
         // Cycle through: asc -> desc -> null -> asc
         switch (prevConfig.direction) {
@@ -179,9 +178,12 @@ export function useSorting<T extends Record<string, unknown>>({
   const isSorted = Boolean(sortConfig.key && sortConfig.direction);
 
   // Get sort direction for a specific key
-  const getSortDirection = useCallback((key: keyof T | string): SortDirection => {
-    return sortConfig.key === key ? sortConfig.direction : null;
-  }, [sortConfig]);
+  const getSortDirection = useCallback(
+    (key: keyof T | string): SortDirection => {
+      return sortConfig.key === key ? sortConfig.direction : null;
+    },
+    [sortConfig]
+  );
 
   return {
     sortedData,
@@ -190,7 +192,7 @@ export function useSorting<T extends Record<string, unknown>>({
     handleSort,
     resetSort,
     isSorted,
-    getSortDirection
+    getSortDirection,
   };
 }
 
@@ -204,7 +206,7 @@ export interface MultiSortConfig<T> {
 }
 
 export function useMultiSorting<T extends Record<string, unknown>>(
-  data: T[], 
+  data: T[],
   options: SortOptions = {}
 ) {
   const [sortConfigs, setSortConfigs] = useState<MultiSortConfig<T>[]>([]);
@@ -215,10 +217,10 @@ export function useMultiSorting<T extends Record<string, unknown>>(
     return [...data].sort((a, b) => {
       for (const config of sortConfigs.sort((x, y) => x.priority - y.priority)) {
         if (!config.direction) continue;
-        
+
         const valueA = getNestedValue(a, String(config.key));
         const valueB = getNestedValue(b, String(config.key));
-        
+
         const result = compareValues(valueA, valueB, config.direction, options);
         if (result !== 0) return result;
       }
@@ -228,22 +230,18 @@ export function useMultiSorting<T extends Record<string, unknown>>(
 
   const addSort = useCallback((key: keyof T | string, direction: SortDirection) => {
     if (!direction) return;
-    
-    setSortConfigs(prev => {
-      const existing = prev.find(config => config.key === key);
+
+    setSortConfigs((prev) => {
+      const existing = prev.find((config) => config.key === key);
       if (existing) {
-        return prev.map(config => 
-          config.key === key 
-            ? { ...config, direction }
-            : config
-        );
+        return prev.map((config) => (config.key === key ? { ...config, direction } : config));
       }
       return [...prev, { key, direction, priority: prev.length }];
     });
   }, []);
 
   const removeSort = useCallback((key: keyof T | string) => {
-    setSortConfigs(prev => prev.filter(config => config.key !== key));
+    setSortConfigs((prev) => prev.filter((config) => config.key !== key));
   }, []);
 
   const clearSort = useCallback(() => {
@@ -255,7 +253,7 @@ export function useMultiSorting<T extends Record<string, unknown>>(
     sortConfigs,
     addSort,
     removeSort,
-    clearSort
+    clearSort,
   };
 }
 
@@ -266,15 +264,17 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
   sortOptions: SortOptions = {}
 ) {
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return data;
-    
-    return data.filter(item => 
-      searchKeys.some(key => {
+
+    return data.filter((item) =>
+      searchKeys.some((key) => {
         const value = getNestedValue(item, String(key));
-        return String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return String(value || '')
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
       })
     );
   }, [data, searchTerm, searchKeys]);
@@ -282,7 +282,7 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
   // Apply sorting to filtered data
   const sortingResult = useSorting({
     data: filteredData,
-    options: sortOptions
+    options: sortOptions,
   });
 
   return {
@@ -290,7 +290,7 @@ export function useSearchAndSort<T extends Record<string, unknown>>(
     searchTerm,
     setSearchTerm,
     filteredCount: filteredData.length,
-    totalCount: data.length
+    totalCount: data.length,
   };
 }
 
@@ -310,6 +310,6 @@ export function useTypedSorting<T extends Record<string, unknown>>(
     data,
     defaultSortKey,
     defaultDirection,
-    options
+    options,
   });
 }

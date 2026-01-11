@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
 
 const supabase = createClient();
 
@@ -11,12 +11,12 @@ export function useDeprovisionPath() {
   return useMutation({
     mutationFn: async ({ pathId }: { pathId: string }) => {
       const { error } = await supabase.rpc('deprovision_logical_path', {
-        p_path_id: pathId
+        p_path_id: pathId,
       });
       if (error) throw error;
     },
     onSuccess: (_, { pathId }) => {
-      toast.success("Path de-provisioned successfully!");
+      toast.success('Path de-provisioned successfully!');
       // Invalidate all related queries to reflect the change
       queryClient.invalidateQueries({ queryKey: ['system-path', pathId] });
       queryClient.invalidateQueries({ queryKey: ['available-fibers', pathId] });

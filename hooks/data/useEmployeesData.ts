@@ -1,16 +1,16 @@
-import { createGenericDataQuery } from "./useGenericDataQuery";
-import { DEFAULTS } from "@/constants/constants";
+import { createGenericDataQuery } from './useGenericDataQuery';
+import { DEFAULTS } from '@/constants/constants';
 
-export const useEmployeesData = createGenericDataQuery<"v_employees">({
-  tableName: "v_employees",
+export const useEmployeesData = createGenericDataQuery<'v_employees'>({
+  tableName: 'v_employees',
   searchFields: [
-    "employee_name",
-    "employee_pers_no",
-    "employee_email",
-    "employee_contact",
-    "employee_designation_name",
+    'employee_name',
+    'employee_pers_no',
+    'employee_email',
+    'employee_contact',
+    'employee_designation_name',
   ],
-  defaultSortField: "employee_name",
+  defaultSortField: 'employee_name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (emp, filters) => {
     if (
@@ -24,7 +24,7 @@ export const useEmployeesData = createGenericDataQuery<"v_employees">({
     )
       return false;
     if (filters.status) {
-      const statusBool = filters.status === "true";
+      const statusBool = filters.status === 'true';
       if (emp.status !== statusBool) return false;
     }
     return true;

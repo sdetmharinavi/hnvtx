@@ -20,7 +20,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
       'ofc_type_name',
       'sn_id',
       'updated_at',
-      'status'
+      'status',
     ],
     overrides: {
       asset_no: {
@@ -28,12 +28,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
         sortable: true,
         searchable: true,
         render: (value: unknown) => {
-          return (
-            <TruncateTooltip
-              text={(value as string) ?? ''}
-              className="font-semibold"
-            />
-          );
+          return <TruncateTooltip text={(value as string) ?? ''} className="font-semibold" />;
         },
       },
       route_name: {
@@ -42,9 +37,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
         searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.route_name;
-          return (
-            <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />
-          );
+          return <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />;
         },
       },
       maintenance_area_name: {
@@ -53,9 +46,7 @@ export const OfcTableColumns = (data: Row<'v_ofc_cables_complete'>[]) => {
         searchable: true,
         render: (_value: unknown, record: Row<'v_ofc_cables_complete'>) => {
           const rel = record.maintenance_area_name;
-          return (
-            <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />
-          );
+          return <TruncateTooltip text={rel ?? 'N/A'} className="font-semibold" />;
         },
       },
       commissioned_on: {

@@ -34,7 +34,9 @@ export const useUserPermissionsExtended = () => {
   const { user, authState } = useAuth();
 
   // 1. Online Query Function
-  const onlineQueryFn = React.useCallback(async (): Promise<V_user_profiles_extendedRowSchema[]> => {
+  const onlineQueryFn = React.useCallback(async (): Promise<
+    V_user_profiles_extendedRowSchema[]
+  > => {
     if (!user?.id) return [];
 
     const { data, error } = await supabase.rpc('get_my_user_details');
@@ -46,27 +48,29 @@ export const useUserPermissionsExtended = () => {
 
     // Transform RPC result to match Schema
     const transformedData = {
-        ...profileData,
-        id: profileData.id,
-        email: profileData.email,
-        // CHANGED: Use shared utility
-        address: parseJson(profileData.address) as Json,
-        preferences: parseJson(profileData.preferences) as Json,
-        status: profileData.status || 'inactive',
-        created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
-        updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
-        last_sign_in_at: profileData.last_sign_in_at ? new Date(profileData.last_sign_in_at).toISOString() : null,
-        // Default missing view fields
-        computed_status: null,
-        account_age_days: null,
-        last_activity_period: null,
-        is_phone_verified: false,
-        phone_confirmed_at: null,
-        email_confirmed_at: null,
-        auth_updated_at: null,
-        raw_app_meta_data: null,
-        raw_user_meta_data: null,
-        full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
+      ...profileData,
+      id: profileData.id,
+      email: profileData.email,
+      // CHANGED: Use shared utility
+      address: parseJson(profileData.address) as Json,
+      preferences: parseJson(profileData.preferences) as Json,
+      status: profileData.status || 'inactive',
+      created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
+      updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
+      last_sign_in_at: profileData.last_sign_in_at
+        ? new Date(profileData.last_sign_in_at).toISOString()
+        : null,
+      // Default missing view fields
+      computed_status: null,
+      account_age_days: null,
+      last_activity_period: null,
+      is_phone_verified: false,
+      phone_confirmed_at: null,
+      email_confirmed_at: null,
+      auth_updated_at: null,
+      raw_app_meta_data: null,
+      raw_user_meta_data: null,
+      full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
     };
 
     return [transformedData as V_user_profiles_extendedRowSchema];
@@ -80,14 +84,24 @@ export const useUserPermissionsExtended = () => {
   }, [user?.id]);
 
   // 3. Use Local First Hook
-  const { data: profiles = [], isLoading, error, isError, refetch } = useLocalFirstQuery<'v_user_profiles_extended', V_user_profiles_extendedRowSchema, StoredVUserProfilesExtended>({
+  const {
+    data: profiles = [],
+    isLoading,
+    error,
+    isError,
+    refetch,
+  } = useLocalFirstQuery<
+    'v_user_profiles_extended',
+    V_user_profiles_extendedRowSchema,
+    StoredVUserProfilesExtended
+  >({
     queryKey: ['user-full-profile', user?.id],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_user_profiles_extended,
     enabled: authState === 'authenticated' && !!user?.id,
     staleTime: 5 * 60 * 1000,
-    autoSync: true
+    autoSync: true,
   });
 
   const profile = profiles[0] || null;
@@ -105,8 +119,15 @@ export const useUserPermissionsExtended = () => {
     [profile, isLoading, error, isError, refetch]
   );
 
-  const hasRole = React.useCallback((requiredRole: string) => permissions.role === requiredRole, [permissions.role]);
-  const hasAnyRole = React.useCallback((requiredRoles: string[]) => permissions.role ? requiredRoles.includes(permissions.role) : false, [permissions.role]);
+  const hasRole = React.useCallback(
+    (requiredRole: string) => permissions.role === requiredRole,
+    [permissions.role]
+  );
+  const hasAnyRole = React.useCallback(
+    (requiredRoles: string[]) =>
+      permissions.role ? requiredRoles.includes(permissions.role) : false,
+    [permissions.role]
+  );
 
   const canAccess = React.useCallback(
     (allowedRoles?: string[]): boolean => {

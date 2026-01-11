@@ -1,5 +1,5 @@
 // hooks/data/useCategoriesData.ts
-"use client";
+'use client';
 
 import { useMemo, useCallback } from 'react';
 import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
@@ -17,7 +17,7 @@ export function useCategoriesData() {
       .from('lookup_types')
       .select('*')
       .order('category', { ascending: true });
-    
+
     if (error) throw error;
     return data || [];
   }, [supabase]);
@@ -28,7 +28,13 @@ export function useCategoriesData() {
   }, []);
 
   // 3. Local First Hook
-  const { data: allLookups = [], isLoading, error, refetch, isFetching } = useLocalFirstQuery<'lookup_types'>({
+  const {
+    data: allLookups = [],
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useLocalFirstQuery<'lookup_types'>({
     queryKey: ['categories-data-all'],
     onlineQueryFn,
     localQueryFn,
@@ -37,16 +43,17 @@ export function useCategoriesData() {
 
   // 4. Client-Side Processing (Deduplication & Grouping)
   const processedData = useMemo(() => {
-    if (!allLookups) return { 
-        categories: [], 
+    if (!allLookups)
+      return {
+        categories: [],
         groupedLookups: {} as GroupedLookupsByCategory,
-        categoryCounts: {} as Record<string, CategoryInfo> 
-    };
+        categoryCounts: {} as Record<string, CategoryInfo>,
+      };
 
     // A. Group by Category
     const groupedLookups: GroupedLookupsByCategory = {};
     const categoryCounts: Record<string, CategoryInfo> = {};
-    
+
     // Helper to track unique categories found
     const uniqueCategoriesMap = new Map<string, Lookup_typesRowSchema>();
 
@@ -70,12 +77,12 @@ export function useCategoriesData() {
       categoryCounts[cat] = {
         name: cat,
         lookupCount: lookups.length,
-        hasSystemDefaults: lookups.some(l => l.is_system_default)
+        hasSystemDefaults: lookups.some((l) => l.is_system_default),
       };
     });
 
     // C. Sort Categories Alphabetically
-    const categories = Array.from(uniqueCategoriesMap.values()).sort((a, b) => 
+    const categories = Array.from(uniqueCategoriesMap.values()).sort((a, b) =>
       a.category.localeCompare(b.category)
     );
 
@@ -87,6 +94,6 @@ export function useCategoriesData() {
     isLoading,
     isFetching,
     error,
-    refetch
+    refetch,
   };
 }

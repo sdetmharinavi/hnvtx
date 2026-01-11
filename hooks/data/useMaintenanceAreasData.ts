@@ -14,17 +14,17 @@ export const useMaintenanceAreasData = (
   const { filters, searchQuery } = params;
 
   const onlineQueryFn = useCallback(async (): Promise<V_maintenance_areasRowSchema[]> => {
-    
     // FIX: Use standard SQL syntax
     let searchString: string | undefined;
     if (searchQuery && searchQuery.trim() !== '') {
       const term = searchQuery.trim().replace(/'/g, "''");
-      searchString = `(` +
+      searchString =
+        `(` +
         `name ILIKE '%${term}%' OR ` +
         `code ILIKE '%${term}%' OR ` +
         `contact_person ILIKE '%${term}%' OR ` +
         `email ILIKE '%${term}%'` +
-      `)`;
+        `)`;
     }
 
     const rpcFilters = buildRpcFilters({
@@ -39,7 +39,7 @@ export const useMaintenanceAreasData = (
       p_filters: rpcFilters,
       // THE FIX: Ensure sorting by name
       p_order_by: 'name',
-      p_order_dir: 'asc'
+      p_order_dir: 'asc',
     });
     if (error) throw error;
     return (data as { data: V_maintenance_areasRowSchema[] })?.data || [];
@@ -74,18 +74,19 @@ export const useMaintenanceAreasData = (
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
 
-      const initialFilter = filtered.filter(area =>
-        area.name?.toLowerCase().includes(lowerQuery) ||
-        area.code?.toLowerCase().includes(lowerQuery) ||
-        area.contact_person?.toLowerCase().includes(lowerQuery) ||
-        area.email?.toLowerCase().includes(lowerQuery)
+      const initialFilter = filtered.filter(
+        (area) =>
+          area.name?.toLowerCase().includes(lowerQuery) ||
+          area.code?.toLowerCase().includes(lowerQuery) ||
+          area.contact_person?.toLowerCase().includes(lowerQuery) ||
+          area.email?.toLowerCase().includes(lowerQuery)
       );
 
       const addParents = (area: V_maintenance_areasRowSchema) => {
         if (area.id && !searchFilteredIds.has(area.id)) {
           searchFilteredIds.add(area.id);
           if (area.parent_id) {
-            const parent = allAreasFlat.find(a => a.id === area.parent_id);
+            const parent = allAreasFlat.find((a) => a.id === area.parent_id);
             if (parent) {
               addParents(parent);
             }
@@ -93,20 +94,22 @@ export const useMaintenanceAreasData = (
         }
       };
       initialFilter.forEach(addParents);
-      filtered = allAreasFlat.filter(area => area.id && searchFilteredIds.has(area.id));
+      filtered = allAreasFlat.filter((area) => area.id && searchFilteredIds.has(area.id));
     }
 
     if (filters.status) {
-      filtered = filtered.filter(area => String(area.status) === filters.status);
+      filtered = filtered.filter((area) => String(area.status) === filters.status);
     }
     if (filters.area_type_id) {
-      filtered = filtered.filter(area => area.area_type_id === filters.area_type_id);
+      filtered = filtered.filter((area) => area.area_type_id === filters.area_type_id);
     }
 
     // THE FIX: Explicit case-insensitive sort for safety (though hook already sorts)
-    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    filtered.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
 
-    const areasWithRelations = filtered.map(area => ({
+    const areasWithRelations = filtered.map((area) => ({
       ...area,
       id: area.id!,
       name: area.name!,
@@ -115,9 +118,9 @@ export const useMaintenanceAreasData = (
       child_areas: [],
     })) as MaintenanceAreaWithRelations[];
 
-    const areaMap = new Map(areasWithRelations.map(a => [a.id, a]));
+    const areaMap = new Map(areasWithRelations.map((a) => [a.id, a]));
 
-    areasWithRelations.forEach(area => {
+    areasWithRelations.forEach((area) => {
       if (area.parent_id) {
         const parent = areaMap.get(area.parent_id);
         if (parent) {

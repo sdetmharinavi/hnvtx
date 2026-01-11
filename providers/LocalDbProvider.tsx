@@ -7,11 +7,7 @@ import { createContext, ReactNode, useContext } from 'react';
 const LocalDbContext = createContext<HNVTMDatabase | undefined>(undefined);
 
 export const LocalDbProvider = ({ children }: { children: ReactNode }) => {
-  return (
-    <LocalDbContext.Provider value={localDb}>
-      {children}
-    </LocalDbContext.Provider>
-  );
+  return <LocalDbContext.Provider value={localDb}>{children}</LocalDbContext.Provider>;
 };
 
 export const useLocalDb = () => {

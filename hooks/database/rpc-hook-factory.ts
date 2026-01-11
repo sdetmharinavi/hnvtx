@@ -1,9 +1,9 @@
 // path: hooks/database/rpc-hook-factory.ts
-import { useQuery, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database, Json } from "@/types/supabase-types";
-import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns } from "./queries-type-helpers";
-import { DEFAULTS } from "@/constants/constants";
+import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database, Json } from '@/types/supabase-types';
+import { RpcFunctionName, RpcFunctionArgs, RpcFunctionReturns } from './queries-type-helpers';
+import { DEFAULTS } from '@/constants/constants';
 
 // Define a specific interface for the arguments our paged RPC functions accept.
 // This solves the "is not assignable to type 'never'" error.
@@ -20,16 +20,13 @@ type PagedRpcHookOptions = {
   limit?: number;
   offset?: number;
   orderBy?: string;
-  orderDir?: "asc" | "desc";
+  orderDir?: 'asc' | 'desc';
   filters?: Json;
 };
 
 // Generic type for the actual query options passed to TanStack Query.
 // This allows users to pass standard options like `staleTime`, `enabled`, etc.
-type PagedRpcQueryOptions<TResult> = Omit<
-  UseQueryOptions<TResult, Error>,
-  'queryKey' | 'queryFn'
->;
+type PagedRpcQueryOptions<TResult> = Omit<UseQueryOptions<TResult, Error>, 'queryKey' | 'queryFn'>;
 
 /**
  * A factory function that creates a reusable and type-safe TanStack Query hook
@@ -56,7 +53,7 @@ export function createPagedRpcHook<
       limit = DEFAULTS.PAGE_SIZE,
       offset = 0,
       orderBy = defaultOrderBy,
-      orderDir = "asc",
+      orderDir = 'asc',
       filters = {},
     } = hookOptions;
 
@@ -71,16 +68,13 @@ export function createPagedRpcHook<
         p_filters: filters,
       };
 
-      const { data, error } = await supabase.rpc(
-        functionName,
-        rpcArgs as RpcFunctionArgs<TName>
-      );
+      const { data, error } = await supabase.rpc(functionName, rpcArgs as RpcFunctionArgs<TName>);
 
       if (error) {
         console.error(`Error fetching from RPC '${String(functionName)}':`, error);
         throw new Error(error.message);
       }
-      
+
       return (data ?? []) as TResult;
     };
 

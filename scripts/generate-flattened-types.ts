@@ -65,7 +65,7 @@ class SupabaseTypeExtractor {
     for (const member of node.type.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const schemaName = member.name.text;
-        
+
         // Filter Schemas
         if (!ALLOWED_SCHEMAS.has(schemaName)) continue;
 
@@ -87,34 +87,18 @@ class SupabaseTypeExtractor {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const sectionName = member.name.text;
 
-        if (
-          sectionName === 'Tables' &&
-          member.type &&
-          ts.isTypeLiteralNode(member.type)
-        ) {
+        if (sectionName === 'Tables' && member.type && ts.isTypeLiteralNode(member.type)) {
           this.extractTables(member.type, schemaName, tables);
-        } else if (
-          sectionName === 'Views' &&
-          member.type &&
-          ts.isTypeLiteralNode(member.type)
-        ) {
+        } else if (sectionName === 'Views' && member.type && ts.isTypeLiteralNode(member.type)) {
           this.extractViews(member.type, schemaName, views);
-        } else if (
-          sectionName === 'Enums' &&
-          member.type &&
-          ts.isTypeLiteralNode(member.type)
-        ) {
+        } else if (sectionName === 'Enums' && member.type && ts.isTypeLiteralNode(member.type)) {
           this.extractEnums(member.type, schemaName, enums);
         }
       }
     }
   }
 
-  private extractTables(
-    tablesNode: ts.TypeLiteralNode,
-    schemaName: string,
-    tables: TableInfo[]
-  ) {
+  private extractTables(tablesNode: ts.TypeLiteralNode, schemaName: string, tables: TableInfo[]) {
     for (const member of tablesNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const tableName = member.name.text;
@@ -135,10 +119,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-  private extractTableStructure(
-    tableNode: ts.TypeLiteralNode,
-    tableInfo: TableInfo
-  ) {
+  private extractTableStructure(tableNode: ts.TypeLiteralNode, tableInfo: TableInfo) {
     for (const member of tableNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const propertyName = member.name.text;
@@ -154,11 +135,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-  private extractViews(
-    viewsNode: ts.TypeLiteralNode,
-    schemaName: string,
-    views: ViewInfo[]
-  ) {
+  private extractViews(viewsNode: ts.TypeLiteralNode, schemaName: string, views: ViewInfo[]) {
     for (const member of viewsNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const viewName = member.name.text;
@@ -173,10 +150,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-  private extractViewStructure(
-    viewNode: ts.TypeLiteralNode,
-    viewInfo: ViewInfo
-  ) {
+  private extractViewStructure(viewNode: ts.TypeLiteralNode, viewInfo: ViewInfo) {
     for (const member of viewNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const propertyName = member.name.text;
@@ -188,11 +162,7 @@ class SupabaseTypeExtractor {
     }
   }
 
-  private extractEnums(
-    enumsNode: ts.TypeLiteralNode,
-    schemaName: string,
-    enums: EnumInfo[]
-  ) {
+  private extractEnums(enumsNode: ts.TypeLiteralNode, schemaName: string, enums: EnumInfo[]) {
     for (const member of enumsNode.members) {
       if (ts.isPropertySignature(member) && ts.isIdentifier(member.name)) {
         const enumName = member.name.text;
@@ -235,11 +205,7 @@ class SupabaseTypeExtractor {
   }
 }
 
-function generateFlattenedTypes(
-  tables: TableInfo[],
-  views: ViewInfo[],
-  enums: EnumInfo[]
-): string {
+function generateFlattenedTypes(tables: TableInfo[], views: ViewInfo[], enums: EnumInfo[]): string {
   let output = '// Auto-generated from types/supabase-types.ts\n\n';
 
   output += 'import type { Json } from "@/types/supabase-types";\n\n';
@@ -247,10 +213,8 @@ function generateFlattenedTypes(
   output += '// ============= TABLES =============\n\n';
 
   for (const table of tables) {
-    const capitalizedName =
-      table.name.charAt(0).toUpperCase() + table.name.slice(1);
-    const schemaPrefix =
-      table.schema === 'public' ? '' : `${capitalizeFirst(table.schema)}`;
+    const capitalizedName = table.name.charAt(0).toUpperCase() + table.name.slice(1);
+    const schemaPrefix = table.schema === 'public' ? '' : `${capitalizeFirst(table.schema)}`;
 
     if (table.row) {
       output += `export type ${schemaPrefix}${capitalizedName}Row = ${table.row};\n\n`;
@@ -269,10 +233,8 @@ function generateFlattenedTypes(
     output += '// ============= VIEWS =============\n\n';
 
     for (const view of views) {
-      const capitalizedName =
-        view.name.charAt(0).toUpperCase() + view.name.slice(1);
-      const schemaPrefix =
-        view.schema === 'public' ? '' : `${capitalizeFirst(view.schema)}`;
+      const capitalizedName = view.name.charAt(0).toUpperCase() + view.name.slice(1);
+      const schemaPrefix = view.schema === 'public' ? '' : `${capitalizeFirst(view.schema)}`;
 
       if (view.row) {
         output += `export type ${schemaPrefix}${capitalizedName}Row = ${view.row};\n\n`;
@@ -284,12 +246,9 @@ function generateFlattenedTypes(
     output += '// ============= ENUMS =============\n\n';
 
     for (const enumInfo of enums) {
-      const capitalizedName =
-        enumInfo.name.charAt(0).toUpperCase() + enumInfo.name.slice(1);
+      const capitalizedName = enumInfo.name.charAt(0).toUpperCase() + enumInfo.name.slice(1);
       const schemaPrefix =
-        enumInfo.schema === 'public'
-          ? ''
-          : `${capitalizeFirst(enumInfo.schema)}`;
+        enumInfo.schema === 'public' ? '' : `${capitalizeFirst(enumInfo.schema)}`;
       const unionType = enumInfo.values.map((v) => `"${v}"`).join(' | ');
 
       output += `export type ${schemaPrefix}${capitalizedName} = ${unionType};\n\n`;
@@ -300,14 +259,14 @@ function generateFlattenedTypes(
 
   // Only export public tables as list for generic helpers, skipping auth tables for the helper array
   const tableNamesArray = tables
-    .filter(t => t.schema === 'public')
-    .map(t => `"${t.name}"`)
+    .filter((t) => t.schema === 'public')
+    .map((t) => `"${t.name}"`)
     .join(',\n  ');
   output += `export const tableNames = [\n  ${tableNamesArray}\n] as const;\n\n`;
 
   const viewNamesArray = views
-    .filter(v => v.schema === 'public')
-    .map(v => `"${v.name}"`)
+    .filter((v) => v.schema === 'public')
+    .map((v) => `"${v.name}"`)
     .join(',\n  ');
   output += `export const viewNames = [\n  ${viewNamesArray}\n] as const;\n\n`;
 
@@ -320,15 +279,10 @@ function capitalizeFirst(str: string): string {
 
 async function main() {
   try {
-    const supabaseTypesPath = path.join(
-      process.cwd(),
-      'types/supabase-types.ts'
-    );
+    const supabaseTypesPath = path.join(process.cwd(), 'types/supabase-types.ts');
 
     if (!fs.existsSync(supabaseTypesPath)) {
-      console.error(
-        '❌ types/supabase-types.ts not found in current directory'
-      );
+      console.error('❌ types/supabase-types.ts not found in current directory');
       process.exit(1);
     }
 
@@ -337,9 +291,7 @@ async function main() {
     const extractor = new SupabaseTypeExtractor(supabaseTypesPath);
     const { tables, views, enums } = extractor.extract();
 
-    console.log(
-      `✅ Found ${tables.length} tables, ${views.length} views, ${enums.length} enums`
-    );
+    console.log(`✅ Found ${tables.length} tables, ${views.length} views, ${enums.length} enums`);
 
     const flattenedTypes = generateFlattenedTypes(tables, views, enums);
     const outputPath = path.join(process.cwd(), 'types/flattened-types.ts');

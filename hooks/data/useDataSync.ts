@@ -7,7 +7,7 @@ import { localDb, HNVTMDatabase, getTable, MutationTask } from '@/hooks/data/loc
 import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { useState, useCallback } from 'react';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const BATCH_SIZE = 2000;
 
@@ -74,7 +74,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   'v_employees': { strategy: 'full', relatedTable: 'employees' },
 };
 
-// ... (mergePendingMutations helper remains the same) ...
+// Helper: Merges local pending changes into the server dataset to prevent overwriting user's offline work
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
@@ -82,19 +82,24 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
 
   pendingTasks.forEach(task => {
     if (task.type === 'insert') {
+      // For inserts, we add them if they don't collide with server IDs
       if (!serverIdMap.has(task.payload.id)) {
         merged.push(task.payload);
       }
     } else if (task.type === 'update') {
+      // For updates, we apply the local change on top of server data
       const targetId = task.payload.id;
       const index = serverIdMap.get(targetId);
       if (index !== undefined) {
         merged[index] = { ...merged[index], ...task.payload.data };
       }
     } else if (task.type === 'delete') {
+      // For deletes, we remove the item from the incoming server list
+      // (This handles the race condition where server sends data, but user just deleted it locally)
       const idsToDelete = new Set(task.payload.ids);
       for (let i = merged.length - 1; i >= 0; i--) {
-        if (idsToDelete.has(merged[i].id)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (idsToDelete.has((merged[i] as any).id)) {
           merged.splice(i, 1);
         }
       }
@@ -103,7 +108,8 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
   return merged;
 }
 
-// ... (performFullSync and performIncrementalSync helper functions remain the same) ...
+// ** MODIFIED: Safe Sync Implementation **
+// Instead of clearing the table, we Upsert batches and then Prune stale records.
 async function performFullSync(
     supabase: SupabaseClient,
     db: HNVTMDatabase,
@@ -115,6 +121,7 @@ async function performFullSync(
     let hasMore = true;
     let totalSynced = 0;
 
+    // 1. Fetch pending local mutations to respect offline work
     let pendingTasks: MutationTask[] = [];
     if (config.relatedTable) {
        pendingTasks = await db.mutation_queue
@@ -124,10 +131,18 @@ async function performFullSync(
        pendingTasks = pendingTasks.filter(t => t.status === 'pending' || t.status === 'processing');
     }
 
-    await db.transaction('rw', table, async () => {
-       await table.clear();
-    });
+    // Identify pending INSERT IDs. We must NOT delete these during the pruning phase.
+    const pendingInsertIds = new Set(
+        pendingTasks
+            .filter(t => t.type === 'insert')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map(t => String((t.payload as any).id))
+    );
 
+    // Track all IDs seen from the server to identify what needs deletion later
+    const serverIdsSeen = new Set<string>();
+
+    // 2. Fetch & Upsert Loop
     while (hasMore) {
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
         p_view_name: entityName,
@@ -143,10 +158,26 @@ async function performFullSync(
       const validDataCount = batchData.length;
 
       if (validDataCount > 0) {
+        // Track IDs from server
+        batchData.forEach(item => {
+            if (item.id !== undefined && item.id !== null) {
+                serverIdsSeen.add(String(item.id));
+            } else if (entityName === 'ring_based_systems') {
+                // Special case for composite keys if needed, 
+                // but Dexie bulkDelete usually needs primary keys. 
+                // ring_based_systems uses [system_id, ring_id].
+                // For simplicity in this generic function, we might skip pruning 
+                // complex composite key tables or handle them specifically if needed.
+                // Assuming standard 'id' for most tables.
+            }
+        });
+
+        // Merge local edits onto server data
         if (pendingTasks.length > 0) {
             batchData = mergePendingMutations(batchData, pendingTasks);
         }
 
+        // UPSERT (put) instead of add. This updates existing records and adds new ones.
         await db.transaction('rw', table, async () => {
             await table.bulkPut(batchData);
         });
@@ -161,19 +192,46 @@ async function performFullSync(
       }
     }
 
+    // 3. Handle Local Creations (Pending Inserts)
+    // We explicitly re-apply pending inserts to ensure they exist locally
+    // (in case the merge step above didn't cover them because they weren't in server batches)
     if (pendingTasks.length > 0) {
         const inserts = pendingTasks.filter(t => t.type === 'insert').map(t => t.payload);
         if (inserts.length > 0) {
             await db.transaction('rw', table, async () => {
                 await table.bulkPut(inserts);
             });
+            // Add these to "Seen" so we don't prune them
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            inserts.forEach((item: any) => {
+                if (item.id) serverIdsSeen.add(String(item.id));
+            });
             totalSynced += inserts.length;
+        }
+    }
+
+    // 4. Prune Stale Data (The "Sweep" Phase)
+    // We only perform this if the table uses a simple 'id' primary key.
+    // Complex composite keys are harder to diff generically and less prone to "stale ghost" issues in this specific app.
+    if (table.schema.primKey.name === 'id') {
+        const allLocalKeys = await table.toCollection().primaryKeys();
+        
+        // Find keys present locally but NOT on server AND NOT pending insert
+        const keysToDelete = allLocalKeys.filter(key => {
+            const keyStr = String(key);
+            return !serverIdsSeen.has(keyStr) && !pendingInsertIds.has(keyStr);
+        });
+
+        if (keysToDelete.length > 0) {
+            // console.log(`[Sync] Pruning ${keysToDelete.length} stale records from ${entityName}`);
+            await table.bulkDelete(keysToDelete);
         }
     }
 
     return totalSynced;
 }
 
+// Incremental sync logic remains unchanged as it inherently relies on upserts
 async function performIncrementalSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -275,7 +333,7 @@ export function useDataSync() {
   const supabase = createClient();
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<Error | null>(null);
@@ -289,7 +347,7 @@ export function useDataSync() {
 
     setIsSyncing(true);
     setSyncError(null);
-    const startTime = Date.now(); // Track start time
+    const startTime = Date.now();
 
     try {
       const failures: string[] = [];
@@ -349,7 +407,7 @@ export function useDataSync() {
       toast.error("Sync process failed.");
       throw err;
     } finally {
-      // 2. Minimum Spin Time (e.g. 1000ms) to ensure user sees feedback
+      // 2. Minimum Spin Time to ensure user sees feedback
       const elapsed = Date.now() - startTime;
       const minDuration = 1000;
       if (elapsed < minDuration) {

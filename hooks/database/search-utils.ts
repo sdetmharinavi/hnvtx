@@ -8,11 +8,14 @@
  * @param fields The list of database column names to search against.
  * @returns A string formatted for the `or` filter (e.g., "(name.ilike.%term%,code.ilike.%term%)") or undefined.
  */
-export function buildServerSearchString(query: string | undefined, fields: string[]): string | undefined {
+export function buildServerSearchString(
+  query: string | undefined,
+  fields: string[]
+): string | undefined {
   if (!query || query.trim() === '') return undefined;
 
   const term = query.trim().replace(/'/g, "''"); // Escape single quotes for SQL
-  const conditions = fields.map(field => {
+  const conditions = fields.map((field) => {
     // Handle casting for non-text fields if hinted (e.g., "ip_address::text")
     // The field name passed in should already include the cast if needed
     return `${field} ILIKE '%${term}%'`;
@@ -30,14 +33,18 @@ export function buildServerSearchString(query: string | undefined, fields: strin
  * @param fields The keys of the record object to check.
  * @returns The filtered array.
  */
-export function performClientSearch<T>(data: T[], query: string | undefined, fields: (keyof T)[]): T[] {
+export function performClientSearch<T>(
+  data: T[],
+  query: string | undefined,
+  fields: (keyof T)[]
+): T[] {
   if (!data || data.length === 0) return [];
   if (!query || query.trim() === '') return data;
 
   const lowerQuery = query.toLowerCase().trim();
 
-  return data.filter(item => {
-    return fields.some(field => {
+  return data.filter((item) => {
+    return fields.some((field) => {
       const value = item[field];
       if (value === null || value === undefined) return false;
       return String(value).toLowerCase().includes(lowerQuery);
@@ -53,9 +60,13 @@ export function performClientSearch<T>(data: T[], query: string | undefined, fie
  * @param direction 'asc' or 'desc'.
  * @returns The sorted array.
  */
-export function performClientSort<T>(data: T[], sortField: keyof T, direction: 'asc' | 'desc' = 'asc'): T[] {
+export function performClientSort<T>(
+  data: T[],
+  sortField: keyof T,
+  direction: 'asc' | 'desc' = 'asc'
+): T[] {
   if (!data) return [];
-  
+
   const sorted = [...data].sort((a, b) => {
     const valA = a[sortField];
     const valB = b[sortField];

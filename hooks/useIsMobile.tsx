@@ -8,23 +8,27 @@ const useIsMobile = (breakpoint = 768) => {
     const checkDevice = () => {
       // Check screen width
       const isSmallScreen = window.innerWidth < breakpoint;
-      
+
       // Check user agent for mobile indicators
       const userAgent = navigator.userAgent.toLowerCase();
       const mobileKeywords = [
-        'mobile', 'android', 'iphone', 'ipad', 'ipod', 
-        'blackberry', 'windows phone', 'opera mini'
+        'mobile',
+        'android',
+        'iphone',
+        'ipad',
+        'ipod',
+        'blackberry',
+        'windows phone',
+        'opera mini',
       ];
-      const isMobileAgent = mobileKeywords.some(keyword => 
-        userAgent.includes(keyword)
-      );
-      
+      const isMobileAgent = mobileKeywords.some((keyword) => userAgent.includes(keyword));
+
       // Check for touch capability
       const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
+
       // Combine all checks - prioritize screen size but consider other factors
       const mobile = isSmallScreen || (isMobileAgent && hasTouch);
-      
+
       setIsMobile(mobile);
     };
 
@@ -33,7 +37,7 @@ const useIsMobile = (breakpoint = 768) => {
 
     // Listen for resize events
     window.addEventListener('resize', checkDevice);
-    
+
     // Listen for orientation changes (mobile specific)
     window.addEventListener('orientationchange', checkDevice);
 

@@ -1,14 +1,14 @@
-import { createGenericDataQuery } from "./useGenericDataQuery";
-import { DEFAULTS } from "@/constants/constants";
+import { createGenericDataQuery } from './useGenericDataQuery';
+import { DEFAULTS } from '@/constants/constants';
 
-export const useRingsData = createGenericDataQuery<"v_rings">({
-  tableName: "v_rings",
-  searchFields: ["name", "description", "ring_type_name", "maintenance_area_name"],
-  defaultSortField: "name",
+export const useRingsData = createGenericDataQuery<'v_rings'>({
+  tableName: 'v_rings',
+  searchFields: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
+  defaultSortField: 'name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (r, filters) => {
     if (filters.status) {
-      const statusBool = filters.status === "true";
+      const statusBool = filters.status === 'true';
       if (r.status !== statusBool) return false;
     }
     if (filters.ring_type_id && r.ring_type_id !== filters.ring_type_id) return false;

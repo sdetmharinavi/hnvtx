@@ -3,7 +3,7 @@ import { useCallback, useRef } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { usePagedData} from './database';
+import { usePagedData } from './database';
 import { Ofc_cablesRowSchema, Ofc_connectionsInsertSchema } from '@/schemas/zod-schemas';
 import { toast } from 'sonner';
 
@@ -43,11 +43,13 @@ export const useCreateOfcConnection = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['table', 'ofc_connections', { filters: { ofc_id: cableId } }] });
+      queryClient.invalidateQueries({
+        queryKey: ['table', 'ofc_connections', { filters: { ofc_id: cableId } }],
+      });
       refetchOfcConnections();
     },
   });
-  
+
   const cableData = cable?.data?.[0];
 
   const createMissingConnections = useCallback(async (): Promise<void> => {
@@ -55,10 +57,10 @@ export const useCreateOfcConnection = ({
       console.log('Connection creation already in progress, skipping.');
       return;
     }
-    
+
     if (!cableData || !cableData.capacity || cableData.capacity <= 0) {
-        console.log('Skipping connection check: Cable data or capacity is missing.');
-        return;
+      console.log('Skipping connection check: Cable data or capacity is missing.');
+      return;
     }
 
     try {
@@ -75,8 +77,8 @@ export const useCreateOfcConnection = ({
       }
 
       // THE FIX: Robustly handle null response before mapping to prevent TypeError.
-      const existingFiberNumbers = new Set(existingConnections?.map(c => c.fiber_no_sn) || []);
-      
+      const existingFiberNumbers = new Set(existingConnections?.map((c) => c.fiber_no_sn) || []);
+
       const missingFiberNumbers: number[] = [];
       for (let i = 1; i <= cableData.capacity; i++) {
         if (!existingFiberNumbers.has(i)) {
@@ -89,9 +91,11 @@ export const useCreateOfcConnection = ({
         return;
       }
 
-      toast.info(`Found ${missingFiberNumbers.length} missing fiber connections. Re-creating them now...`);
+      toast.info(
+        `Found ${missingFiberNumbers.length} missing fiber connections. Re-creating them now...`
+      );
 
-      const newConnections: Ofc_connectionsInsertSchema[] = missingFiberNumbers.map(fiberNo => ({
+      const newConnections: Ofc_connectionsInsertSchema[] = missingFiberNumbers.map((fiberNo) => ({
         ofc_id: cableId,
         fiber_no_sn: fiberNo,
         fiber_no_en: fiberNo,
@@ -106,18 +110,25 @@ export const useCreateOfcConnection = ({
 
       await createConnections(newConnections);
       toast.success(`Successfully created ${newConnections.length} missing connections.`);
-
     } catch (creationError) {
       // THE FIX: Log the actual error message, not the object.
-      const errorMessage = creationError instanceof Error ? creationError.message : String(creationError);
+      const errorMessage =
+        creationError instanceof Error ? creationError.message : String(creationError);
       toast.error(`Failed to create missing connections: ${errorMessage}`);
       throw creationError;
     } finally {
       isCreatingConnections.current = false;
     }
-  // THE FIX: Use stable primitive values as dependencies to prevent re-creation of the function.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cableData?.capacity, cableData?.sn_id, cableData?.en_id, cableId, createConnections, supabase]);
+    // THE FIX: Use stable primitive values as dependencies to prevent re-creation of the function.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    cableData?.capacity,
+    cableData?.sn_id,
+    cableData?.en_id,
+    cableId,
+    createConnections,
+    supabase,
+  ]);
 
   const ensureConnectionsExist = useCallback(async (): Promise<void> => {
     if (isLoadingCable || isLoadingOfcConnections) {
@@ -127,7 +138,10 @@ export const useCreateOfcConnection = ({
       await createMissingConnections();
     } catch (error) {
       // THE FIX: Log the specific error message for better debugging.
-      console.error(`Failed to ensure connections exist:`, error instanceof Error ? error.message : error);
+      console.error(
+        `Failed to ensure connections exist:`,
+        error instanceof Error ? error.message : error
+      );
     }
   }, [isLoadingCable, isLoadingOfcConnections, createMissingConnections]);
 

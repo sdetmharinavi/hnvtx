@@ -1,8 +1,8 @@
 // config/designations.ts
 import { z } from 'zod';
-import { EntityConfig } from "@/components/common/entity-management/types";
-import { FiBriefcase } from "react-icons/fi";
-import { employee_designationsRowSchema } from "@/schemas/zod-schemas";
+import { EntityConfig } from '@/components/common/entity-management/types';
+import { FiBriefcase } from 'react-icons/fi';
+import { employee_designationsRowSchema } from '@/schemas/zod-schemas';
 
 // --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
 export type Designation = z.infer<typeof employee_designationsRowSchema>;
@@ -14,8 +14,12 @@ export interface DesignationWithRelations extends Designation {
 
 // --- CONFIGURATION (Unchanged) ---
 export const designationConfig: EntityConfig<DesignationWithRelations> = {
-  entityName: 'designation', entityDisplayName: 'Designation', entityPluralName: 'Designations',
-  parentField: 'parent_designation', icon: FiBriefcase, isHierarchical: true,
+  entityName: 'designation',
+  entityDisplayName: 'Designation',
+  entityPluralName: 'Designations',
+  parentField: 'parent_designation',
+  icon: FiBriefcase,
+  isHierarchical: true,
   searchFields: ['name'],
   detailFields: [
     { key: 'name', label: 'Name', type: 'text' },
@@ -25,9 +29,13 @@ export const designationConfig: EntityConfig<DesignationWithRelations> = {
   ],
   filterOptions: [
     {
-      key: 'status', label: 'Status', type: 'select',
+      key: 'status',
+      label: 'Status',
+      type: 'select',
       options: [
-        { value: '', label: 'All Status' }, { value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' },
+        { value: '', label: 'All Status' },
+        { value: 'true', label: 'Active' },
+        { value: 'false', label: 'Inactive' },
       ],
     },
   ],

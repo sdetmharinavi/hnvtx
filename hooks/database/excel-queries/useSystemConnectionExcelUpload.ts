@@ -11,9 +11,7 @@ import {
   UseExcelUploadOptions,
   ValidationError,
 } from '@/hooks/database/queries-type-helpers';
-import {
-  validateValue,
-} from './excel-helpers';
+import { validateValue } from './excel-helpers';
 import { parseExcelFile } from '@/utils/excel-parser';
 
 export interface SystemConnectionUploadOptions {
@@ -43,29 +41,47 @@ export function useSystemConnectionExcelUpload(
 
       const toUuidArray = (val: unknown): string[] | undefined => {
         if (!val || typeof val !== 'string') return undefined;
-        const arr = val.split(',').map(s => s.trim()).filter(Boolean);
+        const arr = val
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
         return arr.length > 0 ? arr : undefined;
       };
 
-      const uploadResult: EnhancedUploadResult = { successCount: 0, errorCount: 0, totalRows: 0, errors: [], processingLogs: [], validationErrors: [], skippedRows: 0 };
+      const uploadResult: EnhancedUploadResult = {
+        successCount: 0,
+        errorCount: 0,
+        totalRows: 0,
+        errors: [],
+        processingLogs: [],
+        validationErrors: [],
+        skippedRows: 0,
+      };
       const jsonData = await parseExcelFile(file);
       if (jsonData.length < 2) {
         toast.warning('No data found.');
         return uploadResult;
       }
 
-      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
       const headerMap: Record<string, number> = {};
-      excelHeaders.forEach((header, index) => { headerMap[header.toLowerCase()] = index; });
+      excelHeaders.forEach((header, index) => {
+        headerMap[header.toLowerCase()] = index;
+      });
       const dataRows = jsonData.slice(1);
       const recordsToProcess: RpcPayload[] = [];
       const allValidationErrors: ValidationError[] = [];
-      
+
       // 1. Fetch Link Types for resolution
-      const linkTypesResp = await supabase.from('lookup_types').select('id, name').eq('category', 'LINK_TYPES');
+      const linkTypesResp = await supabase
+        .from('lookup_types')
+        .select('id, name')
+        .eq('category', 'LINK_TYPES');
       const linkTypeNameToId = new Map<string, string>();
       if (!linkTypesResp.error && linkTypesResp.data) {
-        for (const lt of linkTypesResp.data) { if (lt.name && lt.id) linkTypeNameToId.set(String(lt.name).trim().toLowerCase(), lt.id); }
+        for (const lt of linkTypesResp.data) {
+          if (lt.name && lt.id) linkTypeNameToId.set(String(lt.name).trim().toLowerCase(), lt.id);
+        }
       }
 
       // 2. Fetch Systems for Name -> ID resolution (Optimized: Fetch ID and Name)
@@ -73,20 +89,24 @@ export function useSystemConnectionExcelUpload(
       const systemNameToId = new Map<string, string>();
       if (!systemsResp.error && systemsResp.data) {
         for (const s of systemsResp.data) {
-           if (s.system_name) systemNameToId.set(s.system_name.trim().toLowerCase(), s.id);
+          if (s.system_name) systemNameToId.set(s.system_name.trim().toLowerCase(), s.id);
         }
       }
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
-        
-        if (row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')) {
-            uploadResult.skippedRows++;
-            continue;
+
+        if (
+          row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')
+        ) {
+          uploadResult.skippedRows++;
+          continue;
         }
 
         const originalData: Record<string, unknown> = {};
-        excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
+        excelHeaders.forEach((header, idx) => {
+          originalData[header] = row[idx];
+        });
         const rowValidationErrors: ValidationError[] = [];
         const processedData: Record<string, unknown> = {};
 
@@ -97,13 +117,19 @@ export function useSystemConnectionExcelUpload(
           if (typeof finalValue === 'string') finalValue = finalValue.trim();
 
           if (!mapping.dbKey.endsWith('_id')) {
-             const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
-             if (validationError) { rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData }); }
+            const validationError = validateValue(
+              finalValue,
+              mapping.dbKey,
+              mapping.required || false
+            );
+            if (validationError) {
+              rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
+            }
           }
-          
+
           processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
-        
+
         // Resolve Link Type
         let resolvedLinkTypeId: string | undefined = undefined;
         const linkTypeNameRaw = processedData.connected_link_type_name as unknown;
@@ -116,26 +142,32 @@ export function useSystemConnectionExcelUpload(
         // Resolve System ID (Context for the connection)
         let resolvedSystemId = parentSystemId;
         if (!resolvedSystemId && processedData.system_name) {
-           const key = String(processedData.system_name).trim().toLowerCase();
-           resolvedSystemId = systemNameToId.get(key);
+          const key = String(processedData.system_name).trim().toLowerCase();
+          resolvedSystemId = systemNameToId.get(key);
         }
 
         if (!resolvedSystemId) {
-            rowValidationErrors.push({ rowIndex: i, column: 'system_id', value: '', error: 'System ID missing. Ensure "System Name" column exists and matches a valid system.' });
+          rowValidationErrors.push({
+            rowIndex: i,
+            column: 'system_id',
+            value: '',
+            error:
+              'System ID missing. Ensure "System Name" column exists and matches a valid system.',
+          });
         }
 
         // Resolve Destination System ID (en_id)
         if (!processedData.en_id && processedData.connected_system_name) {
-             const key = String(processedData.connected_system_name).trim().toLowerCase();
-             const foundId = systemNameToId.get(key);
-             if (foundId) processedData.en_id = foundId;
+          const key = String(processedData.connected_system_name).trim().toLowerCase();
+          const foundId = systemNameToId.get(key);
+          if (foundId) processedData.en_id = foundId;
         }
 
         // Resolve Source System ID (sn_id)
         if (!processedData.sn_id && processedData.sn_name) {
-             const key = String(processedData.sn_name).trim().toLowerCase();
-             const foundId = systemNameToId.get(key);
-             if (foundId) processedData.sn_id = foundId;
+          const key = String(processedData.sn_name).trim().toLowerCase();
+          const foundId = systemNameToId.get(key);
+          if (foundId) processedData.sn_id = foundId;
         }
 
         if (rowValidationErrors.length > 0) {
@@ -149,14 +181,15 @@ export function useSystemConnectionExcelUpload(
           p_system_id: resolvedSystemId!, // We validated it exists above
           p_media_type_id: processedData.media_type_id as string,
           p_status: (processedData.status as boolean) ?? true,
-          
-          p_service_name: toUndefined(processedData.service_name) || toUndefined(processedData.customer_name),
+
+          p_service_name:
+            toUndefined(processedData.service_name) || toUndefined(processedData.customer_name),
           p_link_type_id: resolvedLinkTypeId || toUndefined(processedData.link_type_id),
           p_bandwidth_allocated: (processedData.bandwidth_allocated as string) || undefined,
           p_vlan: toUndefined(processedData.vlan),
           p_lc_id: toUndefined(processedData.lc_id),
           p_unique_id: toUndefined(processedData.unique_id),
-          p_service_node_id: toUndefined(processedData.service_node_id), 
+          p_service_node_id: toUndefined(processedData.service_node_id),
           p_service_id: toUndefined(processedData.service_id),
 
           p_sn_id: toUndefined(processedData.sn_id),
@@ -168,16 +201,16 @@ export function useSystemConnectionExcelUpload(
           p_bandwidth: (processedData.bandwidth as string) || undefined,
           p_commissioned_on: toUndefined(processedData.commissioned_on),
           p_remark: toUndefined(processedData.remark),
-          
+
           p_working_fiber_in_ids: toUuidArray(processedData.working_fiber_in_ids),
           p_working_fiber_out_ids: toUuidArray(processedData.working_fiber_out_ids),
           p_protection_fiber_in_ids: toUuidArray(processedData.protection_fiber_in_ids),
           p_protection_fiber_out_ids: toUuidArray(processedData.protection_fiber_out_ids),
-          
+
           p_system_working_interface: toUndefined(processedData.system_working_interface),
           p_system_protection_interface: toUndefined(processedData.system_protection_interface),
           p_en_protection_interface: toUndefined(processedData.en_protection_interface),
-          
+
           p_stm_no: toUndefined(processedData.sdh_stm_no),
           p_carrier: toUndefined(processedData.sdh_carrier),
           p_a_slot: toUndefined(processedData.sdh_a_slot),
@@ -207,7 +240,11 @@ export function useSystemConnectionExcelUpload(
           uploadResult.successCount++;
         } catch (error) {
           uploadResult.errorCount++;
-          uploadResult.errors.push({ rowIndex: -1, data: record, error: error instanceof Error ? error.message : 'Unknown RPC error' });
+          uploadResult.errors.push({
+            rowIndex: -1,
+            data: record,
+            error: error instanceof Error ? error.message : 'Unknown RPC error',
+          });
         }
       }
 
@@ -223,8 +260,8 @@ export function useSystemConnectionExcelUpload(
     },
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
-        queryClient.invalidateQueries({ queryKey: ['system_connections-data'] }); 
-        queryClient.invalidateQueries({ queryKey: ['all-system-connections'] }); 
+        queryClient.invalidateQueries({ queryKey: ['system_connections-data'] });
+        queryClient.invalidateQueries({ queryKey: ['all-system-connections'] });
         queryClient.invalidateQueries({ queryKey: ['ports_management-data'] });
       }
       mutationOptions.onSuccess?.(result, { ...variables, uploadType: 'upsert' });
@@ -232,6 +269,6 @@ export function useSystemConnectionExcelUpload(
     onError: (error, variables) => {
       if (showToasts) toast.error(`Upload failed: ${error.message}`);
       mutationOptions.onError?.(error, { ...variables, uploadType: 'upsert' });
-    }
+    },
   });
 }

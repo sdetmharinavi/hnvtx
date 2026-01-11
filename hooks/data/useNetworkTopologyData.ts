@@ -9,18 +9,17 @@ import { buildRpcFilters } from '@/hooks/database';
 const supabase = createClient();
 
 export function useNetworkTopologyData(maintenanceAreaId: string | null) {
-  
   // 1. Nodes Query Configuration (RPC)
   const nodesOnlineFn = useCallback(async () => {
     const filters = maintenanceAreaId ? { maintenance_terminal_id: maintenanceAreaId } : {};
-    
+
     // THE FIX: Use RPC 'get_paged_data' instead of direct select
     const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_nodes_complete',
-        p_limit: 10000,
-        p_offset: 0,
-        p_filters: buildRpcFilters(filters),
-        p_order_by: 'name'
+      p_view_name: 'v_nodes_complete',
+      p_limit: 10000,
+      p_offset: 0,
+      p_filters: buildRpcFilters(filters),
+      p_order_by: 'name',
     });
 
     if (error) throw new Error(`Failed to fetch nodes: ${error.message}`);
@@ -38,19 +37,19 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     return localDb.v_nodes_complete.toArray();
   }, [maintenanceAreaId]);
 
-  const { 
-    data: nodes = [], 
+  const {
+    data: nodes = [],
     isLoading: isLoadingNodes,
     isError: isNodesError,
     error: nodesError,
-    refetch: refetchNodes
+    refetch: refetchNodes,
   } = useLocalFirstQuery<'v_nodes_complete'>({
     queryKey: ['topology-nodes', maintenanceAreaId],
     onlineQueryFn: nodesOnlineFn,
     localQueryFn: nodesLocalFn,
     dexieTable: localDb.v_nodes_complete,
     autoSync: false,
-    localQueryDeps: [maintenanceAreaId]
+    localQueryDeps: [maintenanceAreaId],
   });
 
   // 2. Cables Query Configuration (RPC)
@@ -59,11 +58,11 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
 
     // THE FIX: Use RPC 'get_paged_data'
     const { data, error } = await supabase.rpc('get_paged_data', {
-        p_view_name: 'v_ofc_cables_complete',
-        p_limit: 10000,
-        p_offset: 0,
-        p_filters: buildRpcFilters(filters),
-        p_order_by: 'route_name'
+      p_view_name: 'v_ofc_cables_complete',
+      p_limit: 10000,
+      p_offset: 0,
+      p_filters: buildRpcFilters(filters),
+      p_order_by: 'route_name',
     });
 
     if (error) throw new Error(`Failed to fetch cables: ${error.message}`);
@@ -81,19 +80,19 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     return localDb.v_ofc_cables_complete.toArray();
   }, [maintenanceAreaId]);
 
-  const { 
-    data: cables = [], 
+  const {
+    data: cables = [],
     isLoading: isLoadingCables,
     isError: isCablesError,
     error: cablesError,
-    refetch: refetchCables
+    refetch: refetchCables,
   } = useLocalFirstQuery<'v_ofc_cables_complete'>({
     queryKey: ['topology-cables', maintenanceAreaId],
     onlineQueryFn: cablesOnlineFn,
     localQueryFn: cablesLocalFn,
     dexieTable: localDb.v_ofc_cables_complete,
     autoSync: false,
-    localQueryDeps: [maintenanceAreaId]
+    localQueryDeps: [maintenanceAreaId],
   });
 
   // Combined Refresh Action

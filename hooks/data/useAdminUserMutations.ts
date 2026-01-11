@@ -1,9 +1,9 @@
 // hooks/data/useAdminUserMutations.ts
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Database } from "@/types/supabase-types";
-import { createClient } from "@/utils/supabase/client";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus"; // ADDED
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Database } from '@/types/supabase-types';
+import { createClient } from '@/utils/supabase/client';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
 
 export type UserCreateInput = {
   id?: string;
@@ -15,12 +15,13 @@ export type UserCreateInput = {
   role: string;
 };
 
-export type AdminUpdateUserProfile = Database["public"]["Functions"]["admin_update_user_profile"]["Args"];
+export type AdminUpdateUserProfile =
+  Database['public']['Functions']['admin_update_user_profile']['Args'];
 
 export const adminUserKeys = {
-  all: ["admin-users"] as const,
-  lists: () => [...adminUserKeys.all, "list"] as const,
-  detail: (id: string) => [...adminUserKeys.all, "detail", id] as const,
+  all: ['admin-users'] as const,
+  lists: () => [...adminUserKeys.all, 'list'] as const,
+  detail: (id: string) => [...adminUserKeys.all, 'detail', id] as const,
 };
 
 // --- Mutation Hooks ---
@@ -34,15 +35,15 @@ export const useAdminUpdateUserProfile = () => {
     mutationFn: async (params: AdminUpdateUserProfile): Promise<boolean> => {
       // 1. Offline Check
       if (!isOnline) {
-        throw new Error("User profile updates require an online connection.");
+        throw new Error('User profile updates require an online connection.');
       }
 
-      const { data, error } = await supabase.rpc("admin_update_user_profile", params);
+      const { data, error } = await supabase.rpc('admin_update_user_profile', params);
       if (error) throw new Error(error.message);
       return data || false;
     },
     onSuccess: (_, variables) => {
-      toast.success("User profile updated successfully");
+      toast.success('User profile updated successfully');
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
       queryClient.invalidateQueries({ queryKey: adminUserKeys.detail(variables.user_id) });
     },
@@ -61,7 +62,7 @@ export const useAdminBulkDeleteUsers = () => {
     mutationFn: async (params: { user_ids: string[] }): Promise<void> => {
       // 1. Offline Check
       if (!isOnline) {
-        throw new Error("Deleting users requires an online connection.");
+        throw new Error('Deleting users requires an online connection.');
       }
 
       const response = await fetch('/api/admin/users', {
@@ -93,11 +94,11 @@ export const useAdminBulkUpdateUserRole = () => {
   const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
-    mutationFn: async (params: { user_ids: string[], new_role: string }): Promise<boolean> => {
+    mutationFn: async (params: { user_ids: string[]; new_role: string }): Promise<boolean> => {
       if (!isOnline) {
-        throw new Error("Updating roles requires an online connection.");
+        throw new Error('Updating roles requires an online connection.');
       }
-      const { data, error } = await supabase.rpc("admin_bulk_update_role", params);
+      const { data, error } = await supabase.rpc('admin_bulk_update_role', params);
       if (error) throw new Error(error.message);
       return data || false;
     },
@@ -120,11 +121,11 @@ export const useAdminBulkUpdateUserStatus = () => {
   const isOnline = useOnlineStatus(); // ADDED
 
   return useMutation({
-    mutationFn: async (params: { user_ids: string[], new_status: string }): Promise<boolean> => {
+    mutationFn: async (params: { user_ids: string[]; new_status: string }): Promise<boolean> => {
       if (!isOnline) {
-        throw new Error("Updating status requires an online connection.");
+        throw new Error('Updating status requires an online connection.');
       }
-      const { data, error } = await supabase.rpc("admin_bulk_update_status", params);
+      const { data, error } = await supabase.rpc('admin_bulk_update_status', params);
       if (error) throw new Error(error.message);
       return data || false;
     },
@@ -148,26 +149,26 @@ export const useAdminCreateUser = () => {
   return useMutation({
     mutationFn: async (userData: UserCreateInput) => {
       if (!isOnline) {
-        throw new Error("Creating users requires an online connection.");
+        throw new Error('Creating users requires an online connection.');
       }
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create user");
+        throw new Error(data.error || 'Failed to create user');
       }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
-      toast.success("User created successfully");
+      toast.success('User created successfully');
     },
     onError: (error: Error) => {
-      console.error("User creation error:", error);
-      toast.error(error.message || "Failed to create user");
+      console.error('User creation error:', error);
+      toast.error(error.message || 'Failed to create user');
     },
   });
 };
@@ -185,10 +186,11 @@ export const useAdminUserOperations = () => {
     deleteUsers,
     updateUserRoles,
     updateUserStatus,
-    isLoading: createUser.isPending || 
-               updateUser.isPending || 
-               deleteUsers.isPending || 
-               updateUserRoles.isPending || 
-               updateUserStatus.isPending
+    isLoading:
+      createUser.isPending ||
+      updateUser.isPending ||
+      deleteUsers.isPending ||
+      updateUserRoles.isPending ||
+      updateUserStatus.isPending,
   };
 };

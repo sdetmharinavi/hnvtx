@@ -17,10 +17,16 @@ export const useDiaryData = (currentDate: Date) => {
   // Create dates in local timezone
   const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-  
+
   // Format dates as YYYY-MM-DD in local timezone
-  const startOfMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-  const endOfMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+  const startOfMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(
+    2,
+    '0'
+  )}-${String(startDate.getDate()).padStart(2, '0')}`;
+  const endOfMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(
+    2,
+    '0'
+  )}-${String(endDate.getDate()).padStart(2, '0')}`;
 
   const onlineQueryFn = useCallback(async (): Promise<Diary_notesRowSchema[]> => {
     const { data, error } = await createClient().rpc('get_diary_notes_for_range', {
@@ -41,15 +47,23 @@ export const useDiaryData = (currentDate: Date) => {
   }, [startOfMonth, endOfMonth]);
 
   const localQueryFn = useCallback(() => {
-    return localDb.diary_notes
-      .where('note_date')
-      // THE FIX: Pass `true` for both includeLower and includeUpper to ensure the last day of the month is included.
-      // Signature: between(lower, upper, includeLower, includeUpper)
-      .between(startOfMonth, endOfMonth, true, true)
-      .toArray();
+    return (
+      localDb.diary_notes
+        .where('note_date')
+        // THE FIX: Pass `true` for both includeLower and includeUpper to ensure the last day of the month is included.
+        // Signature: between(lower, upper, includeLower, includeUpper)
+        .between(startOfMonth, endOfMonth, true, true)
+        .toArray()
+    );
   }, [startOfMonth, endOfMonth]);
 
-  const { data: notes, isLoading, isFetching, error, refetch } = useLocalFirstQuery<'diary_notes'>({
+  const {
+    data: notes,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLocalFirstQuery<'diary_notes'>({
     queryKey: ['diary_data-for-month', startOfMonth, endOfMonth],
     onlineQueryFn,
     localQueryFn,
@@ -61,15 +75,18 @@ export const useDiaryData = (currentDate: Date) => {
 
   const entriesWithUsers = useMemo(() => {
     if (!notes || !userProfiles) return [];
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profileMap = new Map(userProfiles.map((p: any) => [p.id, `${p.first_name} ${p.last_name}`]));
 
-    return notes.map(note => ({
-      ...note,
-      full_name: profileMap.get(note.user_id) || 'Unknown User'
-    })).sort((a, b) => new Date(b.note_date!).getTime() - new Date(a.note_date!).getTime());
+    const profileMap = new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      userProfiles.map((p: any) => [p.id, `${p.first_name} ${p.last_name}`])
+    );
 
+    return notes
+      .map((note) => ({
+        ...note,
+        full_name: profileMap.get(note.user_id) || 'Unknown User',
+      }))
+      .sort((a, b) => new Date(b.note_date!).getTime() - new Date(a.note_date!).getTime());
   }, [notes, userProfiles]);
 
   return {

@@ -121,7 +121,7 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
         let dataArray: unknown[] = [];
         if (data) {
           if (Array.isArray(data)) {
-            dataArray = data; 
+            dataArray = data;
           } else if (
             typeof data === 'object' &&
             'data' in data &&
@@ -246,7 +246,7 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
         if (autoFitColumns) {
           exportColumns.forEach((col, index) => {
             const column = worksheet.getColumn(index + 1);
-            
+
             // THE FIX: Account for header length too
             let maxLength = (col.excelHeader || col.title).length;
 
@@ -324,7 +324,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
   return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
       const ExcelJS = (await import('exceljs')).default;
-      
+
       try {
         const defaultStyles = getDefaultStyles();
         const mergedOptions = {

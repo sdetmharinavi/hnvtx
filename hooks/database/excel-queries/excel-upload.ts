@@ -6,18 +6,18 @@ import {
   EnhancedUploadResult,
   ProcessingLog,
   ValidationError,
-} from "@/hooks/database/queries-type-helpers";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+} from '@/hooks/database/queries-type-helpers';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   generateUUID,
   logColumnTransformation,
   logRowProcessing,
   validateValue,
-} from "@/hooks/database/excel-queries/excel-helpers";
-import { toast } from "sonner";
-import { parseExcelFile } from "@/utils/excel-parser"; // THE FIX
+} from '@/hooks/database/excel-queries/excel-helpers';
+import { toast } from 'sonner';
+import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 //================================================================================
 // MAIN ENHANCED UPLOAD HOOK
@@ -33,23 +33,23 @@ export function useExcelUpload<T extends PublicTableName>(
 
   return useMutation<EnhancedUploadResult, Error, UploadOptions<T>>({
     mutationFn: async (uploadOptions: UploadOptions<T>): Promise<EnhancedUploadResult> => {
-      const { file, columns, uploadType = "upsert", conflictColumn, staticData } = uploadOptions;
+      const { file, columns, uploadType = 'upsert', conflictColumn, staticData } = uploadOptions;
 
-      if (uploadType === "upsert" && !conflictColumn) {
+      if (uploadType === 'upsert' && !conflictColumn) {
         throw new Error("A 'conflictColumn' must be specified for 'upsert' operations.");
       }
 
       const processingLogs: ProcessingLog[] = [];
       const allValidationErrors: ValidationError[] = [];
 
-      toast.info("Reading and parsing Excel file...");
+      toast.info('Reading and parsing Excel file...');
 
       // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (!jsonData || jsonData.length < 2) {
         toast.warning(
-          "No data found in the Excel file. (A header row and at least one data row are required)."
+          'No data found in the Excel file. (A header row and at least one data row are required).'
         );
         return {
           successCount: 0,
@@ -79,10 +79,10 @@ export function useExcelUpload<T extends PublicTableName>(
 
       const isRowEffectivelyEmpty = (row: unknown[]): boolean => {
         for (const mapping of columns) {
-          if (mapping.dbKey === "id") continue;
+          if (mapping.dbKey === 'id') continue;
           const idx = getHeaderIndex(mapping.excelHeader);
           const v = idx !== undefined ? row[idx] : undefined;
-          if (v !== undefined && String(v).trim() !== "") {
+          if (v !== undefined && String(v).trim() !== '') {
             return false;
           }
         }
@@ -130,15 +130,15 @@ export function useExcelUpload<T extends PublicTableName>(
         });
 
         const rowHasContent = columns.some((mapping) => {
-          if (mapping.dbKey === "id") return false;
+          if (mapping.dbKey === 'id') return false;
           const idx = getHeaderIndex(mapping.excelHeader);
           const v = idx !== undefined ? row[idx] : undefined;
-          return v !== undefined && String(v).trim() !== "";
+          return v !== undefined && String(v).trim() !== '';
         });
 
         if (!rowHasContent) {
           isSkipped = true;
-          skipReason = "Row is empty across all non-id columns";
+          skipReason = 'Row is empty across all non-id columns';
           uploadResult.skippedRows++;
 
           const log = logRowProcessing(
@@ -160,26 +160,26 @@ export function useExcelUpload<T extends PublicTableName>(
 
           try {
             if (
-              (mapping.dbKey === "id" ||
-                mapping.dbKey.endsWith("_id") ||
-                mapping.dbKey === "parent_id") &&
-              (rawValue === "" || rawValue === undefined)
+              (mapping.dbKey === 'id' ||
+                mapping.dbKey.endsWith('_id') ||
+                mapping.dbKey === 'parent_id') &&
+              (rawValue === '' || rawValue === undefined)
             ) {
               rawValue = null;
             }
 
             {
-              const key = String(mapping.dbKey || "").toLowerCase();
+              const key = String(mapping.dbKey || '').toLowerCase();
               const isIPField =
-                key === "ip_address" || key.endsWith("_ip") || key.includes("ipaddr");
-              if (isIPField && typeof rawValue === "string") {
+                key === 'ip_address' || key.endsWith('_ip') || key.includes('ipaddr');
+              if (isIPField && typeof rawValue === 'string') {
                 const trimmed = rawValue.trim();
-                rawValue = trimmed === "" ? null : trimmed;
+                rawValue = trimmed === '' ? null : trimmed;
               }
             }
 
-            if (mapping.dbKey === "id" && rowHasContent) {
-              if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") {
+            if (mapping.dbKey === 'id' && rowHasContent) {
+              if (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') {
                 rawValue = generateUUID();
               }
             }
@@ -189,7 +189,8 @@ export function useExcelUpload<T extends PublicTableName>(
               try {
                 finalValue = mapping.transform(rawValue);
               } catch (transformError) {
-                const errorMsg = transformError instanceof Error ? transformError.message : "Transform failed";
+                const errorMsg =
+                  transformError instanceof Error ? transformError.message : 'Transform failed';
                 const validationError: ValidationError = {
                   rowIndex: i,
                   column: mapping.dbKey,
@@ -219,7 +220,7 @@ export function useExcelUpload<T extends PublicTableName>(
             let assignValue =
               finalValue !== undefined ? finalValue : rawValue !== undefined ? rawValue : null;
 
-            if (typeof assignValue === "string" && assignValue.trim() === "") {
+            if (typeof assignValue === 'string' && assignValue.trim() === '') {
               assignValue = null;
             }
 
@@ -227,7 +228,8 @@ export function useExcelUpload<T extends PublicTableName>(
 
             logColumnTransformation(i, mapping.dbKey, rawValue, assignValue);
           } catch (columnError) {
-            const errorMsg = columnError instanceof Error ? columnError.message : "Unknown column error";
+            const errorMsg =
+              columnError instanceof Error ? columnError.message : 'Unknown column error';
             const validationError: ValidationError = {
               rowIndex: i,
               column: mapping.dbKey,
@@ -244,12 +246,12 @@ export function useExcelUpload<T extends PublicTableName>(
         }
 
         const hasRequiredFieldErrors = rowValidationErrors.some(
-          (err) => err.error.includes("Required field") || err.error.includes("Missing required")
+          (err) => err.error.includes('Required field') || err.error.includes('Missing required')
         );
 
         if (hasRequiredFieldErrors) {
           isSkipped = true;
-          skipReason = `Validation failed: ${rowValidationErrors.map((e) => e.error).join("; ")}`;
+          skipReason = `Validation failed: ${rowValidationErrors.map((e) => e.error).join('; ')}`;
           uploadResult.errorCount += 1;
           uploadResult.skippedRows++;
 
@@ -274,8 +276,11 @@ export function useExcelUpload<T extends PublicTableName>(
         processingLogs.push(log);
       }
 
-      if (uploadType === "upsert" && conflictColumn) {
-        const conflictCols = String(conflictColumn).split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+      if (uploadType === 'upsert' && conflictColumn) {
+        const conflictCols = String(conflictColumn)
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
 
         if (conflictCols.length > 0) {
           const seen = new Set<string>();
@@ -283,20 +288,24 @@ export function useExcelUpload<T extends PublicTableName>(
 
           for (const rec of recordsToProcess) {
             const values = conflictCols.map((c) => (rec as Record<string, unknown>)[c]);
-            const allPresent = values.every((v) => v !== undefined && v !== null && !(typeof v === "string" && v === ""));
+            const allPresent = values.every(
+              (v) => v !== undefined && v !== null && !(typeof v === 'string' && v === '')
+            );
 
             if (!allPresent) {
-              if (!conflictCols.includes("id")) delete (rec as Record<string, unknown>).id;
+              if (!conflictCols.includes('id')) delete (rec as Record<string, unknown>).id;
               deduped.push(rec);
               continue;
             }
 
-            const normalized = values.map((v) => typeof v === "string" ? v.trim().toLowerCase() : v);
+            const normalized = values.map((v) =>
+              typeof v === 'string' ? v.trim().toLowerCase() : v
+            );
             const key = JSON.stringify(normalized);
 
             if (!seen.has(key)) {
               seen.add(key);
-              if (!conflictCols.includes("id")) delete (rec as Record<string, unknown>).id;
+              if (!conflictCols.includes('id')) delete (rec as Record<string, unknown>).id;
               deduped.push(rec);
             }
           }
@@ -307,7 +316,7 @@ export function useExcelUpload<T extends PublicTableName>(
       uploadResult.totalRows = recordsToProcess.length;
 
       if (recordsToProcess.length === 0) {
-        toast.warning("No valid records found to upload after processing.");
+        toast.warning('No valid records found to upload after processing.');
         return uploadResult;
       }
 
@@ -318,7 +327,7 @@ export function useExcelUpload<T extends PublicTableName>(
 
         try {
           let query;
-          if (uploadType === "insert") {
+          if (uploadType === 'insert') {
             query = insertBatch(batch as TableInsert<T>[]);
           } else {
             query = upsertBatch(batch as TableInsert<T>[], conflictColumn as string);
@@ -341,7 +350,8 @@ export function useExcelUpload<T extends PublicTableName>(
             uploadResult.successCount += batch.length;
           }
         } catch (unexpectedError) {
-          const errorMsg = unexpectedError instanceof Error ? unexpectedError.message : "Unexpected error";
+          const errorMsg =
+            unexpectedError instanceof Error ? unexpectedError.message : 'Unexpected error';
           uploadResult.errorCount += batch.length;
           uploadResult.errors.push({
             rowIndex: i,
@@ -352,10 +362,12 @@ export function useExcelUpload<T extends PublicTableName>(
       }
 
       if (uploadResult.errorCount > 0) {
-        if (showToasts) toast.warning(`${uploadResult.successCount} saved, ${uploadResult.errorCount} failed.`);
+        if (showToasts)
+          toast.warning(`${uploadResult.successCount} saved, ${uploadResult.errorCount} failed.`);
       } else {
-        if (showToasts) toast.success(`Successfully uploaded ${uploadResult.successCount} records.`);
-        
+        if (showToasts)
+          toast.success(`Successfully uploaded ${uploadResult.successCount} records.`);
+
         try {
           await queryClient.invalidateQueries({
             predicate: (q) => {
@@ -363,13 +375,17 @@ export function useExcelUpload<T extends PublicTableName>(
               if (!Array.isArray(key)) return false;
               return key.some((seg) => {
                 if (seg === tableName) return true;
-                if (typeof seg === "string" && seg.toLowerCase().includes(String(tableName).toLowerCase())) return true;
+                if (
+                  typeof seg === 'string' &&
+                  seg.toLowerCase().includes(String(tableName).toLowerCase())
+                )
+                  return true;
                 return false;
               });
             },
           });
         } catch (err) {
-           console.log(err);
+          console.log(err);
         }
       }
 

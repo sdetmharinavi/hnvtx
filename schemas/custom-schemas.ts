@@ -6,27 +6,30 @@ import {
   cable_segmentsRowSchema,
   junction_closuresRowSchema,
   fiber_splicesRowSchema,
-  nodesRowSchema
+  nodesRowSchema,
 } from '@/schemas/zod-schemas';
 
 // ============= AUTH & UI-SPECIFIC SCHEMAS =============
 
 // --- Reusable Password Validation Schema ---
-export const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters long")
-  .max(50, "Password must not exceed 50 characters")
+export const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters long')
+  .max(50, 'Password must not exceed 50 characters')
   .regex(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
-    "Password must contain an uppercase letter, a lowercase letter, a number, and a special character."
+    'Password must contain an uppercase letter, a lowercase letter, a number, and a special character.'
   );
 
-export const passwordWithConfirmationSchema = z.object({
-  password: passwordSchema,
-  confirmPassword: z.string()
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords must match",
-  path: ["confirmPassword"],
-});
+export const passwordWithConfirmationSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords must match',
+    path: ['confirmPassword'],
+  });
 
 export type PasswordSchema = z.infer<typeof passwordSchema>;
 export type PasswordWithConfirmation = z.infer<typeof passwordWithConfirmationSchema>;
@@ -34,13 +37,15 @@ export type PasswordWithConfirmation = z.infer<typeof passwordWithConfirmationSc
 // ============= RPC & UI-SPECIFIC SCHEMAS (ROUTE MANAGER) =============
 
 // --- For useOfcRoutesForSelection hook ---
-export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema.pick({
-  id: true,
-  route_name: true,
-  capacity: true,
-}).extend({
-  ofc_connections: z.array(z.object({ id: z.uuid() })),
-});
+export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema
+  .pick({
+    id: true,
+    route_name: true,
+    capacity: true,
+  })
+  .extend({
+    ofc_connections: z.array(z.object({ id: z.uuid() })),
+  });
 export type OfcForSelection = z.infer<typeof ofcForSelectionSchema>;
 
 // --- For useAutoSplice hook result ---
@@ -79,7 +84,7 @@ export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
 
 const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
   created_at: z.string().nullable(),
-  updated_at: z.string().nullable()
+  updated_at: z.string().nullable(),
 });
 
 const relaxed_junction_closuresRowSchema = junction_closuresRowSchema.extend({
@@ -104,27 +109,27 @@ const siteSchema = z.object({
 });
 
 export const cableRouteSchema = relaxed_v_ofc_cables_completeRowSchema.extend({
-    start_site: siteSchema,
-    end_site: siteSchema,
-    evolution_status: z.enum(['simple', 'with_jcs', 'fully_segmented']),
+  start_site: siteSchema,
+  end_site: siteSchema,
+  evolution_status: z.enum(['simple', 'with_jcs', 'fully_segmented']),
 });
 export type CableRoute = z.infer<typeof cableRouteSchema>;
 
 export const jointBoxSchema = relaxed_junction_closuresRowSchema.extend({
-    node: z.object({ name: nodesRowSchema.shape.name.nullable() }).nullable(),
-    status: z.enum(['existing', 'planned']),
-    attributes: z.object({
-        position_on_route: z.number(),
-        name: z.string().optional(),
-    }),
+  node: z.object({ name: nodesRowSchema.shape.name.nullable() }).nullable(),
+  status: z.enum(['existing', 'planned']),
+  attributes: z.object({
+    position_on_route: z.number(),
+    name: z.string().optional(),
+  }),
 });
 export type JointBox = z.infer<typeof jointBoxSchema>;
 
 export const routeDetailsPayloadSchema = z.object({
-    route: cableRouteSchema,
-    jointBoxes: z.array(jointBoxSchema),
-    segments: z.array(cableSegmentSchema),
-    splices: z.array(fiberSpliceSchema),
+  route: cableRouteSchema,
+  jointBoxes: z.array(jointBoxSchema),
+  segments: z.array(cableSegmentSchema),
+  splices: z.array(fiberSpliceSchema),
 });
 export type RouteDetailsPayload = z.infer<typeof routeDetailsPayloadSchema>;
 
@@ -153,7 +158,6 @@ export const pathToUpdateSchema = z.object({
   p_end_fiber_no: z.number(),
 });
 export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
-
 
 // --- BSNL Dashboard Search Filters ---
 export const bsnlSearchFiltersSchema = z.object({

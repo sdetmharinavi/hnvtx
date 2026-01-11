@@ -1,9 +1,9 @@
 // utils/imageOptimization.ts
-"use client";
+'use client';
 
-import Uppy from "@uppy/core";
-import ImageEditor from "@uppy/image-editor";
-import { useRef, useEffect } from "react";
+import Uppy from '@uppy/core';
+import ImageEditor from '@uppy/image-editor';
+import { useRef, useEffect } from 'react';
 
 // --- WORKER IMPLEMENTATION (INLINED) ---
 // Defined as a string to avoid complex Webpack/Next.js worker loader configurations.
@@ -77,7 +77,7 @@ export const enhancedImageEditorConfig = {
     checkOrientation: false,
     guides: true,
     highlight: false,
-    dragMode: "crop" as const,
+    dragMode: 'crop' as const,
   },
   actions: {
     revert: true,
@@ -97,7 +97,7 @@ export const enhancedImageEditorConfig = {
  */
 export const getOptimalImageSettings = (file: File) => {
   const sizeInMB = file.size / (1024 * 1024);
-  
+
   // Aggressive compression for very large files
   if (sizeInMB > 10) return { quality: 0.6, maxWidth: 1600, maxHeight: 1200 };
   // Moderate compression for medium files
@@ -112,7 +112,7 @@ export const getOptimalImageSettings = (file: File) => {
  */
 export const smartCompress = async (file: File): Promise<File> => {
   // Skip non-images or if Worker API is unavailable
-  if (!file.type.startsWith("image/") || typeof Worker === 'undefined') {
+  if (!file.type.startsWith('image/') || typeof Worker === 'undefined') {
     return file;
   }
 
@@ -128,19 +128,23 @@ export const smartCompress = async (file: File): Promise<File> => {
       // Handle worker response
       worker.onmessage = (e) => {
         const { success, blob, error } = e.data;
-        
+
         if (success && blob) {
           // Log compression stats for debugging
-          const reduction = ((file.size - blob.size) / file.size * 100).toFixed(1);
-          console.debug(`[SmartCompress] ${file.name}: -${reduction}% (${(blob.size/1024/1024).toFixed(2)}MB)`);
+          const reduction = (((file.size - blob.size) / file.size) * 100).toFixed(1);
+          console.debug(
+            `[SmartCompress] ${file.name}: -${reduction}% (${(blob.size / 1024 / 1024).toFixed(
+              2
+            )}MB)`
+          );
 
           const optimizedFile = new File([blob], file.name, {
             type: file.type,
-            lastModified: Date.now()
+            lastModified: Date.now(),
           });
           resolve(optimizedFile);
         } else {
-          console.warn("[SmartCompress] Worker failed, using original:", error);
+          console.warn('[SmartCompress] Worker failed, using original:', error);
           resolve(file);
         }
 
@@ -151,7 +155,7 @@ export const smartCompress = async (file: File): Promise<File> => {
 
       // Handle worker startup errors
       worker.onerror = (err) => {
-        console.error("[SmartCompress] Worker error:", err);
+        console.error('[SmartCompress] Worker error:', err);
         worker.terminate();
         URL.revokeObjectURL(workerUrl);
         resolve(file);
@@ -159,9 +163,8 @@ export const smartCompress = async (file: File): Promise<File> => {
 
       // Start the job
       worker.postMessage({ file, options });
-
     } catch (e) {
-      console.error("[SmartCompress] Setup failed:", e);
+      console.error('[SmartCompress] Setup failed:', e);
       resolve(file);
     }
   });
@@ -178,21 +181,21 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   } = options;
 
   const uppy = new Uppy({
-    id: "file-uploader",
+    id: 'file-uploader',
     autoProceed: false,
     allowMultipleUploads: true,
     restrictions: {
       maxFileSize,
       maxNumberOfFiles,
       allowedFileTypes: [
-        "image/*",
-        "application/pdf",
-        ".doc",
-        ".docx",
-        ".txt",
-        ".rtf",
-        "video/*",
-        "audio/*",
+        'image/*',
+        'application/pdf',
+        '.doc',
+        '.docx',
+        '.txt',
+        '.rtf',
+        'video/*',
+        'audio/*',
       ],
     },
     meta: {
@@ -200,12 +203,11 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
     },
     onBeforeFileAdded: (currentFile, files) => {
       if (currentFile.size === 0) return false;
-      
+
       const existingFile = Object.values(files).find(
-        (file) =>
-          file.name === currentFile.name && file.size === currentFile.size,
+        (file) => file.name === currentFile.name && file.size === currentFile.size
       );
-      
+
       if (existingFile) return false;
       return true;
     },
@@ -214,7 +216,7 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
   try {
     uppy.use(ImageEditor, enhancedImageEditorConfig);
   } catch (error) {
-    console.warn("Failed to add ImageEditor plugin:", error);
+    console.warn('Failed to add ImageEditor plugin:', error);
   }
 
   return uppy;
@@ -227,19 +229,19 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
 export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
   return new Promise((resolve) => {
     // Skip if not image or already WebP
-    if (!file.type.startsWith("image/") || file.type === "image/webp") {
+    if (!file.type.startsWith('image/') || file.type === 'image/webp') {
       resolve(file);
       return;
     }
 
     // Feature detection
-    const canvas = document.createElement("canvas");
-    if (!canvas.toDataURL("image/webp").startsWith("data:image/webp")) {
+    const canvas = document.createElement('canvas');
+    if (!canvas.toDataURL('image/webp').startsWith('data:image/webp')) {
       resolve(file); // Browser doesn't support WebP export
       return;
     }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) {
       resolve(file);
       return;
@@ -255,22 +257,21 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
         canvas.toBlob(
           (blob) => {
             if (blob && blob.size > 0 && blob.size < file.size) {
-              const webpFile = new File(
-                [blob],
-                file.name.replace(/\.[^/.]+$/, ".webp"),
-                { type: "image/webp", lastModified: Date.now() },
-              );
+              const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), {
+                type: 'image/webp',
+                lastModified: Date.now(),
+              });
               resolve(webpFile);
             } else {
               // If WebP is larger (rare but possible), keep original
               resolve(file);
             }
           },
-          "image/webp",
-          quality,
+          'image/webp',
+          quality
         );
       } catch (error) {
-        console.warn("WebP conversion failed:", error);
+        console.warn('WebP conversion failed:', error);
         resolve(file);
       }
     };
@@ -286,19 +287,16 @@ export const convertToWebP = (file: File, quality = 0.8): Promise<File> => {
  * For now, we return the file as-is to avoid client-side bloat.
  */
 export const createProgressiveJPEG = (file: File): Promise<File> => {
-  return Promise.resolve(file); 
+  return Promise.resolve(file);
 };
 
 /**
  * React Hook to manage the Uppy instance lifecycle with optimization pipeline.
  */
 export const useOptimizedFileUploader = (
-  folderId: string | null,
+  folderId: string | null
 ): Uppy<{ folderId: string | null }, Record<string, never>> | null => {
-  const uppyRef = useRef<Uppy<
-    { folderId: string | null },
-    Record<string, never>
-  > | null>(null);
+  const uppyRef = useRef<Uppy<{ folderId: string | null }, Record<string, never>> | null>(null);
 
   useEffect(() => {
     // Cleanup previous instance
@@ -313,22 +311,22 @@ export const useOptimizedFileUploader = (
       const optimizationPromises = fileIDs.map(async (fileID) => {
         const file = uppy.getFile(fileID);
 
-        if (file && file.type && file.type.startsWith("image/")) {
+        if (file && file.type && file.type.startsWith('image/')) {
           try {
             const rawFile = file.data as File;
-            
+
             // 1. Off-thread resizing & compression (Web Worker)
             let optimizedFile = await smartCompress(rawFile);
-            
+
             // 2. WebP Conversion (Optional, main thread)
             // Note: smartCompress output is already good, but WebP might squeeze more
             try {
-               const webpFile = await convertToWebP(optimizedFile);
-               if (webpFile.size < optimizedFile.size) {
-                 optimizedFile = webpFile;
-               }
+              const webpFile = await convertToWebP(optimizedFile);
+              if (webpFile.size < optimizedFile.size) {
+                optimizedFile = webpFile;
+              }
             } catch (e) {
-               console.warn("WebP step skipped", e);
+              console.warn('WebP step skipped', e);
             }
 
             // 3. Update Uppy state with optimized file
@@ -336,7 +334,6 @@ export const useOptimizedFileUploader = (
               data: optimizedFile,
               size: optimizedFile.size,
             });
-            
           } catch (error) {
             console.error(`Optimization failed for ${file.name}:`, error);
             // On error, Uppy continues with the original file automatically

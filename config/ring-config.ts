@@ -1,7 +1,7 @@
 // path: config/ring-config.ts
-import { EntityConfig } from "@/components/common/entity-management/types";
-import { v_ringsRowSchema, V_systems_completeRowSchema } from "@/schemas/zod-schemas";
-import { GiLinkedRings } from "react-icons/gi";
+import { EntityConfig } from '@/components/common/entity-management/types';
+import { v_ringsRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { GiLinkedRings } from 'react-icons/gi';
 import { z } from 'zod';
 
 export type RingWithRelations = z.infer<typeof v_ringsRowSchema>;

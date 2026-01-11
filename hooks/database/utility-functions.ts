@@ -1,6 +1,6 @@
 // hooks/database/utility-functions.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { QueryKey } from "@tanstack/react-query";
+import { QueryKey } from '@tanstack/react-query';
 import {
   AggregationOptions,
   DeduplicationOptions,
@@ -21,12 +21,12 @@ export function buildRpcFilters(filters: Filters): Json {
     // If it's an object (Record<string, string>), pass it as a JSON object.
     // If it's a string, pass it as a string.
     if (key === 'or') {
-       if (typeof filterValue === 'object' && filterValue !== null && !Array.isArray(filterValue)) {
-         rpcFilters.or = filterValue as unknown as Json;
-       } else if (typeof filterValue === 'string' && filterValue.trim() !== '') {
-          rpcFilters.or = filterValue;
-       }
-       continue;
+      if (typeof filterValue === 'object' && filterValue !== null && !Array.isArray(filterValue)) {
+        rpcFilters.or = filterValue as unknown as Json;
+      } else if (typeof filterValue === 'string' && filterValue.trim() !== '') {
+        rpcFilters.or = filterValue;
+      }
+      continue;
     }
 
     if (filterValue !== null && filterValue !== undefined && filterValue !== '') {
@@ -49,8 +49,19 @@ export const createQueryKey = (
   offset?: number
 ): QueryKey => {
   const key: unknown[] = ['table', tableName];
-  const params: Record<string, unknown> = { filters, columns, orderBy, deduplication, aggregation, enhancedOrderBy, limit, offset };
-  const cleanParams = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null));
+  const params: Record<string, unknown> = {
+    filters,
+    columns,
+    orderBy,
+    deduplication,
+    aggregation,
+    enhancedOrderBy,
+    limit,
+    offset,
+  };
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null)
+  );
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
@@ -58,11 +69,13 @@ export const createQueryKey = (
 export const createRpcQueryKey = (
   functionName: string,
   args?: Record<string, unknown>,
-  performance?: any,
+  performance?: any
 ): QueryKey => {
   const key: unknown[] = ['rpc', functionName];
   const params = { args, performance };
-  const cleanParams = Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null));
+  const cleanParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null)
+  );
   if (Object.keys(cleanParams).length > 0) key.push(cleanParams);
   return key;
 };
@@ -98,7 +111,10 @@ export function applyFilters(query: any, filters: Filters): any {
     }
 
     if (typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
-      const { operator, value: filterValue } = value as { operator: FilterOperator; value: unknown };
+      const { operator, value: filterValue } = value as {
+        operator: FilterOperator;
+        value: unknown;
+      };
       if (operator in modifiedQuery && typeof (modifiedQuery as any)[operator] === 'function') {
         modifiedQuery = modifiedQuery[operator](key, filterValue);
       }
@@ -138,9 +154,7 @@ export function buildDeduplicationQuery(
   const { columns, orderBy: dedupOrderBy } = deduplication;
   const partitionBy = columns.join(', ');
   const rowNumberOrder = dedupOrderBy?.length
-    ? dedupOrderBy
-        .map((o) => `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}`)
-        .join(', ')
+    ? dedupOrderBy.map((o) => `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}`).join(', ')
     : 'id ASC';
 
   let finalOrderClause = '';
@@ -148,11 +162,7 @@ export function buildDeduplicationQuery(
     const orderParts = orderBy.map(
       (o) =>
         `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}${
-          o.nullsFirst !== undefined
-            ? o.nullsFirst
-              ? ' NULLS FIRST'
-              : ' NULLS LAST'
-            : ''
+          o.nullsFirst !== undefined ? (o.nullsFirst ? ' NULLS FIRST' : ' NULLS LAST') : ''
         }`
     );
     finalOrderClause = `ORDER BY ${orderParts.join(', ')}`;
@@ -163,12 +173,7 @@ export function buildDeduplicationQuery(
     const conditions = Object.entries(filters)
       .filter(([, value]) => value !== undefined && value !== null)
       .map(([key, value]) => {
-        if (
-          value &&
-          typeof value === 'object' &&
-          !Array.isArray(value) &&
-          'operator' in value
-        ) {
+        if (value && typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
           const filterValue =
             typeof value.value === 'string'
               ? `'${value.value.toString().replace(/'/g, "''")}'`
@@ -177,19 +182,15 @@ export function buildDeduplicationQuery(
         }
         if (Array.isArray(value)) {
           const arrayValues = value
-            .map((v) =>
-              typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v
-            )
+            .map((v) => (typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v))
             .join(',');
           return `${key} IN (${arrayValues})`;
         }
-        const filterValue =
-          typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
+        const filterValue = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
         return `${key} = ${filterValue}`;
       });
 
-    if (conditions.length > 0)
-      whereClause = `WHERE ${conditions.join(' AND ')}`;
+    if (conditions.length > 0) whereClause = `WHERE ${conditions.join(' AND ')}`;
   }
 
   return `

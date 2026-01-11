@@ -151,11 +151,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
-        await syncData(syncTables);
-        // Note: syncData invalidates queries, so we don't need to call refetch() explicitly
-        // unless we want to force it immediately, but let's avoid double flashes.
+      await syncData(syncTables);
+      // Note: syncData invalidates queries, so we don't need to call refetch() explicitly
+      // unless we want to force it immediately, but let's avoid double flashes.
     } else {
-        refetch();
+      refetch();
     }
   }, [isOnline, syncTables, syncData, refetch]);
 
@@ -331,13 +331,15 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'update',
               payload: { id: idToUpdate, data: processedData },
             });
-            toast.warning('Update queued (Offline). Sync pending.', { icon: React.createElement(FiWifiOff) });
+            toast.warning('Update queued (Offline). Sync pending.', {
+              icon: React.createElement(FiWifiOff),
+            });
           } else {
             const tempId = uuidv4();
             const newRecord = { ...processedData, id: tempId };
 
             if (idType === 'number') {
-               console.warn("Offline creation for integer ID tables is risky.");
+              console.warn('Offline creation for integer ID tables is risky.');
             }
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -348,7 +350,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               type: 'insert',
               payload: newRecord,
             });
-            toast.warning('Created offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
+            toast.warning('Created offline. Sync pending.', {
+              icon: React.createElement(FiWifiOff),
+            });
           }
           refetch();
           closeModal();
@@ -444,7 +448,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               payload: { id, data: { status: newStatus } },
             });
           }
-          toast.warning('Status updated locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
+          toast.warning('Status updated locally. Sync pending.', {
+            icon: React.createElement(FiWifiOff),
+          });
           refetch();
           handleClearSelection();
         } catch (err) {
@@ -494,7 +500,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           payload: { ids: ids },
         });
 
-        toast.warning(`Deleted ${ids.length} items locally. Sync pending.`, { icon: React.createElement(FiWifiOff) });
+        toast.warning(`Deleted ${ids.length} items locally. Sync pending.`, {
+          icon: React.createElement(FiWifiOff),
+        });
         refetch();
         handleClearSelection();
       });
@@ -536,7 +544,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id: idToUpdate, data: { status: newStatus } },
           });
           refetch();
-          toast.warning('Status changed locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
+          toast.warning('Status changed locally. Sync pending.', {
+            icon: React.createElement(FiWifiOff),
+          });
         } catch (err) {
           toast.error(`Offline status update failed: ${(err as Error).message}`);
         }
@@ -567,7 +577,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             payload: { id, data: updateData },
           });
           refetch();
-          toast.warning('Edit saved locally. Sync pending.', { icon: React.createElement(FiWifiOff) });
+          toast.warning('Edit saved locally. Sync pending.', {
+            icon: React.createElement(FiWifiOff),
+          });
         } catch (err) {
           toast.error(`Offline edit failed: ${(err as Error).message}`);
         }
@@ -603,7 +615,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         error: error as Error | null,
         isError: !!error,
         isSuccess: !isLoading && !error,
-        refetch: handleRefresh as unknown as () => Promise<UseQueryResult<PagedQueryResult<V>, Error>>,
+        refetch: handleRefresh as unknown as () => Promise<
+          UseQueryResult<PagedQueryResult<V>, Error>
+        >,
         status: isLoading ? 'pending' : error ? 'error' : 'success',
       } as UseQueryResult<PagedQueryResult<V>, Error>),
     [data, totalCount, isLoading, isFetching, isSyncingData, error, handleRefresh]

@@ -1,12 +1,12 @@
 // path: hooks/database/path-queries.ts
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
-import { toast } from "sonner";
-import { useRpcQuery } from "@/hooks/database/rpc-queries";
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
+import { useRpcQuery } from '@/hooks/database/rpc-queries';
 import { z } from 'zod';
-import { fiberTraceSegmentSchema, FiberTraceSegment } from "@/schemas/custom-schemas";
+import { fiberTraceSegmentSchema, FiberTraceSegment } from '@/schemas/custom-schemas';
 
 const supabase = createClient();
 
@@ -35,7 +35,7 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
       // CORRECTED: Call the RPC with the segment_id parameter
       const { data, error } = await supabase.rpc('trace_fiber_path', {
         p_start_segment_id: startSegmentId,
-        p_start_fiber_no: fiberNo
+        p_start_fiber_no: fiberNo,
       });
 
       if (error) {
@@ -48,9 +48,9 @@ export function useFiberTrace(startSegmentId: string | null, fiberNo: number | n
       }
       const parsed = z.array(fiberTraceSegmentSchema).safeParse(data);
       if (!parsed.success) {
-        console.error("Zod validation error for Fiber Trace:", parsed.error);
-        toast.error("Trace data from server was malformed.");
-        throw new Error("Received invalid data structure for fiber trace.");
+        console.error('Zod validation error for Fiber Trace:', parsed.error);
+        toast.error('Trace data from server was malformed.');
+        throw new Error('Received invalid data structure for fiber trace.');
       }
       return parsed.data;
     },

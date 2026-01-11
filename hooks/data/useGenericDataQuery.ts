@@ -24,7 +24,7 @@ interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   filterFn?: FilterFunction<Row<T>>;
   rpcName?: string; // Default 'get_paged_data'
   rpcLimit?: number; // Default 6000
-  orderBy?: "asc" | "desc";
+  orderBy?: 'asc' | 'desc';
 }
 
 // CHANGED: Renamed from useGenericDataQuery to createGenericDataQuery
@@ -39,7 +39,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
     filterFn,
     rpcName = 'get_paged_data',
     rpcLimit = 6000,
-    orderBy = "asc",
+    orderBy = 'asc',
   } = options;
 
   // This returns the actual hook function expected by useCrudManager
@@ -61,7 +61,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       const rpcFilters = buildRpcFilters({
         ...filters,
         or: searchString,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as Record<string, any>;
 
       // Remove complex client-side keys from RPC call to prevent SQL errors

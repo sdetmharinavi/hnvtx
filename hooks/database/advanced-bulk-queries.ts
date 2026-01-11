@@ -1,9 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
-import { TableRow, TableUpdate, Filters, OrderBy, PerformanceOptions, PublicTableName } from "./queries-type-helpers";
-import { applyFilters, applyOrdering } from "./utility-functions";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
+import {
+  TableRow,
+  TableUpdate,
+  Filters,
+  OrderBy,
+  PerformanceOptions,
+  PublicTableName,
+} from './queries-type-helpers';
+import { applyFilters, applyOrdering } from './utility-functions';
 
 // Enhanced bulk operations with more advanced filtering and performance features
 export function useAdvancedBulkOperations<T extends PublicTableName>(
@@ -20,7 +27,10 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
   const { maxRetries = 3, retryDelay = 1000, onProgress } = options || {};
 
   // Helper function for retrying operations
-  const withRetry = async <TResult>(operation: () => Promise<TResult>, retries = maxRetries): Promise<TResult> => {
+  const withRetry = async <TResult>(
+    operation: () => Promise<TResult>,
+    retries = maxRetries
+  ): Promise<TResult> => {
     try {
       return await operation();
     } catch (error) {
@@ -82,8 +92,8 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
       return allResults;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -98,7 +108,10 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
       }>;
       safetyLimit?: number; // Global safety limit
       performanceOptions?: PerformanceOptions;
-    }): Promise<{ deletedCount: number; details: Array<{ criteriaIndex: number; deletedCount: number }> }> => {
+    }): Promise<{
+      deletedCount: number;
+      details: Array<{ criteriaIndex: number; deletedCount: number }>;
+    }> => {
       const { criteria, safetyLimit, performanceOptions } = params;
       let totalDeleted = 0;
       const details: Array<{ criteriaIndex: number; deletedCount: number }> = [];
@@ -113,7 +126,7 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
 
           // Apply ID filters if provided
           if (ids && ids.length > 0) {
-            query = query.in("id" as any, ids);
+            query = query.in('id' as any, ids);
           }
 
           // Apply other filters
@@ -127,7 +140,10 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
           }
 
           // Apply limit (either specified or safety limit)
-          const effectiveLimit = Math.min(limit || Number.MAX_SAFE_INTEGER, safetyLimit || Number.MAX_SAFE_INTEGER);
+          const effectiveLimit = Math.min(
+            limit || Number.MAX_SAFE_INTEGER,
+            safetyLimit || Number.MAX_SAFE_INTEGER
+          );
 
           if (effectiveLimit < Number.MAX_SAFE_INTEGER) {
             query = query.limit(effectiveLimit);
@@ -139,10 +155,10 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
           }
 
           // First, count the records that will be deleted
-          let countQuery = supabase.from(tableName).select("*", { count: "exact", head: true });
+          let countQuery = supabase.from(tableName).select('*', { count: 'exact', head: true });
 
           if (ids && ids.length > 0) {
-            countQuery = countQuery.in("id" as any, ids);
+            countQuery = countQuery.in('id' as any, ids);
           }
           if (filters) {
             countQuery = applyFilters(countQuery, filters);
@@ -173,8 +189,8 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
       return { deletedCount: totalDeleted, details };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -182,7 +198,7 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
   const transactionalBulkOperation = useMutation({
     mutationFn: async (params: {
       operations: Array<{
-        type: "insert" | "update" | "delete";
+        type: 'insert' | 'update' | 'delete';
         data?: any;
         filters?: Filters;
         ids?: string[];
@@ -198,19 +214,22 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
       try {
         for (const operation of operations) {
           switch (operation.type) {
-            case "insert":
-              if (!operation.data) throw new Error("Insert operation requires data");
-              const { data: insertData, error: insertError } = await supabase.from(tableName).insert(operation.data).select();
+            case 'insert':
+              if (!operation.data) throw new Error('Insert operation requires data');
+              const { data: insertData, error: insertError } = await supabase
+                .from(tableName)
+                .insert(operation.data)
+                .select();
               if (insertError) throw insertError;
               results.push(insertData);
               break;
 
-            case "update":
-              if (!operation.data) throw new Error("Update operation requires data");
+            case 'update':
+              if (!operation.data) throw new Error('Update operation requires data');
               let updateQuery = supabase.from(tableName).update(operation.data);
 
               if (operation.ids) {
-                updateQuery = updateQuery.in("id" as any, operation.ids);
+                updateQuery = updateQuery.in('id' as any, operation.ids);
               }
               if (operation.filters) {
                 updateQuery = applyFilters(updateQuery, operation.filters);
@@ -221,11 +240,11 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
               results.push(updateData);
               break;
 
-            case "delete":
+            case 'delete':
               let deleteQuery = supabase.from(tableName).delete();
 
               if (operation.ids) {
-                deleteQuery = deleteQuery.in("id" as any, operation.ids);
+                deleteQuery = deleteQuery.in('id' as any, operation.ids);
               }
               if (operation.filters) {
                 deleteQuery = applyFilters(deleteQuery, operation.filters);
@@ -246,8 +265,8 @@ export function useAdvancedBulkOperations<T extends PublicTableName>(
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 

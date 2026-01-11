@@ -18,7 +18,7 @@ const requestDelay = 1600; // 1.6 seconds delay to stay well below 40 requests/m
  */
 const rateLimitedFetch = (url: string, options: RequestInit) => {
   // THE FIX: This is a simpler, type-safe way to create a sequential promise queue.
-  
+
   // 1. Create the function that will perform the actual fetch.
   const makeRequest = async () => {
     const response = await fetch(url, options);
@@ -32,24 +32,22 @@ const rateLimitedFetch = (url: string, options: RequestInit) => {
   // 2. Chain the request to the existing fetchChain.
   // `resultPromise` will hold the promise for the JSON data.
   const resultPromise = fetchChain.then(makeRequest);
-  
+
   // 3. Update the global fetchChain for the *next* caller.
   // This new chain waits for the current request to settle (succeed or fail)
   // and then adds the delay. Since this `.then()` returns nothing,
   // the type of fetchChain remains `Promise<void>`, resolving the TS error.
   fetchChain = resultPromise
-  .then(() => new Promise<void>(res => setTimeout(res, requestDelay)))
-  .catch(() => new Promise<void>(res => setTimeout(res, requestDelay)));
+    .then(() => new Promise<void>((res) => setTimeout(res, requestDelay)))
+    .catch(() => new Promise<void>((res) => setTimeout(res, requestDelay)));
 
   // 4. Return the promise for the actual data, without the delay.
   return resultPromise;
 };
 
-
 // --- The React Hook ---
 
 export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapNode]>) {
-
   const uniquePairs = useMemo(() => {
     const map = new Map<string, [RingMapNode, RingMapNode]>();
     pairs.forEach(([startNode, endNode]) => {
@@ -108,7 +106,7 @@ export default function useORSRouteDistances(pairs: Array<[RingMapNode, RingMapN
   }, [results, uniquePairs]);
 
   const isLoading = useMemo(() => {
-    return results.some(r => r.isLoading);
+    return results.some((r) => r.isLoading);
   }, [results]);
 
   return { distances, isLoading };

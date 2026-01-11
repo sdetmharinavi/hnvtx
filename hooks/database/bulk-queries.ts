@@ -1,16 +1,16 @@
 // hooks/database/bulk-queries.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
 import {
   PublicTableName,
   TableRow,
   TableInsert,
   TableUpdate,
   Filters,
-} from "./queries-type-helpers";
-import { applyFilters } from "./utility-functions";
+} from './queries-type-helpers';
+import { applyFilters } from './utility-functions';
 
 // Enhanced bulk operations hook with filter support
 export function useTableBulkOperations<T extends PublicTableName>(
@@ -32,8 +32,8 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -51,7 +51,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
           let query = supabase
             .from(tableName)
             .update(data as any)
-            .eq("id" as any, id);
+            .eq('id' as any, id);
           if (filters) query = applyFilters(query, filters);
           const { data: result, error } = await query.select();
           if (error) throw error;
@@ -63,8 +63,8 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -76,7 +76,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
     }): Promise<void> => {
       const { ids, filters, deleteAll = false } = params;
       if (!ids && !filters && !deleteAll) {
-        throw new Error("Must provide either ids, filters, or set deleteAll to true");
+        throw new Error('Must provide either ids, filters, or set deleteAll to true');
       }
       if (ids && ids.length > 0) {
         for (let i = 0; i < ids.length; i += batchSize) {
@@ -84,7 +84,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
           let query = supabase
             .from(tableName)
             .delete()
-            .in("id" as any, batch);
+            .in('id' as any, batch);
           if (filters) query = applyFilters(query, filters);
           const { error } = await query;
           if (error) throw error;
@@ -97,8 +97,8 @@ export function useTableBulkOperations<T extends PublicTableName>(
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -123,8 +123,8 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-      queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+      queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
     },
   });
 
@@ -132,25 +132,25 @@ export function useTableBulkOperations<T extends PublicTableName>(
   const bulkInsertByFilters = useMutation({
     mutationFn: async (params: {
       data: TableInsert<T>[];
-      conflictResolution?: "skip" | "update" | "error";
+      conflictResolution?: 'skip' | 'update' | 'error';
       checkFilters?: Filters;
       onConflict?: string;
     }): Promise<TableRow<T>[]> => {
-      const { data, conflictResolution = "error", checkFilters, onConflict } = params;
+      const { data, conflictResolution = 'error', checkFilters, onConflict } = params;
 
       if (checkFilters) {
-        let checkQuery = supabase.from(tableName).select("id");
+        let checkQuery = supabase.from(tableName).select('id');
         checkQuery = applyFilters(checkQuery, checkFilters);
         const { data: existingRecords, error: checkError } = await checkQuery;
         if (checkError) throw checkError;
 
         if (existingRecords && existingRecords.length > 0) {
           switch (conflictResolution) {
-            case "skip":
+            case 'skip':
               return [];
-            case "error":
+            case 'error':
               throw new Error(`Records matching filters already exist`);
-            case "update":
+            case 'update':
               const { data: upsertResult, error: upsertError } = await supabase
                 .from(tableName)
                 .upsert(data as any, { onConflict })
@@ -165,11 +165,11 @@ export function useTableBulkOperations<T extends PublicTableName>(
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize) as any;
         let insertQuery = supabase.from(tableName).insert(batch);
-        if (conflictResolution === "skip" && onConflict) {
+        if (conflictResolution === 'skip' && onConflict) {
           insertQuery = supabase
             .from(tableName)
             .upsert(batch, { onConflict, ignoreDuplicates: true });
-        } else if (conflictResolution === "update" && onConflict) {
+        } else if (conflictResolution === 'update' && onConflict) {
           insertQuery = supabase.from(tableName).upsert(batch, { onConflict });
         }
         const { data: batchResult, error } = await insertQuery.select();
@@ -179,7 +179,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
     },
   });
 
@@ -198,7 +198,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return result as TableRow<T>[];
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
     },
   });
 
@@ -229,7 +229,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
     },
   });
 
@@ -246,7 +246,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
           let query = supabase
             .from(tableName)
             .update(data as any)
-            .eq("id" as any, id);
+            .eq('id' as any, id);
           if (globalFilters) query = applyFilters(query, globalFilters);
           if (conditions) query = applyFilters(query, conditions);
           const { data: result, error } = await query.select();
@@ -259,7 +259,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["table", tableName] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableName] });
     },
   });
 

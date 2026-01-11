@@ -1,9 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  useQuery,
-  useInfiniteQuery,
-  InfiniteData,
-} from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, InfiniteData } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Json } from '@/types/supabase-types';
 import {
@@ -29,13 +25,12 @@ import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // THE FIX: Import online status
 
 // Generic table query hook with enhanced features
-export function useTableQuery<
-  T extends TableOrViewName,
-  TData = PagedQueryResult<Row<T>>
->(
+export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>>(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  options?: Omit<UseTableQueryOptions<T, TData>, 'select'> & { select?: (data: PagedQueryResult<Row<T>>) => TData }
+  options?: Omit<UseTableQueryOptions<T, TData>, 'select'> & {
+    select?: (data: PagedQueryResult<Row<T>>) => TData;
+  }
 ) {
   const {
     columns = '*',
@@ -66,10 +61,16 @@ export function useTableQuery<
       // Deduplication and aggregation logic remains the same (Server-side only for now)
       if (deduplication) {
         const sql = buildDeduplicationQuery(tableName as string, deduplication, filters, orderBy);
-        const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', { sql_query: sql });
+        const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', {
+          sql_query: sql,
+        });
         if (rpcError) throw rpcError;
-        if (rpcData && (rpcData as any).error) throw new Error(`Database RPC Error: ${(rpcData as any).error}`);
-        return { data: (rpcData as any)?.result || [], count: ((rpcData as any)?.result || []).length };
+        if (rpcData && (rpcData as any).error)
+          throw new Error(`Database RPC Error: ${(rpcData as any).error}`);
+        return {
+          data: (rpcData as any)?.result || [],
+          count: ((rpcData as any)?.result || []).length,
+        };
       }
 
       if (aggregation) {
@@ -85,7 +86,9 @@ export function useTableQuery<
       }
 
       // Main query logic
-      let query = supabase.from(tableName as any).select(columns as string, { count: includeCount ? 'exact' : undefined });
+      let query = supabase
+        .from(tableName as any)
+        .select(columns as string, { count: includeCount ? 'exact' : undefined });
 
       if (filters) query = applyFilters(query, filters);
       if (orderBy?.length) query = applyOrdering(query, orderBy);
@@ -98,7 +101,7 @@ export function useTableQuery<
 
       return {
         data: (data as unknown as Row<T>[]) || [],
-        count: includeCount ? (count ?? 0) : (data?.length ?? 0),
+        count: includeCount ? count ?? 0 : data?.length ?? 0,
       };
     },
     ...queryOptions,
@@ -135,9 +138,7 @@ export function useTableInfiniteQuery<
       pageSize
     ),
     queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase
-        .from(tableName as any)
-        .select(columns, { count: 'exact' });
+      let query = supabase.from(tableName as any).select(columns, { count: 'exact' });
 
       if (filters) query = applyFilters(query, filters);
       if (orderBy?.length) query = applyOrdering(query, orderBy);
@@ -145,8 +146,7 @@ export function useTableInfiniteQuery<
       const startIdx = pageParam * pageSize;
       query = query.range(startIdx, startIdx + pageSize - 1);
 
-      if (performance?.timeout)
-        query = query.abortSignal(AbortSignal.timeout(performance.timeout));
+      if (performance?.timeout) query = query.abortSignal(AbortSignal.timeout(performance.timeout));
 
       const { data, error, count } = await query;
       if (error) throw error;
@@ -169,10 +169,7 @@ export function useTableInfiniteQuery<
  * NEW: Generic single record query hook using RPC (Bypasses Table RLS for View logic)
  * Use this for Views where the user might not have direct table access.
  */
-export function useRpcRecord<
-  T extends TableOrViewName,
-  TData = Row<T> | null
->(
+export function useRpcRecord<T extends TableOrViewName, TData = Row<T> | null>(
   supabase: SupabaseClient<Database>,
   viewName: T,
   id: string | null,
@@ -190,8 +187,8 @@ export function useRpcRecord<
       try {
         const table = localDb.table(viewName);
         if (table) {
-           const localData = await table.get(id);
-           if (localData) return localData as Row<T>;
+          const localData = await table.get(id);
+          if (localData) return localData as Row<T>;
         }
       } catch (e) {
         console.warn(`[useRpcRecord] Local fetch failed for ${viewName}:`, e);
@@ -199,21 +196,21 @@ export function useRpcRecord<
 
       // 2. If no local or online needed, try Network
       if (isOnline) {
-          const { data, error } = await supabase.rpc('get_paged_data', {
-            p_view_name: viewName,
-            p_limit: 1,
-            p_offset: 0,
-            p_filters: { id: id },
-            p_order_by: 'id' // Default sort
-          });
+        const { data, error } = await supabase.rpc('get_paged_data', {
+          p_view_name: viewName,
+          p_limit: 1,
+          p_offset: 0,
+          p_filters: { id: id },
+          p_order_by: 'id', // Default sort
+        });
 
-          if (error) throw error;
+        if (error) throw error;
 
-          // get_paged_data returns { data: [...], ... }
-          const rows = (data as any)?.data as Row<T>[];
-          return rows?.[0] || null;
+        // get_paged_data returns { data: [...], ... }
+        const rows = (data as any)?.data as Row<T>[];
+        return rows?.[0] || null;
       }
-      
+
       return null;
     },
     enabled: !!id && (queryOptions?.enabled ?? true),
@@ -223,10 +220,7 @@ export function useRpcRecord<
 }
 
 // Generic single record query hook (optimized & offline-capable)
-export function useTableRecord<
-  T extends TableOrViewName,
-  TData = Row<T> | null
->(
+export function useTableRecord<T extends TableOrViewName, TData = Row<T> | null>(
   supabase: SupabaseClient<Database>,
   tableName: T,
   id: string | null,
@@ -250,38 +244,38 @@ export function useTableRecord<
           // Note: This relies on the table being synced. If it's not in the sync list,
           // this might return undefined, triggering the online fallback.
           if (localData) {
-             return localData as Row<T>;
+            return localData as Row<T>;
           }
         }
       } catch (e) {
-         console.warn(`[useTableRecord] Local lookup failed for ${tableName}:`, e);
+        console.warn(`[useTableRecord] Local lookup failed for ${tableName}:`, e);
       }
 
       // 2. Fallback to Online Fetch
       if (isOnline) {
-          let query = supabase
-            .from(tableName as any)
-            .select(columns)
-            .eq('id', id);
+        let query = supabase
+          .from(tableName as any)
+          .select(columns)
+          .eq('id', id);
 
-          if (performance?.timeout)
-            query = query.abortSignal(AbortSignal.timeout(performance.timeout));
+        if (performance?.timeout)
+          query = query.abortSignal(AbortSignal.timeout(performance.timeout));
 
-          const { data, error } = await query.maybeSingle();
+        const { data, error } = await query.maybeSingle();
 
-          if (error) {
-            if (error.code === 'PGRST116') return null; // Not found
-            throw error;
-          }
-          return (data as unknown as Row<T>) || null;
+        if (error) {
+          if (error.code === 'PGRST116') return null; // Not found
+          throw error;
+        }
+        return (data as unknown as Row<T>) || null;
       }
-      
+
       // 3. Offline and not found locally
       return null;
     },
     enabled: !!id && (queryOptions?.enabled ?? true),
     // Increase stale time so we don't hammer the DB for the same record
-    staleTime: Infinity, 
+    staleTime: Infinity,
     ...queryOptions,
   });
 }
@@ -306,11 +300,11 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
         p_order_by: (orderBy || []) as unknown as Json,
         p_limit_count: limit,
       });
-      
+
       if (error) {
-         // Fallback to simple select if RPC fails
-         const { data: fbData } = await supabase.from(tableName as any).select(column);
-         return Array.from(new Set(fbData?.map(item => (item as any)[column])));
+        // Fallback to simple select if RPC fails
+        const { data: fbData } = await supabase.from(tableName as any).select(column);
+        return Array.from(new Set(fbData?.map((item) => (item as any)[column])));
       }
       return (data as any)?.map((item: any) => item.value) || [];
     },
@@ -333,17 +327,13 @@ export function useDeduplicated<T extends TableName>(
 }
 
 // Relationship query hook with optimizations
-export function useTableWithRelations<
-  T extends TableName,
-  TData = RowWithCount<Row<T>>[]
->(
+export function useTableWithRelations<T extends TableName, TData = RowWithCount<Row<T>>[]>(
   supabase: SupabaseClient<Database>,
   tableName: T,
   relations: string[],
   options?: UseTableQueryOptions<T, TData>
 ) {
-  const columnsString =
-    relations.length > 0 ? `*, ${relations.join(', ')}` : '*';
+  const columnsString = relations.length > 0 ? `*, ${relations.join(', ')}` : '*';
 
   return useTableQuery<T, TData>(supabase, tableName, {
     ...options,

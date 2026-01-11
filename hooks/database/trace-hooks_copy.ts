@@ -1,6 +1,6 @@
-import { useCallback } from "react";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
+import { useCallback } from 'react';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
 
 // Types
 interface FiberConnection {
@@ -38,9 +38,9 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
           if (validIds.length === 0) return [];
 
           const { data, error } = await supabase
-            .from("v_ofc_connections_complete")
-            .select("id, ofc_route_name, fiber_no_sn, updated_fiber_no_sn, updated_fiber_no_en")
-            .in("id", validIds);
+            .from('v_ofc_connections_complete')
+            .select('id, ofc_route_name, fiber_no_sn, updated_fiber_no_sn, updated_fiber_no_en')
+            .in('id', validIds);
 
           if (error) throw error;
 
@@ -51,17 +51,17 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
 
         // Helper function to format route string
         const formatRoute = (fibers: FiberConnection[]): string => {
-          if (fibers.length === 0) return "No route configured";
+          if (fibers.length === 0) return 'No route configured';
 
           return fibers
             .map((f) =>
               f.updated_fiber_no_sn && f.updated_fiber_no_en
-                ? `${f.ofc_route_name || "Unknown Route"} (F${f.updated_fiber_no_sn}/${
+                ? `${f.ofc_route_name || 'Unknown Route'} (F${f.updated_fiber_no_sn}/${
                     f.updated_fiber_no_en
                   })`
-                : `${f.ofc_route_name || "Unknown Route"} (F${f.fiber_no_sn})`
+                : `${f.ofc_route_name || 'Unknown Route'} (F${f.fiber_no_sn})`
             )
-            .join(" → ");
+            .join(' → ');
         };
 
         // Fetch all fiber details in parallel
@@ -84,8 +84,8 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
         return traceRoutes;
       } catch (error) {
         const err = error as Error;
-        console.error("Error tracing path:", err);
-        throw new Error(err.message || "Failed to trace fiber path");
+        console.error('Error tracing path:', err);
+        throw new Error(err.message || 'Failed to trace fiber path');
       }
     },
     [supabase]

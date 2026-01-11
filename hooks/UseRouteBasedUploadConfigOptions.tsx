@@ -1,16 +1,13 @@
-"use client";
+'use client';
 
 // src/hooks/useRouteBasedUploadConfig.ts
 
-import { useEffect, FC, ReactNode, useRef } from "react";
+import { useEffect, FC, ReactNode, useRef } from 'react';
 // Import the simplified store and its types
-import {
-  useUploadConfigStore,
-  UploadConfig,
-} from "@/stores/useUploadConfigStore";
-import { useCurrentTableName } from "./useCurrentTableName";
-import { TABLE_COLUMN_KEYS, buildUploadConfig } from "@/constants/table-column-keys";
-import { PublicTableOrViewName } from "@/hooks/database/queries-type-helpers";
+import { useUploadConfigStore, UploadConfig } from '@/stores/useUploadConfigStore';
+import { useCurrentTableName } from './useCurrentTableName';
+import { TABLE_COLUMN_KEYS, buildUploadConfig } from '@/constants/table-column-keys';
+import { PublicTableOrViewName } from '@/hooks/database/queries-type-helpers';
 
 export interface UseRouteBasedUploadConfigOptions {
   tableName?: PublicTableOrViewName;
@@ -18,9 +15,7 @@ export interface UseRouteBasedUploadConfigOptions {
   customConfig?: Partial<UploadConfig<PublicTableOrViewName>>;
 }
 
-export const useRouteBasedUploadConfig = (
-  options: UseRouteBasedUploadConfigOptions = {}
-) => {
+export const useRouteBasedUploadConfig = (options: UseRouteBasedUploadConfigOptions = {}) => {
   const { tableName, autoSetConfig = true, customConfig } = options;
   const previousTableNameRef = useRef<PublicTableOrViewName | null>(null);
 
@@ -28,13 +23,12 @@ export const useRouteBasedUploadConfig = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentTableName = useCurrentTableName(tableName as unknown as any);
   const validTableName: PublicTableOrViewName | null =
-    currentTableName && (currentTableName in (TABLE_COLUMN_KEYS as Record<string, unknown>))
+    currentTableName && currentTableName in (TABLE_COLUMN_KEYS as Record<string, unknown>)
       ? (currentTableName as unknown as PublicTableOrViewName)
       : null;
 
   // Get the actions from the store
-  const { setUploadConfig, getUploadConfig, clearUploadConfig } =
-    useUploadConfigStore();
+  const { setUploadConfig, getUploadConfig, clearUploadConfig } = useUploadConfigStore();
 
   // Proper cleanup and config management
   useEffect(() => {
@@ -62,13 +56,7 @@ export const useRouteBasedUploadConfig = (
         clearUploadConfig(validTableName);
       }
     };
-  }, [
-    validTableName,
-    autoSetConfig,
-    customConfig,
-    setUploadConfig,
-    clearUploadConfig,
-  ]);
+  }, [validTableName, autoSetConfig, customConfig, setUploadConfig, clearUploadConfig]);
 
   return {
     currentTableName: validTableName,

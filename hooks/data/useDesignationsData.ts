@@ -7,10 +7,7 @@ import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DesignationWithRelations } from '@/config/designations';
-import { 
-  buildServerSearchString,
-  performClientSort,
-} from '@/hooks/database/search-utils';
+import { buildServerSearchString, performClientSort } from '@/hooks/database/search-utils';
 
 export const useDesignationsData = (
   params: DataQueryHookParams
@@ -45,49 +42,49 @@ export const useDesignationsData = (
     isFetching,
     error,
     refetch,
-    networkStatus
+    networkStatus,
   } = useLocalFirstQuery<'v_employee_designations'>({
     queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employee_designations,
-    autoSync: false // Manual sync only
+    autoSync: false, // Manual sync only
   });
 
   const processedData = useMemo(() => {
-    let filtered = (allDesignationsFlat || []).filter(d => d.id != null);
+    let filtered = (allDesignationsFlat || []).filter((d) => d.id != null);
 
     // 1. Search (Recursive Parent/Child Logic)
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       const searchFilteredIds = new Set<string>();
 
-      const initialFilter = filtered.filter(d => d.name?.toLowerCase().includes(lowerQuery));
+      const initialFilter = filtered.filter((d) => d.name?.toLowerCase().includes(lowerQuery));
 
       // Recursive function to keep parents if child matches search
       const addParents = (designation: V_employee_designationsRowSchema) => {
         if (designation.id && !searchFilteredIds.has(designation.id)) {
           searchFilteredIds.add(designation.id);
           if (designation.parent_id) {
-            const parent = allDesignationsFlat.find(d => d.id === designation.parent_id);
+            const parent = allDesignationsFlat.find((d) => d.id === designation.parent_id);
             if (parent) addParents(parent);
           }
         }
       };
       initialFilter.forEach(addParents);
-      filtered = allDesignationsFlat.filter(d => d.id && searchFilteredIds.has(d.id));
+      filtered = allDesignationsFlat.filter((d) => d.id && searchFilteredIds.has(d.id));
     }
 
     // 2. Filters
     if (filters.status) {
-      filtered = filtered.filter(d => String(d.status) === filters.status);
+      filtered = filtered.filter((d) => String(d.status) === filters.status);
     }
 
     // 3. Sort
     filtered = performClientSort(filtered, 'name');
 
     // 4. Reconstruct Hierarchy
-    const designationsWithRelations = filtered.map(d => ({
+    const designationsWithRelations = filtered.map((d) => ({
       ...d,
       id: d.id!,
       name: d.name!,
@@ -95,9 +92,9 @@ export const useDesignationsData = (
       child_designations: [],
     })) as DesignationWithRelations[];
 
-    const designationMap = new Map(designationsWithRelations.map(d => [d.id, d]));
+    const designationMap = new Map(designationsWithRelations.map((d) => [d.id, d]));
 
-    designationsWithRelations.forEach(designation => {
+    designationsWithRelations.forEach((designation) => {
       if (designation.parent_id) {
         const parent = designationMap.get(designation.parent_id);
         if (parent) {

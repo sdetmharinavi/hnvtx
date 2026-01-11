@@ -11,10 +11,7 @@ import {
   UseExcelUploadOptions,
   ValidationError,
 } from '@/hooks/database/queries-type-helpers';
-import {
-  logRowProcessing,
-  validateValue,
-} from './excel-helpers';
+import { logRowProcessing, validateValue } from './excel-helpers';
 import { parseExcelFile } from '@/utils/excel-parser';
 
 export interface SystemUploadOptions {
@@ -88,7 +85,7 @@ export function useSystemExcelUpload(
         for (const mapping of columns) {
           const colIndex = getHeaderIndex(mapping.excelHeader);
           const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
-          
+
           let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
           if (typeof finalValue === 'string') finalValue = finalValue.trim();
 
@@ -116,14 +113,17 @@ export function useSystemExcelUpload(
 
         // Handle JSON for rings
         let ringAssociationsJson: Json | null = null;
-        if (processedData.ring_associations && typeof processedData.ring_associations === 'string') {
+        if (
+          processedData.ring_associations &&
+          typeof processedData.ring_associations === 'string'
+        ) {
           try {
             ringAssociationsJson = JSON.parse(processedData.ring_associations);
           } catch (e) {
             console.error(e);
             // Log error but maybe continue? No, validation fail.
             uploadResult.errorCount++;
-            continue; 
+            continue;
           }
         }
 
@@ -135,8 +135,11 @@ export function useSystemExcelUpload(
           p_status: (processedData.status as boolean) ?? true,
           p_is_hub: (processedData.is_hub as boolean) ?? false,
           p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
-          p_ip_address: processedData.ip_address ? ((processedData.ip_address as string).split('/')[0] as string | null) || undefined : undefined,
-          p_maintenance_terminal_id: (processedData.maintenance_terminal_id as string | null) || undefined,
+          p_ip_address: processedData.ip_address
+            ? ((processedData.ip_address as string).split('/')[0] as string | null) || undefined
+            : undefined,
+          p_maintenance_terminal_id:
+            (processedData.maintenance_terminal_id as string | null) || undefined,
           p_commissioned_on: (processedData.commissioned_on as string | null) || undefined,
           p_s_no: (processedData.s_no as string | null) || undefined,
           p_remark: (processedData.remark as string | null) || undefined,
@@ -146,15 +149,15 @@ export function useSystemExcelUpload(
         };
 
         if (!rpcPayload.p_system_type_id || !rpcPayload.p_node_id) {
-           uploadResult.errorCount++;
-           continue;
+          uploadResult.errorCount++;
+          continue;
         }
 
         recordsToProcess.push(rpcPayload);
       }
 
       uploadResult.totalRows = recordsToProcess.length;
-      
+
       if (recordsToProcess.length === 0) {
         if (allValidationErrors.length > 0) {
           toast.error(`${allValidationErrors.length} rows had validation errors. See console.`);
@@ -172,7 +175,7 @@ export function useSystemExcelUpload(
       // Chunk the array
       for (let i = 0; i < recordsToProcess.length; i += CONCURRENCY_LIMIT) {
         const chunk = recordsToProcess.slice(i, i + CONCURRENCY_LIMIT);
-        
+
         await Promise.all(
           chunk.map(async (record) => {
             try {
@@ -189,14 +192,16 @@ export function useSystemExcelUpload(
             }
           })
         );
-        
+
         // Optional: Update progress
         // const progress = Math.round(((i + chunk.length) / recordsToProcess.length) * 100);
       }
 
       if (showToasts) {
         if (uploadResult.errorCount > 0) {
-          toast.warning(`${uploadResult.successCount} systems saved, ${uploadResult.errorCount} failed.`);
+          toast.warning(
+            `${uploadResult.successCount} systems saved, ${uploadResult.errorCount} failed.`
+          );
         } else {
           toast.success(`Successfully saved ${uploadResult.successCount} systems.`);
         }

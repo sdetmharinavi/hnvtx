@@ -34,13 +34,22 @@ export function useOfflineQuery<TData>(
         } catch (error) {
           // If the network error occurs while online, it's a genuine failure.
           // We then fall back to the offline data.
-          console.warn(`Online fetch for queryKey "${String(queryKey)}" failed. Falling back to offline data. Error:`, error);
-          toast.warning("Could not fetch latest data. Displaying offline content.", { id: `offline-fallback-${String(queryKey)}` });
+          console.warn(
+            `Online fetch for queryKey "${String(
+              queryKey
+            )}" failed. Falling back to offline data. Error:`,
+            error
+          );
+          toast.warning('Could not fetch latest data. Displaying offline content.', {
+            id: `offline-fallback-${String(queryKey)}`,
+          });
           return offlineQueryFn();
         }
       } else {
         // If offline from the start, go directly to the local database
-        toast.info("You are offline. Displaying locally cached data.", { id: `offline-mode-${String(queryKey)}` });
+        toast.info('You are offline. Displaying locally cached data.', {
+          id: `offline-mode-${String(queryKey)}`,
+        });
         return offlineQueryFn();
       }
     },

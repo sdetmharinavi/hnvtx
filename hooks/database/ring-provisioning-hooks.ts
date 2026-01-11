@@ -255,14 +255,17 @@ export function useDeprovisionRingLogicalPath() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('logical_paths').update({
-        source_system_id: null,
-        source_port: null,
-        destination_system_id: null,
-        destination_port: null,
-        status: 'unprovisioned'
-      }).eq('id', id);
-      
+      const { error } = await supabase
+        .from('logical_paths')
+        .update({
+          source_system_id: null,
+          source_port: null,
+          destination_system_id: null,
+          destination_port: null,
+          status: 'unprovisioned',
+        })
+        .eq('id', id);
+
       if (error) throw error;
     },
     onSuccess: async () => {

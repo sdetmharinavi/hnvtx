@@ -1,11 +1,11 @@
 // hooks/useDeleteManager.ts
-import { useState, useCallback } from "react";
-import { toast } from "sonner";
-import { useTableBulkOperations } from "@/hooks/database";
-import { createClient } from "@/utils/supabase/client";
-import { Database } from "@/types/supabase-types";
-import { useAdminBulkDeleteUsers } from "@/hooks/data/useAdminUserMutations";
-import { PostgrestError } from "@supabase/supabase-js";
+import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
+import { useTableBulkOperations } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
+import { Database } from '@/types/supabase-types';
+import { useAdminBulkDeleteUsers } from '@/hooks/data/useAdminUserMutations';
+import { PostgrestError } from '@supabase/supabase-js';
 
 interface DeleteItem {
   id: string;
@@ -20,7 +20,7 @@ interface BulkDeleteFilter {
 }
 
 interface UseDeleteManagerProps {
-  tableName: keyof Database["public"]["Tables"];
+  tableName: keyof Database['public']['Tables'];
   onSuccess?: (deletedIds: string[]) => void;
 }
 
@@ -87,7 +87,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         onSuccess?.(idsToDelete);
         handleCancel();
       } catch (error) {
-        console.error("Custom delete failed:", error);
+        console.error('Custom delete failed:', error);
         // Toast is handled by UI/Action usually, but adding a fallback here
       } finally {
         setIsCustomLoading(false);
@@ -111,19 +111,19 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
         const pgError = err as unknown as PostgrestError;
 
         // THE FIX: Enhanced Error Parsing for Foreign Key Violations
-        if (pgError.code === "23503") {
+        if (pgError.code === '23503') {
           // Extracts table name from: '... update or delete on table "systems" violates foreign key constraint ... on table "system_connections"'
           const details = pgError.details || pgError.message;
           const tableMatch = details.match(/table "([^"]+)"/g);
 
-          let blockingTable = "another record";
+          let blockingTable = 'another record';
           if (tableMatch && tableMatch.length >= 2) {
             // The second match is usually the referencing (blocking) table
             // E.g. "table "systems"" ... "table "system_connections""
-            blockingTable = tableMatch[1].replace(/"/g, "").replace("table ", "");
+            blockingTable = tableMatch[1].replace(/"/g, '').replace('table ', '');
           }
 
-          toast.error("Deletion Failed: Dependency Detected", {
+          toast.error('Deletion Failed: Dependency Detected', {
             description: `This record cannot be deleted because it is being used in the '${blockingTable}' table. Please remove or reassign the dependent records first.`,
             duration: 6000, // Longer duration for reading
           });
@@ -136,11 +136,11 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
       },
     };
 
-    if (tableName === "user_profiles") {
+    if (tableName === 'user_profiles') {
       if (itemsToDelete.length > 0) {
         userDelete({ user_ids: idsToDelete }, mutationOptions);
       } else {
-        toast.error("Bulk delete by filter is not supported for users.");
+        toast.error('Bulk delete by filter is not supported for users.');
         handleCancel();
       }
     } else {
@@ -163,8 +163,8 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
 
   const getConfirmationMessage = useCallback(() => {
     const suffix = customDeleteAction
-      ? " (Offline Mode: Will sync later)"
-      : " This action cannot be undone.";
+      ? ' (Offline Mode: Will sync later)'
+      : ' This action cannot be undone.';
 
     if (itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
@@ -175,7 +175,7 @@ export function useDeleteManager({ tableName, onSuccess }: UseDeleteManagerProps
     if (bulkFilter) {
       return `Are you sure you want to delete all items in "${bulkFilter.displayName}"?${suffix}`;
     }
-    return "Are you sure you want to proceed?";
+    return 'Are you sure you want to proceed?';
   }, [itemsToDelete, bulkFilter, customDeleteAction]);
 
   return {

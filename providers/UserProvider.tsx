@@ -1,5 +1,5 @@
 // path: providers/UserProvider.tsx
-"use client";
+'use client';
 
 import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
@@ -25,7 +25,8 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } = useUserPermissionsExtended();
+  const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } =
+    useUserPermissionsExtended();
   const { user } = useAuth();
   const { theme, setTheme } = useThemeStore();
   const queryClient = useQueryClient();
@@ -62,7 +63,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               },
               {
                 onSuccess: () => {
-                   queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
+                  queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
                 },
                 onError: (err) => console.error('Failed to save theme preference:', err),
               }
@@ -80,22 +81,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     // If user logs out, reset the ref so they sync again upon next login
     if (!currentUserId) {
-        syncedUserIdRef.current = null;
-        return;
+      syncedUserIdRef.current = null;
+      return;
     }
 
     // Only sync if we haven't synced for this specific user ID yet
     if (syncedUserIdRef.current !== currentUserId) {
-       syncedUserIdRef.current = currentUserId;
-       
-       // Fire and forget - background sync
-       syncData(['v_user_profiles_extended']);
+      syncedUserIdRef.current = currentUserId;
+
+      // Fire and forget - background sync
+      syncData(['v_user_profiles_extended']);
     }
   }, [user?.id, syncData]);
 
-
   return (
-    <UserContext.Provider value={{ profile, role: role as UserRole | null, isSuperAdmin, isLoading, canAccess, refetch: refetch as () => Promise<UseQueryResult>, error }}>
+    <UserContext.Provider
+      value={{
+        profile,
+        role: role as UserRole | null,
+        isSuperAdmin,
+        isLoading,
+        canAccess,
+        refetch: refetch as () => Promise<UseQueryResult>,
+        error,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

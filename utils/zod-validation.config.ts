@@ -71,7 +71,16 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'International phone number format',
     },
     {
-      fieldPatterns: ['date_of_birth', '.*dob.*', '.*doj.*', 'commissioned_on', 'sn_dom', 'en_dom', 'note_date', 'purchase_date'],
+      fieldPatterns: [
+        'date_of_birth',
+        '.*dob.*',
+        '.*doj.*',
+        'commissioned_on',
+        'sn_dom',
+        'en_dom',
+        'note_date',
+        'purchase_date',
+      ],
       validation: 'z.iso.date()',
       description: 'ISO date string validation (e.g., YYYY-MM-DD)',
     },
@@ -97,7 +106,7 @@ export const defaultValidationConfig: ValidationConfig = {
       description: 'Username format validation',
     },
     {
-      fieldPatterns: ['first_name', 'last_name','name', 'title'],
+      fieldPatterns: ['first_name', 'last_name', 'name', 'title'],
       validation: 'z.string().min(1, "Name cannot be empty").max(255, "Name is too long")',
       description: 'Name fields validation',
     },
@@ -178,13 +187,15 @@ export const defaultValidationConfig: ValidationConfig = {
     {
       fieldName: 'address',
       tableName: 'user_profiles',
-      validation: 'z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), })',
+      validation:
+        'z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), })',
       description: 'Custom object schema for user address',
     },
     {
       fieldName: 'preferences',
       tableName: 'user_profiles',
-      validation: 'z.object({language: z.string().optional().nullable(), theme: z.string().optional().nullable(), needsOnboarding: z.boolean().optional().nullable(), showOnboardingPrompt: z.boolean().optional().nullable(), })',
+      validation:
+        'z.object({language: z.string().optional().nullable(), theme: z.string().optional().nullable(), needsOnboarding: z.boolean().optional().nullable(), showOnboardingPrompt: z.boolean().optional().nullable(), })',
       description: 'Custom object schema for user preferences',
     },
     {

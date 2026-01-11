@@ -49,7 +49,7 @@ import {
   Logical_path_segmentsRowSchema,
   Sdh_connectionsRowSchema,
   V_junction_closures_completeRowSchema,
-  V_cable_segments_at_jcRowSchema
+  V_cable_segments_at_jcRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -64,8 +64,19 @@ export type StoredUserProfiles = {
   avatar_url?: string | null;
   phone_number?: string | null;
   date_of_birth?: string | null;
-  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
-  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+  address: {
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+    country?: string | null;
+  } | null;
+  preferences: {
+    language?: string | null;
+    theme?: string | null;
+    needsOnboarding?: boolean | null;
+    showOnboardingPrompt?: boolean | null;
+  } | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -82,7 +93,13 @@ export type StoredVUserProfilesExtended = {
   created_at: string | null;
   updated_at: string | null;
   account_age_days: number | null;
-  address: { street?: string | null; city?: string | null; state?: string | null; zip_code?: string | null; country?: string | null; } | null;
+  address: {
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+    country?: string | null;
+  } | null;
   auth_updated_at: string | null;
   avatar_url: string | null;
   computed_status: string | null;
@@ -95,7 +112,12 @@ export type StoredVUserProfilesExtended = {
   last_name: string | null;
   phone_confirmed_at: string | null;
   phone_number: string | null;
-  preferences: { language?: string | null; theme?: string | null; needsOnboarding?: boolean | null; showOnboardingPrompt?: boolean | null; } | null;
+  preferences: {
+    language?: string | null;
+    theme?: string | null;
+    needsOnboarding?: boolean | null;
+    showOnboardingPrompt?: boolean | null;
+  } | null;
   raw_app_meta_data: Json | null;
   raw_user_meta_data: Json | null;
 };
@@ -146,7 +168,7 @@ export class HNVTMDatabase extends Dexie {
   inventory_items!: Table<Inventory_itemsRowSchema, string>;
   ring_based_systems!: Table<Ring_based_systemsRowSchema, [string, string]>;
   ports_management!: Table<Ports_managementRowSchema, string>;
-  services!: Table<ServicesRowSchema , string>;
+  services!: Table<ServicesRowSchema, string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
   logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
 
@@ -234,13 +256,16 @@ export class HNVTMDatabase extends Dexie {
       v_ring_nodes: '&[id+ring_id], ring_id, node_id',
 
       systems: '&id, system_name, node_id, status, updated_at',
-      v_systems_complete: '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address], updated_at',
+      v_systems_complete:
+        '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address], updated_at',
 
       system_connections: '&id, system_id, status, updated_at',
-      v_system_connections_complete: '&id, system_id, en_id, connected_system_name, service_name, created_at, status, updated_at',
+      v_system_connections_complete:
+        '&id, system_id, en_id, connected_system_name, service_name, created_at, status, updated_at',
 
       ports_management: '&id, [system_id+port], system_id, updated_at',
-      v_ports_management_complete: '&id, system_id, port, port_admin_status, port_utilization, updated_at',
+      v_ports_management_complete:
+        '&id, system_id, port, port_admin_status, port_utilization, updated_at',
 
       services: '&id, name, updated_at',
       v_services: '&id, name, node_name, link_type_id, status, updated_at',
@@ -281,20 +306,22 @@ export class HNVTMDatabase extends Dexie {
       sync_status: 'tableName',
       // THE FIX: Added tableName index to mutation_queue
       mutation_queue: '++id, timestamp, status, tableName',
-      route_distances: 'id, timestamp'
+      route_distances: 'id, timestamp',
     });
   }
 }
 
 export const localDb = new HNVTMDatabase();
 
-export function getTable<T extends PublicTableOrViewName>(tableName: T): Table<Row<T>, string | number | [string, string]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const table = (localDb as any)[tableName];
-    if (!table) {
-        console.warn(`Table ${tableName} not defined in localDb class.`);
-        throw new Error(`Table ${tableName} does not exist in localDb`);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return table as Table<Row<T>, any>;
+export function getTable<T extends PublicTableOrViewName>(
+  tableName: T
+): Table<Row<T>, string | number | [string, string]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = (localDb as any)[tableName];
+  if (!table) {
+    console.warn(`Table ${tableName} not defined in localDb class.`);
+    throw new Error(`Table ${tableName} does not exist in localDb`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return table as Table<Row<T>, any>;
 }

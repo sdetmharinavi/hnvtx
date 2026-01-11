@@ -1,10 +1,10 @@
 // hooks/useRealtimeSubscription.ts
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/client";
-import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/utils/supabase/client';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 // Map of DB table names to React Query keys (matches keys in hooks/data/*)
 const TABLE_TO_QUERY_KEY_MAP: Record<string, string[]> = {
@@ -17,7 +17,11 @@ const TABLE_TO_QUERY_KEY_MAP: Record<string, string[]> = {
   nodes: ['nodes-data', 'v_nodes_complete'],
   ofc_cables: ['ofc_cables-data', 'v_ofc_cables_complete', 'ofc-routes-for-selection'],
   ofc_connections: ['ofc_connections-data', 'v_ofc_connections_complete', 'available-fibers'],
-  system_connections: ['system_connections-data', 'v_system_connections_complete', 'all-system-connections'],
+  system_connections: [
+    'system_connections-data',
+    'v_system_connections_complete',
+    'all-system-connections',
+  ],
   rings: ['rings-manager-data', 'v_rings'],
   ring_based_systems: ['ring-systems-data'],
   diary_notes: ['diary_data-for-month'],
@@ -25,7 +29,7 @@ const TABLE_TO_QUERY_KEY_MAP: Record<string, string[]> = {
   file_movements: ['e-file-details'],
   logical_paths: ['ring-connection-paths'],
   maintenance_areas: ['maintenance_areas-data'],
-  lookup_types: ['lookup_types-data', 'categories-data-all']
+  lookup_types: ['lookup_types-data', 'categories-data-all'],
 };
 
 /**
@@ -36,7 +40,7 @@ export function useRealtimeSubscription() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
-  
+
   // Use a ref to debounce rapid-fire events (e.g. bulk uploads)
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const pendingTables = useRef<Set<string>>(new Set());
@@ -48,16 +52,16 @@ export function useRealtimeSubscription() {
     // console.log("[Realtime] Setting up subscription...");
 
     const channel = supabase
-      .channel("db-changes")
+      .channel('db-changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*", // Listen to INSERT, UPDATE, DELETE
-          schema: "public",
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
         },
         (payload) => {
           const tableName = payload.table;
-          
+
           // Add table to pending set
           pendingTables.current.add(tableName);
 
@@ -69,16 +73,16 @@ export function useRealtimeSubscription() {
           debounceTimeout.current = setTimeout(() => {
             const tablesToInvalidate = Array.from(pendingTables.current);
             pendingTables.current.clear();
-            
+
             let invalidatedCount = 0;
 
             tablesToInvalidate.forEach((tbl) => {
               const queryKeys = TABLE_TO_QUERY_KEY_MAP[tbl];
-              
+
               if (queryKeys) {
                 // Invalidate specific keys mapped to this table
-                queryKeys.forEach(key => {
-                   queryClient.invalidateQueries({ queryKey: [key] });
+                queryKeys.forEach((key) => {
+                  queryClient.invalidateQueries({ queryKey: [key] });
                 });
                 invalidatedCount++;
               } else {
@@ -94,15 +98,14 @@ export function useRealtimeSubscription() {
             });
 
             if (invalidatedCount > 0) {
-                // console.log(`[Realtime] Invalidated queries for: ${tablesToInvalidate.join(', ')}`);
+              // console.log(`[Realtime] Invalidated queries for: ${tablesToInvalidate.join(', ')}`);
             }
-
           }, 1000); // Wait 1 second before processing batch to allow bulk updates to finish
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-           // console.log("[Realtime] Connected.");
+          // console.log("[Realtime] Connected.");
         }
       });
 

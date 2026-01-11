@@ -24,7 +24,7 @@ class NextJsAppRouterUnusedFileFinder {
       /README\.md$/,
       /\.env/,
       /tsconfig\.json$/,
-      /jsconfig\.json$/
+      /jsconfig\.json$/,
     ];
     this.extensions = ['.js', '.jsx', '.ts', '.tsx'];
   }
@@ -40,13 +40,17 @@ class NextJsAppRouterUnusedFileFinder {
 
         if (stat.isDirectory() && !this.shouldExclude(fullPath)) {
           files.push(...this.getAllFiles(fullPath));
-        } else if (stat.isFile() && this.isValidExtension(fullPath) && !this.shouldExclude(fullPath)) {
+        } else if (
+          stat.isFile() &&
+          this.isValidExtension(fullPath) &&
+          !this.shouldExclude(fullPath)
+        ) {
           files.push(fullPath);
         }
       }
     } catch (error) {
       console.log(error);
-      
+
       // Skip directories we can't read
     }
 
@@ -54,11 +58,11 @@ class NextJsAppRouterUnusedFileFinder {
   }
 
   shouldExclude(filePath) {
-    return this.excludePatterns.some(pattern => pattern.test(filePath));
+    return this.excludePatterns.some((pattern) => pattern.test(filePath));
   }
 
   isValidExtension(filePath) {
-    return this.extensions.some(ext => filePath.endsWith(ext));
+    return this.extensions.some((ext) => filePath.endsWith(ext));
   }
 
   extractReferences(filePath) {
@@ -83,17 +87,22 @@ class NextJsAppRouterUnusedFileFinder {
         // Image src patterns for local images
         /src\s*=\s*['"`](\/[^'"`]+)['"`]/g,
         // Route handlers and metadata references
-        /route\s*:\s*['"`]([^'"`]+)['"`]/g
+        /route\s*:\s*['"`]([^'"`]+)['"`]/g,
       ];
 
-      patterns.forEach(pattern => {
+      patterns.forEach((pattern) => {
         let match;
         while ((match = pattern.exec(content)) !== null) {
           let importPath = match[1];
-          
+
           // Skip external URLs and node_modules
-          if (importPath.startsWith('http') || importPath.startsWith('//') || 
-              (!importPath.startsWith('.') && !importPath.startsWith('/') && !importPath.startsWith('@/'))) {
+          if (
+            importPath.startsWith('http') ||
+            importPath.startsWith('//') ||
+            (!importPath.startsWith('.') &&
+              !importPath.startsWith('/') &&
+              !importPath.startsWith('@/'))
+          ) {
             continue;
           }
 
@@ -126,7 +135,7 @@ class NextJsAppRouterUnusedFileFinder {
       if (metadataMatches) {
         const iconMatches = metadataMatches[0].match(/icon\s*:\s*['"`]([^'"`]+)['"`]/g);
         if (iconMatches) {
-          iconMatches.forEach(match => {
+          iconMatches.forEach((match) => {
             const iconPath = match.match(/['"`]([^'"`]+)['"`]/)[1];
             if (iconPath.startsWith('/')) {
               const fullIconPath = path.join(this.projectRoot, 'public', iconPath);
@@ -160,7 +169,7 @@ class NextJsAppRouterUnusedFileFinder {
         return;
       }
     }
-    
+
     // Try index files
     for (const ext of this.extensions) {
       const indexFile = path.join(importPath, `index${ext}`);
@@ -171,7 +180,16 @@ class NextJsAppRouterUnusedFileFinder {
     }
 
     // Try common Next.js file patterns in the directory
-    const nextJsFiles = ['page', 'layout', 'loading', 'error', 'not-found', 'route', 'template', 'default'];
+    const nextJsFiles = [
+      'page',
+      'layout',
+      'loading',
+      'error',
+      'not-found',
+      'route',
+      'template',
+      'default',
+    ];
     for (const fileName of nextJsFiles) {
       for (const ext of this.extensions) {
         const nextJsFile = path.join(importPath, `${fileName}${ext}`);
@@ -185,57 +203,57 @@ class NextJsAppRouterUnusedFileFinder {
   // Enhanced Next.js App Router special file detection
   isNextJsAppRouterSpecialFile(filePath) {
     const relativePath = path.relative(this.projectRoot, filePath).replace(/\\/g, '/');
-    
+
     const appRouterPatterns = [
       // Root layout is always used
       /^app\/layout\.(js|jsx|ts|tsx)$/,
-      
+
       // Page files in app directory
       /^app\/.*\/page\.(js|jsx|ts|tsx)$/,
       /^app\/page\.(js|jsx|ts|tsx)$/,
-      
+
       // Layout files
       /^app\/.*\/layout\.(js|jsx|ts|tsx)$/,
-      
+
       // Loading UI
       /^app\/.*\/loading\.(js|jsx|ts|tsx)$/,
-      
+
       // Error UI
       /^app\/.*\/error\.(js|jsx|ts|tsx)$/,
       /^app\/.*\/global-error\.(js|jsx|ts|tsx)$/,
-      
+
       // Not found
       /^app\/.*\/not-found\.(js|jsx|ts|tsx)$/,
-      
+
       // Route handlers (API routes)
       /^app\/.*\/route\.(js|ts)$/,
-      
+
       // Template files
       /^app\/.*\/template\.(js|jsx|ts|tsx)$/,
-      
+
       // Default files (for parallel routes)
       /^app\/.*\/default\.(js|jsx|ts|tsx)$/,
-      
+
       // Metadata files
       /^app\/.*\/(icon|apple-icon|favicon)\.(ico|jpg|jpeg|png|svg)$/,
       /^app\/.*\/opengraph-image\.(jpg|jpeg|png|gif)$/,
       /^app\/.*\/twitter-image\.(jpg|jpeg|png|gif)$/,
       /^app\/.*\/(robots|sitemap)\.(txt|xml|js|ts)$/,
-      
+
       // Legacy pages directory (if still exists)
       /^pages\/.*\.(js|jsx|ts|tsx)$/,
       /^pages\/api\/.*\.(js|ts)$/,
-      
+
       // Root special files
       /^middleware\.(js|ts)$/,
       /^instrumentation\.(js|ts)$/,
-      
+
       // Config files that might be used
       /^app\/globals\.css$/,
       /^styles\/globals\.css$/,
     ];
 
-    return appRouterPatterns.some(pattern => pattern.test(relativePath));
+    return appRouterPatterns.some((pattern) => pattern.test(relativePath));
   }
 
   // Check if file is in public directory
@@ -247,7 +265,7 @@ class NextJsAppRouterUnusedFileFinder {
   // Check for component files that might be used in app router pages
   isLikelyUsedComponent(filePath) {
     const relativePath = path.relative(this.projectRoot, filePath).replace(/\\/g, '/');
-    
+
     // Components in common directories are likely used
     const likelyUsedPatterns = [
       /^components\/.*\.(js|jsx|ts|tsx)$/,
@@ -259,7 +277,7 @@ class NextJsAppRouterUnusedFileFinder {
       /^providers\/.*\.(js|jsx|ts|tsx)$/,
     ];
 
-    return likelyUsedPatterns.some(pattern => pattern.test(relativePath));
+    return likelyUsedPatterns.some((pattern) => pattern.test(relativePath));
   }
 
   async findUnusedFiles() {
@@ -268,12 +286,12 @@ class NextJsAppRouterUnusedFileFinder {
     console.log(`📁 Found ${allFiles.length} files`);
 
     // Add all files to our set
-    allFiles.forEach(file => this.allFiles.add(file));
+    allFiles.forEach((file) => this.allFiles.add(file));
 
     console.log('🔗 Analyzing imports, references, and App Router conventions...');
-    
+
     // Mark Next.js App Router special files as used
-    allFiles.forEach(file => {
+    allFiles.forEach((file) => {
       if (this.isNextJsAppRouterSpecialFile(file) || this.isPublicAsset(file)) {
         this.referencedFiles.add(file);
       }
@@ -282,14 +300,14 @@ class NextJsAppRouterUnusedFileFinder {
     // Extract references from all files
     for (const file of allFiles) {
       const references = this.extractReferences(file);
-      references.forEach(ref => this.referencedFiles.add(ref));
+      references.forEach((ref) => this.referencedFiles.add(ref));
     }
 
     // Find unused files
     const unusedFiles = [];
     const potentiallyUnusedFiles = [];
 
-    this.allFiles.forEach(file => {
+    this.allFiles.forEach((file) => {
       if (!this.referencedFiles.has(file)) {
         if (this.isLikelyUsedComponent(file)) {
           potentiallyUnusedFiles.push(file);
@@ -300,17 +318,19 @@ class NextJsAppRouterUnusedFileFinder {
     });
 
     return {
-      definitelyUnused: unusedFiles.map(file => path.relative(this.projectRoot, file)),
-      potentiallyUnused: potentiallyUnusedFiles.map(file => path.relative(this.projectRoot, file))
+      definitelyUnused: unusedFiles.map((file) => path.relative(this.projectRoot, file)),
+      potentiallyUnused: potentiallyUnusedFiles.map((file) =>
+        path.relative(this.projectRoot, file)
+      ),
     };
   }
 
   async generateReport() {
     const { definitelyUnused, potentiallyUnused } = await this.findUnusedFiles();
-    
+
     console.log('\n📊 NEXT.JS APP ROUTER - UNUSED FILES REPORT');
     console.log('='.repeat(60));
-    
+
     if (definitelyUnused.length === 0 && potentiallyUnused.length === 0) {
       console.log('✅ No unused files found!');
       return;
@@ -318,40 +338,46 @@ class NextJsAppRouterUnusedFileFinder {
 
     if (definitelyUnused.length > 0) {
       console.log(`❗ ${definitelyUnused.length} files that appear to be unused:\n`);
-      
+
       const byDirectory = {};
-      definitelyUnused.forEach(file => {
+      definitelyUnused.forEach((file) => {
         const dir = path.dirname(file) || '.';
         if (!byDirectory[dir]) byDirectory[dir] = [];
         byDirectory[dir].push(path.basename(file));
       });
 
-      Object.keys(byDirectory).sort().forEach(dir => {
-        console.log(`📂 ${dir}/`);
-        byDirectory[dir].forEach(file => {
-          console.log(`   ❌ ${file}`);
+      Object.keys(byDirectory)
+        .sort()
+        .forEach((dir) => {
+          console.log(`📂 ${dir}/`);
+          byDirectory[dir].forEach((file) => {
+            console.log(`   ❌ ${file}`);
+          });
+          console.log();
         });
-        console.log();
-      });
     }
 
     if (potentiallyUnused.length > 0) {
-      console.log(`⚠️  ${potentiallyUnused.length} files in common directories that might be unused:\n`);
-      
+      console.log(
+        `⚠️  ${potentiallyUnused.length} files in common directories that might be unused:\n`
+      );
+
       const byDirectory = {};
-      potentiallyUnused.forEach(file => {
+      potentiallyUnused.forEach((file) => {
         const dir = path.dirname(file) || '.';
         if (!byDirectory[dir]) byDirectory[dir] = [];
         byDirectory[dir].push(path.basename(file));
       });
 
-      Object.keys(byDirectory).sort().forEach(dir => {
-        console.log(`📂 ${dir}/`);
-        byDirectory[dir].forEach(file => {
-          console.log(`   ⚠️  ${file}`);
+      Object.keys(byDirectory)
+        .sort()
+        .forEach((dir) => {
+          console.log(`📂 ${dir}/`);
+          byDirectory[dir].forEach((file) => {
+            console.log(`   ⚠️  ${file}`);
+          });
+          console.log();
         });
-        console.log();
-      });
     }
 
     console.log('📝 NOTES FOR APP ROUTER:');

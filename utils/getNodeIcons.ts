@@ -145,11 +145,7 @@ export const getNodeIcon = (
   const nType = (nodeType || '').toLowerCase();
 
   // 1. MAAN
-  if (
-    sType.includes('maan') ||
-    sType.includes('metro access') ||
-    sType.includes('multi-access')
-  ) {
+  if (sType.includes('maan') || sType.includes('metro access') || sType.includes('multi-access')) {
     return createSvgDivIcon(IMG_MAAN, [40, 40], [20, 20], true, rotation);
   }
 

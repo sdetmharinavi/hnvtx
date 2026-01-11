@@ -1,7 +1,7 @@
 // hooks/database/trace-hooks.ts
-import { useCallback } from "react";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
+import { useCallback } from 'react';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
 
 // Types
 interface FiberConnection {
@@ -40,8 +40,9 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
 
           // Query the TABLE 'ofc_connections' directly with explicit join
           const { data, error } = await supabase
-            .from("ofc_connections")
-            .select(`
+            .from('ofc_connections')
+            .select(
+              `
               id,
               fiber_no_sn,
               updated_fiber_no_sn,
@@ -49,17 +50,18 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
               ofc_cables (
                 route_name
               )
-            `)
-            .in("id", validIds);
+            `
+            )
+            .in('id', validIds);
 
           if (error) {
-            console.error("Trace fetch error:", error);
+            console.error('Trace fetch error:', error);
             throw error;
           }
 
           if (!data || data.length === 0) {
-             console.warn("Trace fetch returned no data for IDs:", validIds);
-             return [];
+            console.warn('Trace fetch returned no data for IDs:', validIds);
+            return [];
           }
 
           // Map the nested join result to the flat structure expected
@@ -70,7 +72,7 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
             updated_fiber_no_sn: item.updated_fiber_no_sn,
             updated_fiber_no_en: item.updated_fiber_no_en,
             // Handle the joined relationship safely
-            ofc_route_name: item.ofc_cables?.route_name || "Unknown Route"
+            ofc_route_name: item.ofc_cables?.route_name || 'Unknown Route',
           }));
 
           // Order the results based on the original ID array order (critical for path sequence)
@@ -80,18 +82,18 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
 
         // Helper function to format route string
         const formatRoute = (fibers: FiberConnection[]): string => {
-          if (fibers.length === 0) return "No route configured";
+          if (fibers.length === 0) return 'No route configured';
 
           return fibers
             .map((f) => {
-               // Use updated fiber numbers (logical path) if available, else physical
-               const startFib = f.updated_fiber_no_sn ?? f.fiber_no_sn;
-               const endFib = f.updated_fiber_no_en ?? f.fiber_no_sn;
-               
-               // THE FIX: Always show both start and end fiber numbers for clarity
-               return `${f.ofc_route_name} (F${startFib}/${endFib})`;
+              // Use updated fiber numbers (logical path) if available, else physical
+              const startFib = f.updated_fiber_no_sn ?? f.fiber_no_sn;
+              const endFib = f.updated_fiber_no_en ?? f.fiber_no_sn;
+
+              // THE FIX: Always show both start and end fiber numbers for clarity
+              return `${f.ofc_route_name} (F${startFib}/${endFib})`;
             })
-            .join(" → ");
+            .join(' → ');
         };
 
         // Fetch all fiber details in parallel
@@ -114,8 +116,8 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
         return traceRoutes;
       } catch (error) {
         const err = error as Error;
-        console.error("Error tracing path:", err);
-        throw new Error(err.message || "Failed to trace fiber path");
+        console.error('Error tracing path:', err);
+        throw new Error(err.message || 'Failed to trace fiber path');
       }
     },
     [supabase]

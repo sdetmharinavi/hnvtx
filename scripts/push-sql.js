@@ -56,7 +56,9 @@ export function runPushSql(targets = process.argv.slice(2)) {
   if (dbUrl) {
     console.log(`🔗 Using SUPABASE_DB_URL`);
   } else {
-    console.log(`🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`);
+    console.log(
+      `🔗 Using PG variables: ${pgUser}@${pgHost}:${pgPort || 5432}/${pgDatabase || 'postgres'}`
+    );
   }
 
   // --- 3. MAIN EXECUTION ---

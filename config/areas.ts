@@ -1,8 +1,12 @@
 // path: config/areas.ts
 
-import { EntityConfig } from "@/components/common/entity-management/types";
-import { FiBriefcase } from "react-icons/fi";
-import { Maintenance_areasRowSchema, Lookup_typesRowSchema, Maintenance_areasInsertSchema } from "@/schemas/zod-schemas";
+import { EntityConfig } from '@/components/common/entity-management/types';
+import { FiBriefcase } from 'react-icons/fi';
+import {
+  Maintenance_areasRowSchema,
+  Lookup_typesRowSchema,
+  Maintenance_areasInsertSchema,
+} from '@/schemas/zod-schemas';
 
 // THE FIX: Change from 'interface' to a 'type' alias using a type intersection (&).
 // This correctly merges the index signature from the Zod type with the new properties.
@@ -24,8 +28,12 @@ export interface AreaFormModalProps {
 
 // --- CONFIGURATION ---
 export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
-  entityName: 'area', entityDisplayName: 'Area', entityPluralName: 'Areas',
-  parentField: 'parent_area', icon: FiBriefcase, isHierarchical: true,
+  entityName: 'area',
+  entityDisplayName: 'Area',
+  entityPluralName: 'Areas',
+  parentField: 'parent_area',
+  icon: FiBriefcase,
+  isHierarchical: true,
   searchFields: ['name'],
   detailFields: [
     { key: 'name', label: 'Name', type: 'text' },
@@ -35,9 +43,13 @@ export const areaConfig: EntityConfig<MaintenanceAreaWithRelations> = {
   ],
   filterOptions: [
     {
-      key: 'status', label: 'Status', type: 'select',
+      key: 'status',
+      label: 'Status',
+      type: 'select',
       options: [
-        { value: '', label: 'All Status' }, { value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' },
+        { value: '', label: 'All Status' },
+        { value: 'true', label: 'Active' },
+        { value: 'false', label: 'Inactive' },
       ],
     },
   ],

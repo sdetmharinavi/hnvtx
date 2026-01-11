@@ -19,10 +19,7 @@ import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb for f
 // =================================================================
 
 // Generic RPC query hook
-export function useRpcQuery<
-  T extends RpcFunctionName,
-  TData = RpcFunctionReturns<T>
->(
+export function useRpcQuery<T extends RpcFunctionName, TData = RpcFunctionReturns<T>>(
   supabase: SupabaseClient<Database>,
   functionName: T,
   args?: RpcFunctionArgs<T>,
@@ -33,10 +30,7 @@ export function useRpcQuery<
   return useQuery<RpcFunctionReturns<T>, Error, TData>({
     queryKey: createRpcQueryKey(functionName, args, performance),
     queryFn: async (): Promise<RpcFunctionReturns<T>> => {
-      const { data, error } = await supabase.rpc(
-        functionName,
-        args || ({} as RpcFunctionArgs<T>)
-      );
+      const { data, error } = await supabase.rpc(functionName, args || ({} as RpcFunctionArgs<T>));
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
@@ -55,13 +49,8 @@ export function useRpcMutation<T extends RpcFunctionName>(
   const { invalidateQueries = true, ...mutationOptions } = options || {};
 
   return useMutation({
-    mutationFn: async (
-      args: RpcFunctionArgs<T>
-    ): Promise<RpcFunctionReturns<T>> => {
-      const { data, error } = await supabase.rpc(
-        functionName,
-        args || ({} as RpcFunctionArgs<T>)
-      );
+    mutationFn: async (args: RpcFunctionArgs<T>): Promise<RpcFunctionReturns<T>> => {
+      const { data, error } = await supabase.rpc(functionName, args || ({} as RpcFunctionArgs<T>));
       if (error) throw error;
       return data as RpcFunctionReturns<T>;
     },
@@ -131,11 +120,18 @@ export function usePagedData<T>(
   } = hookOptions;
 
   const rpcFilters = buildRpcFilters(filters);
-  const queryKey = ['paged-data', viewName, { limit, offset, orderBy, orderDir, filters: rpcFilters }];
+  const queryKey = [
+    'paged-data',
+    viewName,
+    { limit, offset, orderBy, orderDir, filters: rpcFilters },
+  ];
 
   const queryFn = async (): Promise<PagedDataResult<T>> => {
     const defaultValue: PagedDataResult<T> = {
-      data: [], total_count: 0, active_count: 0, inactive_count: 0,
+      data: [],
+      total_count: 0,
+      active_count: 0,
+      inactive_count: 0,
     };
 
     if (!viewName) return defaultValue;
@@ -173,68 +169,77 @@ export function usePagedData<T>(
 
 // THE FIX: Define the stats interface
 export interface RingManagerStats {
-    total_rings: number;
-    spec_issued: number;
-    spec_pending: number;
-    ofc_ready: number;
-    ofc_partial_ready: number;
-    ofc_pending: number;
-    on_air_nodes: number;
-    configured_in_maan: number;
+  total_rings: number;
+  spec_issued: number;
+  spec_pending: number;
+  ofc_ready: number;
+  ofc_partial_ready: number;
+  ofc_pending: number;
+  on_air_nodes: number;
+  configured_in_maan: number;
 }
 
 // THE FIX: Offline-Capable Stats Hook
 export function useRingManagerStats(supabase: SupabaseClient<Database>) {
-    return useQuery({
-        queryKey: ['ring-manager-stats'],
-        queryFn: async (): Promise<RingManagerStats> => {
-            // 1. Try Online RPC
-            try {
-              const { data, error } = await supabase.rpc('get_ring_manager_stats');
-              if (error) throw error;
-              if (data) return data as unknown as RingManagerStats;
-            } catch (e) {
-              console.warn("Online stats fetch failed, falling back to local:", e);
-            }
+  return useQuery({
+    queryKey: ['ring-manager-stats'],
+    queryFn: async (): Promise<RingManagerStats> => {
+      // 1. Try Online RPC
+      try {
+        const { data, error } = await supabase.rpc('get_ring_manager_stats');
+        if (error) throw error;
+        if (data) return data as unknown as RingManagerStats;
+      } catch (e) {
+        console.warn('Online stats fetch failed, falling back to local:', e);
+      }
 
-            // 2. Offline Fallback Calculation
-            try {
-                const rings = await localDb.rings.toArray();
-                
-                const stats: RingManagerStats = {
-                    total_rings: 0, spec_issued: 0, spec_pending: 0,
-                    ofc_ready: 0, ofc_partial_ready: 0, ofc_pending: 0,
-                    on_air_nodes: 0, configured_in_maan: 0
-                };
+      // 2. Offline Fallback Calculation
+      try {
+        const rings = await localDb.rings.toArray();
 
-                stats.total_rings = rings.filter(r => r.status).length;
-                
-                rings.forEach(r => {
-                    if (!r.status) return;
-                    
-                    if (r.spec_status === 'Issued') stats.spec_issued++;
-                    else stats.spec_pending++;
-                    
-                    if (r.ofc_status === 'Ready') stats.ofc_ready++;
-                    else if (r.ofc_status === 'Partial Ready') stats.ofc_partial_ready++;
-                    else stats.ofc_pending++;
-                    
-                    if (r.bts_status === 'Configured') stats.configured_in_maan++;
-                });
+        const stats: RingManagerStats = {
+          total_rings: 0,
+          spec_issued: 0,
+          spec_pending: 0,
+          ofc_ready: 0,
+          ofc_partial_ready: 0,
+          ofc_pending: 0,
+          on_air_nodes: 0,
+          configured_in_maan: 0,
+        };
 
-                // Note: on_air_nodes is hard to calculate offline without heavy joins across 3 tables.
-                // We default to 0 for offline mode to avoid performance hit.
-                return stats;
+        stats.total_rings = rings.filter((r) => r.status).length;
 
-            } catch (e) {
-                console.error("Local stats calc failed:", e);
-                return {
-                    total_rings: 0, spec_issued: 0, spec_pending: 0,
-                    ofc_ready: 0, ofc_partial_ready: 0, ofc_pending: 0,
-                    on_air_nodes: 0, configured_in_maan: 0
-                };
-            }
-        },
-        staleTime: 5 * 60 * 1000 // Cache for 5 minutes
-    });
+        rings.forEach((r) => {
+          if (!r.status) return;
+
+          if (r.spec_status === 'Issued') stats.spec_issued++;
+          else stats.spec_pending++;
+
+          if (r.ofc_status === 'Ready') stats.ofc_ready++;
+          else if (r.ofc_status === 'Partial Ready') stats.ofc_partial_ready++;
+          else stats.ofc_pending++;
+
+          if (r.bts_status === 'Configured') stats.configured_in_maan++;
+        });
+
+        // Note: on_air_nodes is hard to calculate offline without heavy joins across 3 tables.
+        // We default to 0 for offline mode to avoid performance hit.
+        return stats;
+      } catch (e) {
+        console.error('Local stats calc failed:', e);
+        return {
+          total_rings: 0,
+          spec_issued: 0,
+          spec_pending: 0,
+          ofc_ready: 0,
+          ofc_partial_ready: 0,
+          ofc_pending: 0,
+          on_air_nodes: 0,
+          configured_in_maan: 0,
+        };
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
 }

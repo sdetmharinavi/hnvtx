@@ -11,7 +11,7 @@ const pgVars = {
   PGPORT: process.env.PGPORT,
   PGDATABASE: process.env.PGDATABASE,
   PGUSER: process.env.PGUSER,
-  PGPASSWORD: process.env.PGPASSWORD ? '****' : undefined
+  PGPASSWORD: process.env.PGPASSWORD ? '****' : undefined,
 };
 
 console.log('\n📋 Environment Variables:');
@@ -22,7 +22,9 @@ if (!dbUrl && !pgVars.PGHOST) {
   console.log('\n❌ No database connection configured!');
   console.log('\n💡 You need to set either:');
   console.log('Option 1 - SUPABASE_DB_URL in your .env:');
-  console.log('SUPABASE_DB_URL=postgresql://postgres:password@db.yunvefyvwbqaigkawcvj.supabase.co:5432/postgres');
+  console.log(
+    'SUPABASE_DB_URL=postgresql://postgres:password@db.yunvefyvwbqaigkawcvj.supabase.co:5432/postgres'
+  );
   console.log('\nOption 2 - Individual PG variables in your .env:');
   console.log('PGHOST=db.yunvefyvwbqaigkawcvj.supabase.co');
   console.log('PGPORT=5432');
@@ -37,7 +39,7 @@ import { execSync } from 'child_process';
 
 try {
   console.log('\n🧪 Testing connection...');
-  
+
   if (dbUrl) {
     console.log('Using SUPABASE_DB_URL...');
     const url = new URL(dbUrl.trim());
@@ -47,22 +49,21 @@ try {
       PGPORT: url.port || '5432',
       PGDATABASE: url.pathname.slice(1) || 'postgres',
       PGUSER: url.username,
-      PGPASSWORD: url.password
+      PGPASSWORD: url.password,
     };
-    
+
     execSync('psql -c "SELECT version();"', {
       stdio: 'inherit',
-      env: env
+      env: env,
     });
   } else {
     console.log('Using PG environment variables...');
     execSync('psql -c "SELECT version();"', {
-      stdio: 'inherit'
+      stdio: 'inherit',
     });
   }
-  
+
   console.log('✅ Connection successful!');
-  
 } catch (err) {
   console.error('\n❌ Connection failed:', err.message);
   console.log('\n💡 Troubleshooting steps:');

@@ -14,7 +14,9 @@ export function ViewSettingsProvider({ children }: { children: ReactNode }) {
   const [showToolbar, setShowToolbar] = useState(true);
 
   return (
-    <ViewSettingsContext.Provider value={{ showHeader, setShowHeader, showToolbar, setShowToolbar }}>
+    <ViewSettingsContext.Provider
+      value={{ showHeader, setShowHeader, showToolbar, setShowToolbar }}
+    >
       {children}
     </ViewSettingsContext.Provider>
   );

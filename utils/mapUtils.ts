@@ -1,7 +1,7 @@
 // utils/mapUtils.ts
-import { MapNode } from "@/components/map/ClientRingMap/types";
-import L from "leaflet";
-import { localDb } from "@/hooks/data/localDb";
+import { MapNode } from '@/components/map/ClientRingMap/types';
+import L from 'leaflet';
+import { localDb } from '@/hooks/data/localDb';
 
 // --- 1. JITTER LOGIC (Map Display) ---
 
@@ -27,7 +27,7 @@ export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): Displa
   const getCoords = (node: T): [number, number] | null => {
     const lat = node.lat ?? node.latitude;
     const lng = node.long ?? node.longitude;
-    if (typeof lat === "number" && typeof lng === "number") {
+    if (typeof lat === 'number' && typeof lng === 'number') {
       return [lat, lng];
     }
     return null;
@@ -59,10 +59,10 @@ export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): Displa
       });
     } else {
       // Increased radius slightly to make clusters more distinct at zoom 13
-      const radius = 0.0003; 
+      const radius = 0.0003;
       const angleStep = (2 * Math.PI) / nodesAtLoc.length;
       // Offset start angle so the first node isn't always directly north
-      const startAngle = Math.PI / 4; 
+      const startAngle = Math.PI / 4;
 
       nodesAtLoc.forEach((node, i) => {
         const angle = startAngle + i * angleStep;
@@ -104,16 +104,16 @@ export const fetchOrsDistance = async (
   try {
     const cached = await localDb.route_distances.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < 1000 * 60 * 60 * 24 * 30) {
-      return { distance_km: cached.distance_km, source: "cache" };
+      return { distance_km: cached.distance_km, source: 'cache' };
     }
   } catch (e) {
-    console.warn("Failed to read route cache", e);
+    console.warn('Failed to read route cache', e);
   }
 
   const makeRequest = async () => {
-    const response = await fetch("/api/ors-distance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('/api/ors-distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ a: start, b: end }),
     });
 
@@ -128,17 +128,17 @@ export const fetchOrsDistance = async (
         .put({
           id: cacheKey,
           distance_km: parseFloat(data.distance_km),
-          source: data.source || "api",
+          source: data.source || 'api',
           timestamp: Date.now(),
         })
-        .catch((err) => console.error("Failed to cache route distance", err));
+        .catch((err) => console.error('Failed to cache route distance', err));
     }
 
     return data;
   };
 
   const resultPromise = orsFetchChain.then(makeRequest);
-  
+
   orsFetchChain = resultPromise
     .then(() => new Promise<void>((res) => setTimeout(res, ORS_REQUEST_DELAY)))
     .catch(() => new Promise<void>((res) => setTimeout(res, ORS_REQUEST_DELAY)));
@@ -149,15 +149,15 @@ export const fetchOrsDistance = async (
 // --- 3. LEAFLET HELPERS ---
 
 export const fixLeafletIcons = () => {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
 
   // @ts-expect-error - Accessing internal Leaflet prototype
   delete L.Icon.Default.prototype._getIconUrl;
 
   L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   });
 };
 
@@ -187,11 +187,7 @@ export const getConnectionColor = (id: string) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export const getCurvedPath = (
-    start: L.LatLng, 
-    end: L.LatLng, 
-    offsetMultiplier: number = 0.15
-) => {
+export const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: number = 0.15) => {
   const lat1 = start.lat;
   const lng1 = start.lng;
   const lat2 = end.lat;
@@ -223,20 +219,20 @@ export const getCurvedPath = (
  * @returns The offset multiplier to use with getCurvedPath.
  */
 export const getMultiLineCurveOffset = (index: number, total: number): number => {
-    if (total <= 1) return 0;
-    
-    // Spread evenly around 0
-    // e.g. Total 2: -0.1, 0.1
-    // e.g. Total 3: -0.15, 0, 0.15
-    const spread = 0.3; // Maximum arc amplitude
-    const step = spread / (total - 1 || 1);
-    const start = -spread / 2;
-    
-    return start + (index * step);
+  if (total <= 1) return 0;
+
+  // Spread evenly around 0
+  // e.g. Total 2: -0.1, 0.1
+  // e.g. Total 3: -0.15, 0, 0.15
+  const spread = 0.3; // Maximum arc amplitude
+  const step = spread / (total - 1 || 1);
+  const start = -spread / 2;
+
+  return start + index * step;
 };
 
 export const isColocated = (p1: L.LatLng, p2: L.LatLng, threshold = 0.0005) => {
-    const dLat = p1.lat - p2.lat;
-    const dLng = p1.lng - p2.lng;
-    return Math.sqrt(dLat*dLat + dLng*dLng) < threshold;
-}
+  const dLat = p1.lat - p2.lat;
+  const dLng = p1.lng - p2.lng;
+  return Math.sqrt(dLat * dLat + dLng * dLng) < threshold;
+};

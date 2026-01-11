@@ -9,7 +9,7 @@ import { useLocalFirstQuery } from './useLocalFirstQuery';
 import {
   buildServerSearchString,
   performClientSearch,
-  performClientPagination
+  performClientPagination,
 } from '@/hooks/database/search-utils';
 
 const transformConnectionPerspective = (
@@ -39,55 +39,62 @@ const transformConnectionPerspective = (
       en_node_id: conn.sn_node_id,
       en_node_name: conn.sn_node_name,
       sn_ip: conn.en_ip,
-      en_ip: conn.sn_ip
+      en_ip: conn.sn_ip,
     };
   }
 
   return conn;
 };
 
-export const useSystemConnectionsData = (
-  systemId: string | null
-) => {
-  return function useData(params: DataQueryHookParams): DataQueryHookReturn<V_system_connections_completeRowSchema> {
+export const useSystemConnectionsData = (systemId: string | null) => {
+  return function useData(
+    params: DataQueryHookParams
+  ): DataQueryHookReturn<V_system_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
 
     // Search Config
     // THE FIX: Added IP fields
     const searchFields = useMemo(
-      () => [
-      'service_name',
-      'system_name',
-      'connected_system_name',
-      'bandwidth_allocated',
-      'unique_id',
-      'lc_id',
-      'sn_ip',
-      'en_ip',
-      'services_ip',
-      'remark',
-      'vlan',
-      'sn_interface'
-    ] as (keyof V_system_connections_completeRowSchema)[],
-    []);
+      () =>
+        [
+          'service_name',
+          'system_name',
+          'connected_system_name',
+          'bandwidth_allocated',
+          'unique_id',
+          'lc_id',
+          'sn_ip',
+          'en_ip',
+          'services_ip',
+          'remark',
+          'vlan',
+          'sn_interface',
+        ] as (keyof V_system_connections_completeRowSchema)[],
+      []
+    );
 
     // THE FIX: Added IP fields with explicit text cast for server search
-    const serverSearchFields = useMemo(() => [
-      'service_name',
-      'system_name',
-      'connected_system_name',
-      'bandwidth_allocated',
-      'unique_id',
-      'lc_id',
-      'sn_ip::text',
-      'en_ip::text',
-      'services_ip::text',
-      'remark',
-      'vlan::text',
-      'sn_interface'
-    ], []);
+    const serverSearchFields = useMemo(
+      () => [
+        'service_name',
+        'system_name',
+        'connected_system_name',
+        'bandwidth_allocated',
+        'unique_id',
+        'lc_id',
+        'sn_ip::text',
+        'en_ip::text',
+        'services_ip::text',
+        'remark',
+        'vlan::text',
+        'sn_interface',
+      ],
+      []
+    );
 
-    const onlineQueryFn = useCallback(async (): Promise<V_system_connections_completeRowSchema[]> => {
+    const onlineQueryFn = useCallback(async (): Promise<
+      V_system_connections_completeRowSchema[]
+    > => {
       if (!systemId) return [];
 
       const searchString = buildServerSearchString(searchQuery, serverSearchFields);
@@ -109,7 +116,7 @@ export const useSystemConnectionsData = (
       return rawData.map((row: V_system_connections_completeRowSchema) =>
         transformConnectionPerspective(row, systemId)
       );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery, filters, serverSearchFields, systemId]);
 
     const localQueryFn = useCallback(() => {
@@ -117,14 +124,14 @@ export const useSystemConnectionsData = (
         return localDb.v_system_connections_complete.limit(0).toArray();
       }
       return Promise.all([
-          localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray(),
-          localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray()
+        localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray(),
+        localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray(),
       ]).then(([source, dest]) => {
-          const combined = [...source, ...dest];
-          const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
-          return unique.map(row => transformConnectionPerspective(row, systemId));
+        const combined = [...source, ...dest];
+        const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
+        return unique.map((row) => transformConnectionPerspective(row, systemId));
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [systemId]);
 
     const {
@@ -133,13 +140,15 @@ export const useSystemConnectionsData = (
       isFetching,
       error,
       refetch,
-    } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>({
-      queryKey: ['system_connections-data', systemId, searchQuery, filters],
-      onlineQueryFn,
-      localQueryFn,
-      dexieTable: localDb.v_system_connections_complete,
-      localQueryDeps: [systemId],
-    });
+    } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>(
+      {
+        queryKey: ['system_connections-data', systemId, searchQuery, filters],
+        onlineQueryFn,
+        localQueryFn,
+        dexieTable: localDb.v_system_connections_complete,
+        localQueryDeps: [systemId],
+      }
+    );
 
     const processedData = useMemo(() => {
       if (!allConnections || !systemId) {
@@ -155,17 +164,19 @@ export const useSystemConnectionsData = (
 
       // 2. Filters
       if (filters.media_type_id) {
-        filtered = filtered.filter(c => c.media_type_id === filters.media_type_id);
+        filtered = filtered.filter((c) => c.media_type_id === filters.media_type_id);
       }
       if (filters.connected_link_type_id) {
-        filtered = filtered.filter(c => c.connected_link_type_id === filters.connected_link_type_id);
+        filtered = filtered.filter(
+          (c) => c.connected_link_type_id === filters.connected_link_type_id
+        );
       }
       if (filters.bandwidth) {
-        filtered = filtered.filter(c => c.bandwidth === filters.bandwidth);
+        filtered = filtered.filter((c) => c.bandwidth === filters.bandwidth);
       }
       if (filters.status) {
         const statusBool = filters.status === 'true';
-        filtered = filtered.filter(c => c.status === statusBool);
+        filtered = filtered.filter((c) => c.status === statusBool);
       }
 
       // 3. Sort
@@ -190,9 +201,9 @@ export const useSystemConnectionsData = (
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount
+        inactiveCount,
       };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allConnections, searchQuery, filters, currentPage, pageLimit, systemId]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };

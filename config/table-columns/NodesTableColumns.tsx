@@ -4,7 +4,10 @@ import { StatusBadge } from '@/components/common/ui';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
 import { AlertCircle } from 'lucide-react';
 
-export const NodesTableColumns = (data: V_nodes_completeRowSchema[], duplicateSet?: Set<string>) => {
+export const NodesTableColumns = (
+  data: V_nodes_completeRowSchema[],
+  duplicateSet?: Set<string>
+) => {
   return useDynamicColumnConfig('v_nodes_complete', {
     data: data,
     omit: [
@@ -40,7 +43,7 @@ export const NodesTableColumns = (data: V_nodes_completeRowSchema[], duplicateSe
               )}
             </div>
           );
-        }
+        },
       },
       latitude: {
         sortable: true,

@@ -2,7 +2,12 @@
 import * as XLSX from 'xlsx';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { EnhancedUploadResult, UploadColumnMapping, UseExcelUploadOptions, ValidationError } from '@/hooks/database/queries-type-helpers';
+import {
+  EnhancedUploadResult,
+  UploadColumnMapping,
+  UseExcelUploadOptions,
+  ValidationError,
+} from '@/hooks/database/queries-type-helpers';
 import { validateValue } from './excel-helpers';
 import { Diary_notesInsertSchema } from '@/schemas/zod-schemas';
 import { UserRole } from '@/types/user-roles';
@@ -37,9 +42,8 @@ const parseExcelFile = (file: File): Promise<unknown[][]> => {
   });
 };
 
-export function useDiaryExcelUpload(
-  // THE FIX: supabase client is no longer passed as an argument
-) {
+export function useDiaryExcelUpload() {
+// THE FIX: supabase client is no longer passed as an argument
   const supabase = createClient(); // THE FIX: Get the client instance here
   const { showToasts = true, ...mutationOptions } = {} as UseExcelUploadOptions<'diary_notes'>;
   const queryClient = useQueryClient();
@@ -50,8 +54,13 @@ export function useDiaryExcelUpload(
       const isAdmin = currentUserRole === UserRole.ADMIN;
 
       const uploadResult: EnhancedUploadResult = {
-        successCount: 0, errorCount: 0, totalRows: 0, errors: [],
-        processingLogs: [], validationErrors: [], skippedRows: 0,
+        successCount: 0,
+        errorCount: 0,
+        totalRows: 0,
+        errors: [],
+        processingLogs: [],
+        validationErrors: [],
+        skippedRows: 0,
       };
 
       toast.info('Reading and parsing Excel file...');
@@ -62,12 +71,12 @@ export function useDiaryExcelUpload(
         return uploadResult;
       }
 
-      const excelHeaders: string[] = (jsonData[0] as string[]).map(h => String(h || '').trim());
+      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
       const headerMap: Record<string, number> = {};
       excelHeaders.forEach((header, index) => {
         headerMap[header.toLowerCase()] = index;
       });
-      
+
       const hasUserIdColumn = 'user_id' in headerMap;
 
       const dataRows = jsonData.slice(1);
@@ -79,56 +88,68 @@ export function useDiaryExcelUpload(
         const row = dataRows[i] as unknown[];
         const excelRowNumber = i + 2;
         const originalData: Record<string, unknown> = {};
-        excelHeaders.forEach((header, idx) => { originalData[header] = row[idx]; });
+        excelHeaders.forEach((header, idx) => {
+          originalData[header] = row[idx];
+        });
 
-        if (row.every(cell => cell === null || String(cell).trim() === '')) {
-            uploadResult.skippedRows++;
-            continue;
+        if (row.every((cell) => cell === null || String(cell).trim() === '')) {
+          uploadResult.skippedRows++;
+          continue;
         }
 
         const rowValidationErrors: ValidationError[] = [];
         const processedData: Record<string, unknown> = {};
 
         for (const mapping of columns) {
-            if (mapping.dbKey === 'user_id') continue;
+          if (mapping.dbKey === 'user_id') continue;
 
-            const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
-            const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
-            let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
-            if (typeof finalValue === 'string') finalValue = finalValue.trim();
-          
-            const validationError = validateValue(finalValue, mapping.dbKey, mapping.required || false);
-            if (validationError) {
-                rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
-            }
-            processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
+          const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
+          const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
+          let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
+          if (typeof finalValue === 'string') finalValue = finalValue.trim();
+
+          const validationError = validateValue(
+            finalValue,
+            mapping.dbKey,
+            mapping.required || false
+          );
+          if (validationError) {
+            rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
+          }
+          processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
         }
-        
+
         if (isAdmin) {
-            if (hasUserIdColumn) {
-                const userIdFromCell = row[headerMap['user_id']];
-                if (!userIdFromCell) {
-                    rowValidationErrors.push({ rowIndex: i, column: 'user_id', value: userIdFromCell, error: 'User ID is required for every row when uploading as an admin with a user_id column.' });
-                } else {
-                    processedData.user_id = userIdFromCell;
-                }
+          if (hasUserIdColumn) {
+            const userIdFromCell = row[headerMap['user_id']];
+            if (!userIdFromCell) {
+              rowValidationErrors.push({
+                rowIndex: i,
+                column: 'user_id',
+                value: userIdFromCell,
+                error:
+                  'User ID is required for every row when uploading as an admin with a user_id column.',
+              });
             } else {
-                processedData.user_id = currentUserId;
+              processedData.user_id = userIdFromCell;
             }
-        } else {
+          } else {
             processedData.user_id = currentUserId;
+          }
+        } else {
+          processedData.user_id = currentUserId;
         }
 
         if (rowValidationErrors.length > 0) {
-            uploadResult.errorCount++;
-            uploadResult.errors.push({
-                rowIndex: excelRowNumber,
-                data: originalData,
-                error: rowValidationErrors.map(e => e.error).join('; '),
-            });
-            continue;
+          uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: excelRowNumber,
+            data: originalData,
+            error: rowValidationErrors.map((e) => e.error).join('; '),
+          });
+          continue;
         }
-        
+
         notesToUpsert.push(processedData as Diary_notesInsertSchema);
       }
 
@@ -143,17 +164,19 @@ export function useDiaryExcelUpload(
           uploadResult.errorCount = notesToUpsert.length;
           throw error;
         }
-        
+
         uploadResult.successCount = notesToUpsert.length;
       }
 
       if (showToasts) {
         if (uploadResult.errorCount > 0) {
-          toast.warning(`${uploadResult.successCount} notes saved, but ${uploadResult.errorCount} failed.`);
+          toast.warning(
+            `${uploadResult.successCount} notes saved, but ${uploadResult.errorCount} failed.`
+          );
         } else if (uploadResult.successCount > 0) {
           toast.success(`Successfully upserted ${uploadResult.successCount} notes.`);
         } else {
-          toast.info("No new notes were uploaded.");
+          toast.info('No new notes were uploaded.');
         }
       }
 
@@ -166,6 +189,6 @@ export function useDiaryExcelUpload(
     onError: (error, variables) => {
       if (showToasts) toast.error(`Import failed: ${error.message}`);
       mutationOptions.onError?.(error, { ...variables, uploadType: 'upsert' });
-    }
+    },
   });
 }

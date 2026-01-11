@@ -1,9 +1,9 @@
 // stores/useUploadConfigStore.ts
 
-import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { PublicTableOrViewName, Row, PublicTableName } from "@/hooks/database/queries-type-helpers";
-import { Tables } from "@/types/supabase-types";
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { PublicTableOrViewName, Row, PublicTableName } from '@/hooks/database/queries-type-helpers';
+import { Tables } from '@/types/supabase-types';
 
 export interface UploadColumnMapping<T extends PublicTableOrViewName> {
   excelHeader: string;
@@ -14,14 +14,17 @@ export interface UploadColumnMapping<T extends PublicTableOrViewName> {
 export interface UploadConfig<T extends PublicTableOrViewName> {
   tableName: T;
   columnMapping: UploadColumnMapping<T>[];
-  uploadType: "insert" | "upsert";
+  uploadType: 'insert' | 'upsert';
   conflictColumn?: T extends PublicTableName ? keyof Tables<T> & string : never;
   isUploadEnabled: boolean;
 }
 
 interface UploadConfigState {
   configs: Record<string, UploadConfig<PublicTableOrViewName>>;
-  setUploadConfig: <T extends PublicTableOrViewName>(pageKey: string, config: UploadConfig<T>) => void;
+  setUploadConfig: <T extends PublicTableOrViewName>(
+    pageKey: string,
+    config: UploadConfig<T>
+  ) => void;
   getUploadConfig: (pageKey: string) => UploadConfig<PublicTableOrViewName> | undefined;
   clearUploadConfig: (pageKey: string) => void;
 }
@@ -32,7 +35,7 @@ export const useUploadConfigStore = create<UploadConfigState>()(
       (set, get) => ({
         configs: {},
         setUploadConfig: (pageKey, config) => {
-          if (config?.uploadType === "upsert" && !config.conflictColumn) {
+          if (config?.uploadType === 'upsert' && !config.conflictColumn) {
             console.error(`UploadConfig Error: An 'upsert' operation requires a 'conflictColumn'.`);
           }
           set((state) => ({
@@ -48,8 +51,8 @@ export const useUploadConfigStore = create<UploadConfigState>()(
           });
         },
       }),
-      { name: "UploadConfigStore" }
+      { name: 'UploadConfigStore' }
     ),
-    { name: "upload-config-storage" }
+    { name: 'upload-config-storage' }
   )
 );

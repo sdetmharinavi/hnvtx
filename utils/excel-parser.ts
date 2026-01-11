@@ -1,5 +1,5 @@
 // utils/excel-parser.ts
-"use client";
+'use client';
 
 // Inline Worker Code to avoid Next.js/Webpack worker-loader complexity
 const workerCode = `
@@ -43,7 +43,7 @@ export const parseExcelFile = async (file: File): Promise<unknown[][]> => {
     reader.onload = (e) => {
       try {
         const fileData = e.target?.result;
-        
+
         // Create worker from blob
         const blob = new Blob([workerCode], { type: 'application/javascript' });
         const workerUrl = URL.createObjectURL(blob);
@@ -51,7 +51,7 @@ export const parseExcelFile = async (file: File): Promise<unknown[][]> => {
 
         worker.onmessage = (event) => {
           const { success, data, error } = event.data;
-          
+
           // Cleanup
           worker.terminate();
           URL.revokeObjectURL(workerUrl);
@@ -71,7 +71,6 @@ export const parseExcelFile = async (file: File): Promise<unknown[][]> => {
 
         // Start processing
         worker.postMessage({ fileData });
-
       } catch (err) {
         reject(err);
       }

@@ -1,4 +1,4 @@
-import { UserRole } from "@/types/user-roles";
+import { UserRole } from '@/types/user-roles';
 
 export const DEFAULTS = {
   DEBOUNCE_DELAY: 400,
@@ -8,12 +8,12 @@ export const DEFAULTS = {
 };
 
 export const allowedRoles = [
-    UserRole.ADMINPRO,
-    UserRole.ADMIN,
-    UserRole.CPANADMIN,
-    UserRole.MAANADMIN,
-    UserRole.SDHADMIN,
-    UserRole.ASSETADMIN,
-    UserRole.VIEWER,
-    UserRole.AUTHENTICATED,
-  ]
+  UserRole.ADMINPRO,
+  UserRole.ADMIN,
+  UserRole.CPANADMIN,
+  UserRole.MAANADMIN,
+  UserRole.SDHADMIN,
+  UserRole.ASSETADMIN,
+  UserRole.VIEWER,
+  UserRole.AUTHENTICATED,
+];

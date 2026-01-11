@@ -1,8 +1,8 @@
 // hooks/database/basic-mutation-hooks.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase-types";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase-types';
 import { v4 as uuidv4 } from 'uuid';
 import {
   PublicTableName,
@@ -11,29 +11,44 @@ import {
   TableUpdate,
   OptimisticContext,
   UseTableMutationOptions,
-  PagedQueryResult
-} from "./queries-type-helpers";
+  PagedQueryResult,
+} from './queries-type-helpers';
 
 // Helper to check if the cache data is in Paged format
 function isPagedResult<T>(data: any): data is PagedQueryResult<T> {
-  return data && typeof data === 'object' && 'data' in data && Array.isArray(data.data) && 'count' in data;
+  return (
+    data &&
+    typeof data === 'object' &&
+    'data' in data &&
+    Array.isArray(data.data) &&
+    'count' in data
+  );
 }
 
 // Generic toggle status hook
 export function useToggleStatus<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  options?: UseTableMutationOptions<TableRow<T>, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>
+  options?: UseTableMutationOptions<
+    TableRow<T>,
+    { id: string; status: boolean; nameField?: keyof TableRow<T> },
+    OptimisticContext
+  >
 ) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
-  return useMutation<TableRow<T>, Error, { id: string; status: boolean; nameField?: keyof TableRow<T> }, OptimisticContext>({
+  return useMutation<
+    TableRow<T>,
+    Error,
+    { id: string; status: boolean; nameField?: keyof TableRow<T> },
+    OptimisticContext
+  >({
     mutationFn: async ({ id, status }): Promise<TableRow<T>> => {
       const { data, error } = await supabase
         .from(tableName)
         .update({ status, updated_at: new Date().toISOString() } as any)
-        .eq("id" as any, id)
+        .eq('id' as any, id)
         .select()
         .single();
       if (error) throw error;
@@ -41,24 +56,24 @@ export function useToggleStatus<T extends PublicTableName>(
     },
     onMutate: optimisticUpdate
       ? async ({ id, status }) => {
-          await queryClient.cancelQueries({ queryKey: ["table", tableName] });
-          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+          await queryClient.cancelQueries({ queryKey: ['table', tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ['table', tableName] });
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+          queryClient.setQueriesData({ queryKey: ['table', tableName] }, (old: any) => {
             if (!old) return old;
 
             const updateItem = (item: any) =>
-              ("id" in item && item.id === id)
+              'id' in item && item.id === id
                 ? { ...item, status, updated_at: new Date().toISOString() }
                 : item;
 
             if (isPagedResult(old)) {
-               return {
-                 ...old,
-                 data: old.data.map(updateItem)
-               };
+              return {
+                ...old,
+                data: old.data.map(updateItem),
+              };
             } else if (Array.isArray(old)) {
-               return old.map(updateItem);
+              return old.map(updateItem);
             }
             return old;
           });
@@ -68,13 +83,15 @@ export function useToggleStatus<T extends PublicTableName>(
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
+          context?.previousData?.forEach(([queryKey, data]) =>
+            queryClient.setQueryData(queryKey, data)
+          );
         }
       : undefined,
     onSuccess: () => {
       if (invalidateQueries) {
-        queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-        queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+        queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+        queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
       }
     },
     ...mutationOptions,
@@ -85,10 +102,19 @@ export function useToggleStatus<T extends PublicTableName>(
 export function useTableInsert<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  options?: UseTableMutationOptions<TableRow<T>[], TableInsert<T> | TableInsert<T>[], OptimisticContext>
+  options?: UseTableMutationOptions<
+    TableRow<T>[],
+    TableInsert<T> | TableInsert<T>[],
+    OptimisticContext
+  >
 ) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
+  const {
+    invalidateQueries = true,
+    optimisticUpdate = true,
+    batchSize = 1000,
+    ...mutationOptions
+  } = options || {};
 
   return useMutation<TableRow<T>[], Error, TableInsert<T> | TableInsert<T>[], OptimisticContext>({
     mutationFn: async (data: TableInsert<T> | TableInsert<T>[]): Promise<TableRow<T>[]> => {
@@ -117,35 +143,35 @@ export function useTableInsert<T extends PublicTableName>(
     },
     onMutate: optimisticUpdate
       ? async (newData) => {
-          await queryClient.cancelQueries({ queryKey: ["table", tableName] });
-          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+          await queryClient.cancelQueries({ queryKey: ['table', tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ['table', tableName] });
 
           const newItems = Array.isArray(newData) ? newData : [newData];
           const optimisticItems = newItems.map((item) => {
-             // THE FIX: Cast to any to safely access potentially missing 'id' property
-             // and allow injection of fields even if they don't exist on the type (for join tables)
-             const baseItem = item as any;
-             return {
-                ...baseItem,
-                id: baseItem.id || uuidv4(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-             };
+            // THE FIX: Cast to any to safely access potentially missing 'id' property
+            // and allow injection of fields even if they don't exist on the type (for join tables)
+            const baseItem = item as any;
+            return {
+              ...baseItem,
+              id: baseItem.id || uuidv4(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
           });
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+          queryClient.setQueriesData({ queryKey: ['table', tableName] }, (old: any) => {
             if (!old) {
-                return optimisticItems;
+              return optimisticItems;
             }
 
             if (isPagedResult(old)) {
-               return {
-                 ...old,
-                 data: [...old.data, ...optimisticItems],
-                 count: (old.count || 0) + optimisticItems.length
-               };
+              return {
+                ...old,
+                data: [...old.data, ...optimisticItems],
+                count: (old.count || 0) + optimisticItems.length,
+              };
             } else if (Array.isArray(old)) {
-               return [...old, ...optimisticItems];
+              return [...old, ...optimisticItems];
             }
             return old;
           });
@@ -155,13 +181,15 @@ export function useTableInsert<T extends PublicTableName>(
       : undefined,
     onError: optimisticUpdate
       ? (err, newData, context) => {
-          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
+          context?.previousData?.forEach(([queryKey, data]) =>
+            queryClient.setQueryData(queryKey, data)
+          );
         }
       : undefined,
     onSuccess: () => {
       if (invalidateQueries) {
-        queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-        queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+        queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+        queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
       }
     },
     ...mutationOptions,
@@ -172,62 +200,76 @@ export function useTableInsert<T extends PublicTableName>(
 export function useTableUpdate<T extends PublicTableName>(
   supabase: SupabaseClient<Database>,
   tableName: T,
-  options?: UseTableMutationOptions<TableRow<T>[], { id: string; data: TableUpdate<T> }, OptimisticContext>
+  options?: UseTableMutationOptions<
+    TableRow<T>[],
+    { id: string; data: TableUpdate<T> },
+    OptimisticContext
+  >
 ) {
   const queryClient = useQueryClient();
   const { invalidateQueries = true, optimisticUpdate = true, ...mutationOptions } = options || {};
 
-  return useMutation<TableRow<T>[], Error, { id: string; data: TableUpdate<T> }, OptimisticContext>({
-    mutationFn: async ({ id, data }: { id: string; data: TableUpdate<T> }): Promise<TableRow<T>[]> => {
-      const { data: result, error } = await supabase
-        .from(tableName)
-        .update(data as any)
-        .eq("id" as any, id)
-        .select();
+  return useMutation<TableRow<T>[], Error, { id: string; data: TableUpdate<T> }, OptimisticContext>(
+    {
+      mutationFn: async ({
+        id,
+        data,
+      }: {
+        id: string;
+        data: TableUpdate<T>;
+      }): Promise<TableRow<T>[]> => {
+        const { data: result, error } = await supabase
+          .from(tableName)
+          .update(data as any)
+          .eq('id' as any, id)
+          .select();
 
-      if (error) throw error;
-      return result as TableRow<T>[];
-    },
-    onMutate: optimisticUpdate
-      ? async ({ id, data: newData }) => {
-          await queryClient.cancelQueries({ queryKey: ["table", tableName] });
-          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+        if (error) throw error;
+        return result as TableRow<T>[];
+      },
+      onMutate: optimisticUpdate
+        ? async ({ id, data: newData }) => {
+            await queryClient.cancelQueries({ queryKey: ['table', tableName] });
+            const previousData = queryClient.getQueriesData({ queryKey: ['table', tableName] });
 
-          const updateItem = (item: any) =>
-            ("id" in item && item.id === id)
-              ? { ...item, ...newData, updated_at: new Date().toISOString() }
-              : item;
+            const updateItem = (item: any) =>
+              'id' in item && item.id === id
+                ? { ...item, ...newData, updated_at: new Date().toISOString() }
+                : item;
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
-            if (!old) return old;
+            queryClient.setQueriesData({ queryKey: ['table', tableName] }, (old: any) => {
+              if (!old) return old;
 
-            if (isPagedResult(old)) {
-              return {
-                ...old,
-                data: old.data.map(updateItem)
-              };
-            } else if (Array.isArray(old)) {
-              return old.map(updateItem);
-            }
-            return old;
-          });
+              if (isPagedResult(old)) {
+                return {
+                  ...old,
+                  data: old.data.map(updateItem),
+                };
+              } else if (Array.isArray(old)) {
+                return old.map(updateItem);
+              }
+              return old;
+            });
 
-          return { previousData };
+            return { previousData };
+          }
+        : undefined,
+      onError: optimisticUpdate
+        ? (err, variables, context) => {
+            context?.previousData?.forEach(([queryKey, data]) =>
+              queryClient.setQueryData(queryKey, data)
+            );
+          }
+        : undefined,
+      onSuccess: () => {
+        if (invalidateQueries) {
+          queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+          queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
         }
-      : undefined,
-    onError: optimisticUpdate
-      ? (err, variables, context) => {
-          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
-        }
-      : undefined,
-    onSuccess: () => {
-      if (invalidateQueries) {
-        queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-        queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
-      }
-    },
-    ...mutationOptions,
-  });
+      },
+      ...mutationOptions,
+    }
+  );
 }
 
 // Enhanced delete mutation
@@ -237,7 +279,12 @@ export function useTableDelete<T extends PublicTableName>(
   options?: UseTableMutationOptions<void, string | string[], OptimisticContext>
 ) {
   const queryClient = useQueryClient();
-  const { invalidateQueries = true, optimisticUpdate = true, batchSize = 1000, ...mutationOptions } = options || {};
+  const {
+    invalidateQueries = true,
+    optimisticUpdate = true,
+    batchSize = 1000,
+    ...mutationOptions
+  } = options || {};
 
   return useMutation<void, Error, string | string[], OptimisticContext>({
     mutationFn: async (id: string | string[]): Promise<void> => {
@@ -251,37 +298,43 @@ export function useTableDelete<T extends PublicTableName>(
 
         await Promise.all(
           batches.map(async (batch) => {
-            const { error } = await supabase.from(tableName).delete().in("id" as any, batch);
+            const { error } = await supabase
+              .from(tableName)
+              .delete()
+              .in('id' as any, batch);
             if (error) throw error;
           })
         );
         return;
       }
 
-      const { error } = await supabase.from(tableName).delete().in("id" as any, ids);
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .in('id' as any, ids);
       if (error) throw error;
     },
     onMutate: optimisticUpdate
       ? async (id) => {
-          await queryClient.cancelQueries({ queryKey: ["table", tableName] });
-          const previousData = queryClient.getQueriesData({ queryKey: ["table", tableName] });
+          await queryClient.cancelQueries({ queryKey: ['table', tableName] });
+          const previousData = queryClient.getQueriesData({ queryKey: ['table', tableName] });
 
           const idsToDelete = Array.isArray(id) ? id : [id];
 
-          queryClient.setQueriesData({ queryKey: ["table", tableName] }, (old: any) => {
+          queryClient.setQueriesData({ queryKey: ['table', tableName] }, (old: any) => {
             if (!old) return old;
 
             const filterItem = (item: any) => !idsToDelete.includes(item.id);
 
             if (isPagedResult(old)) {
-               const newData = old.data.filter(filterItem);
-               return {
-                 ...old,
-                 data: newData,
-                 count: (old.count || 0) - (old.data.length - newData.length)
-               };
+              const newData = old.data.filter(filterItem);
+              return {
+                ...old,
+                data: newData,
+                count: (old.count || 0) - (old.data.length - newData.length),
+              };
             } else if (Array.isArray(old)) {
-               return old.filter(filterItem);
+              return old.filter(filterItem);
             }
             return old;
           });
@@ -291,13 +344,15 @@ export function useTableDelete<T extends PublicTableName>(
       : undefined,
     onError: optimisticUpdate
       ? (err, variables, context) => {
-          context?.previousData?.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
+          context?.previousData?.forEach(([queryKey, data]) =>
+            queryClient.setQueryData(queryKey, data)
+          );
         }
       : undefined,
     onSuccess: () => {
       if (invalidateQueries) {
-        queryClient.invalidateQueries({ queryKey: ["table", tableName] });
-        queryClient.invalidateQueries({ queryKey: ["unique", tableName] });
+        queryClient.invalidateQueries({ queryKey: ['table', tableName] });
+        queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
       }
     },
     ...mutationOptions,

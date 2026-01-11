@@ -37,7 +37,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'created_at',
       'status',
       'is_hub',
-      'system_capacity_id' // Omit the ID, we'll show the name
+      'system_capacity_id', // Omit the ID, we'll show the name
     ],
     overrides: {
       system_name: {
@@ -109,7 +109,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           }
           return (
             <div className="flex flex-col gap-1">
-              {associations.map(assoc => (
+              {associations.map((assoc) => (
                 <div key={assoc.ring_id} className="text-xs">
                   <span className="font-medium bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
                     {assoc.ring_name}
@@ -119,7 +119,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
               ))}
             </div>
           );
-        }
+        },
       },
       status: {
         key: 'status',

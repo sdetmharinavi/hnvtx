@@ -20,18 +20,18 @@ export function useDuplicateFinder<T>(
   // 1. Pure Calculation (No Side Effects here)
   const { duplicateSet, duplicateCount } = useMemo(() => {
     const emptyResult = { duplicateSet: new Set<string>(), duplicateCount: 0 };
-    
+
     // Optimization: Don't calculate if feature is off or no data
     if (!showDuplicates || !data || data.length === 0) {
       return emptyResult;
     }
 
     const counts = new Map<string, number>();
-    
+
     // Count occurrences
     data.forEach((item) => {
-      let key = "";
-      
+      let key = '';
+
       // Determine the key based on the identity prop type
       if (typeof identity === 'function') {
         key = identity(item);
@@ -39,7 +39,7 @@ export function useDuplicateFinder<T>(
         const val = item[identity];
         // Ensure we only process valid strings/numbers
         if (val !== null && val !== undefined) {
-           key = String(val);
+          key = String(val);
         }
       }
 

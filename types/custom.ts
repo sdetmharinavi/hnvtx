@@ -1,5 +1,5 @@
-import { Json } from "@/types/supabase-types";
-import z from "zod";
+import { Json } from '@/types/supabase-types';
+import z from 'zod';
 
 export const JsonSchema: z.ZodType<Json> = z.lazy(() =>
   z.union([

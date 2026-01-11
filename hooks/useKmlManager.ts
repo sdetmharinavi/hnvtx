@@ -14,7 +14,12 @@ export function useKmlManager() {
   const queryClient = useQueryClient();
 
   // 1. Fetch List
-  const { data: kmlFiles = [], isLoading, error, refetch } = useQuery<BlobFile[]>({
+  const {
+    data: kmlFiles = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<BlobFile[]>({
     queryKey: ['kml-files'],
     queryFn: async () => {
       const res = await fetch('/api/kml');

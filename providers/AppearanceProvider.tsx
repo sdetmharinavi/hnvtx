@@ -8,7 +8,10 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
   const fontSizeMultiplier = useAppearanceStore((state) => state.fontSizeMultiplier);
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--font-size-multiplier', String(fontSizeMultiplier));
+    document.documentElement.style.setProperty(
+      '--font-size-multiplier',
+      String(fontSizeMultiplier)
+    );
   }, [fontSizeMultiplier]);
 
   return <>{children}</>;

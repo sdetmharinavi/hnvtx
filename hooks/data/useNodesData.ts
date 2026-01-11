@@ -1,12 +1,12 @@
-import { createGenericDataQuery } from "./useGenericDataQuery";
-import { DEFAULTS } from "@/constants/constants";
+import { createGenericDataQuery } from './useGenericDataQuery';
+import { DEFAULTS } from '@/constants/constants';
 
-export const useNodesData = createGenericDataQuery<"v_nodes_complete">({
-  tableName: "v_nodes_complete",
-  searchFields: ["name", "node_type_code", "remark", "latitude", "longitude"],
+export const useNodesData = createGenericDataQuery<'v_nodes_complete'>({
+  tableName: 'v_nodes_complete',
+  searchFields: ['name', 'node_type_code', 'remark', 'latitude', 'longitude'],
   // Server search needs text casting for numbers
-  serverSearchFields: ["name", "node_type_code", "remark", "latitude::text", "longitude::text"],
-  defaultSortField: "name",
+  serverSearchFields: ['name', 'node_type_code', 'remark', 'latitude::text', 'longitude::text'],
+  defaultSortField: 'name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (node, filters) => {
     // 1. Standard Filters
@@ -17,7 +17,7 @@ export const useNodesData = createGenericDataQuery<"v_nodes_complete">({
     )
       return false;
     if (filters.status) {
-      const statusBool = filters.status === "true";
+      const statusBool = filters.status === 'true';
       if (node.status !== statusBool) return false;
     }
 
@@ -29,8 +29,8 @@ export const useNodesData = createGenericDataQuery<"v_nodes_complete">({
         node.longitude !== null &&
         node.longitude !== undefined;
 
-      if (filters.coordinates_status === "with_coords" && !hasCoords) return false;
-      if (filters.coordinates_status === "without_coords" && hasCoords) return false;
+      if (filters.coordinates_status === 'with_coords' && !hasCoords) return false;
+      if (filters.coordinates_status === 'without_coords' && hasCoords) return false;
     }
 
     return true;

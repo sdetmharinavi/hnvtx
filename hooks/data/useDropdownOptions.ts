@@ -1,12 +1,12 @@
 // hooks/data/useDropdownOptions.ts
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { localDb } from "@/hooks/data/localDb";
-import { useLocalFirstQuery } from "./useLocalFirstQuery";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { buildRpcFilters, PublicTableOrViewName } from "@/hooks/database";
+import { useMemo } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { localDb } from '@/hooks/data/localDb';
+import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { buildRpcFilters, PublicTableOrViewName } from '@/hooks/database';
 
 interface OptionsQuery {
   tableName: PublicTableOrViewName;
@@ -15,7 +15,7 @@ interface OptionsQuery {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filters?: Record<string, any>;
   orderBy?: string;
-  orderDir?: "asc" | "desc";
+  orderDir?: 'asc' | 'desc';
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,12 +35,12 @@ export function useDropdownOptions({
   valueField,
   labelField,
   filters = {},
-  orderBy = "name",
-  orderDir = "asc",
+  orderBy = 'name',
+  orderDir = 'asc',
 }: OptionsQuery) {
   const onlineQueryFn = async () => {
     const validFilters = cleanFilters(filters);
-    const { data, error } = await createClient().rpc("get_paged_data", {
+    const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: tableName,
       p_limit: 10000,
       p_offset: 0,
@@ -72,7 +72,7 @@ export function useDropdownOptions({
           const itemVal = (item as any)[key];
 
           // Robust boolean check: handles true/false vs "true"/"false" vs 1/0
-          if (key === "status") {
+          if (key === 'status') {
             return String(itemVal) === String(val);
           }
           // General equality check
@@ -90,18 +90,18 @@ export function useDropdownOptions({
       const valB = b[orderBy];
       let comparison = 0;
 
-      if (typeof valA === "string" && typeof valB === "string") {
-        comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
       } else {
         comparison = valA > valB ? 1 : valA < valB ? -1 : 0;
       }
 
-      return orderDir === "asc" ? comparison : -comparison;
+      return orderDir === 'asc' ? comparison : -comparison;
     });
   };
 
   const { data, isLoading } = useLocalFirstQuery({
-    queryKey: ["dropdown-options", tableName, filters, orderBy, orderDir],
+    queryKey: ['dropdown-options', tableName, filters, orderBy, orderDir],
     onlineQueryFn,
     localQueryFn,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,57 +139,57 @@ export function useDropdownOptions({
 
 export const useLookupTypeOptions = (
   category: string,
-  orderDir: "asc" | "desc" = "asc",
-  orderBy: string = "sort_order",
-  labelField: string = "name"
+  orderDir: 'asc' | 'desc' = 'asc',
+  orderBy: string = 'sort_order',
+  labelField: string = 'name'
 ) => {
   const { options, isLoading, originalData } = useDropdownOptions({
-    tableName: "lookup_types",
-    valueField: "id",
+    tableName: 'lookup_types',
+    valueField: 'id',
     labelField: labelField,
     filters: { category, status: true },
     orderBy,
     orderDir,
   });
-  const filteredOptions = useMemo(() => options.filter((o) => o.label !== "DEFAULT"), [options]);
+  const filteredOptions = useMemo(() => options.filter((o) => o.label !== 'DEFAULT'), [options]);
   return { options: filteredOptions, isLoading, originalData };
 };
 
 export const useActiveNodeOptions = () => {
   return useDropdownOptions({
-    tableName: "nodes",
-    valueField: "id",
-    labelField: "name",
+    tableName: 'nodes',
+    valueField: 'id',
+    labelField: 'name',
     filters: { status: true },
   });
 };
 
 export const useMaintenanceAreaOptions = () => {
   return useDropdownOptions({
-    tableName: "maintenance_areas",
-    valueField: "id",
-    labelField: "name",
+    tableName: 'maintenance_areas',
+    valueField: 'id',
+    labelField: 'name',
     filters: { status: true },
   });
 };
 
 export const useActiveRingOptions = () => {
   return useDropdownOptions({
-    tableName: "rings",
-    valueField: "id",
-    labelField: "name",
+    tableName: 'rings',
+    valueField: 'id',
+    labelField: 'name',
     filters: { status: true },
   });
 };
 
 export function useEmployeeOptions() {
   const onlineQueryFn = async () => {
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_employees",
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_employees',
       p_limit: 10000,
       p_offset: 0,
       p_filters: { status: true },
-      p_order_by: "employee_name",
+      p_order_by: 'employee_name',
     });
 
     if (error) throw error;
@@ -199,13 +199,13 @@ export function useEmployeeOptions() {
 
   const localQueryFn = () => {
     return localDb.v_employees
-      .orderBy("employee_name")
+      .orderBy('employee_name')
       .filter((e) => e.status === true)
       .toArray();
   };
 
-  const { data, isLoading } = useLocalFirstQuery<"v_employees">({
-    queryKey: ["employee-options"],
+  const { data, isLoading } = useLocalFirstQuery<'v_employees'>({
+    queryKey: ['employee-options'],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employees,
@@ -217,8 +217,8 @@ export function useEmployeeOptions() {
     return data.map((e) => ({
       value: e.id!,
       label: `${e.employee_name} ${
-        e.employee_designation_name ? `(${e.employee_designation_name})` : ""
-      } ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ""}`,
+        e.employee_designation_name ? `(${e.employee_designation_name})` : ''
+      } ${e.maintenance_area_name ? `(${e.maintenance_area_name})` : ''}`,
     }));
   }, [data]);
 
@@ -227,12 +227,12 @@ export function useEmployeeOptions() {
 
 export function useSystemOptions() {
   const onlineQueryFn = async () => {
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_systems_complete",
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_systems_complete',
       p_limit: 10000,
       p_offset: 0,
-      p_order_by: "system_name",
-      p_order_dir: "asc",
+      p_order_by: 'system_name',
+      p_order_dir: 'asc',
       p_filters: {},
     });
 
@@ -242,11 +242,11 @@ export function useSystemOptions() {
   };
 
   const localQueryFn = () => {
-    return localDb.v_systems_complete.orderBy("system_name").toArray();
+    return localDb.v_systems_complete.orderBy('system_name').toArray();
   };
 
-  const { data, isLoading } = useLocalFirstQuery<"v_systems_complete">({
-    queryKey: ["system-options"],
+  const { data, isLoading } = useLocalFirstQuery<'v_systems_complete'>({
+    queryKey: ['system-options'],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_systems_complete,
@@ -265,12 +265,12 @@ export function usePortOptions(systemId: string | null) {
       port_admin_status: true,
     });
 
-    const { data, error } = await createClient().rpc("get_paged_data", {
-      p_view_name: "v_ports_management_complete",
+    const { data, error } = await createClient().rpc('get_paged_data', {
+      p_view_name: 'v_ports_management_complete',
       p_limit: 1000,
       p_offset: 0,
-      p_order_by: "port",
-      p_order_dir: "asc",
+      p_order_by: 'port',
+      p_order_dir: 'asc',
       p_filters: rpcFilters,
     });
 
@@ -282,14 +282,14 @@ export function usePortOptions(systemId: string | null) {
   const localQueryFn = () => {
     if (!systemId) return Promise.resolve([]);
     return localDb.v_ports_management_complete
-      .where("system_id")
+      .where('system_id')
       .equals(systemId)
       .filter((p) => p.port_admin_status === true)
       .toArray();
   };
 
-  const { data, isLoading } = useLocalFirstQuery<"v_ports_management_complete">({
-    queryKey: ["port-options", systemId],
+  const { data, isLoading } = useLocalFirstQuery<'v_ports_management_complete'>({
+    queryKey: ['port-options', systemId],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_ports_management_complete,

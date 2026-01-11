@@ -1,6 +1,6 @@
 // path: hooks/database/excel-queries/excel-helpers.ts
 import * as ExcelJS from 'exceljs';
-import { Filters, ProcessingLog,  ValidationError } from '@/hooks/database';
+import { Filters, ProcessingLog, ValidationError } from '@/hooks/database';
 import { TableOrViewName, Row } from '@/hooks/database';
 
 export interface Column<T> {

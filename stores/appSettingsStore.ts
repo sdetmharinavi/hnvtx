@@ -12,7 +12,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
   persist(
     (set) => ({
       isSimulatedOffline: false,
-      toggleSimulatedOffline: () => set((state) => ({ isSimulatedOffline: !state.isSimulatedOffline })),
+      toggleSimulatedOffline: () =>
+        set((state) => ({ isSimulatedOffline: !state.isSimulatedOffline })),
       setSimulatedOffline: (value) => set({ isSimulatedOffline: value }),
     }),
     {

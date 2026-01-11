@@ -7,7 +7,7 @@ function detectOutdatedBrowser(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return false;
   }
-  
+
   // **Priority 1: Feature Detection**
   const missingFeatures = [
     () => typeof Promise?.allSettled !== 'function', // ES2020
@@ -17,7 +17,7 @@ function detectOutdatedBrowser(): boolean {
     () => !('IntersectionObserver' in window),
     () => !('localStorage' in window),
     () => !('structuredClone' in window), // A more modern feature
-  ].some(fn => fn());
+  ].some((fn) => fn());
 
   if (missingFeatures) {
     return true;
@@ -31,7 +31,7 @@ function detectOutdatedBrowser(): boolean {
   if (isIE) {
     return true;
   }
-  
+
   // Check for very old versions of other browsers
   const legacyEdgeMatch = ua.match(/Edge\/(\d+)/); // Non-Chromium Edge
   if (legacyEdgeMatch && parseInt(legacyEdgeMatch[1]) < 18) {

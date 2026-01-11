@@ -11,12 +11,12 @@ export const v_e_files_extendedRowSchema = z.object({
   status: z.enum(['active', 'closed']),
   created_at: z.string(),
   updated_at: z.string(),
-  
+
   // Employee fields
   initiator_employee_id: z.uuid().nullable(),
   initiator_name: z.string().nullable(),
   initiator_designation: z.string().nullable(),
-  
+
   current_holder_employee_id: z.uuid().nullable(),
   current_holder_name: z.string().nullable(),
   current_holder_designation: z.string().nullable(),
@@ -37,15 +37,15 @@ export const v_file_movements_extendedRowSchema = z.object({
   created_at: z.string(),
   // ADDED: Action Date
   action_date: z.string().optional().nullable(),
-  
+
   from_employee_id: z.uuid().nullable(),
   from_employee_name: z.string().nullable(),
   from_employee_designation: z.string().nullable(),
-  
+
   to_employee_id: z.uuid().nullable(),
   to_employee_name: z.string().nullable(),
   to_employee_designation: z.string().nullable(),
-  
+
   performed_by_user_id: z.uuid().nullable(),
   performed_by_name: z.string().nullable(),
 });
@@ -53,13 +53,13 @@ export type EFileMovementRow = z.infer<typeof v_file_movements_extendedRowSchema
 
 // Form Payloads
 export const initiateFileSchema = z.object({
-  file_number: z.string().min(1, "File number is required"),
-  subject: z.string().min(1, "Subject is required"),
+  file_number: z.string().min(1, 'File number is required'),
+  subject: z.string().min(1, 'Subject is required'),
   description: z.string().optional(),
-  category: z.string().min(1, "Category is required"),
+  category: z.string().min(1, 'Category is required'),
   priority: z.enum(['normal', 'urgent', 'immediate']),
   remarks: z.string().optional(),
-  initiator_employee_id: z.string().uuid("Initiator employee is required"),
+  initiator_employee_id: z.string().uuid('Initiator employee is required'),
   // ADDED: Optional date
   action_date: z.string().optional().nullable(),
 });
@@ -67,8 +67,8 @@ export type InitiateFilePayload = z.infer<typeof initiateFileSchema>;
 
 export const forwardFileSchema = z.object({
   file_id: z.uuid(),
-  to_employee_id: z.string().uuid("Recipient employee is required"),
-  remarks: z.string().min(1, "Remarks are required"),
+  to_employee_id: z.string().uuid('Recipient employee is required'),
+  remarks: z.string().min(1, 'Remarks are required'),
   action_type: z.enum(['forwarded', 'returned']).default('forwarded'),
   // ADDED: Optional date
   action_date: z.string().optional().nullable(),
@@ -78,7 +78,7 @@ export type ForwardFilePayload = z.infer<typeof forwardFileSchema>;
 // ADDED: Schema for editing an existing movement
 export const updateMovementSchema = z.object({
   movement_id: z.uuid(),
-  remarks: z.string().min(1, "Remarks are required"),
-  action_date: z.string().min(1, "Date is required"),
+  remarks: z.string().min(1, 'Remarks are required'),
+  action_date: z.string().min(1, 'Date is required'),
 });
 export type UpdateMovementPayload = z.infer<typeof updateMovementSchema>;
