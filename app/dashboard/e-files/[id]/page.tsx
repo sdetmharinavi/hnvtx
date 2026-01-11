@@ -57,14 +57,17 @@ export default function EFileDetailsPage() {
         <Button
           variant="ghost"
           onClick={async () => {
-            if (isOnline)
+            if (isOnline) {
               await syncData([
                 'e_files',
                 'v_e_files_extended',
                 'file_movements',
                 'v_file_movements_extended',
               ]);
-            refetch();
+              // THE FIX: No explicit refetch() here
+            } else {
+              refetch();
+            }
             toast.success('File details refreshed.');
           }}
           disabled={isSyncing}

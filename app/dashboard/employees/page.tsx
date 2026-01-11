@@ -14,7 +14,6 @@ import {
 } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
-import { toast } from 'sonner';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
@@ -112,7 +111,6 @@ export default function EmployeesPage() {
     data: employees as EmployeesRowSchema[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isInitialLoad,

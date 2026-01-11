@@ -3,7 +3,6 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
@@ -171,7 +170,6 @@ export default function RingsPage() {
     data: rings as RingsRowSchema[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,

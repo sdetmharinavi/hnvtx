@@ -35,7 +35,7 @@ interface StandardActionsConfig<T extends PublicTableOrViewName> {
   onAddNew?: () => void;
   exportConfig?: ExportConfig<T>;
   isLoading?: boolean;
-  isFetching?: boolean; // ADDED PROP
+  isFetching?: boolean;
   data?: Row<T>[];
 }
 
@@ -44,7 +44,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   onAddNew,
   exportConfig,
   isLoading,
-  isFetching, // ADDED
+  isFetching,
   data,
 }: StandardActionsConfig<T>): ActionButton[] {
   const supabase = useMemo(() => createClient(), []);
@@ -139,7 +139,9 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   return useMemo(() => {
     const actions: ActionButton[] = [];
     const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
-    // THE FIX: Combine loading states. If fetching in background, show spinner.
+
+    // THE FIX: Use isFetching OR isLoading for visual state, but allow clicking if not "hard" loading
+    // Actually, we want to disable refresh if a sync/fetch is already happening
     const isBusy = isLoading || isFetching;
 
     if (onRefresh) {
@@ -147,10 +149,8 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         label: 'Refresh',
         onClick: onRefresh,
         variant: 'outline',
-        // THE FIX: Use isBusy for animation class
         leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
-        disabled: isBusy, 
-        // MOBILE OPTIMIZATION: Hide text by default for Refresh
+        disabled: isBusy, // Prevent double clicking
         hideTextOnMobile: true,
       });
     }
@@ -184,7 +184,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           disabled: isExporting,
           'data-dropdown': true,
           dropdownoptions,
-          // MOBILE OPTIMIZATION: Hide text by default
           hideTextOnMobile: true,
         });
       } else {
@@ -194,7 +193,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           variant: 'outline',
           leftIcon: <FiDownload />,
           disabled: isLoading || isExporting,
-          // MOBILE OPTIMIZATION: Hide text by default
           hideTextOnMobile: true,
         });
       }
@@ -207,7 +205,6 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         variant: 'primary',
         leftIcon: <FiPlus />,
         disabled: isLoading,
-        // Keep Add New text visible as it's the primary action
       });
     }
 
@@ -217,7 +214,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     onAddNew,
     exportConfig,
     isLoading,
-    isFetching, // Add to dependency array
+    isFetching,
     handleExport,
     tableExcelDownload.isPending,
     rpcExcelDownload.isPending,

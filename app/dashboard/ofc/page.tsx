@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { toast } from 'sonner';
 import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
@@ -121,7 +120,6 @@ export default function OfcPage() {
     data: ofcData as Ofc_cablesRowSchema[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,

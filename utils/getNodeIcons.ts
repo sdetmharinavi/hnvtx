@@ -201,5 +201,5 @@ export const getNodeIcon = (
   }
 
   // Fallback
-  return createSvgDivIcon(IMG_DEFAULT, [25, 41], [12, 41], true, rotation);
+  return createSvgDivIcon(IMG_DEFAULT, [40, 40], [20, 20], true, rotation);
 };

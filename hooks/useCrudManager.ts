@@ -152,8 +152,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
         await syncData(syncTables);
-        refetch();
+        // THE FIX: Do NOT call refetch() here. 
+        // syncData invalidates the query keys, which triggers the refetch automatically.
+        // calling refetch() again causes a double request and UI flash.
     } else {
+        // Fallback for offline or no-sync config
         refetch();
     }
   }, [isOnline, syncTables, syncData, refetch]);
@@ -332,16 +335,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             });
             toast.warning('Update queued (Offline). Sync pending.', { icon: React.createElement(FiWifiOff) });
           } else {
-            // THE FIX: Use standard UUID for offline creation to be PG compatible
             const tempId = uuidv4();
             const newRecord = { ...processedData, id: tempId };
-            
-            // If the table uses integer IDs (unlikely for main tables but possible for logs),
-            // this logic needs adjustment. Assuming UUIDs for main entities here.
+
             if (idType === 'number') {
-               // For number IDs (e.g. audit logs), we can't easily generate valid ones offline
-               // without risk of collision. We might need negative IDs.
-               // However, create/update usually happens on UUID tables in this app.
                console.warn("Offline creation for integer ID tables is risky.");
             }
 

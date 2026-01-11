@@ -166,26 +166,6 @@ export default function SystemConnectionsPage() {
     return connections;
   }, [connections, searchQuery]);
 
-  // const { data: uniqueValues } = useOfflineQuery(
-  //     ['connection-filter-options', systemId],
-  //     async () => {
-  //         const { data } = await supabase.from('v_system_connections_complete')
-  //           .select('connected_link_type_name, bandwidth')
-  //           .or(`system_id.eq.${systemId},en_id.eq.${systemId}`);
-  //         return data || [];
-  //     },
-  //     async () => {
-  //       const source = await localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray();
-  //       const dest = await localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray();
-  //       return [...source, ...dest];
-  //     }
-  // );
-
-  // const capacityOptions = useMemo(() => {
-  //   const caps = new Set((uniqueValues || []).map(c => c.bandwidth).filter(Boolean));
-  //   return Array.from(caps).sort().map(c => ({ value: c!, label: c! }));
-  // }, [uniqueValues]);
-
   const { data: systemData, isLoading: isLoadingSystem } =
     usePagedData<V_systems_completeRowSchema>(supabase, 'v_systems_complete', {
       filters: { id: systemId },
@@ -494,8 +474,10 @@ export default function SystemConnectionsPage() {
           'services',
           'v_services',
         ]);
+        // THE FIX: No explicit refetch() here
+      } else {
+        refetch(); // Fallback for offline
       }
-      refetch();
       toast.success('Connections refreshed!');
     },
     onAddNew: canEdit ? openAddModal : undefined,

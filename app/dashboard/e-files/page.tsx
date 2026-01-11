@@ -204,8 +204,10 @@ export default function EFilesPage() {
               'file_movements',
               'v_file_movements_extended',
             ]);
+            // THE FIX: No explicit refetch() here
+          } else {
+            refetch();
           }
-          refetch();
         },
         variant: 'outline',
         // ADDED: Show loading state during sync

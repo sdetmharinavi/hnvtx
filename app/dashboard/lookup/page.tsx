@@ -27,6 +27,7 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { snakeToTitleCase } from '@/utils/formatters';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const LookupModal = dynamic(
   () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
@@ -104,10 +105,35 @@ export default function LookupTypesPage() {
     defaultDirection: 'asc',
   });
 
+  const isOnline = useOnlineStatus(); // ADDED hook
+
   const handleRefresh = useCallback(async () => {
-    await Promise.all([refetch(), refetchCategories()]);
+    // If we rely on generic sync, we should use syncData
+    // But this page might use `useCrudManager` which now handles sync internally via handleRefresh?
+    // Yes, useCrudManager handles it. But here we have a custom handleRefresh that calls refetchCategories.
+
+    // We should probably rely on useCrudManager's refresh for the table,
+    // but refetchCategories needs to be called.
+    // However, if we assume online mode updates Dexie, React Query observing Dexie will auto update?
+    // useOfflineQuery doesn't auto-observe Dexie unless useLiveQuery is used internally.
+    // useLocalFirstQuery uses useLiveQuery. So it updates automatically.
+
+    // So if we just sync 'lookup_types', both hooks should update.
+
+    // BUT this page uses `useOfflineQuery` for categories, which might NOT be live.
+    // Let's stick to the pattern:
+
+    if (isOnline) {
+      // syncTables is already passed to useCrudManager for the main list
+      // We might want to sync categories separately or just rely on the main sync
+      await refetch(); // This calls the fixed handleRefresh from useCrudManager
+      await refetchCategories(); // This might still trigger a fetch, but it's separate query
+    } else {
+      await Promise.all([refetch(), refetchCategories()]);
+    }
+
     toast.success('Data refreshed successfully');
-  }, [refetch, refetchCategories]);
+  }, [refetch, refetchCategories, isOnline]);
 
   const hasCategories = categories.length > 0;
   const hasSelectedCategory = !!selectedCategory;

@@ -671,8 +671,10 @@ export default function RingMapPage() {
                     'logical_paths',
                     'logical_fiber_paths',
                   ]);
+                  // THE FIX: No explicit refetch() here
+                } else {
+                  refetchRing(); // Fallback
                 }
-                refetchRing();
                 toast.success('Ring topology refreshed.');
               },
               variant: 'outline',

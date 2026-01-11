@@ -18,7 +18,6 @@ import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import { FiCpu, FiMapPin, FiNavigation, FiMessageSquare, FiCopy } from 'react-icons/fi';
-import { toast } from 'sonner';
 import { createStandardActions } from '@/components/table/action-helpers';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
@@ -122,7 +121,6 @@ export default function NodesPage() {
     onAddNew: canEdit ? editModal.openAdd : undefined,
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     isLoading: isLoading,
     exportConfig: canEdit ? { tableName: 'nodes' } : undefined,

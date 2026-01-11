@@ -19,7 +19,6 @@ import { useAdminUserOperations, type UserCreateInput } from '@/hooks/data/useAd
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
-import { toast } from 'sonner';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { TableAction } from '@/components/table/datatable-types';
@@ -169,7 +168,6 @@ const AdminUsersPage = () => {
     data: users as Row<'user_profiles'>[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,

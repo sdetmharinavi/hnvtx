@@ -281,7 +281,6 @@ export default function RingPathsPage() {
   const customHeaderActions = [
     {
       label: 'Refresh',
-      // CHANGED: Update refresh handler
       onClick: async () => {
         if (isOnline) {
           await syncData([
@@ -290,8 +289,10 @@ export default function RingPathsPage() {
             'logical_fiber_paths',
             'ofc_connections',
           ]);
+          // THE FIX: No explicit refetch() here
+        } else {
+          refetch();
         }
-        refetch();
         toast.success('Logical paths refreshed!');
       },
       variant: 'outline' as const,

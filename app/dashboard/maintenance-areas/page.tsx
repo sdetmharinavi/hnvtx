@@ -14,7 +14,6 @@ import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client'; // THIS IS THE FIX
 import { useMemo, useState } from 'react';
 import { FiMapPin } from 'react-icons/fi';
-import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
 import { useUser } from '@/providers/UserProvider';
@@ -94,7 +93,6 @@ export default function MaintenanceAreasPage() {
     data: allAreas as Row<'maintenance_areas'>[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,

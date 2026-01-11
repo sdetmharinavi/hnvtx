@@ -16,7 +16,6 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import { useState } from 'react';
 import { ImUserTie } from 'react-icons/im';
-import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
@@ -137,7 +136,6 @@ export default function DesignationManagerPage() {
     data: allDesignations as Row<'employee_designations'>[],
     onRefresh: async () => {
       await refetch();
-      toast.success('Refreshed successfully!');
     },
     // Only allow adding new items if user has edit permission
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
