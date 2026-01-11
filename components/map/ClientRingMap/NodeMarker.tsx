@@ -129,8 +129,13 @@ export const NodeMarker = ({
           offset={[0, -25]}
         >
           <div className="text-sm">
-            <h4 className="font-bold">{node.name}</h4>
-            <div className="text-xs text-gray-500 mb-1">{node.system_node_name}</div>
+            <div className="text-xs text-gray-900 mb-1 font-bold">{node.system_node_name}</div>
+            <div className="text-sm">{node.name}</div>
+            {node.lat && node.long && (
+              <div className="text-sm">
+                ({node.lat}, {node.long})
+              </div>
+            )}
             {node.remark && <p className="italic text-xs mt-1">{node.remark}</p>}
             {node.ip && <p className="font-mono text-xs mt-1">IP: {displayIp}</p>}
           </div>

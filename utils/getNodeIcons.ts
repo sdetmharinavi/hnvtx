@@ -60,12 +60,14 @@ export const SVG_RADIO_ANTENNA = `
 export const SVG_NETWORK_SWITCH = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="grayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#797D7F;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#424949;stop-opacity:1" />
+    <!-- Renamed ID to avoid conflict and changed colors to Blue/Cyan -->
+    <linearGradient id="switchGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0284c7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#042f36;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <path d="M18 0 C11.1 0 5.5 5.6 5.5 12.5 C5.5 15.6 6.5 18.4 8.3 20.6 L18 45 L27.7 20.6 C29.5 18.4 30.5 15.6 30.5 12.5 C30.5 5.6 24.9 0 18 0 Z" fill="url(#grayGrad)" stroke="#424949" stroke-width="1" opacity="0.95"/>
+  <!-- Updated fill to url(#switchGrad) and stroke to blue -->
+  <path d="M18 0 C11.1 0 5.5 5.6 5.5 12.5 C5.5 15.6 6.5 18.4 8.3 20.6 L18 45 L27.7 20.6 C29.5 18.4 30.5 15.6 30.5 12.5 C30.5 5.6 24.9 0 18 0 Z" fill="url(#switchGrad)" stroke="#0369a1" stroke-width="1" opacity="0.95"/>
   <rect x="11.5" y="9" width="13" height="6.5" rx="0.8" fill="#263238" stroke="#263238" stroke-width="0.3"/>
   <rect x="12.5" y="10.5" width="1.6" height="3.5" rx="0.3" fill="#ECF0F1" />
   <rect x="14.6" y="10.5" width="1.6" height="3.5" rx="0.3" fill="#ECF0F1" />
@@ -94,18 +96,18 @@ export const SVG_NETWORK_NODE = `
 <svg viewBox="0 0 36 36" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="greenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#797D7F;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#424949;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#031c66;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0dd1d1;stop-opacity:1" />
     </linearGradient>
   </defs>
   <path d="M18 0 C11.1 0 5.5 5.6 5.5 12.5 C5.5 15.6 6.5 18.4 8.3 20.6 L18 45 L27.7 20.6 C29.5 18.4 30.5 15.6 30.5 12.5 C30.5 5.6 24.9 0 18 0 Z" fill="url(#greenGrad)" stroke="#27AE60" stroke-width="1" opacity="0.95"/>
-  <circle cx="18" cy="12" r="3.3" fill="#263238"/>
-  <circle cx="18" cy="6.5" r="1.8" fill="#263238"/>
-  <circle cx="13.5" cy="16.2" r="1.8" fill="#263238"/>
-  <circle cx="22.5" cy="16.2" r="1.8" fill="#263238"/>
-  <line x1="18" y1="8.8" x2="18" y2="8.3" stroke="#263238" stroke-width="1.3" stroke-linecap="round" />
-  <line x1="16.2" y1="14.3" x2="15.3" y2="16.2" stroke="#263238" stroke-width="1.3" stroke-linecap="round" />
-  <line x1="19.8" y1="14.3" x2="20.7" y2="16.2" stroke="#263238" stroke-width="1.3" stroke-linecap="round" />
+  <circle cx="18" cy="12" r="3.3" fill="#ff6b35" stroke="#ff8c61" stroke-width="0.8"/>
+  <circle cx="18" cy="6.5" r="1.8" fill="#ffd166" stroke="#ffe699" stroke-width="0.6"/>
+  <circle cx="13.5" cy="16.2" r="1.8" fill="#06ffa5" stroke="#5bffca" stroke-width="0.6"/>
+  <circle cx="22.5" cy="16.2" r="1.8" fill="#06ffa5" stroke="#5bffca" stroke-width="0.6"/>
+  <line x1="18" y1="8.8" x2="18" y2="8.3" stroke="#ff8c61" stroke-width="1.3" stroke-linecap="round" />
+  <line x1="16.2" y1="14.3" x2="15.3" y2="16.2" stroke="#ff8c61" stroke-width="1.3" stroke-linecap="round" />
+  <line x1="19.8" y1="14.3" x2="20.7" y2="16.2" stroke="#ff8c61" stroke-width="1.3" stroke-linecap="round" />
 </svg>`;
 
 export const SVG_CALCULATOR = `

@@ -12,6 +12,7 @@ export interface EntityCardItem {
   label: string;
   value: string | number | null | React.ReactNode;
   copyable?: boolean;
+  optional?: boolean;
 }
 
 interface GenericEntityCardProps<T> {
@@ -162,28 +163,47 @@ export function GenericEntityCard<T>({
         {customHeader}
 
         <div className="space-y-2">
-          {dataItems.map((item, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-2.5 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="p-1.5 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 shrink-0">
-                <item.icon className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-gray-500 dark:text-gray-500 font-medium uppercase tracking-wide leading-none mb-0.5">
-                  {item.label}
+          {dataItems.map((item, idx) => {
+            console.log(item);
+            const optional = item.optional ?? false;
+            if (optional && !item.value) {
+              return null;
+            }
+            return (
+              <div
+                key={idx}
+                className="flex items-center gap-2.5 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <div className="p-1.5 rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 shrink-0">
+                  <item.icon className="w-3.5 h-3.5" />
                 </div>
-                <div className=" font-medium text-gray-900 dark:text-gray-200 truncate">
-                  {typeof item.value === 'string' ? (
-                    <TruncateTooltip text={item.value} copyOnDoubleClick={item.copyable} />
-                  ) : (
-                    item.value || '—'
-                  )}
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={
+                      item.label === 'Remark'
+                        ? 'text-amber-900 dark:text-amber-200 font-medium uppercase tracking-wide leading-none mb-0.5'
+                        : 'text-gray-500 dark:text-gray-500 font-medium uppercase tracking-wide leading-none mb-0.5'
+                    }
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    className={
+                      item.label === 'Remark'
+                        ? 'font-medium text-amber-900 dark:text-amber-200 truncate'
+                        : 'font-medium text-gray-900 dark:text-gray-200 truncate'
+                    }
+                  >
+                    {typeof item.value === 'string' ? (
+                      <TruncateTooltip text={item.value} copyOnDoubleClick={item.copyable} />
+                    ) : (
+                      item.value || '—'
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Footer Content (Remarks) */}

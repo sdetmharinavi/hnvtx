@@ -4,7 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock } from 'react-icons/fi';
+import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock, FiInfo } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
@@ -152,8 +152,9 @@ export default function OfcPage() {
             }
             dataItems={[
               { icon: FiMapPin, label: 'Area', value: cable.maintenance_area_name },
-              { icon: FiActivity, label: 'Asset No', value: cable.asset_no },
-              { icon: FiDatabase, label: 'Transnet ID', value: cable.transnet_id },
+              { icon: FiActivity, label: 'Asset No', value: cable.asset_no, optional: true },
+              { icon: FiDatabase, label: 'Transnet ID', value: cable.transnet_id, optional: true },
+              { icon: FiInfo, label: 'Remark', value: cable.remark, optional: true },
             ]}
             customFooter={
               <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full">
