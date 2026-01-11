@@ -73,7 +73,15 @@ export const ConnectionLine = ({
 
   // 2. Fetch Logical Path Info
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
-    queryKey: ['logical-paths-segment', start.id, end.id, config?.sourcePort, config?.destPort],
+    // THE FIX: Changed key to start with 'logical_fiber_paths' for correct invalidation
+    queryKey: [
+      'logical_fiber_paths',
+      'segment',
+      start.id,
+      end.id,
+      config?.sourcePort,
+      config?.destPort,
+    ],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
 

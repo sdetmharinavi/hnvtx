@@ -164,7 +164,6 @@ export function GenericEntityCard<T>({
 
         <div className="space-y-2">
           {dataItems.map((item, idx) => {
-            console.log(item);
             const optional = item.optional ?? false;
             if (optional && !item.value) {
               return null;

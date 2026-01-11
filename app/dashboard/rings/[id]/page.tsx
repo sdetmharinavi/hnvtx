@@ -669,9 +669,12 @@ export default function RingMapPage() {
                     'ring_based_systems',
                     'ofc_cables',
                     'v_ofc_cables_complete',
+                    'ofc_connections', // Added
+                    'v_ofc_connections_complete', // Added
                     'v_system_connections_complete',
                     'logical_paths',
                     'logical_fiber_paths',
+                    'logical_path_segments', // Added
                   ]);
                 } else {
                   refetchRing(); // Fallback

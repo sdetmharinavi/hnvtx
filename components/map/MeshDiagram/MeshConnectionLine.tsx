@@ -49,8 +49,10 @@ export const MeshConnectionLine = ({
 
   // --- LOGICAL PATH QUERY ---
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
+    // THE FIX: Changed key to start with 'logical_fiber_paths' for correct invalidation
     queryKey: [
-      'logical-paths-segment-mesh',
+      'logical_fiber_paths',
+      'mesh-segment',
       start.id,
       end.id,
       config?.sourcePort,
