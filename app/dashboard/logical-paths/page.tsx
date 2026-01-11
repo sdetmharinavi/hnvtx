@@ -1,3 +1,4 @@
+// app/dashboard/logical-paths/page.tsx
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
@@ -79,7 +80,7 @@ export default function LogicalPathsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false); // Kept for consistency, though unused
+  const [showFilters, setShowFilters] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -165,6 +166,7 @@ export default function LogicalPathsPage() {
       toast.success('Logical paths refreshed!');
     },
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canEdit ? { tableName: 'v_end_to_end_paths' } : undefined,
   });
 
@@ -192,6 +194,7 @@ export default function LogicalPathsPage() {
         stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
+        isFetching={isFetching}
       />
 
       <DataTable<'v_end_to_end_paths'>

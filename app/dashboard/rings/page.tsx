@@ -82,7 +82,6 @@ export default function RingsPage() {
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   // --- DATA FETCHING FOR MODALS ---
-  // Use the standard hooks that handle caching/syncing automatically
 
   const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
     useLookupTypeOptions('RING_TYPES');
@@ -90,7 +89,6 @@ export default function RingsPage() {
   const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
     useMaintenanceAreaOptions();
 
-  // Cast the raw data (which comes from useDropdownOptions as unknown[]) to the correct types
   const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[], [ringTypesRaw]);
   const maintenanceAreas = useMemo(
     () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
@@ -99,7 +97,6 @@ export default function RingsPage() {
 
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
-  // Prepare options for the FILTER dropdowns (simple value/label)
   const ringTypeFilterOptions = useMemo(
     () =>
       ringTypes.map((t) => ({
@@ -117,7 +114,6 @@ export default function RingsPage() {
       })),
     [maintenanceAreas]
   );
-  // ----------------------------------------------
 
   const { stats, totalNodesAcrossRings } = useMemo(() => {
     const s = {
@@ -173,6 +169,7 @@ export default function RingsPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canEdit ? { tableName: 'rings' } : undefined,
   });
 

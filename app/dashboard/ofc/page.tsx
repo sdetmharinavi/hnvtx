@@ -1,3 +1,4 @@
+// app/dashboard/ofc/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -27,7 +28,6 @@ const OfcForm = dynamic(
   { loading: () => <PageSpinner text="Loading OFC Form..." /> }
 );
 
-// Helper to format "Last Activity" timestamp
 const formatUpdatedAt = (timestamp: string | null | undefined) => {
   if (!timestamp) return null;
   const date = new Date(timestamp);
@@ -87,7 +87,6 @@ export default function OfcPage() {
   );
   const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
 
-  // --- Filter Config ---
   const filterConfigs = useMemo(
     () => [
       {
@@ -123,13 +122,13 @@ export default function OfcPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
   });
 
   const renderGrid = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {ofcData.map((cable) => {
-        // Extended type access for custom view field
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lastActivity = (cable as any).last_activity_at || cable.updated_at;
         const timeAgo = formatUpdatedAt(lastActivity);

@@ -26,7 +26,7 @@ import { useLookupActions } from '@/components/lookup/lookup-hooks';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { snakeToTitleCase } from '@/utils/formatters';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 const LookupModal = dynamic(
@@ -42,7 +42,6 @@ export default function LookupTypesPage() {
 
   const { isSuperAdmin, role } = useUser();
 
-  // --- PERMISSIONS ---
   const canManage = isSuperAdmin || role === UserRole.ADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
@@ -53,6 +52,7 @@ export default function LookupTypesPage() {
     inactiveCount,
     isLoading: isLoadingLookups,
     isMutating,
+    isFetching, // Destructured
     error,
     refetch,
     search,
@@ -89,7 +89,6 @@ export default function LookupTypesPage() {
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
   useEffect(() => {
-    // Only set if actually changed to prevent loops or empty overrides
     if (selectedCategory && filters.filters.category !== selectedCategory) {
       filters.setFilters({ category: selectedCategory });
     }
@@ -105,33 +104,15 @@ export default function LookupTypesPage() {
     defaultDirection: 'asc',
   });
 
-  const isOnline = useOnlineStatus(); // ADDED hook
+  const isOnline = useOnlineStatus();
 
   const handleRefresh = useCallback(async () => {
-    // If we rely on generic sync, we should use syncData
-    // But this page might use `useCrudManager` which now handles sync internally via handleRefresh?
-    // Yes, useCrudManager handles it. But here we have a custom handleRefresh that calls refetchCategories.
-
-    // We should probably rely on useCrudManager's refresh for the table,
-    // but refetchCategories needs to be called.
-    // However, if we assume online mode updates Dexie, React Query observing Dexie will auto update?
-    // useOfflineQuery doesn't auto-observe Dexie unless useLiveQuery is used internally.
-    // useLocalFirstQuery uses useLiveQuery. So it updates automatically.
-
-    // So if we just sync 'lookup_types', both hooks should update.
-
-    // BUT this page uses `useOfflineQuery` for categories, which might NOT be live.
-    // Let's stick to the pattern:
-
     if (isOnline) {
-      // syncTables is already passed to useCrudManager for the main list
-      // We might want to sync categories separately or just rely on the main sync
-      await refetch(); // This calls the fixed handleRefresh from useCrudManager
-      await refetchCategories(); // This might still trigger a fetch, but it's separate query
+      await refetch();
+      await refetchCategories();
     } else {
       await Promise.all([refetch(), refetchCategories()]);
     }
-
     toast.success('Data refreshed successfully');
   }, [refetch, refetchCategories, isOnline]);
 
@@ -148,6 +129,7 @@ export default function LookupTypesPage() {
         : () => toast.error('Please select a category first.')
       : undefined,
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canManage
       ? {
           tableName: 'lookup_types',
@@ -179,7 +161,6 @@ export default function LookupTypesPage() {
     crudActions.handleSave(data);
   };
 
-  // --- FILTER CONFIG ---
   const filterConfigs = useMemo<FilterConfig[]>(() => {
     const categoryOptions = categories.map((c) => ({
       value: c.category,
@@ -223,7 +204,6 @@ export default function LookupTypesPage() {
         isLoading={isLoading}
       />
 
-      {/* REPLACED WITH GENERIC FILTER BAR */}
       {!hasCategories && !isLoading ? (
         <NoCategoriesState error={categoriesError ?? undefined} isLoading={isLoading} />
       ) : (

@@ -11,7 +11,7 @@ import { MaintenanceAreaDetailsModal } from '@/config/maintenance-area-details-c
 import { Filters, Row } from '@/hooks/database';
 import { useDeleteManager } from '@/hooks/useDeleteManager';
 import { Maintenance_areasInsertSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client'; // THIS IS THE FIX
+import { createClient } from '@/utils/supabase/client';
 import { useMemo, useState } from 'react';
 import { FiMapPin } from 'react-icons/fi';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -96,6 +96,7 @@ export default function MaintenanceAreasPage() {
     },
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canEdit ? { tableName: 'maintenance_areas' } : undefined,
   });
 

@@ -65,7 +65,6 @@ export default function EmployeesPage() {
   );
   const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
-  // --- THE FIX: Use useDropdownOptions to fetch designations instead of employees ---
   const { options: desOptions, isLoading: loadingDes } = useDropdownOptions({
     tableName: 'employee_designations',
     valueField: 'id',
@@ -77,7 +76,6 @@ export default function EmployeesPage() {
 
   const { options: areaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
 
-  // --- Filter Config ---
   const filterConfigs = useMemo(
     () => [
       {
@@ -114,10 +112,11 @@ export default function EmployeesPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isInitialLoad,
+    isFetching: isFetching, // Added isFetching
     exportConfig: canEdit ? { tableName: 'employees' } : undefined,
   });
 
-  // --- Helpers for Card Rendering ---
+  // ... Helpers for Card Rendering ...
   const getAvatarColor = (name: string) => {
     const colors = [
       'from-blue-500 to-blue-600',
@@ -193,6 +192,7 @@ export default function EmployeesPage() {
           { value: inactiveCount, label: 'Inactive', color: 'danger' },
         ],
         isLoading: isInitialLoad,
+        isFetching: isFetching,
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}

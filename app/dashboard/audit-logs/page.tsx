@@ -20,7 +20,7 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { BulkActions } from '@/components/common/BulkActions';
 import { Row } from '@/hooks/database';
 import { formatDate } from '@/utils/formatters';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
@@ -29,7 +29,7 @@ export default function AuditLogsPage() {
     data: logs,
     totalCount,
     isLoading,
-    isFetching,
+    isFetching, // Destructured
     isMutating,
     error,
     refetch,
@@ -48,7 +48,6 @@ export default function AuditLogsPage() {
     syncTables: ['user_activity_logs', 'v_audit_logs'],
   });
 
-  // --- DRY FILTER CONFIG ---
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
@@ -61,7 +60,6 @@ export default function AuditLogsPage() {
           { value: 'DELETE', label: 'Delete' },
         ],
       },
-      // Note: Table name filtering could be added here if we want to fetch distinct table names
     ],
     []
   );
@@ -72,7 +70,6 @@ export default function AuditLogsPage() {
     },
     [filters]
   );
-  // -------------------------
 
   const columns = AuditLogsTableColumns(logs);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_audit_logs]);
@@ -97,6 +94,7 @@ export default function AuditLogsPage() {
       toast.success('Logs refreshed!');
     },
     isLoading: isLoading,
+    isFetching: isFetching, // Added isFetching
     exportConfig: !!isSuperAdmin ? { tableName: 'v_audit_logs', useRpc: true } : undefined,
   });
 
@@ -184,7 +182,6 @@ export default function AuditLogsPage() {
         isFetching={isFetching}
       />
 
-      {/* REUSABLE FILTER BAR */}
       <GenericFilterBar
         searchQuery={search.searchQuery}
         onSearchChange={search.setSearchQuery}
@@ -212,7 +209,7 @@ export default function AuditLogsPage() {
         loading={isLoading}
         isFetching={isFetching || isMutating}
         actions={tableActions}
-        searchable={false} // Handled by GenericFilterBar
+        searchable={false}
         selectable={true}
         onRowSelect={(selectedRows) => {
           const validRows = selectedRows.filter(
