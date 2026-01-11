@@ -7,11 +7,10 @@ import { z } from 'zod';
 import { localDb } from '@/hooks/data/localDb';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import {
-  NodesRowSchema,
-  V_cable_utilizationRowSchema,
   V_systems_completeRowSchema,
+  V_nodes_completeRowSchema,
   V_ofc_cables_completeRowSchema,
-  V_ports_management_completeRowSchema,
+  V_cable_utilizationRowSchema,
 } from '@/schemas/zod-schemas';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 
@@ -64,87 +63,135 @@ const dashboardOverviewSchema = z.object({
 
 export type DashboardOverviewData = z.infer<typeof dashboardOverviewSchema>;
 
-// Local Calculation Function
-const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<DashboardOverviewData> => {
-  const [nodes, cableUtils, vSystems, ports, vCables] = await Promise.all([
-    localDb.v_nodes_complete.toArray() as Promise<NodesRowSchema[]>,
-    localDb.v_cable_utilization.toArray() as Promise<V_cable_utilizationRowSchema[]>,
-    localDb.v_systems_complete.toArray() as Promise<V_systems_completeRowSchema[]>,
-    localDb.v_ports_management_complete.toArray() as Promise<
-      V_ports_management_completeRowSchema[]
-    >,
-    localDb.v_ofc_cables_complete.toArray() as Promise<V_ofc_cables_completeRowSchema[]>,
-  ]);
+// --- Helper Filters for Cursor Iteration ---
+// These helpers allow us to check conditions on raw Dexie objects without full schema parsing
 
-  // Filter Logic
+const matchesSystemFilters = (
+  s: V_systems_completeRowSchema,
+  filters: BsnlSearchFilters,
+  statusBool: boolean | null,
+  queryLower: string | undefined
+) => {
+  if (statusBool !== null && s.status !== statusBool) return false;
+  if (filters.type && s.system_type_name !== filters.type) return false;
+  // Note: ensure we check the correct field name from the view for region
+  if (filters.region && s.system_maintenance_terminal_name !== filters.region) return false;
+  if (filters.nodeType && s.node_type_name !== filters.nodeType) return false;
+  if (queryLower && !s.system_name?.toLowerCase().includes(queryLower)) return false;
+  return true;
+};
+
+const matchesNodeFilters = (
+  n: V_nodes_completeRowSchema,
+  filters: BsnlSearchFilters,
+  statusBool: boolean | null,
+  queryLower: string | undefined
+) => {
+  if (statusBool !== null && n.status !== statusBool) return false;
+  if (filters.nodeType && n.node_type_name !== filters.nodeType) return false;
+  if (filters.region && n.maintenance_area_name !== filters.region) return false;
+  if (queryLower && !n.name?.toLowerCase().includes(queryLower)) return false;
+  return true;
+};
+
+const matchesCableFilters = (
+  c: V_ofc_cables_completeRowSchema,
+  filters: BsnlSearchFilters,
+  statusBool: boolean | null,
+  queryLower: string | undefined
+) => {
+  if (statusBool !== null && c.status !== statusBool) return false;
+  if (filters.type && c.ofc_type_name !== filters.type) return false;
+  if (filters.region && c.maintenance_area_name !== filters.region) return false;
+  if (queryLower && !c.route_name?.toLowerCase().includes(queryLower)) return false;
+  return true;
+};
+
+// Optimized Local Calculation Function
+const calculateLocalStats = async (
+  filters: BsnlSearchFilters = {}
+): Promise<DashboardOverviewData> => {
   const statusBool =
-    filters?.status === 'active' ? true : filters?.status === 'inactive' ? false : null;
-  const region = filters?.region;
-  const type = filters?.type;
-  const nodeType = filters?.nodeType;
-  const query = filters?.query?.toLowerCase();
+    filters.status === 'active' ? true : filters.status === 'inactive' ? false : null;
+  const queryLower = filters.query?.toLowerCase();
 
-  const filterSystem = (s: V_systems_completeRowSchema) => {
-    if (statusBool !== null && s.status !== statusBool) return false;
-    if (type && s.system_type_name !== type) return false;
-    if (region && s.system_maintenance_terminal_name !== region) return false;
-    if (nodeType && s.node_type_name !== nodeType) return false;
-    if (query && !s.system_name?.toLowerCase().includes(query)) return false;
-    return true;
-  };
+  // Initialize Counters
+  let sysActive = 0,
+    sysInactive = 0;
+  let nodeActive = 0,
+    nodeInactive = 0;
+  let cableHighUtil = 0,
+    cableTotalUtil = 0,
+    cableCount = 0;
 
-  const filterNode = (n: NodesRowSchema) => {
-    if (statusBool !== null && n.status !== statusBool) return false;
-    if (nodeType && n.node_type_id !== nodeType) return false;
-    if (region && n.maintenance_terminal_id !== region) return false;
-    if (query && !n.name?.toLowerCase().includes(query)) return false;
-    return true;
-  };
+  const systemsPerArea: Record<string, number> = {};
+  const systemIds = new Set<string>(); // For port filtering
 
-  // 1. Filtered Data Sets
-  const filteredSystems = vSystems.filter(filterSystem);
-  const filteredNodes = nodes.filter(filterNode);
+  // 1. Process Systems (Streaming)
+  await localDb.v_systems_complete.each((sys) => {
+    if (matchesSystemFilters(sys, filters, statusBool, queryLower)) {
+      // Status Counts
+      if (sys.status) sysActive++;
+      else sysInactive++;
 
-  const utilMap = new Map(cableUtils.map((u) => [u.cable_id, u]));
-  const filteredCables = vCables.filter((c) => {
-    if (statusBool !== null && c.status !== statusBool) return false;
-    if (type && c.ofc_type_name !== type) return false;
-    if (region && c.maintenance_area_name !== region) return false;
-    if (query && !c.route_name?.toLowerCase().includes(query)) return false;
-    return true;
+      // Area Counts
+      if (sys.system_maintenance_terminal_name) {
+        const area = sys.system_maintenance_terminal_name;
+        systemsPerArea[area] = (systemsPerArea[area] || 0) + 1;
+      }
+
+      // Track ID for Port stats
+      if (sys.id) systemIds.add(sys.id);
+    }
   });
 
-  // 2. Calculate Stats
-  const sysActive = filteredSystems.filter((s) => s.status === true).length;
-  const sysInactive = filteredSystems.length - sysActive;
+  // 2. Process Nodes (Streaming)
+  await localDb.v_nodes_complete.each((node) => {
+    if (matchesNodeFilters(node, filters, statusBool, queryLower)) {
+      if (node.status) nodeActive++;
+      else nodeInactive++;
+    }
+  });
 
-  const nodeActive = filteredNodes.filter((n) => n.status === true).length;
-  const nodeInactive = filteredNodes.length - nodeActive;
+  // 3. Process Cables & Utilization (Streaming)
+  // We need to join utilization data manually
+  // Fetch utilizations map first (smaller dataset usually)
+  const utilMap = new Map<string, V_cable_utilizationRowSchema>();
+  await localDb.v_cable_utilization.each((u) => {
+    if (u.cable_id) utilMap.set(u.cable_id, u);
+  });
 
-  // Cable Stats
-  const highUtil = filteredCables.filter((c) => {
-    const u = utilMap.get(c.id);
-    return (u?.utilization_percent || 0) > 80;
-  }).length;
+  await localDb.v_ofc_cables_complete.each((cable) => {
+    if (matchesCableFilters(cable, filters, statusBool, queryLower)) {
+      cableCount++;
+      const util = utilMap.get(cable.id!);
+      const pct = util?.utilization_percent || 0;
 
-  const totalUtilPercent = filteredCables.reduce((acc, c) => {
-    const u = utilMap.get(c.id);
-    return acc + (u?.utilization_percent || 0);
-  }, 0);
-  const avgUtil = filteredCables.length > 0 ? totalUtilPercent / filteredCables.length : 0;
+      cableTotalUtil += pct;
+      if (pct > 80) cableHighUtil++;
+    }
+  });
 
-  // Port Stats (Filtered by System Filters)
-  const systemIds = new Set(filteredSystems.map((s) => s.id));
-  const filteredPorts = ports.filter((p) => systemIds.has(p.system_id));
+  const avgUtil = cableCount > 0 ? cableTotalUtil / cableCount : 0;
 
+  // 4. Process Ports (Streaming)
+  // Only count ports belonging to visible systems
   const portStatsMap = new Map<string, { total: number; active: number; used: number }>();
-  filteredPorts.forEach((p) => {
-    const code = p.port_type_code || 'Unknown';
-    if (!portStatsMap.has(code)) portStatsMap.set(code, { total: 0, active: 0, used: 0 });
-    const s = portStatsMap.get(code)!;
-    s.total++;
-    if (p.port_admin_status) s.active++;
-    if (p.port_utilization) s.used++;
+
+  await localDb.v_ports_management_complete.each((port) => {
+    // Check if parent system is in our filtered set
+    if (systemIds.has(port.system_id!)) {
+      const code = port.port_type_code || 'Unknown';
+
+      if (!portStatsMap.has(code)) {
+        portStatsMap.set(code, { total: 0, active: 0, used: 0 });
+      }
+
+      const stats = portStatsMap.get(code)!;
+      stats.total++;
+      if (port.port_admin_status) stats.active++;
+      if (port.port_utilization) stats.used++;
+    }
   });
 
   const port_utilization_by_type = Array.from(portStatsMap.entries()).map(([type_code, stats]) => ({
@@ -152,26 +199,17 @@ const calculateLocalStats = async (filters?: BsnlSearchFilters): Promise<Dashboa
     ...stats,
   }));
 
-  // Systems per Area calculation
-  const systemsPerArea: Record<string, number> = {};
-  filteredSystems.forEach((s) => {
-    if (s.system_maintenance_terminal_name) {
-      const area = s.system_maintenance_terminal_name;
-      systemsPerArea[area] = (systemsPerArea[area] || 0) + 1;
-    }
-  });
-
   return {
     system_status_counts: { Active: sysActive, Inactive: sysInactive },
     node_status_counts: { Active: nodeActive, Inactive: nodeInactive },
-    path_operational_status: {},
+    path_operational_status: {}, // Not calculated locally for now
     cable_utilization_summary: {
       average_utilization_percent: Number(avgUtil.toFixed(2)),
-      high_utilization_count: highUtil,
-      total_cables: filteredCables.length,
+      high_utilization_count: cableHighUtil,
+      total_cables: cableCount,
     },
     port_utilization_by_type,
-    user_activity_last_30_days: [],
+    user_activity_last_30_days: [], // Not available locally
     systems_per_maintenance_area: systemsPerArea,
   };
 };
@@ -184,26 +222,10 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
   return useQuery({
     queryKey: ['dashboard-overview', filters],
     queryFn: async (): Promise<DashboardOverviewData | null> => {
-      // 1. Always attempt local calculation first for instant render
-      // But `useQuery` expects a promise resolving to data.
-      // To strictly follow "Manual Sync", we normally wouldn't fetch online at all here.
-      // However, `useQuery` logic for manual sync is usually handled via `enabled: false`.
-
-      // Strategy:
-      // We will perform local calculation inside this function.
-      // If we are online AND this query was triggered by a Refetch (user action), we fetch from server.
-      // But `useQuery` doesn't expose "trigger reason" easily.
-
-      // Better Strategy used in `useLocalFirstQuery`:
-      // We rely on `useLocalFirstQuery` to handle the data source.
-      // Since we can't easily use that hook here due to the complex aggregation,
-      // we will mimic it: Return local data.
-      // If the user hits "Refresh" (which invalidates queries), React Query refetches.
-      // BUT, to prevent auto-fetch on mount, we rely on the `staleTime: Infinity`.
-
-      // If online, try to fetch fresh stats
+      // 1. Online Path
       if (isOnline) {
         try {
+          // Pass null for undefined filters to match RPC signature
           const { data, error } = await supabase.rpc('get_dashboard_overview', {
             p_status: filters?.status || null,
             p_type: filters?.type || null,
@@ -213,19 +235,22 @@ export function useDashboardOverview(filters?: BsnlSearchFilters) {
           });
 
           if (error) throw error;
+
+          // Verify schema integrity
           const parsed = dashboardOverviewSchema.safeParse(data);
           if (parsed.success) return parsed.data;
+
+          console.warn('Dashboard overview schema mismatch', parsed.error);
+          return data as DashboardOverviewData; // Fallback
         } catch (err) {
           console.warn('Online fetch failed, falling back to local calculation:', err);
         }
       }
 
-      // If offline or fetch failed, return local calculation
+      // 2. Offline / Fallback Path
+      // Uses the new optimized iterator
       return calculateLocalStats(filters);
     },
-    // The "Manual Sync" behavior is achieved by:
-    // 1. High staleTime (data is considered fresh forever)
-    // 2. No auto refetch on window focus or mount
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

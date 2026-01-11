@@ -123,6 +123,7 @@ export default function NodesPage() {
       await refetch();
     },
     isLoading: isLoading,
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'nodes' } : undefined,
   });
 

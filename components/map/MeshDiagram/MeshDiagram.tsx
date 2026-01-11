@@ -1,7 +1,7 @@
 // components/map/MeshDiagram/MeshDiagram.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { MapContainer, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,7 +15,7 @@ import { useMeshLayout } from './utils/meshUtils';
 import { MeshDiagramProps } from './types';
 import { RingMapNode } from '@/components/map/ClientRingMap/types';
 
-// Helper to group parallel lines (Same as ClientRingMap)
+// Helper to group parallel lines
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
   const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
   lines.forEach((line) => {
@@ -35,6 +35,7 @@ export default function MeshDiagram({
   nodePorts,
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [labelPositions, setLabelPositions] = useState<Record<string, L.LatLngExpression>>({}); // NEW: Track label positions
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const bgColor = isDark ? '#0f172a' : '#f8fafc';
@@ -43,6 +44,16 @@ export default function MeshDiagram({
 
   // Group connections to handle parallels
   const groupedConnections = useMemo(() => groupLines(connections), [connections]);
+
+  // NEW: Handle Label Dragging
+  const handleLabelDragEnd = useCallback((e: L.LeafletEvent, nodeId: string) => {
+    const marker = e.target;
+    const position = marker.getLatLng();
+    setLabelPositions((prev) => ({
+      ...prev,
+      [nodeId]: position,
+    }));
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -85,11 +96,8 @@ export default function MeshDiagram({
             const posB = nodePositions.get(nodeB.id!);
             if (!posA || !posB) return null;
 
-            // THE FIX: Use hub logic instead of decimal order for Spurs
-            // If EITHER node is not a hub, it's a spur (dashed).
             const isSpur = !nodeA.is_hub || !nodeB.is_hub;
 
-            // Get Config
             const sortedKey = [nodeA.id, nodeB.id].sort().join('-');
             const configs = segmentConfigs[sortedKey] || [];
             const config = configs[index] || configs[0];
@@ -101,7 +109,6 @@ export default function MeshDiagram({
               lineColor = getConnectionColor(config.connectionId);
             }
 
-            // Calculate Curve Offset
             const curveOffset = getMultiLineCurveOffset(index, groupLines.length);
 
             return (
@@ -118,7 +125,7 @@ export default function MeshDiagram({
                 customColor={lineColor}
                 start={nodeA}
                 end={nodeB}
-                curveOffset={curveOffset} // Pass offset
+                curveOffset={curveOffset}
               />
             );
           });
@@ -136,6 +143,9 @@ export default function MeshDiagram({
               position={pos}
               portsList={portsList}
               theme={theme}
+              // NEW: Pass label props
+              labelPosition={labelPositions[nodeId]}
+              onLabelDragEnd={handleLabelDragEnd}
             />
           );
         })}

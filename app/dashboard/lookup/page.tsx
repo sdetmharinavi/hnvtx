@@ -129,7 +129,7 @@ export default function LookupTypesPage() {
         : () => toast.error('Please select a category first.')
       : undefined,
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canManage
       ? {
           tableName: 'lookup_types',

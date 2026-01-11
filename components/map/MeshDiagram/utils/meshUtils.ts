@@ -1,6 +1,7 @@
+// components/map/MeshDiagram/utils/meshUtils.ts
+import { useMemo } from 'react';
 import { RingMapNode } from '@/components/map/ClientRingMap/types';
 import L from 'leaflet';
-
 
 export interface MeshLayoutResult {
   nodePositions: Map<string, L.LatLng>;
@@ -14,6 +15,7 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
   const RING_RADIUS = 400;
   const SPUR_LENGTH = 200;
 
+  // Sorting ensures deterministic layout
   const sortedNodes = [...nodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
 
   const backboneNodes: RingMapNode[] = [];
@@ -21,6 +23,7 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
 
   sortedNodes.forEach((node) => {
     const order = node.order_in_ring || 0;
+    // Check if integer (Hub) or decimal (Spur)
     if (Math.abs(order - Math.round(order)) < 0.01) {
       backboneNodes.push(node);
     } else {
@@ -28,6 +31,7 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
     }
   });
 
+  // Fallback: If everything is a spur or everything is a hub (rare edge cases)
   if (backboneNodes.length === 0 && spurNodes.length === 0) {
     backboneNodes.push(...nodes);
   }
@@ -81,6 +85,15 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
 
   const lats = Array.from(positions.values()).map((p) => p.lat);
   const lngs = Array.from(positions.values()).map((p) => p.lng);
+  
+  // Default bounds if no nodes
+  if (lats.length === 0) {
+     return { 
+        nodePositions: positions, 
+        bounds: [[CENTER_Y - 100, CENTER_X - 100], [CENTER_Y + 100, CENTER_X + 100]] 
+     };
+  }
+
   const minLat = Math.min(...lats) - 100;
   const maxLat = Math.max(...lats) + 100;
   const minLng = Math.min(...lngs) - 100;
@@ -90,10 +103,12 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
     [minLat, minLng],
     [maxLat, maxLng],
   ];
-  
+
   return { nodePositions: positions, bounds };
 };
 
 export const useMeshLayout = (nodes: RingMapNode[]) => {
-  return computeMeshLayout(nodes);
+  // THE FIX: Memoize the calculation based on the nodes input.
+  // Since 'nodes' comes from a React Query / Memoized parent source, this reference check is stable.
+  return useMemo(() => computeMeshLayout(nodes), [nodes]);
 };

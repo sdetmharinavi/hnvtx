@@ -207,6 +207,7 @@ export default function InventoryPage() {
     // Pass the enhanced refetch that handles sync logic
     onRefresh: refetch,
     onAddNew: canEdit ? editModal.openAdd : undefined,
+    isFetching: isFetching,
     isLoading,
     exportConfig: canEdit ? { tableName: 'v_inventory_items', useRpc: true } : undefined,
   });

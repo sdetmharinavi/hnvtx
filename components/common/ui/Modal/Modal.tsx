@@ -1,15 +1,17 @@
 // components/common/ui/Modal/Modal.tsx
-import { AnimatePresence, motion } from "framer-motion";
-import { type ReactNode, useEffect, useRef } from "react";
-import { IoClose } from "react-icons/io5";
-import { cn } from "@/utils/classNames";
+import { AnimatePresence, motion } from 'framer-motion';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { IoClose } from 'react-icons/io5';
+import { cn } from '@/utils/classNames';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "full";
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl' | 'full';
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
@@ -22,62 +24,49 @@ export const Modal = ({
   onClose,
   title,
   children,
-  size = "md",
+  size = 'md',
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
   className,
   visible = true,
 }: ModalProps) => {
+  const [mounted, setMounted] = useState(false);
   const mouseDownTarget = useRef<EventTarget | null>(null);
 
-  // Handle escape key
+  // 1. Handle Scroll Locking (via safe hook)
+  useScrollLock(isOpen);
+
+  // 2. Handle Escape Key
   useEffect(() => {
     if (!closeOnEscape || !isOpen) return;
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // Check if this is the top-most modal if multiple are open?
+      // For now, standard behavior is sufficient.
+      if (e.key === 'Escape') {
+        e.stopPropagation(); // Prevent closing parent modals if nested
         onClose();
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, closeOnEscape, onClose]);
 
-  // THE FIX: Handle Body Scroll Locking with Layout Shift Prevention
+  // 3. Mount check for Portal
   useEffect(() => {
-    if (isOpen) {
-      // Calculate scrollbar width
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      
-      // Apply styles
-      document.body.style.overflow = "hidden";
-      // Add padding to body to prevent content shift
-      if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-    } else {
-      // Cleanup with a small delay to match animation if needed, 
-      // but immediate cleanup is safer for state consistency
-      document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
-    }
-
-    return () => {
-      // Ensure cleanup happens on unmount
-      document.body.style.overflow = "";
-      document.body.style.paddingRight = "";
-    };
-  }, [isOpen]);
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const sizeClasses = {
-    sm: "max-w-md",
-    md: "max-w-lg",
-    lg: "max-w-2xl",
-    xl: "max-w-4xl",
-    xxl: "max-w-6xl",
-    full: "max-w-[98vw] max-h-[95vh]",
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    xxl: 'max-w-6xl',
+    full: 'max-w-[98vw] max-h-[95vh]',
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -95,10 +84,18 @@ export const Modal = ({
     mouseDownTarget.current = null;
   };
 
-  return (
+  // 4. Render Logic
+  if (!mounted) return null;
+
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? 'modal-title' : undefined}
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -107,33 +104,38 @@ export const Modal = ({
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onMouseDown={handleMouseDown}
             onClick={handleOverlayClick}
+            aria-hidden="true"
           />
 
-          {/* Modal */}
+          {/* Modal Container */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", duration: 0.3 }}
+            transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
             className={cn(
-              "relative max-h-screen w-full overflow-y-auto rounded-lg bg-white shadow-xl",
-              "dark:bg-gray-900 dark:border dark:border-gray-700 dark:shadow-lg dark:shadow-gray-900/50",
+              'relative flex flex-col max-h-full w-full rounded-lg bg-white shadow-xl',
+              'dark:bg-gray-900 dark:border dark:border-gray-700 dark:shadow-2xl',
               sizeClasses[size],
-              className,
+              className
             )}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             {(title || showCloseButton) && visible && (
-              <div className="flex items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
+              <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
                 {title && (
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  <h2
+                    id="modal-title"
+                    className="text-xl font-semibold text-gray-900 dark:text-gray-100"
+                  >
                     {title}
                   </h2>
                 )}
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                    className="ml-auto rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     aria-label="Close modal"
                   >
                     <IoClose size={20} />
@@ -142,11 +144,13 @@ export const Modal = ({
               </div>
             )}
 
-            {/* Content */}
-            <div className="p-6">{children}</div>
+            {/* Content - Scrollable Area */}
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">{children}</div>
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 };
