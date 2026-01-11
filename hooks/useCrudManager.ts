@@ -24,10 +24,10 @@ import { useOnlineStatus } from './useOnlineStatus';
 import { addMutationToQueue } from './data/useMutationQueue';
 import { getTable } from '@/hooks/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
-import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { UseQueryResult } from '@tanstack/react-query';
 import { FiWifiOff } from 'react-icons/fi';
 import { useDataSync } from '@/hooks/data/useDataSync';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 export type RecordWithId = {
   id: string | number | null;
@@ -152,11 +152,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
         await syncData(syncTables);
-        // THE FIX: Do NOT call refetch() here. 
-        // syncData invalidates the query keys, which triggers the refetch automatically.
-        // calling refetch() again causes a double request and UI flash.
+        // Note: syncData invalidates queries, so we don't need to call refetch() explicitly
+        // unless we want to force it immediately, but let's avoid double flashes.
     } else {
-        // Fallback for offline or no-sync config
         refetch();
     }
   }, [isOnline, syncTables, syncData, refetch]);
@@ -601,7 +599,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       ({
         data: { data, count: totalCount },
         isLoading,
-        isFetching: isFetching || isSyncingData,
+        isFetching: isFetching || isSyncingData, // THE FIX: Include sync status
         error: error as Error | null,
         isError: !!error,
         isSuccess: !isLoading && !error,
@@ -617,7 +615,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     activeCount,
     inactiveCount,
     isLoading,
-    isFetching,
+    isFetching: isFetching || isSyncingData, // THE FIX: Export combined fetch status
     error,
     isMutating,
     refetch: handleRefresh,

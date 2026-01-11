@@ -36,7 +36,7 @@ import { StatProps } from '@/components/common/page-header/StatCard';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { useSystemConnectionsData } from '@/hooks/data/useSystemConnectionsData';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
-import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; // THIS IS THE FIX
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import {
   FiDatabase,
   FiPieChart,
@@ -52,7 +52,7 @@ import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import dynamic from 'next/dynamic'; // Import dynamic
+import dynamic from 'next/dynamic';
 
 // DYNAMIC IMPORTS
 const SystemConnectionFormModal = dynamic(
@@ -93,7 +93,7 @@ export default function SystemConnectionsPage() {
   const queryClient = useQueryClient();
   const { isSuperAdmin, role } = useUser();
 
-  const { sync: syncData } = useDataSync();
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -133,7 +133,6 @@ export default function SystemConnectionsPage() {
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // --- THIS IS THE FIX: Use offline-capable hook ---
   const { options: mediaOptions } = useLookupTypeOptions('MEDIA_TYPES');
   const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');
 
@@ -144,6 +143,7 @@ export default function SystemConnectionsPage() {
     totalCount: totalConnections,
     isLoading: isLoadingConnections,
     refetch,
+    isFetching,
   } = useData({
     currentPage,
     pageLimit,
@@ -462,6 +462,8 @@ export default function SystemConnectionsPage() {
     canDelete,
   ]);
 
+  const isBusy = isLoadingConnections || isSyncingData || isFetching;
+
   const headerActions = useStandardHeaderActions({
     onRefresh: async () => {
       if (isOnline) {
@@ -474,14 +476,14 @@ export default function SystemConnectionsPage() {
           'services',
           'v_services',
         ]);
-        // THE FIX: No explicit refetch() here
+        // No explicit refetch() here, sync invalidates automatically
       } else {
         refetch(); // Fallback for offline
       }
       toast.success('Connections refreshed!');
     },
     onAddNew: canEdit ? openAddModal : undefined,
-    isLoading: isLoadingConnections,
+    isLoading: isBusy, // THE FIX: Use isBusy
     exportConfig: canEdit
       ? {
           tableName: 'v_system_connections_complete',

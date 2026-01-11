@@ -278,9 +278,12 @@ export default function RingPathsPage() {
     [canEdit]
   );
 
+  const isBusy = isFetching || isSyncingData;
+
   const customHeaderActions = [
     {
       label: 'Refresh',
+      // CHANGED: Update refresh handler
       onClick: async () => {
         if (isOnline) {
           await syncData([
@@ -289,14 +292,15 @@ export default function RingPathsPage() {
             'logical_fiber_paths',
             'ofc_connections',
           ]);
-          // THE FIX: No explicit refetch() here
         } else {
           refetch();
         }
         toast.success('Logical paths refreshed!');
       },
       variant: 'outline' as const,
-      leftIcon: <FiRefreshCw className={isFetching || isSyncingData ? 'animate-spin' : ''} />,
+      // THE FIX: Use isBusy for spinner
+      leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+      disabled: isBusy,
     },
     ...(canEdit
       ? [

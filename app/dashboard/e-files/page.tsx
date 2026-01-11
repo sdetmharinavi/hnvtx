@@ -81,7 +81,13 @@ export default function EFilesPage() {
 
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: files = [], isLoading, refetch, error } = useEFiles({ status: filters.status });
+  const {
+    data: files = [],
+    isLoading,
+    refetch,
+    error,
+    isFetching,
+  } = useEFiles({ status: filters.status });
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
   const { mutate: exportList, isPending: isExportingList } = useRPCExcelDownload(supabase);
 
@@ -191,6 +197,8 @@ export default function EFilesPage() {
     return result;
   }, [files, searchQuery, filters]);
 
+  const isBusy = isFetching || isSyncingData;
+
   const headerActions = useMemo((): ActionButton[] => {
     const actions: ActionButton[] = [
       {
@@ -204,16 +212,17 @@ export default function EFilesPage() {
               'file_movements',
               'v_file_movements_extended',
             ]);
-            // THE FIX: No explicit refetch() here
+            // No explicit refetch()
           } else {
             refetch();
           }
         },
         variant: 'outline',
-        // ADDED: Show loading state during sync
-        leftIcon: isSyncingData ? (
+        // THE FIX: Use isBusy for spinner
+        leftIcon: isBusy ? (
           <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
         ) : undefined,
+        disabled: isBusy,
       },
     ];
 
@@ -263,6 +272,7 @@ export default function EFilesPage() {
     exportBackup,
     importBackup,
     handleExportList,
+    isBusy,
   ]);
 
   const columns: Column<EFileRow>[] = [
@@ -442,6 +452,7 @@ export default function EFilesPage() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           columns={columns as any}
           loading={isLoading}
+          isFetching={isFetching}
           searchable={false}
           pagination={{ current: 1, pageSize: 20, total: filteredFiles.length, onChange: () => {} }}
           customToolbar={<></>}

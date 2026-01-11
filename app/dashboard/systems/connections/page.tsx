@@ -28,7 +28,7 @@ import { UserRole } from '@/types/user-roles';
 import { UploadColumnMapping } from '@/hooks/database';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
@@ -201,13 +201,16 @@ export default function GlobalConnectionsPage() {
     [handleGoToSystem]
   );
 
+  const isBusy = isLoading || isFetching;
+
   const headerActions = useStandardHeaderActions({
     data: connections,
     onRefresh: async () => {
       await refetch();
       toast.success('Refreshed!');
     },
-    isLoading,
+    isLoading: isBusy, // THE FIX
+    isFetching: isFetching,
     exportConfig: canEdit
       ? {
           tableName: 'v_system_connections_complete',
@@ -223,7 +226,7 @@ export default function GlobalConnectionsPage() {
       onClick: handleUploadClick,
       variant: 'outline',
       leftIcon: <FiUpload />,
-      disabled: isUploading || isLoading,
+      disabled: isUploading || isBusy,
       hideTextOnMobile: true,
     });
   }

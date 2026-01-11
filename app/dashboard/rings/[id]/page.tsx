@@ -96,6 +96,7 @@ export default function RingMapPage() {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
     refetch: refetchRing,
+    isFetching: isFetchingRing,
   } = useRpcRecord(supabase, 'v_rings', ringId, {
     refetchOnMount: true,
   });
@@ -604,6 +605,7 @@ export default function RingMapPage() {
 
   const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
   const handleBack = useCallback(() => router.back(), [router]);
+  const isBusy = isLoadingRingDetails || isUpdating || isSyncingData || isFetchingRing;
 
   const renderContent = () => {
     const isLoading = (isLoadingNodes && !rawNodes) || isLoadingRingDetails;
@@ -671,22 +673,21 @@ export default function RingMapPage() {
                     'logical_paths',
                     'logical_fiber_paths',
                   ]);
-                  // THE FIX: No explicit refetch() here
                 } else {
                   refetchRing(); // Fallback
                 }
                 toast.success('Ring topology refreshed.');
               },
               variant: 'outline',
-              leftIcon: <FiRefreshCw className={isSyncingData ? 'animate-spin' : ''} />,
-              disabled: isLoadingRingDetails || isUpdating || isSyncingData,
+              leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+              disabled: isBusy,
             },
             {
               label: 'Configure Topology',
               onClick: () => setIsConfigModalOpen(true),
               variant: 'primary',
               leftIcon: <FiSettings />,
-              disabled: isLoadingRingDetails || isUpdating,
+              disabled: isBusy,
             },
             {
               label: viewMode === 'map' ? 'Schematic View' : 'Map View',

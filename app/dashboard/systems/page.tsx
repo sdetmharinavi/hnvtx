@@ -271,6 +271,8 @@ export default function SystemsPage() {
     });
   }, [exportSystems, allExportColumns, filters.filters]);
 
+  const isBusy = isLoading || isFetching;
+
   const headerActions = useMemo((): ActionButton[] => {
     const actions: ActionButton[] = [
       {
@@ -280,8 +282,9 @@ export default function SystemsPage() {
           toast.success('Systems refreshed.');
         },
         variant: 'outline',
-        leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
-        disabled: isLoading,
+        // THE FIX: Use isBusy for spinner
+        leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+        disabled: isBusy,
       },
     ];
     if (canEdit) {
@@ -290,7 +293,7 @@ export default function SystemsPage() {
         onClick: handleExport,
         variant: 'outline',
         leftIcon: <FiDownload />,
-        disabled: isExporting || isLoading,
+        disabled: isExporting || isBusy,
         hideTextOnMobile: true,
       });
       actions.splice(1, 0, {
@@ -298,7 +301,7 @@ export default function SystemsPage() {
         onClick: handleUploadClick,
         variant: 'outline',
         leftIcon: <FiUpload />,
-        disabled: isUploading || isLoading,
+        disabled: isUploading || isBusy,
         hideTextOnMobile: true,
       });
       actions.push({
@@ -306,12 +309,12 @@ export default function SystemsPage() {
         onClick: editModal.openAdd,
         variant: 'primary',
         leftIcon: <FiDatabase />,
-        disabled: isLoading,
+        disabled: isBusy,
       });
     }
     return actions;
   }, [
-    isLoading,
+    isBusy,
     isUploading,
     isExporting,
     refetch,

@@ -1,7 +1,7 @@
 // app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -81,7 +81,6 @@ interface SystemToDisassociate {
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
   return useTableQuery(supabase, 'ring_based_systems', {
-    // THE FIX: Removed the problematic nested join. We fetch system_type_id and resolve it client-side.
     columns: `
       order_in_ring,
       ring_id,
@@ -125,7 +124,7 @@ const useRingSystems = (ringId: string | null) => {
             order_in_ring: typeof item.order_in_ring === 'number' ? item.order_in_ring : null,
             ring_id: item.ring_id,
             status: !!sys.status,
-            system_type_name: '', // Will be populated in the UI component
+            system_type_name: '',
             ip_address:
               typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
             s_no: sys.s_no,
@@ -135,7 +134,6 @@ const useRingSystems = (ringId: string | null) => {
             commissioned_on: sys.commissioned_on,
             remark: sys.remark,
             system_capacity_id: sys.system_capacity_id,
-            // Defaults to satisfy strict typing
             created_at: null,
             updated_at: null,
             system_category: null,
@@ -177,7 +175,6 @@ const RingAssociatedSystemsView = ({
   canDelete: boolean;
 }) => {
   const { data: systemsData, isLoading } = useRingSystems(ringId);
-  // THE FIX: Fetch System Types client-side to resolve names reliability
   const { options: systemTypes, isLoading: isLoadingTypes } = useLookupTypeOptions(
     'SYSTEM_TYPES',
     'asc',
@@ -215,7 +212,6 @@ const RingAssociatedSystemsView = ({
         const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
         const system_ip = system.ip_address;
 
-        // THE FIX: Resolve name from client-side list
         const typeName =
           systemTypes.find((t) => t.value === system.system_type_id)?.label || 'Unknown Type';
 
@@ -297,7 +293,6 @@ export default function RingManagerPage() {
   const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Modals State
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
   const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
@@ -305,7 +300,6 @@ export default function RingManagerPage() {
     null
   );
 
-  // --- PERMISSIONS ---
   const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
@@ -313,7 +307,14 @@ export default function RingManagerPage() {
     tableName: 'rings',
     dataQueryHook: useRingManagerData,
     displayNameField: 'name',
-    syncTables: ['rings', 'v_rings', 'ring_based_systems', 'systems', 'v_systems_complete', 'v_ofc_connections_complete'],
+    syncTables: [
+      'rings',
+      'v_rings',
+      'ring_based_systems',
+      'systems',
+      'v_systems_complete',
+      'v_ofc_connections_complete',
+    ],
   });
 
   const {
@@ -561,6 +562,8 @@ export default function RingManagerPage() {
     });
   }, [exportRings]);
 
+  const isBusy = isLoading || isFetching;
+
   const headerActions = useMemo(() => {
     const actions: ActionButton[] = [
       {
@@ -569,15 +572,15 @@ export default function RingManagerPage() {
           refetch();
         },
         variant: 'outline',
-        leftIcon: <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />,
-        disabled: isLoading,
+        leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+        disabled: isBusy,
       },
       {
         label: isExporting ? 'Exporting...' : 'Export Rings',
         onClick: handleExportClick,
         variant: 'outline',
         leftIcon: <FiDownload />,
-        disabled: isExporting || isLoading,
+        disabled: isExporting || isBusy,
         hideTextOnMobile: true,
       },
     ];
@@ -588,7 +591,7 @@ export default function RingManagerPage() {
         onClick: handleUploadClick,
         variant: 'outline',
         leftIcon: <FiUpload />,
-        disabled: isUploading || isLoading,
+        disabled: isUploading || isBusy,
         hideTextOnMobile: true,
       });
 
@@ -597,7 +600,7 @@ export default function RingManagerPage() {
         onClick: editModal.openAdd,
         variant: 'primary',
         leftIcon: <GiLinkedRings />,
-        disabled: isLoading,
+        disabled: isBusy,
       });
 
       actions.push({
@@ -605,13 +608,13 @@ export default function RingManagerPage() {
         onClick: () => setIsSystemsModalOpen(true),
         variant: 'primary',
         leftIcon: <FiPlus />,
-        disabled: isLoading,
+        disabled: isBusy,
       });
     }
 
     return actions;
   }, [
-    isLoading,
+    isBusy,
     isUploading,
     isExporting,
     refetch,
@@ -740,22 +743,6 @@ export default function RingManagerPage() {
     }),
     [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
   );
-
-  // useEffect(() => {
-  //   if (ringTypesData && ringTypesData.length > 0 && !filters.filters.ring_type_id) {
-  //     const defaultType = ringTypesData.find(
-  //       (t) => t.code === 'BBU_RINGS' || t.name === 'BBU_RINGS'
-  //     );
-
-  //     if (defaultType) {
-  //       filters.setFilters((prev) => ({
-  //         ...prev,
-  //         ring_type_id: defaultType.id,
-  //       }));
-  //     }
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [ringTypesData]);
 
   const uiFilters = useMemo<Record<string, string>>(() => {
     const src = (filters.filters || {}) as Record<string, unknown>;
