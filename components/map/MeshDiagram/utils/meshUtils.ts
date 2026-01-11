@@ -54,9 +54,7 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
   });
 
   spursByParent.forEach((children, parentOrder) => {
-    const parentNode = backboneNodes.find(
-      (n) => Math.round(n.order_in_ring || 0) === parentOrder
-    );
+    const parentNode = backboneNodes.find((n) => Math.round(n.order_in_ring || 0) === parentOrder);
     if (!parentNode) return;
     const parentPos = positions.get(parentNode.id!);
     if (!parentPos) return;
@@ -85,13 +83,16 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
 
   const lats = Array.from(positions.values()).map((p) => p.lat);
   const lngs = Array.from(positions.values()).map((p) => p.lng);
-  
+
   // Default bounds if no nodes
   if (lats.length === 0) {
-     return { 
-        nodePositions: positions, 
-        bounds: [[CENTER_Y - 100, CENTER_X - 100], [CENTER_Y + 100, CENTER_X + 100]] 
-     };
+    return {
+      nodePositions: positions,
+      bounds: [
+        [CENTER_Y - 100, CENTER_X - 100],
+        [CENTER_Y + 100, CENTER_X + 100],
+      ],
+    };
   }
 
   const minLat = Math.min(...lats) - 100;
