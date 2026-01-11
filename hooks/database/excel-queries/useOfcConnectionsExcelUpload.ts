@@ -239,6 +239,17 @@ export function useOfcConnectionsExcelUpload(
           fiber_role: (processedData.fiber_role as 'working' | 'protection') || null,
           path_segment_order: pathSegmentOrder,
           remark: processedData.remark as string | null,
+
+          // --- THE FIX: ADDED MISSING FIELDS ---
+          status:
+            processedData.status !== undefined && processedData.status !== null
+              ? Boolean(processedData.status)
+              : true,
+          path_direction: (processedData.path_direction as 'tx' | 'rx') || null,
+          source_port: (processedData.source_port as string) || null,
+          destination_port: (processedData.destination_port as string) || null,
+          logical_path_id: (processedData.logical_path_id as string) || null,
+
           updated_at: new Date().toISOString(),
         };
 
