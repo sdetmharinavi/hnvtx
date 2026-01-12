@@ -8,9 +8,8 @@ import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState } from 'react';
 import { MeshConnectionLineProps } from './types';
 import { PopupFiberRow } from '@/components/map/PopupFiberRow';
-import { MessageSquare, Edit2, X, Save } from 'lucide-react';
-import { ButtonSpinner } from '@/components/common/ui';
 import { toast } from 'sonner';
+import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
 
 type LogicalPath = {
   id: string;
@@ -41,7 +40,6 @@ export const MeshConnectionLine = ({
 
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
-  const [hasActiveService, setHasActiveService] = useState(false);
 
   // --- Local State for Remarks UI ---
   const [isEditingRemark, setIsEditingRemark] = useState(false);
@@ -89,16 +87,12 @@ export const MeshConnectionLine = ({
     if (logicalPaths.length > 0) {
       setConnectionId(logicalPaths[0].system_connection_id || undefined);
       setAllotedService(logicalPaths[0].path_name || undefined);
-      setHasActiveService(!!logicalPaths[0].system_connection_id);
 
       if (!isEditingRemark) {
         setRemarkText(logicalPaths[0].remark || '');
       }
     } else if (config?.connectionId) {
       setConnectionId(config.connectionId);
-      setHasActiveService(false);
-    } else {
-      setHasActiveService(false);
     }
   }, [logicalPaths, config?.connectionId, isEditingRemark]);
 
@@ -208,61 +202,16 @@ export const MeshConnectionLine = ({
             )
           )}
 
-          {/* Remarks Section for Mesh - Only if no service */}
-          {!hasActiveService && (
-            <div className="mb-2 bg-gray-50 dark:bg-gray-900/40 rounded-lg p-2 border border-gray-200 dark:border-gray-700 group hover:shadow-sm transition-all">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  <MessageSquare size={12} />
-                  <span>Remarks</span>
-                </div>
-                {!isEditingRemark && (
-                  <button
-                    onClick={handleEditClick}
-                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-blue-600 dark:text-blue-400 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title="Edit Remarks"
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                )}
-              </div>
-
-              {isEditingRemark ? (
-                <div className="space-y-2">
-                  <textarea
-                    className="w-full text-xs p-2 rounded border border-blue-300 dark:border-blue-700 focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    rows={3}
-                    value={remarkText}
-                    onChange={(e) => setRemarkText(e.target.value)}
-                    placeholder="Enter remarks..."
-                    onKeyDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={handleCancelClick}
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
-                      title="Cancel"
-                    >
-                      <X size={14} />
-                    </button>
-                    <button
-                      onClick={handleSaveClick}
-                      disabled={isSaving}
-                      className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                      title="Save"
-                    >
-                      {isSaving ? <ButtonSpinner size="xs" /> : <Save size={14} />}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-900 dark:text-gray-400 italic wrap-break-words pl-1 min-h-[1.2em]">
-                  {remarkText || 'No remarks added.'}
-                </p>
-              )}
-            </div>
-          )}
+          <PopupRemarksRow
+            remark={remarkText}
+            isEditing={isEditingRemark}
+            editText={remarkText}
+            isSaving={isSaving}
+            onEditClick={handleEditClick}
+            onSaveClick={handleSaveClick}
+            onCancelClick={handleCancelClick}
+            onTextChange={setRemarkText}
+          />
         </div>
       </Popup>
     </Polyline>

@@ -6,12 +6,13 @@ import L from 'leaflet';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
-import { Ruler, Edit2, Save, X, MessageSquare } from 'lucide-react';
+import { Ruler, X } from 'lucide-react';
 import { PopupFiberRow } from '../PopupFiberRow';
 import { fetchOrsDistance, isColocated, getCurvedPath } from '@/utils/mapUtils';
 import { PathConfig, RingMapNode } from './types';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
+import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
 
 interface ConnectionLineProps {
   start: RingMapNode;
@@ -65,12 +66,12 @@ export const ConnectionLine = ({
   const popupOffset = useMemo(() => {
     const distance = 25; // Distance in pixels from the line
     const rad = (rotation * Math.PI) / 180;
-    
+
     // Calculate offset vector (0, -distance) rotated by 'rotation'
     // This places the popup visually "above" the point on the rotated map
     const x = -distance * Math.sin(rad);
     const y = -distance * Math.cos(rad);
-    
+
     return L.point(x, y);
   }, [rotation]);
 
@@ -79,11 +80,11 @@ export const ConnectionLine = ({
 
   const updatePopupStyle = useCallback(() => {
     if (!popupRef.current) return;
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const popup = popupRef.current as any;
     const el = popup._container as HTMLElement;
-    
+
     if (!el) return;
 
     // Hide tip as it doesn't rotate correctly with content wrapper
@@ -96,15 +97,15 @@ export const ConnectionLine = ({
     // This keeps the container (and Leaflet's positioning) intact, but spins the visual box
     const wrapper = el.querySelector('.leaflet-popup-content-wrapper') as HTMLElement;
     if (wrapper) {
-        if (rotation !== 0) {
-            wrapper.style.transform = `rotate(${-rotation}deg)`;
-            wrapper.style.transformOrigin = 'center bottom';
-            wrapper.style.transition = 'transform 0.3s ease-out';
-        } else {
-            wrapper.style.transform = '';
-            wrapper.style.transformOrigin = '';
-            wrapper.style.transition = '';
-        }
+      if (rotation !== 0) {
+        wrapper.style.transform = `rotate(${-rotation}deg)`;
+        wrapper.style.transformOrigin = 'center bottom';
+        wrapper.style.transition = 'transform 0.3s ease-out';
+      } else {
+        wrapper.style.transform = '';
+        wrapper.style.transformOrigin = '';
+        wrapper.style.transition = '';
+      }
     }
   }, [rotation]);
 
@@ -113,7 +114,6 @@ export const ConnectionLine = ({
     const timer = setTimeout(updatePopupStyle, 0);
     return () => clearTimeout(timer);
   }, [rotation, updatePopupStyle, isInteracted]);
-
 
   // 1. Distance Calculation
   const { data, isLoading, isError } = useQuery({
@@ -125,7 +125,6 @@ export const ConnectionLine = ({
 
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
-  const [hasActiveService, setHasActiveService] = useState(false);
 
   // 2. Fetch Logical Path Info
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
@@ -170,16 +169,11 @@ export const ConnectionLine = ({
       setConnectionId(path.system_connection_id || undefined);
       setAllotedService(path.path_name || undefined);
 
-      setHasActiveService(!!path.system_connection_id);
-
       if (!isEditingRemark) {
         setRemarkText(path.remark || '');
       }
     } else if (config?.connectionId) {
       setConnectionId(config.connectionId);
-      setHasActiveService(false);
-    } else {
-      setHasActiveService(false);
     }
   }, [logicalPaths, config?.connectionId, isEditingRemark]);
 
@@ -238,9 +232,9 @@ export const ConnectionLine = ({
   const handleClosePopup = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (popupRef.current) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const map = (popupRef.current as any)._map;
-        if (map) map.closePopup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const map = (popupRef.current as any)._map;
+      if (map) map.closePopup();
     }
   };
 
@@ -297,8 +291,8 @@ export const ConnectionLine = ({
       eventHandlers={{
         click: () => setIsInteracted(true),
         popupopen: () => {
-            setIsInteracted(true);
-            setTimeout(updatePopupStyle, 10);
+          setIsInteracted(true);
+          setTimeout(updatePopupStyle, 10);
         },
       }}
       ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
@@ -314,9 +308,8 @@ export const ConnectionLine = ({
         closeButton={false} // Hide default close button
       >
         <div className="text-sm w-full relative">
-          
           {/* Custom Close Button inside the rotated content */}
-          <button 
+          <button
             onClick={handleClosePopup}
             className="absolute -top-3 -right-3 p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all z-50"
             title="Close"
@@ -345,60 +338,16 @@ export const ConnectionLine = ({
             )
           )}
 
-          {!hasActiveService && (
-            <div className="mb-3 bg-gray-50 dark:bg-gray-900/40 rounded-lg p-2 border border-gray-200 dark:border-gray-700 group hover:shadow-sm transition-all">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  <MessageSquare size={12} />
-                  <span>Remarks</span>
-                </div>
-                {!isEditingRemark && (
-                  <button
-                    onClick={handleEditClick}
-                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-blue-600 dark:text-blue-400 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title="Edit Remarks"
-                  >
-                    <Edit2 size={12} />
-                  </button>
-                )}
-              </div>
-
-              {isEditingRemark ? (
-                <div className="space-y-2">
-                  <textarea
-                    className="w-full text-xs p-2 rounded border border-blue-300 dark:border-blue-700 focus:ring-1 focus:ring-blue-500 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    rows={3}
-                    value={remarkText}
-                    onChange={(e) => setRemarkText(e.target.value)}
-                    placeholder="Enter remarks here..."
-                    onKeyDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={handleCancelClick}
-                      className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
-                      title="Cancel"
-                    >
-                      <X size={14} />
-                    </button>
-                    <button
-                      onClick={handleSaveClick}
-                      disabled={isSaving}
-                      className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-                      title="Save"
-                    >
-                      {isSaving ? <ButtonSpinner size="xs" /> : <Save size={14} />}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-900 dark:text-gray-400 italic wrap-break-words pl-1 min-h-[1.2em]">
-                  {remarkText || 'No remarks added.'}
-                </p>
-              )}
-            </div>
-          )}
+          <PopupRemarksRow
+            remark={remarkText}
+            isEditing={isEditingRemark}
+            editText={remarkText}
+            isSaving={isSaving}
+            onEditClick={handleEditClick}
+            onSaveClick={handleSaveClick}
+            onCancelClick={handleCancelClick}
+            onTextChange={setRemarkText}
+          />
 
           <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2">
             <div className="mt-1 flex justify-between items-center px-1">

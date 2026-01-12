@@ -314,6 +314,7 @@ export default function RingManagerPage() {
       'systems',
       'v_systems_complete',
       'v_ofc_connections_complete',
+      'logical_fiber_paths',
     ],
   });
 
