@@ -1,7 +1,7 @@
 // components/map/ClientRingMap/ConnectionLine.tsx
 'use client';
 
-import { Polyline, Popup } from 'react-leaflet';
+import { Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,8 +53,12 @@ export const ConnectionLine = ({
   curveOffset = 0,
   rotation = 0,
 }: ConnectionLineProps) => {
-  const [isInteracted, setIsInteracted] = useState(false);
-  const shouldFetch = showPopup || isInteracted;
+  const map = useMap(); // Access map instance for coordinate calculations
+  const [manualPos, setManualPos] = useState<L.LatLng | null>(null);
+
+  // Data fetching trigger
+  const shouldFetch = showPopup || !!manualPos;
+
   const queryClient = useQueryClient();
   const supabase = createClient();
 
@@ -62,13 +66,39 @@ export const ConnectionLine = ({
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
+  // --- Calculate Line Geometry ---
+  const isCluster = isColocated(startPos, endPos, 0.005);
+  const positions = useMemo(() => {
+    if (isCluster) {
+      return getCurvedPath(startPos, endPos, 0.5 + curveOffset * 2);
+    } else if (curveOffset !== 0) {
+      return getCurvedPath(startPos, endPos, curveOffset);
+    } else {
+      return [startPos, endPos];
+    }
+  }, [startPos, endPos, isCluster, curveOffset]);
+
+  // --- Calculate Center Position for "Show All" mode ---
+  const centerPos = useMemo(() => {
+    // If curved (3 points), pick the middle one
+    if (positions.length === 3 && positions[1] instanceof L.LatLng) {
+      return positions[1];
+    }
+    // Else calculate linear middle
+    const lat = (startPos.lat + endPos.lat) / 2;
+    const lng = (startPos.lng + endPos.lng) / 2;
+    return new L.LatLng(lat, lng);
+  }, [positions, startPos, endPos]);
+
+  // Determine effective popup position: Manual click takes precedence over global toggle
+  const activePopupPos = manualPos || (showPopup ? centerPos : null);
+
   // --- Dynamic Offset Calculation for Visual "Up" ---
   const popupOffset = useMemo(() => {
     const distance = 25; // Distance in pixels from the line
     const rad = (rotation * Math.PI) / 180;
 
     // Calculate offset vector (0, -distance) rotated by 'rotation'
-    // This places the popup visually "above" the point on the rotated map
     const x = -distance * Math.sin(rad);
     const y = -distance * Math.cos(rad);
 
@@ -83,18 +113,18 @@ export const ConnectionLine = ({
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const popup = popupRef.current as any;
+    // Access the internal container element safely
     const el = popup._container as HTMLElement;
 
     if (!el) return;
 
-    // Hide tip as it doesn't rotate correctly with content wrapper
+    // Hide tip as it doesn't rotate correctly with content wrapper in 3D CSS transforms
     const tip = el.querySelector('.leaflet-popup-tip-container') as HTMLElement;
     if (tip) {
       tip.style.display = 'none';
     }
 
-    // Rotate the wrapper (content) only
-    // This keeps the container (and Leaflet's positioning) intact, but spins the visual box
+    // Rotate the wrapper (content) only to counter-act map rotation
     const wrapper = el.querySelector('.leaflet-popup-content-wrapper') as HTMLElement;
     if (wrapper) {
       if (rotation !== 0) {
@@ -109,11 +139,14 @@ export const ConnectionLine = ({
     }
   }, [rotation]);
 
-  // Apply style when rotation changes or popup opens
+  // Apply style when rotation changes or popup opens/moves
   useEffect(() => {
-    const timer = setTimeout(updatePopupStyle, 0);
-    return () => clearTimeout(timer);
-  }, [rotation, updatePopupStyle, isInteracted]);
+    if (activePopupPos) {
+      // Small delay to ensure DOM is rendered by Leaflet
+      const timer = setTimeout(updatePopupStyle, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [rotation, activePopupPos, updatePopupStyle]);
 
   // 1. Distance Calculation
   const { data, isLoading, isError } = useQuery({
@@ -228,14 +261,8 @@ export const ConnectionLine = ({
     setIsEditingRemark(true);
   };
 
-  // Helper to manually close the popup since we hid the default button
-  const handleClosePopup = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (popupRef.current) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const map = (popupRef.current as any)._map;
-      if (map) map.closePopup();
-    }
+  const handleClosePopup = () => {
+    setManualPos(null);
   };
 
   const defaultColor =
@@ -268,99 +295,128 @@ export const ConnectionLine = ({
       config.cableName ||
       config.fiberInfo);
 
-  const isCluster = isColocated(startPos, endPos, 0.005);
-  let positions;
+  // --- CORRECTED CLICK HANDLER ---
+  const handlePolylineClick = (e: L.LeafletMouseEvent) => {
+    L.DomEvent.stopPropagation(e); // Stop map from panning
 
-  if (isCluster) {
-    positions = getCurvedPath(startPos, endPos, 0.5 + curveOffset * 2);
-  } else if (curveOffset !== 0) {
-    positions = getCurvedPath(startPos, endPos, curveOffset);
-  } else {
-    positions = [startPos, endPos];
-  }
+    // If rotation is 0, standard behavior is fine
+    if (rotation === 0) {
+      setManualPos(e.latlng);
+      return;
+    }
+
+    // If Rotated: We must perform inverse rotation to get true coordinates
+    // 1. Get the map center point in pixels
+    const mapSize = map.getSize();
+    const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
+
+    // 2. Get the click point in pixels relative to the viewport
+    const clickPoint = e.containerPoint;
+
+    // 3. Calculate delta from center
+    const deltaX = clickPoint.x - centerPoint.x;
+    const deltaY = clickPoint.y - centerPoint.y;
+
+    // 4. Inverse Rotate (counter-rotate by the map's rotation)
+    const angleRad = (-rotation * Math.PI) / 180;
+    const rotatedX = deltaX * Math.cos(angleRad) - deltaY * Math.sin(angleRad);
+    const rotatedY = deltaX * Math.sin(angleRad) + deltaY * Math.cos(angleRad);
+
+    // 5. Get the rotated pixel point relative to center
+    const correctedPoint = L.point(centerPoint.x + rotatedX, centerPoint.y + rotatedY);
+
+    // 6. Convert back to LatLng using the map's projection
+    const correctedLatLng = map.containerPointToLatLng(correctedPoint);
+
+    setManualPos(correctedLatLng);
+  };
 
   return (
-    <Polyline
-      positions={positions}
-      pathOptions={{
-        color,
-        weight: type === 'solid' ? 4 : 2.5,
-        opacity: type === 'solid' ? 1 : 0.7,
-        dashArray: type === 'dashed' ? '20, 20' : undefined,
-      }}
-      eventHandlers={{
-        click: () => setIsInteracted(true),
-        popupopen: () => {
-          setIsInteracted(true);
-          setTimeout(updatePopupStyle, 10);
-        },
-      }}
-      ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
-    >
-      <Popup
-        ref={popupRef}
-        autoClose={false}
-        closeOnClick={false}
-        className={theme === 'dark' ? 'dark-popup' : ''}
-        minWidth={320}
-        maxWidth={400}
-        offset={popupOffset} // Dynamic offset based on rotation
-        closeButton={false} // Hide default close button
-      >
-        <div className="text-sm w-full relative">
-          {/* Custom Close Button inside the rotated content */}
-          <button
-            onClick={handleClosePopup}
-            className="absolute -top-3 -right-3 p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all z-50"
-            title="Close"
-          >
-            <X size={14} />
-          </button>
+    <>
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color,
+          weight: type === 'solid' ? 4 : 2.5,
+          opacity: type === 'solid' ? 1 : 0.7,
+          dashArray: type === 'dashed' ? '20, 20' : undefined,
+        }}
+        eventHandlers={{
+          click: handlePolylineClick,
+        }}
+        ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
+      />
 
-          <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300 pr-6">
-            {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
-          </div>
+      {activePopupPos && (
+        <Popup
+          position={activePopupPos}
+          ref={popupRef}
+          autoClose={false}
+          closeOnClick={false}
+          className={theme === 'dark' ? 'dark-popup' : ''}
+          minWidth={320}
+          maxWidth={400}
+          offset={popupOffset}
+          closeButton={false} // We provide custom close button
+        >
+          <div className="text-sm w-full relative">
+            {/* Custom Close Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClosePopup();
+              }}
+              className="absolute -top-3 -right-3 p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all z-50 cursor-pointer"
+              title="Close"
+              type="button"
+            >
+              <X size={14} />
+            </button>
+            <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300 pr-6">
+              {config?.source}/{config?.sourcePort} - {config?.dest}/{config?.destPort}
+            </div>
 
-          {hasConfig ? (
-            <div className="mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                <PopupFiberRow
-                  connectionId={connectionId || config?.connectionId}
-                  allotedService={allotedService}
-                />
+            {hasConfig ? (
+              <div className="mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <PopupFiberRow
+                    connectionId={connectionId || config?.connectionId}
+                    allotedService={allotedService}
+                  />
+                </div>
+              </div>
+            ) : (
+              type === 'solid' && (
+                <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center">
+                  Physical link not provisioned
+                </div>
+              )
+            )}
+
+            <PopupRemarksRow
+              remark={remarkText}
+              isEditing={isEditingRemark}
+              editText={remarkText}
+              isSaving={isSaving}
+              onEditClick={handleEditClick}
+              onSaveClick={handleSaveClick}
+              onCancelClick={handleCancelClick}
+              onTextChange={setRemarkText}
+            />
+
+            <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <div className="mt-1 flex justify-between items-center px-1">
+                <span className="font-medium flex items-center gap-1">
+                  <Ruler className="w-3 h-3" /> Road Distance
+                </span>
+                <span className="font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                  {distanceText}
+                </span>
               </div>
             </div>
-          ) : (
-            type === 'solid' && (
-              <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center">
-                Physical link not provisioned
-              </div>
-            )
-          )}
-
-          <PopupRemarksRow
-            remark={remarkText}
-            isEditing={isEditingRemark}
-            editText={remarkText}
-            isSaving={isSaving}
-            onEditClick={handleEditClick}
-            onSaveClick={handleSaveClick}
-            onCancelClick={handleCancelClick}
-            onTextChange={setRemarkText}
-          />
-
-          <div className="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2">
-            <div className="mt-1 flex justify-between items-center px-1">
-              <span className="font-medium flex items-center gap-1">
-                <Ruler className="w-3 h-3" /> Road Distance
-              </span>
-              <span className="font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                {distanceText}
-              </span>
-            </div>
           </div>
-        </div>
-      </Popup>
-    </Polyline>
+        </Popup>
+      )}
+    </>
   );
 };
