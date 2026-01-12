@@ -217,6 +217,41 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
     ],
   },
 
+    // DWDM MP0072 Ports (System Capacity ID: 68dcea5f-0fa0-4b79-acac-19511bdd97fc)
+  '68dcea5f-0fa0-4b79-acac-19511bdd97fc': {
+    name: 'DWDM MP0072 Ports Configuration',
+    description: 'High density GE/10GE configuration',
+    ports: [
+      createPort('1.1', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.2', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.3', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.4', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.5', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.6', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.7', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('1.8', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('3.1', PORT_TYPES.STM1, 'STM1'),
+      createPort('3.2', PORT_TYPES.STM1, 'STM1'),
+      createPort('3.3', PORT_TYPES.STM1, 'STM1'),
+      createPort('3.4', PORT_TYPES.STM1, 'STM1'),
+      createPort('2.1', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.2', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.3', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.4', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.5', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.6', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.7', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('2.8', PORT_TYPES.GE_OPTICAL, 'GE(O)'),
+      createPort('4.1', PORT_TYPES.STM1, 'STM1'),
+      createPort('4.2', PORT_TYPES.STM1, 'STM1'),
+      createPort('4.3', PORT_TYPES.STM1, 'STM1'),
+      createPort('4.4', PORT_TYPES.STM1, 'STM1'),
+      createPort('1.1', PORT_TYPES.TEN_GE, '10GE'),
+      createPort('2.1', PORT_TYPES.TEN_GE, '10GE'),
+      createPort('NMS', PORT_TYPES.FE, 'FE'),
+    ],
+  },
+
   // B1 Ports (System Capacity ID: 3beb3ea2-55a4-48da-a7fa-f7c9ccf7de79)
   '3beb3ea2-55a4-48da-a7fa-f7c9ccf7de79': {
     name: 'B1 Ports Configuration',
