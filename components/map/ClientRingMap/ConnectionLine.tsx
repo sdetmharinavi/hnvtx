@@ -3,7 +3,7 @@
 
 import { Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { Ruler, X } from 'lucide-react';
@@ -53,16 +53,13 @@ export const ConnectionLine = ({
   curveOffset = 0,
   rotation = 0,
 }: ConnectionLineProps) => {
-  const map = useMap(); // Access map instance for coordinate calculations
+  const map = useMap();
   const [manualPos, setManualPos] = useState<L.LatLng | null>(null);
 
-  // Data fetching trigger
   const shouldFetch = showPopup || !!manualPos;
-
   const queryClient = useQueryClient();
   const supabase = createClient();
 
-  // --- Local State for Remarks UI ---
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
@@ -78,77 +75,69 @@ export const ConnectionLine = ({
     }
   }, [startPos, endPos, isCluster, curveOffset]);
 
-  // --- Calculate Center Position for "Show All" mode ---
   const centerPos = useMemo(() => {
-    // If curved (3 points), pick the middle one
     if (positions.length === 3 && positions[1] instanceof L.LatLng) {
       return positions[1];
     }
-    // Else calculate linear middle
     const lat = (startPos.lat + endPos.lat) / 2;
     const lng = (startPos.lng + endPos.lng) / 2;
     return new L.LatLng(lat, lng);
   }, [positions, startPos, endPos]);
 
-  // Determine effective popup position: Manual click takes precedence over global toggle
   const activePopupPos = manualPos || (showPopup ? centerPos : null);
 
   // --- Dynamic Offset Calculation for Visual "Up" ---
+  // When map rotates, "Up" relative to the screen changes relative to the map logic.
+  // We rotate the offset vector so the popup always appears visually "above" the click point.
   const popupOffset = useMemo(() => {
-    const distance = 25; // Distance in pixels from the line
+    const distance = 20; // Pixel distance from line
     const rad = (rotation * Math.PI) / 180;
 
-    // Calculate offset vector (0, -distance) rotated by 'rotation'
+    // Standard offset is [0, -distance] (Up).
+    // Rotate this vector by `rotation` degrees.
     const x = -distance * Math.sin(rad);
     const y = -distance * Math.cos(rad);
 
     return L.point(x, y);
   }, [rotation]);
 
-  // --- Popup Rotation Logic ---
   const popupRef = useRef<L.Popup>(null);
 
-  const updatePopupStyle = useCallback(() => {
-    if (!popupRef.current) return;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const popup = popupRef.current as any;
-    // Access the internal container element safely
-    const el = popup._container as HTMLElement;
-
-    if (!el) return;
-
-    // Hide tip as it doesn't rotate correctly with content wrapper in 3D CSS transforms
-    const tip = el.querySelector('.leaflet-popup-tip-container') as HTMLElement;
-    if (tip) {
-      tip.style.display = 'none';
-    }
-
-    // Rotate the wrapper (content) only to counter-act map rotation
-    const wrapper = el.querySelector('.leaflet-popup-content-wrapper') as HTMLElement;
-    if (wrapper) {
-      if (rotation !== 0) {
-        wrapper.style.transform = `rotate(${-rotation}deg)`;
-        wrapper.style.transformOrigin = 'center bottom';
-        wrapper.style.transition = 'transform 0.3s ease-out';
-      } else {
-        wrapper.style.transform = '';
-        wrapper.style.transformOrigin = '';
-        wrapper.style.transition = '';
-      }
-    }
-  }, [rotation]);
-
-  // Apply style when rotation changes or popup opens/moves
+  // Apply counter-rotation to popup content
   useEffect(() => {
-    if (activePopupPos) {
-      // Small delay to ensure DOM is rendered by Leaflet
-      const timer = setTimeout(updatePopupStyle, 10);
+    if (activePopupPos && popupRef.current) {
+      const timer = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const popup = popupRef.current as any;
+        if (!popup || !popup._container) return;
+
+        const wrapper = popup._container.querySelector(
+          '.leaflet-popup-content-wrapper'
+        ) as HTMLElement;
+        const tip = popup._container.querySelector('.leaflet-popup-tip-container') as HTMLElement;
+        const shadow = popup._container.querySelector('.leaflet-popup-shadow') as HTMLElement;
+
+        if (wrapper) {
+          wrapper.style.transition = 'transform 0.3s ease-out';
+          wrapper.style.transformOrigin = 'center bottom';
+
+          if (rotation !== 0) {
+            wrapper.style.transform = `rotate(${-rotation}deg)`;
+            // Hide artifacts
+            if (tip) tip.style.opacity = '0';
+            if (shadow) shadow.style.opacity = '0';
+          } else {
+            wrapper.style.transform = '';
+            if (tip) tip.style.opacity = '1';
+            if (shadow) shadow.style.opacity = '1';
+          }
+        }
+      }, 10);
       return () => clearTimeout(timer);
     }
-  }, [rotation, activePopupPos, updatePopupStyle]);
+  }, [rotation, activePopupPos]);
 
-  // 1. Distance Calculation
+  // Data Fetching & Mutations (Unchanged from original)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
@@ -159,7 +148,6 @@ export const ConnectionLine = ({
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
 
-  // 2. Fetch Logical Path Info
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
     queryKey: [
       'logical_fiber_paths',
@@ -171,11 +159,9 @@ export const ConnectionLine = ({
     ],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-
       const srcPort = config?.sourcePort;
       const dstPort = config?.destPort;
       let filter = '';
-
       if (srcPort && dstPort) {
         const dir1 = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id},source_port.eq.${srcPort},destination_port.eq.${dstPort})`;
         const dir2 = `and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id},source_port.eq.${dstPort},destination_port.eq.${srcPort})`;
@@ -183,12 +169,10 @@ export const ConnectionLine = ({
       } else {
         filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
       }
-
       const { data, error } = await supabase
         .from('logical_fiber_paths')
         .select('id, path_name, path_role, system_connection_id, bandwidth_gbps, remark')
         .or(filter);
-
       if (error) throw error;
       return data;
     },
@@ -201,7 +185,6 @@ export const ConnectionLine = ({
       const path = logicalPaths[0];
       setConnectionId(path.system_connection_id || undefined);
       setAllotedService(path.path_name || undefined);
-
       if (!isEditingRemark) {
         setRemarkText(path.remark || '');
       }
@@ -210,11 +193,9 @@ export const ConnectionLine = ({
     }
   }, [logicalPaths, config?.connectionId, isEditingRemark]);
 
-  // 3. Mutation to Save/Insert Remark
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
       const existingPath = logicalPaths[0];
-
       if (existingPath) {
         const { error } = await supabase
           .from('logical_fiber_paths')
@@ -249,18 +230,15 @@ export const ConnectionLine = ({
     e.stopPropagation();
     saveRemark(remarkText);
   };
-
   const handleCancelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(false);
     setRemarkText(logicalPaths[0]?.remark || '');
   };
-
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(true);
   };
-
   const handleClosePopup = () => {
     setManualPos(null);
   };
@@ -273,7 +251,6 @@ export const ConnectionLine = ({
       : theme === 'dark'
       ? '#ef4444'
       : '#dc2626';
-
   const color = customColor || defaultColor;
 
   const distanceText = isLoading ? (
@@ -295,39 +272,25 @@ export const ConnectionLine = ({
       config.cableName ||
       config.fiberInfo);
 
-  // --- CORRECTED CLICK HANDLER ---
+  // --- Rotated Click Handler ---
+  // Calculates where the user clicked relative to the map center, accounts for rotation,
+  // and returns the correct LatLng so the popup appears exactly under the mouse cursor.
   const handlePolylineClick = (e: L.LeafletMouseEvent) => {
-    L.DomEvent.stopPropagation(e); // Stop map from panning
-
-    // If rotation is 0, standard behavior is fine
+    L.DomEvent.stopPropagation(e);
     if (rotation === 0) {
       setManualPos(e.latlng);
       return;
     }
-
-    // If Rotated: We must perform inverse rotation to get true coordinates
-    // 1. Get the map center point in pixels
     const mapSize = map.getSize();
     const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
-
-    // 2. Get the click point in pixels relative to the viewport
     const clickPoint = e.containerPoint;
-
-    // 3. Calculate delta from center
     const deltaX = clickPoint.x - centerPoint.x;
     const deltaY = clickPoint.y - centerPoint.y;
-
-    // 4. Inverse Rotate (counter-rotate by the map's rotation)
     const angleRad = (-rotation * Math.PI) / 180;
     const rotatedX = deltaX * Math.cos(angleRad) - deltaY * Math.sin(angleRad);
     const rotatedY = deltaX * Math.sin(angleRad) + deltaY * Math.cos(angleRad);
-
-    // 5. Get the rotated pixel point relative to center
     const correctedPoint = L.point(centerPoint.x + rotatedX, centerPoint.y + rotatedY);
-
-    // 6. Convert back to LatLng using the map's projection
     const correctedLatLng = map.containerPointToLatLng(correctedPoint);
-
     setManualPos(correctedLatLng);
   };
 
@@ -341,9 +304,7 @@ export const ConnectionLine = ({
           opacity: type === 'solid' ? 1 : 0.7,
           dashArray: type === 'dashed' ? '20, 20' : undefined,
         }}
-        eventHandlers={{
-          click: handlePolylineClick,
-        }}
+        eventHandlers={{ click: handlePolylineClick }}
         ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
       />
 
@@ -357,10 +318,9 @@ export const ConnectionLine = ({
           minWidth={320}
           maxWidth={400}
           offset={popupOffset}
-          closeButton={false} // We provide custom close button
+          closeButton={false}
         >
           <div className="text-sm w-full relative">
-            {/* Custom Close Button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
