@@ -1,10 +1,10 @@
 id,name,ring_type_id,description,maintenance_terminal_id,total_nodes,is_closed_loop,topology_config,ofc_status,spec_status,bts_status,status,created_at,updated_at
-084a1289-b640-4900-9783-d05e55306fb5,MAAN-17,fe67aa4d-b141-467e-a9dd-58691c489abe,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,7,,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2025-12-20 06:14:24.098356+00
+084a1289-b640-4900-9783-d05e55306fb5,MAAN-17,fe67aa4d-b141-467e-a9dd-58691c489abe,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,7,true,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2026-01-11 14:39:23.808287+00
 08f32227-efbc-41d8-8171-363bf82b21ad,HNV-04,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-blue-600"">OFC STATUS:</strong> READY<br />
 <strong class=""text-red-600"">SPEC STATUS:</strong> Not issued<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,,Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-05 12:05:17.667591+00
 09136fb5-6392-44bb-bab4-de1c22a2ac43,HNV-18,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY<br />
 <strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,2,true,,Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-05 12:25:27.451009+00
-0e8bf0bb-64d7-42f5-87cd-d754e6bdab27,MAAN-19,fe67aa4d-b141-467e-a9dd-58691c489abe,,a41dc1c4-3421-48dd-a123-8c1ddd56b8ba,0,,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2025-12-20 06:14:24.098356+00
+0e8bf0bb-64d7-42f5-87cd-d754e6bdab27,MAAN-19,fe67aa4d-b141-467e-a9dd-58691c489abe,,a41dc1c4-3421-48dd-a123-8c1ddd56b8ba,0,true,,Ready,Issued,On-Air,true,2025-10-17 00:00:00+00,2026-01-11 14:21:04.49972+00
 104775fe-4c27-44d9-a14b-0c38e21a5786,MAAN-06,fe67aa4d-b141-467e-a9dd-58691c489abe,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,4,,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2025-12-20 06:14:24.098356+00
 17520ee6-a471-47ed-82c1-0590f4c4bad6,HNV-03,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY WITH CPAN FIBRE<br />
 <strong class=""text-red-600"">SPEC STATUS:</strong> Not Issued<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,,"{""disabled_segments"":[""189db519-2d7c-4dec-934e-50e3116ef8d4-b057a5ce-0436-402f-90c6-b30d2f4ef00a""]}",Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2025-12-20 06:14:24.098356+00
@@ -14,8 +14,10 @@ id,name,ring_type_id,description,maintenance_terminal_id,total_nodes,is_closed_l
 2b85991d-8610-490b-907a-8c49029b343b,HNV_CPAN,18429ead-ad6a-46aa-8155-2b418cb5def5,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,,,Ready,Issued,On-Air,true,2025-10-17 00:00:00+00,2025-12-20 06:14:24.098356+00
 2ca8c4e6-bd3a-4b0d-969d-015b5627af01,A-0327,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-06 10:32:54.575157+00,2026-01-06 10:32:54.575157+00
 2df52bf7-ea95-412a-b933-fc002e80336f,A-0317,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-08 10:28:12.690104+00,2026-01-08 10:28:12.690104+00
+358e860e-aa1a-4639-9f49-c186f4f40b85,DWDM_KULPI_GANGASAGAR,fe90e181-9974-4cdd-af82-a41fe08c52f3,,6b289982-d15e-4cf2-86de-c461517ca938,0,true,{},Ready,Issued,On-Air,true,2026-01-12 07:28:28.061164+00,2026-01-12 07:28:28.061164+00
 3ae24684-ea2c-4660-8528-559e06a01e01,HNV-25,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />
 <strong class=""text-blue-600"">OFC STATUS:</strong> READY<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,"{""disabled_segments"":[""dea39efc-21b8-4bf1-9254-f53c958b6378-b5bfbef5-356c-499b-ad2b-351b7ed6a845""]}",Ready,Pending,Pending,true,2025-11-29 00:00:00+00,2025-12-20 06:14:24.098356+00
+3f8e1d1e-f7b6-432b-bc8a-0446a2cf97a8,A-0399,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,false,{},Ready,Issued,On-Air,true,2026-01-10 07:14:09.813396+00,2026-01-10 07:14:09.813396+00
 44beae27-c244-4de8-8121-7f8995c3ce49,HNV-22,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> Co-Located<br />
 <strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED Vide: TP/Inst. Prg/10_25/17 DATED: 17-10-2025<br />
 <strong class=""text-green-600"">BTS STATUS:</strong> ON AIR<br />
@@ -26,6 +28,7 @@ id,name,ring_type_id,description,maintenance_terminal_id,total_nodes,is_closed_l
 <strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,5,true,"{""disabled_segments"":[]}",Pending,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-05 12:23:57.82889+00
 5e1f65a5-4809-47ba-ad2d-c5167fccb190,HNV-24,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-blue-600"">OFC STATUS:</strong> READY WITH EXISTING FIBER<br />
 <strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,2,true,{},Partial Ready,Pending,Pending,true,2025-11-29 00:00:00+00,2025-12-20 06:14:24.098356+00
+63b748b9-a25f-47ba-8393-fa14db71a355,DWDM SYSTEM,fe90e181-9974-4cdd-af82-a41fe08c52f3,,e1913f27-c1a5-47a6-bd0a-c5c1d6c576a8,0,true,{},Ready,Issued,On-Air,true,2026-01-12 07:13:29.254545+00,2026-01-12 07:13:29.254545+00
 654e4085-294d-4b04-989f-b51905f33e41,HNV-12,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY<br />
 <strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,true,,Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-05 12:17:32.737846+00
 6a24ce8a-a80f-41bb-ab94-17159c33db08,HNV-14,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-blue-600"">OFC STATUS:</strong> READY<br />

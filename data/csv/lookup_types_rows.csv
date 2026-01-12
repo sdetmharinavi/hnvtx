@@ -2,6 +2,7 @@ id,category,name,code,description,sort_order,is_system_default,is_ring_based,sta
 006bbcae-b141-416f-9f3a-8ca152190df9,SFP_TYPES,Coarse Wavelength Division Multiplex SFP,CWDMSFP,CWDM optical module.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 00fe1e7b-1636-4a9a-85c3-3bb9aa22c16e,LINK_TYPES,PDH,PDH,,0,false,false,true,2025-12-18 00:00:00+00,2025-12-18 00:00:00+00
 04bb13be-c2c6-47dd-a5f3-013f37c08719,NODE_TYPES,Fiber Distribution Hub (FDH),FDH,Street/field cabinet that distributes fibers to subscribers (PON splitters).,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+052402ff-f7f4-44d6-9d76-3a356643e05d,LINK_TYPES,DWDM MAAN LINK,DWDM_MAAN_LINK,,0,false,false,true,2026-01-12 07:54:35.783759+00,2026-01-12 07:54:35.783759+00
 0570b1bf-ddf8-4a7a-b125-2e4276120f08,MEDIA_TYPES,Copper pair,E1,Connector: RJ-48C,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 0612aafd-3bac-4855-b408-e29bbbcbd37f,NODE_TYPES,Joint / Splice Point,BJC,Interconnection point between two or more fiber cables,0,false,false,true,2025-08-18 00:00:00+00,2025-11-27 00:00:00+00
 0966c005-3306-4a7a-9933-45dd1d8e91b4,NODE_TYPES,Optical Amplifier Node,OAN Node,If the SDH shelf is paired with amplifier equipment for boosting signal only.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -23,6 +24,7 @@ id,category,name,code,description,sort_order,is_system_default,is_ring_based,sta
 2970fab5-24ed-47d3-b0c1-42aca2d11c79,RING_TYPES,Linear,LNR,Linear configuration.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 29ab5eda-735f-40c5-a8bb-789a0d8c13a2,SFP_TYPES,Dense Wavelength Division Multiplex SFP,DWDMSFP,DWDM optical module.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 2a4ccaad-c8eb-4129-abb6-90da45f4bf08,SYSTEM_CAPACITY,9.953 Gbps(STM-64),10G,STM-64. Usable for IP (approx)	~8.4 Gbps,0,false,false,true,2025-11-23 00:00:00+00,2025-11-27 00:00:00+00
+2bfade39-4ce7-4740-87c5-f19d34ffd205,LINK_TYPES,DWDM CPAN LINK,DWDM_CPAN_LINK,,0,false,false,true,2026-01-12 07:54:04.505431+00,2026-01-12 07:54:04.505431+00
 2c2acf34-7fc5-4e25-88e1-6f53c737d097,MEDIA_TYPES,RJ45,RJ45,,0,false,false,true,2025-12-27 11:58:52.559907+00,2025-12-27 11:58:52.559907+00
 2e45ebb7-8cd4-4e84-90b6-3e7b06826f4f,PORT_TYPES,DEFAULT,default,Default entry for PORT_TYPES category,11,true,false,true,2025-08-10 00:00:00+00,2025-12-20 06:06:02.858976+00
 2ecb77f4-d9ff-4300-ab99-6118ad220ce1,OFC_TYPES,48F Unarmored,48F-U,Forty-eight core unarmored optical fiber cable.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -76,6 +78,13 @@ Protection (ring 1:1 or linear) takes reserved bandwidth",0,false,false,true,202
 63e6b674-0f24-4f0d-b224-a08944ca29e9,SYSTEM_CAPACITY,622.08 Mbps (STM-4),.622G,"STM-4. Usable for IP (approx)
 ~520 Mbps",0,false,false,true,2025-11-23 00:00:00+00,2025-11-27 00:00:00+00
 6458a347-e80c-4a62-9357-551487a07e3a,NODE_TYPES,Customer Premises,CUSTOMER,Subscriber location (home/business) — customer termination equipment/site.,0,false,false,true,2025-08-10 00:00:00+00,2025-12-13 00:00:00+00
+68dcea5f-0fa0-4b79-acac-19511bdd97fc,SYSTEM_CAPACITY,400 Gbps UTL MP0072 DWDM,MP0072,"Key Details:
+Model: UTL-MP-0072.
+Channels: Supports up to 40 channels.
+Bit Rate per Channel: Primarily designed for 10 Gbps services (OTU-2/2e/2f, STM-64, OC-192).
+Total Capacity (10G): 40 channels * 10 Gbps = 400 Gbps.
+Upgradability: Can be configured for higher speeds per channel, such as 100G (OTU-4), allowing for total system capacities of up to 4 Tbps (40 x 100G).
+Features: Integrates MUX, OSC, SCC, supports GMPLS, and uses Forward Error Correction (FEC) for extended reach.",0,false,false,true,2026-01-12 05:21:30.956971+00,2026-01-12 05:21:30.956971+00
 696a2297-5ce5-4658-9334-8a5a01e92f12,SYSTEM_TYPES,PON SPLITTER 1:16,SPL1:16,,0,false,false,true,2025-12-27 10:33:23.79819+00,2025-12-27 10:33:23.79819+00
 69c3298a-ce3d-47ba-a25d-cd9256fbf349,OFC_TYPES,DEFAULT,default,Default entry for OFC_TYPES category,6,true,false,true,2025-08-10 00:00:00+00,2025-12-20 06:06:02.858976+00
 6aa6c4c1-3a64-4b5e-a3f6-3f434ab0efb3,MEDIA_TYPES,E-LAN,ELAN,,0,false,false,true,2025-11-28 00:00:00+00,2025-11-28 00:00:00+00
@@ -205,3 +214,5 @@ f972bb0d-0e3b-41bb-951b-a23846bbe250,SYSTEM_CAPACITY,155.52 Mbps (STM-1),.155G,S
 f9f13567-b5ff-4128-9e8f-8b1ce164413d,OFC_PATH_STATUS,active,ACTIVE,The logical path is active and in use.,0,false,false,true,2025-11-17 00:00:00+00,2025-11-27 00:00:00+00
 fc077b05-1bfc-414c-9549-13b0f6d3e230,SYSTEM_TYPES,Next Generation SDH,NGSDH,Enhanced SDH with Ethernet over SDH support.,0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 fe67aa4d-b141-467e-a9dd-58691c489abe,RING_TYPES,MAAN RING,MAAN_RING,,0,false,false,true,2025-12-11 00:00:00+00,2025-12-11 00:00:00+00
+fe90e181-9974-4cdd-af82-a41fe08c52f3,RING_TYPES,DWDM RING,DWDM,,0,false,false,true,2026-01-12 07:11:57.113354+00,2026-01-12 07:11:57.113354+00
+febf550c-02ad-47a4-88d8-63a5af40590f,LINK_TYPES,DWDM LAMBDA,DWDM_LAMBDA,,0,false,false,true,2026-01-12 07:55:22.932472+00,2026-01-12 07:55:22.932472+00
