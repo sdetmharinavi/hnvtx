@@ -248,10 +248,7 @@ export const PORT_TEMPLATES: Record<string, PortTemplate> = {
       createPort('4.4', PORT_TYPES.STM1, 'STM1'),
       createPort('P1', PORT_TYPES.TEN_GE, '10GE'),
       createPort('P2', PORT_TYPES.TEN_GE, '10GE'),
-      createPort('1.1', PORT_TYPES.TEN_GE, '10GE'),
-      createPort('1.2', PORT_TYPES.TEN_GE, '10GE'),
-      createPort('2.1', PORT_TYPES.TEN_GE, '10GE'),
-      createPort('2.2', PORT_TYPES.TEN_GE, '10GE'),
+      // REMOVED DUPLICATES that caused conflict: 1.1, 1.2, 2.1, 2.2 were repeated as 10GE here
       createPort('NMS', PORT_TYPES.FE, 'FE'),
     ],
   },
@@ -490,7 +487,16 @@ export const generatePortsFromTemplate = (
   const template = PORT_TEMPLATES[templateKey];
   if (!template) return [];
 
-  return template.ports.map((item) => ({
+  // Deduplicate ports in the template by port name (last one wins)
+  // This safeguards against config errors like the one encountered.
+  const uniquePorts = new Map<string, PortConfig>();
+  template.ports.forEach((p) => {
+    if (p.port) {
+      uniquePorts.set(p.port, p);
+    }
+  });
+
+  return Array.from(uniquePorts.values()).map((item) => ({
     // system_id is injected here
     system_id: systemId,
     ...item,
