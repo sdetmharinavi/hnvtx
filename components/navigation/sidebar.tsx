@@ -1,4 +1,4 @@
-// path: components/navigation/sidebar.tsx
+// components/navigation/sidebar.tsx
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -24,21 +24,12 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
   const pathname = usePathname();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(); // We still use this for the *MobileSidebar* logic
 
-  // THE FIX: Extract the help item from the main navigation items.
   const allNavItems = NavItems();
-  const helpNavItem = allNavItems.find(item => item.id === 'help');
-  const mainNavItems = allNavItems.filter(item => item.id !== 'help');
+  const helpNavItem = allNavItems.find((item) => item.id === 'help');
+  const mainNavItems = allNavItems.filter((item) => item.id !== 'help');
   const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
-
-
-  // Close mobile sidebar on route changes
-  useEffect(() => {
-    if (isMobile) {
-      setIsCollapsed(true);
-    }
-  }, [pathname, isMobile, setIsCollapsed]);
 
   // Close hover menu when sidebar expands
   useEffect(() => {
@@ -53,12 +44,14 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
     );
   }, []);
 
+  // On Mobile, this component ONLY renders the MobileSidebar overlay when triggered.
+  // The persistent desktop sidebar is hidden via CSS class 'hidden md:flex'.
   if (isMobile) {
     return (
       <MobileSidebar
         isCollapsed={isCollapsed}
         setIsCollapsed={setIsCollapsed}
-        navItems={allNavItems} // Mobile can show all items in one scrollable list
+        navItems={allNavItems}
         expandedItems={expandedItems}
         toggleExpanded={toggleExpanded}
         setHoveredItem={setHoveredItem}
@@ -67,7 +60,6 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
     );
   }
 
-
   return (
     <motion.aside
       data-sidebar
@@ -75,8 +67,9 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       animate={isCollapsed ? 'collapsed' : 'expanded'}
       variants={sidebarVariants}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed top-0 left-0 z-50 flex h-full flex-col border-r border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+      className="hidden md:flex fixed top-0 left-0 z-50 h-full flex-col border-r border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-white"
     >
+      {/* Toggle Header */}
       <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-gray-800">
         <AnimatePresence mode="wait">
           {!isCollapsed && (
@@ -86,7 +79,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               exit="exit"
               variants={contentVariants}
               transition={{ duration: 0.2 }}
-              className="text-lg font-semibold text-gray-900 dark:text-gray-100"
+              className="text-lg font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap overflow-hidden"
             >
               Navigation
             </motion.h2>
@@ -95,7 +88,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
 
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ml-auto"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <motion.div animate={{ rotate: isCollapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -104,9 +97,9 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
-        <nav className="space-y-1" role="navigation">
-          {/* Render only the main navigation items here. */}
+      {/* Scrollable Nav Content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 custom-scrollbar">
+        <nav className="space-y-1 px-2" role="navigation">
           {mainNavItems.map((item) => (
             <NavItem
               key={item.id}
@@ -121,36 +114,42 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         {showMenuFeatures && <QuickActions isCollapsed={isCollapsed} pathname={pathname} />}
       </div>
 
-      {/* View Toggles */}
+      {/* View Toggles Footer */}
       <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
         <button
           onClick={() => setShowHeader(!showHeader)}
-          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            showHeader 
-              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
+            showHeader
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
+          title="Toggle Header"
         >
-          <FiLayout className="h-4 w-4 shrink-0" />
+          <div className="flex items-center justify-center w-6">
+            <FiLayout className="h-4 w-4" />
+          </div>
           {!isCollapsed && <span>{showHeader ? 'Hide' : 'Show'} Header</span>}
         </button>
-        
+
         <button
           onClick={() => setShowToolbar(!showToolbar)}
-          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            showToolbar 
-              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
+            showToolbar
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
               : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
           }`}
+          title="Toggle Toolbar"
         >
-          <FiTool className="h-4 w-4 shrink-0" />
+          <div className="flex items-center justify-center w-6">
+            <FiTool className="h-4 w-4" />
+          </div>
           {!isCollapsed && <span>{showToolbar ? 'Hide' : 'Show'} Toolbar</span>}
         </button>
       </div>
 
-      {/* Help section */}
+      {/* Help Section */}
       {helpNavItem && (
-        <div className="border-t border-gray-200 dark:border-gray-700">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-2">
           <NavItem
             item={helpNavItem}
             isCollapsed={isCollapsed}
@@ -161,7 +160,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
         </div>
       )}
 
-
+      {/* Desktop Hover Menu (Popper) */}
       <HoverMenu hoveredItem={hoveredItem} setHoveredItem={setHoveredItem} />
     </motion.aside>
   );

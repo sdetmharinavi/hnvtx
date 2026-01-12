@@ -57,7 +57,7 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
-// ============================================================================
+  // ============================================================================
   // MODULE: OFFLINE & SYNC
   // ============================================================================
   {
@@ -107,25 +107,26 @@ export const workflowSections: WorkflowSection[] = [
         ],
       },
       {
-        title: '3. Safe Synchronization & Manual Control', // UPDATED TITLE
+        title: '3. Safe Synchronization & ID Swapping',
         userSteps: [
           'When internet restores, the app performs a "Safe Sync".',
           '**Automatic:** It uploads pending changes sequentially.',
-          '**Conflict Protection:** If you edited a record offline, the app preserves YOUR change locally until it is successfully uploaded.',
-          '**Manual Discard:** You can click the **Sync Status Bar** (bottom) to see queued items. Click **Discard** (Trash Icon) to remove a pending change. The app will then revert to the server version on the next refresh.',
+          '**Intelligent ID Swapping:** If you created a parent item (e.g. Node) and then a child (e.g. System) offline, the app automatically updates the child to point to the *real* server ID of the parent once the parent is synced.',
+          '**Conflict Protection:** Local changes are preserved until successfully uploaded.',
         ],
         uiSteps: [
           'Header Cloud icon animates (Blue) during processing.',
-          'If an item is Discarded, it immediately vanishes from the queue.',
+          'If a sync error occurs, the item stays in the queue with a "Retry" button.',
+          'A "Sync Complete" message appears on the bottom bar when finished.',
         ],
         techSteps: [
-          '**Logic:** `performFullSync` checks `mutation_queue` for pending changes.',
-          '**Discard:** Removing a task from `mutation_queue` allows `useLocalFirstQuery` to overwrite the local dirty record with server data on the next fetch.',
+          '**Queue Processor:** `useMutationQueue` handles sequential uploads.',
+          '**ID Swap:** Logic detects `INSERT` responses and recursively updates pending payloads in the queue with the new permanent IDs.',
+          '**Discard:** Users can manually discard pending changes from the sync menu.',
         ],
       },
     ],
   },
-  
 
   // ============================================================================
   // MODULE 2: LOG BOOK (DIARY)
