@@ -294,6 +294,7 @@ export default function ClientRingMap({
                   config={config}
                   customColor={lineColor}
                   curveOffset={curveOffset}
+                  rotation={rotation} // ADDED: Pass rotation here
                 />
               );
             });
@@ -317,6 +318,7 @@ export default function ClientRingMap({
                   showPopup={showAllLinePopups}
                   setPolylineRef={setPolylineRef}
                   hasReverse={false}
+                  rotation={rotation} // ADDED: Pass rotation here
                 />
               );
             })}

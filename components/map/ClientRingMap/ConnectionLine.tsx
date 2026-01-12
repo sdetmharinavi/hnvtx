@@ -3,7 +3,7 @@
 
 import { Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
 import { Ruler, Edit2, Save, X, MessageSquare } from 'lucide-react';
@@ -26,6 +26,7 @@ interface ConnectionLineProps {
   customColor?: string;
   curveOffset?: number;
   hasReverse?: boolean;
+  rotation?: number;
 }
 
 type LogicalPath = {
@@ -49,6 +50,7 @@ export const ConnectionLine = ({
   config,
   customColor,
   curveOffset = 0,
+  rotation = 0,
 }: ConnectionLineProps) => {
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = showPopup || isInteracted;
@@ -58,6 +60,60 @@ export const ConnectionLine = ({
   // --- Local State for Remarks UI ---
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
+
+  // --- Dynamic Offset Calculation for Visual "Up" ---
+  const popupOffset = useMemo(() => {
+    const distance = 25; // Distance in pixels from the line
+    const rad = (rotation * Math.PI) / 180;
+    
+    // Calculate offset vector (0, -distance) rotated by 'rotation'
+    // This places the popup visually "above" the point on the rotated map
+    const x = -distance * Math.sin(rad);
+    const y = -distance * Math.cos(rad);
+    
+    return L.point(x, y);
+  }, [rotation]);
+
+  // --- Popup Rotation Logic ---
+  const popupRef = useRef<L.Popup>(null);
+
+  const updatePopupStyle = useCallback(() => {
+    if (!popupRef.current) return;
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const popup = popupRef.current as any;
+    const el = popup._container as HTMLElement;
+    
+    if (!el) return;
+
+    // Hide tip as it doesn't rotate correctly with content wrapper
+    const tip = el.querySelector('.leaflet-popup-tip-container') as HTMLElement;
+    if (tip) {
+      tip.style.display = 'none';
+    }
+
+    // Rotate the wrapper (content) only
+    // This keeps the container (and Leaflet's positioning) intact, but spins the visual box
+    const wrapper = el.querySelector('.leaflet-popup-content-wrapper') as HTMLElement;
+    if (wrapper) {
+        if (rotation !== 0) {
+            wrapper.style.transform = `rotate(${-rotation}deg)`;
+            wrapper.style.transformOrigin = 'center bottom';
+            wrapper.style.transition = 'transform 0.3s ease-out';
+        } else {
+            wrapper.style.transform = '';
+            wrapper.style.transformOrigin = '';
+            wrapper.style.transition = '';
+        }
+    }
+  }, [rotation]);
+
+  // Apply style when rotation changes or popup opens
+  useEffect(() => {
+    const timer = setTimeout(updatePopupStyle, 0);
+    return () => clearTimeout(timer);
+  }, [rotation, updatePopupStyle, isInteracted]);
+
 
   // 1. Distance Calculation
   const { data, isLoading, isError } = useQuery({
@@ -73,7 +129,6 @@ export const ConnectionLine = ({
 
   // 2. Fetch Logical Path Info
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
-    // THE FIX: Changed key to start with 'logical_fiber_paths' for correct invalidation
     queryKey: [
       'logical_fiber_paths',
       'segment',
@@ -122,8 +177,6 @@ export const ConnectionLine = ({
       }
     } else if (config?.connectionId) {
       setConnectionId(config.connectionId);
-      // Even if we have a connectionId from config, if logicalPaths came back empty or didn't have system_connection_id,
-      // we assume it's a manual link without an active service.
       setHasActiveService(false);
     } else {
       setHasActiveService(false);
@@ -142,7 +195,6 @@ export const ConnectionLine = ({
           .eq('id', existingPath.id);
         if (error) throw error;
       } else {
-        // Correctly insert with ports if it's a new entry
         const { error } = await supabase.from('logical_fiber_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
@@ -166,7 +218,6 @@ export const ConnectionLine = ({
     },
   });
 
-  // Events need stopPropagation to prevent map interaction/popup close
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     saveRemark(remarkText);
@@ -181,6 +232,16 @@ export const ConnectionLine = ({
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(true);
+  };
+
+  // Helper to manually close the popup since we hid the default button
+  const handleClosePopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (popupRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const map = (popupRef.current as any)._map;
+        if (map) map.closePopup();
+    }
   };
 
   const defaultColor =
@@ -231,24 +292,39 @@ export const ConnectionLine = ({
         color,
         weight: type === 'solid' ? 4 : 2.5,
         opacity: type === 'solid' ? 1 : 0.7,
-        // Ensure dash array is visible
         dashArray: type === 'dashed' ? '20, 20' : undefined,
       }}
       eventHandlers={{
         click: () => setIsInteracted(true),
-        popupopen: () => setIsInteracted(true),
+        popupopen: () => {
+            setIsInteracted(true);
+            setTimeout(updatePopupStyle, 10);
+        },
       }}
       ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
     >
       <Popup
+        ref={popupRef}
         autoClose={false}
         closeOnClick={false}
         className={theme === 'dark' ? 'dark-popup' : ''}
         minWidth={320}
         maxWidth={400}
+        offset={popupOffset} // Dynamic offset based on rotation
+        closeButton={false} // Hide default close button
       >
-        <div className="text-sm w-full">
-          <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300">
+        <div className="text-sm w-full relative">
+          
+          {/* Custom Close Button inside the rotated content */}
+          <button 
+            onClick={handleClosePopup}
+            className="absolute -top-3 -right-3 p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all z-50"
+            title="Close"
+          >
+            <X size={14} />
+          </button>
+
+          <div className="font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300 pr-6">
             {type === 'solid' ? 'Segment Details' : 'Spur Connection'}
           </div>
 
@@ -269,7 +345,6 @@ export const ConnectionLine = ({
             )
           )}
 
-          {/* Remarks Section - Only visible if NO active service */}
           {!hasActiveService && (
             <div className="mb-3 bg-gray-50 dark:bg-gray-900/40 rounded-lg p-2 border border-gray-200 dark:border-gray-700 group hover:shadow-sm transition-all">
               <div className="flex items-center justify-between mb-1">
@@ -280,7 +355,6 @@ export const ConnectionLine = ({
                 {!isEditingRemark && (
                   <button
                     onClick={handleEditClick}
-                    // Hover effect for edit button
                     className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-blue-600 dark:text-blue-400 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                     title="Edit Remarks"
                   >
@@ -297,7 +371,6 @@ export const ConnectionLine = ({
                     value={remarkText}
                     onChange={(e) => setRemarkText(e.target.value)}
                     placeholder="Enter remarks here..."
-                    // Crucial: Stop propagation on input events
                     onKeyDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   />
