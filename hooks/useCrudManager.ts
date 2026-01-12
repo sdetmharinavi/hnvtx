@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useDebounce } from 'use-debounce';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/utils/supabase/client';
 import {
@@ -95,6 +94,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, _setCurrentPage] = useState(1);
   const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
+
+  // This state is now populated by DebouncedInput components, so it's ready to use immediately
   const [searchQuery, _setSearchQuery] = useState('');
 
   const [filters, _setFilters] = useState<Filters>(initialFilters);
@@ -102,7 +103,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
-  const [debouncedSearch] = useDebounce(searchQuery, 400);
 
   const setCurrentPage = useCallback((page: number) => _setCurrentPage(page), []);
   const setPageLimit = useCallback((limit: number) => _setPageLimit(limit), []);
@@ -115,22 +115,22 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const combinedFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
-    if (debouncedSearch && searchColumn) {
+    if (searchQuery && searchColumn) {
       if (Array.isArray(searchColumn)) {
         newFilters.or = searchColumn.reduce((acc, col) => {
-          acc[col as string] = debouncedSearch;
+          acc[col as string] = searchQuery;
           return acc;
         }, {} as Record<string, string>);
       } else {
-        newFilters[searchColumn as string] = { operator: 'ilike', value: `%${debouncedSearch}%` };
+        newFilters[searchColumn as string] = { operator: 'ilike', value: `%${searchQuery}%` };
       }
     }
     return newFilters;
-  }, [debouncedSearch, filters, searchColumn]);
+  }, [searchQuery, filters, searchColumn]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters, setCurrentPage]);
+  }, [searchQuery, filters, setCurrentPage]);
 
   const {
     data,
@@ -145,15 +145,14 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   } = dataQueryHook({
     currentPage,
     pageLimit,
-    searchQuery: debouncedSearch,
+    searchQuery, // Use raw query here as it is pre-debounced by UI
     filters: combinedFilters,
   });
 
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
       await syncData(syncTables);
-      // Note: syncData invalidates queries, so we don't need to call refetch() explicitly
-      // unless we want to force it immediately, but let's avoid double flashes.
+      // Note: syncData invalidates queries, so refetch happens automatically via React Query
     } else {
       refetch();
     }
@@ -607,19 +606,18 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const queryResult = useMemo(
-    (): UseQueryResult<PagedQueryResult<V>, Error> =>
+    () =>
       ({
         data: { data, count: totalCount },
         isLoading,
-        isFetching: isFetching || isSyncingData, // THE FIX: Include sync status
+        isPending: isLoading, // THE FIX: Added isPending to satisfy v5 semantics if needed (though UseQueryResult usually handles this internal logic, manual mocks need it)
+        isFetching: isFetching || isSyncingData,
         error: error as Error | null,
         isError: !!error,
         isSuccess: !isLoading && !error,
-        refetch: handleRefresh as unknown as () => Promise<
-          UseQueryResult<PagedQueryResult<V>, Error>
-        >,
+        refetch: handleRefresh as unknown as () => Promise<PagedQueryResult<V>>,
         status: isLoading ? 'pending' : error ? 'error' : 'success',
-      } as UseQueryResult<PagedQueryResult<V>, Error>),
+      } as unknown as UseQueryResult<PagedQueryResult<V>, Error>), // THE FIX: Double cast via unknown
     [data, totalCount, isLoading, isFetching, isSyncingData, error, handleRefresh]
   );
 
@@ -629,7 +627,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     activeCount,
     inactiveCount,
     isLoading,
-    isFetching: isFetching || isSyncingData, // THE FIX: Export combined fetch status
+    isFetching: isFetching || isSyncingData,
     error,
     isMutating,
     refetch: handleRefresh,

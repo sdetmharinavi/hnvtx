@@ -120,6 +120,7 @@ async function performFullSync(
     let offset = 0;
     let hasMore = true;
     let totalSynced = 0;
+    let fetchSuccessful = true; // New Flag to track sync integrity
 
     // 1. Fetch pending local mutations to respect offline work
     let pendingTasks: MutationTask[] = [];
@@ -144,57 +145,56 @@ async function performFullSync(
 
     // 2. Fetch & Upsert Loop
     while (hasMore) {
-      const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
-        p_view_name: entityName,
-        p_limit: BATCH_SIZE,
-        p_offset: offset,
-        p_filters: {},
-      });
-
-      if (rpcError) throw rpcError;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let batchData = (rpcResponse as { data: any[] })?.data || [];
-      const validDataCount = batchData.length;
-
-      if (validDataCount > 0) {
-        // Track IDs from server
-        batchData.forEach(item => {
-            if (item.id !== undefined && item.id !== null) {
-                serverIdsSeen.add(String(item.id));
-            } else if (entityName === 'ring_based_systems') {
-                // Special case for composite keys if needed, 
-                // but Dexie bulkDelete usually needs primary keys. 
-                // ring_based_systems uses [system_id, ring_id].
-                // For simplicity in this generic function, we might skip pruning 
-                // complex composite key tables or handle them specifically if needed.
-                // Assuming standard 'id' for most tables.
-            }
+      // Use try/catch within loop to fail safely
+      try {
+        const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
+            p_view_name: entityName,
+            p_limit: BATCH_SIZE,
+            p_offset: offset,
+            p_filters: {},
         });
 
-        // Merge local edits onto server data
-        if (pendingTasks.length > 0) {
-            batchData = mergePendingMutations(batchData, pendingTasks);
+        if (rpcError) throw rpcError;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let batchData = (rpcResponse as { data: any[] })?.data || [];
+        const validDataCount = batchData.length;
+
+        if (validDataCount > 0) {
+            // Track IDs from server
+            batchData.forEach(item => {
+                if (item.id !== undefined && item.id !== null) {
+                    serverIdsSeen.add(String(item.id));
+                }
+            });
+
+            // Merge local edits onto server data
+            if (pendingTasks.length > 0) {
+                batchData = mergePendingMutations(batchData, pendingTasks);
+            }
+
+            // UPSERT (put)
+            await db.transaction('rw', table, async () => {
+                await table.bulkPut(batchData);
+            });
+
+            totalSynced += batchData.length;
         }
 
-        // UPSERT (put) instead of add. This updates existing records and adds new ones.
-        await db.transaction('rw', table, async () => {
-            await table.bulkPut(batchData);
-        });
-
-        totalSynced += batchData.length;
-      }
-
-      if (validDataCount < BATCH_SIZE) {
-        hasMore = false;
-      } else {
-        offset += BATCH_SIZE;
+        if (validDataCount < BATCH_SIZE) {
+            hasMore = false;
+        } else {
+            offset += BATCH_SIZE;
+        }
+      } catch (error) {
+        console.error(`[Sync] Error syncing batch for ${entityName}`, error);
+        fetchSuccessful = false; // Mark sync as tainted
+        hasMore = false; // Stop loop
+        throw error; // Propagate error to update status
       }
     }
 
     // 3. Handle Local Creations (Pending Inserts)
-    // We explicitly re-apply pending inserts to ensure they exist locally
-    // (in case the merge step above didn't cover them because they weren't in server batches)
     if (pendingTasks.length > 0) {
         const inserts = pendingTasks.filter(t => t.type === 'insert').map(t => t.payload);
         if (inserts.length > 0) {
@@ -210,12 +210,12 @@ async function performFullSync(
         }
     }
 
-    // 4. Prune Stale Data (The "Sweep" Phase)
-    // We only perform this if the table uses a simple 'id' primary key.
-    // Complex composite keys are harder to diff generically and less prone to "stale ghost" issues in this specific app.
-    if (table.schema.primKey.name === 'id') {
+    // 4. Prune Stale Data (The "Sweep" Phase) - SAFELY
+    // Only prune if the fetch loop completed successfully without errors.
+    // This prevents deleting local data if the server connection drops midway.
+    if (fetchSuccessful && table.schema.primKey.name === 'id') {
         const allLocalKeys = await table.toCollection().primaryKeys();
-        
+
         // Find keys present locally but NOT on server AND NOT pending insert
         const keysToDelete = allLocalKeys.filter(key => {
             const keyStr = String(key);
@@ -226,12 +226,14 @@ async function performFullSync(
             // console.log(`[Sync] Pruning ${keysToDelete.length} stale records from ${entityName}`);
             await table.bulkDelete(keysToDelete);
         }
+    } else if (!fetchSuccessful) {
+        console.warn(`[Sync] Skipping prune for ${entityName} due to fetch errors.`);
     }
 
     return totalSynced;
 }
 
-// Incremental sync logic remains unchanged as it inherently relies on upserts
+// Incremental sync logic (unchanged)
 async function performIncrementalSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,

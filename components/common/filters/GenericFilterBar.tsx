@@ -3,7 +3,8 @@
 
 import React, { memo } from 'react';
 import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
-import { Input } from '@/components/common/ui/Input';
+// THE FIX: Import DebouncedInput instead of standard Input
+import { DebouncedInput } from '@/components/common/ui/Input/DebouncedInput';
 import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 import { Filters } from '@/hooks/database';
@@ -14,33 +15,21 @@ export type FilterConfig = {
   options: Option[];
   placeholder?: string;
   isLoading?: boolean;
-  // Added 'multi-select' type
   type?: 'select' | 'native-select' | 'multi-select';
 };
 
 interface GenericFilterBarProps {
-  // Search Props
   searchQuery: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
-
-  // Filter Props
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filters: Record<string, any>;
-  // For standard single filters
   onFilterChange: (key: string, value: string | null) => void;
-  // For multi-select filters (direct state setter needed for complex logic)
   setFilters?: React.Dispatch<React.SetStateAction<Filters>>;
   filterConfigs: FilterConfig[];
-
-  // View Mode Props (Optional)
   viewMode?: 'grid' | 'table';
   onViewModeChange?: (mode: 'grid' | 'table') => void;
-
-  // Custom Actions (Optional - e.g., "Print Feed" in Diary)
   extraActions?: React.ReactNode;
-
-  // Style
   className?: string;
 }
 
@@ -64,20 +53,21 @@ export const GenericFilterBar = memo(
       >
         {/* Search Section */}
         <div className="w-full lg:w-96">
-          <Input
+          {/* THE FIX: Use DebouncedInput to prevent parent re-renders on every keystroke */}
+          <DebouncedInput
             placeholder={searchPlaceholder}
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={onSearchChange}
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
+            debounce={300} // Wait 300ms after typing stops before triggering search
           />
         </div>
 
         {/* Filters & Toggles Section */}
         <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center no-scrollbar flex-wrap">
           {filterConfigs.map((config) => {
-            // 1. Multi-Select
             if (config.type === 'multi-select') {
               if (!setFilters) {
                 console.warn(
@@ -87,7 +77,6 @@ export const GenericFilterBar = memo(
               }
               return (
                 <div key={config.key} className="min-w-[180px]">
-                  {/* We hide the label inside the bar to save space, passing empty string */}
                   <MultiSelectFilter
                     label={config.label}
                     filterKey={config.key}
@@ -99,7 +88,6 @@ export const GenericFilterBar = memo(
               );
             }
 
-            // 2. Native Select
             if (config.type === 'native-select') {
               return (
                 <div key={config.key} className="min-w-[140px]">
@@ -119,7 +107,6 @@ export const GenericFilterBar = memo(
               );
             }
 
-            // 3. Searchable Select (Default)
             return (
               <div key={config.key} className="min-w-[160px]">
                 <SearchableSelect
@@ -134,16 +121,13 @@ export const GenericFilterBar = memo(
             );
           })}
 
-          {/* Extra Actions (Buttons) */}
           {extraActions && (
             <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-3 ml-1">
               {extraActions}
             </div>
           )}
 
-          {/* View Mode Toggle */}
           {viewMode && onViewModeChange && (
-            // THE FIX: Changed 'hidden sm:flex' to 'flex' to make it visible on mobile
             <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 ml-auto lg:ml-0">
               <button
                 onClick={() => onViewModeChange('grid')}
