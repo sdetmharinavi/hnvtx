@@ -320,7 +320,7 @@ export const ConnectionLine = ({
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-gray-600 dark:text-gray-400 italic wrap-break-words pl-1 min-h-[1.2em]">
+                <p className="text-sm text-gray-900 dark:text-gray-400 italic wrap-break-words pl-1 min-h-[1.2em]">
                   {remarkText || 'No remarks added.'}
                 </p>
               )}
