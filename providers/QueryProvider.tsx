@@ -11,8 +11,21 @@ import { PageSpinner } from '@/components/common/ui';
 
 function HydrationGate({ children }: { children: ReactNode }) {
   const isRestoring = useIsRestoring();
+  const [showAnyway, setShowAnyway] = useState(false);
 
-  if (isRestoring) {
+  useEffect(() => {
+    // SAFETY VALVE: If restoration takes > 3 seconds, unblock the UI.
+    // This prevents the app from getting stuck on the spinner if IndexedDB hangs.
+    if (isRestoring) {
+      const timer = setTimeout(() => {
+        console.warn('Hydration took too long, showing app anyway.');
+        setShowAnyway(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isRestoring]);
+
+  if (isRestoring && !showAnyway) {
     return <PageSpinner text="Restoring session..." />;
   }
 
@@ -78,7 +91,6 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           buster: buster,
           maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
 
-          // THE FIX: Move shouldDehydrateQuery inside dehydrateOptions
           dehydrateOptions: {
             shouldDehydrateQuery: (query: Query) => {
               const queryKey = query.queryKey;
@@ -88,14 +100,11 @@ export function QueryProvider({ children }: { children: ReactNode }) {
               const firstKey = String(queryKey[0]);
 
               // LIST OF KEYS MANAGED BY DEXIE (Do Not Persist in React Query)
-              // Storing these twice wastes storage and causes hydration lag.
               const DEXIE_MANAGED_KEYS = [
-                'table', // useTableQuery
-                'rpc', // useRpcQuery
-                'paged-data', // usePagedData
-                'rpc-record', // useRpcRecord
-
-                // Specific Entity Keys (from useLocalFirstQuery usage)
+                'table', 
+                'rpc', 
+                'paged-data', 
+                'rpc-record', 
                 'systems-data',
                 'nodes-data',
                 'rings-manager-data',
@@ -110,8 +119,6 @@ export function QueryProvider({ children }: { children: ReactNode }) {
                 'lookup_types-data',
                 'e-files',
                 'diary_data-for-month',
-
-                // Complex Aggregates
                 'dashboard-overview',
                 'ring-systems-data',
                 'ring-connection-paths',
@@ -122,12 +129,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
                 'ofc-routes-for-selection',
               ];
 
-              // If the query starts with any of the managed keys, SKIP persistence
               if (DEXIE_MANAGED_KEYS.some((k) => firstKey.includes(k))) {
                 return false;
               }
 
-              // Default: Persist only small, critical UI states
               return true;
             },
           },

@@ -1,4 +1,3 @@
-// path: hooks/useAuth.ts
 // hooks/useAuth.ts
 'use client';
 
@@ -8,13 +7,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { AuthError } from '@supabase/supabase-js';
 
-// CORRECTED: Define a consistent return type for auth actions
+// ... (Interface unchanged)
 interface AuthActionResult {
   success: boolean;
   error: AuthError | null;
 }
 
-// Auth Hook
 export const useAuth = () => {
   const {
     user,
@@ -71,12 +69,22 @@ export const useAuth = () => {
     };
     initAuth();
 
+    // FAILSAFE: Force unauthenticated state if loading takes too long (e.g. 8s)
+    const timeoutId = setTimeout(() => {
+      if (useAuthStore.getState().authState === 'loading') {
+         console.warn("Auth check timed out. Forcing unauthenticated state.");
+         setAuthState('unauthenticated');
+      }
+    }, 8000);
+
     return () => {
       isMounted = false;
       subscription?.unsubscribe();
+      clearTimeout(timeoutId);
     };
   }, [supabase, setUser, setAuthState]);
 
+  // ... (rest of the file remains exactly the same)
   const signUp = useCallback(
     async (credentials: {
       email: string;
