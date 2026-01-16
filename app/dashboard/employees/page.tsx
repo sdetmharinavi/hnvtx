@@ -69,7 +69,7 @@ export default function EmployeesPage() {
     tableName: 'employee_designations',
     valueField: 'id',
     labelField: 'name',
-    filters: { status: true },
+    filters: { status: 'true' },
     orderBy: 'name',
     orderDir: 'asc',
   });
@@ -127,6 +127,8 @@ export default function EmployeesPage() {
       'from-cyan-500 to-cyan-600',
     ];
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    console.log(colors[index % colors.length]);
+
     return colors[index % colors.length];
   };
 

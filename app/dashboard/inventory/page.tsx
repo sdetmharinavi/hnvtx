@@ -246,6 +246,7 @@ export default function InventoryPage() {
             key={item.id}
             entity={item}
             title={item.name || 'Unnamed Item'}
+            status={item.status_name || 'Unknown'}
             // Custom Status Badge (Stock Level)
             subBadge={
               <div className="flex items-center gap-2 mb-2">
