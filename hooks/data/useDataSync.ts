@@ -20,12 +20,17 @@ interface EntitySyncConfig {
 }
 
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  'v_audit_logs': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'user_activity_logs' },
-  'v_inventory_transactions_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'inventory_transactions' },
-  'v_file_movements_extended': { strategy: 'incremental', timestampColumn: 'created_at', relatedTable: 'file_movements' },
-  'inventory_transactions': { strategy: 'incremental', timestampColumn: 'created_at' },
-  'user_activity_logs': { strategy: 'incremental', timestampColumn: 'created_at' },
-  'file_movements': { strategy: 'incremental', timestampColumn: 'created_at' },
+  // THE FIX: Changed 'incremental' to 'full' to support deletions/purging.
+  // Full sync will detect that server has 0 records and prune the local DB.
+  'v_audit_logs': { strategy: 'full', relatedTable: 'user_activity_logs' },
+  'user_activity_logs': { strategy: 'full' },
+  
+  'v_inventory_transactions_extended': { strategy: 'full', relatedTable: 'inventory_transactions' },
+  'inventory_transactions': { strategy: 'full' },
+  
+  'v_file_movements_extended': { strategy: 'full', relatedTable: 'file_movements' },
+  'file_movements': { strategy: 'full' },
+
   'systems': { strategy: 'full' },
   'system_connections': { strategy: 'full' },
   'ports_management': { strategy: 'full' },

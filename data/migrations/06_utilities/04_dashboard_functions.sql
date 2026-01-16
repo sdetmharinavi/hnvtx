@@ -1,5 +1,5 @@
 -- path: data/migrations/06_utilities/04_dashboard_functions.sql
--- Description: Contains functions for dashboard aggregations with filtering support.
+-- Description: Contains functions for dashboard aggregations with filtering support. [FIXED: Handle NULL keys in jsonb_object_agg]
 
 CREATE OR REPLACE FUNCTION public.get_dashboard_overview(
     p_status TEXT DEFAULT NULL,
@@ -42,11 +42,11 @@ BEGIN
 
     SELECT jsonb_build_object(
         'system_status_counts', COALESCE((
-            SELECT jsonb_object_agg(CASE WHEN s.status THEN 'Active' ELSE 'Inactive' END, count) 
+            SELECT jsonb_object_agg(CASE WHEN s.status THEN 'Active' ELSE 'Inactive' END, count)
             FROM (
-                SELECT s.status, COUNT(*) as count 
+                SELECT s.status, COUNT(*) as count
                 FROM public.v_systems_complete s
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR s.status = v_status_bool) AND
                     (p_type IS NULL OR s.system_type_name = p_type) AND
                     (p_region IS NULL OR s.system_maintenance_terminal_name = p_region) AND
@@ -57,11 +57,11 @@ BEGIN
         ), '{}'::jsonb),
 
         'node_status_counts', COALESCE((
-            SELECT jsonb_object_agg(CASE WHEN n.status THEN 'Active' ELSE 'Inactive' END, count) 
+            SELECT jsonb_object_agg(CASE WHEN n.status THEN 'Active' ELSE 'Inactive' END, count)
             FROM (
-                SELECT n.status, COUNT(*) as count 
+                SELECT n.status, COUNT(*) as count
                 FROM public.v_nodes_complete n
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR n.status = v_status_bool) AND
                     (p_node_type IS NULL OR n.node_type_name = p_node_type) AND
                     (p_region IS NULL OR n.maintenance_area_name = p_region) AND
@@ -71,12 +71,12 @@ BEGIN
         ), '{}'::jsonb),
 
         'path_operational_status', COALESCE((
-            SELECT jsonb_object_agg(operational_status, count) 
+            SELECT jsonb_object_agg(COALESCE(operational_status, 'Unknown'), count) -- FIX: Coalesce to prevent NULL key error
             FROM (
-                SELECT lfp.operational_status, COUNT(*) as count 
+                SELECT lfp.operational_status, COUNT(*) as count
                 FROM public.v_end_to_end_paths lfp
                 JOIN public.v_systems_complete src ON lfp.source_system_id = src.id
-                WHERE 
+                WHERE
                     (p_type IS NULL OR src.system_type_name = p_type) AND
                     (p_region IS NULL OR src.system_maintenance_terminal_name = p_region) AND
                     (p_query IS NULL OR lfp.path_name ILIKE '%' || p_query || '%')
@@ -89,7 +89,7 @@ BEGIN
                 'average_utilization_percent', COALESCE(ROUND(AVG(u.utilization_percent)::numeric, 2), 0),
                 'high_utilization_count', COUNT(*) FILTER (WHERE u.utilization_percent > 80),
                 'total_cables', COUNT(*)
-            ) 
+            )
             FROM public.v_cable_utilization u
             JOIN public.v_ofc_cables_complete c ON u.cable_id = c.id
             WHERE
@@ -107,17 +107,16 @@ BEGIN
                 'used', p.used
             ))
             FROM (
-                SELECT 
+                SELECT
                     pm.port_type_code,
                     COUNT(*) as count,
                     COUNT(*) FILTER (WHERE pm.port_admin_status = true) as active,
                     COUNT(*) FILTER (WHERE pm.port_utilization = true) as used
                 FROM public.v_ports_management_complete pm
                 JOIN public.v_systems_complete s ON pm.system_id = s.id
-                WHERE 
+                WHERE
                     (v_status_bool IS NULL OR s.status = v_status_bool) AND
                     (p_type IS NULL OR s.system_type_name = p_type) AND
-                    -- THIS IS THE FIX: Changed s.maintenance_area_name to s.system_maintenance_terminal_name
                     (p_region IS NULL OR s.system_maintenance_terminal_name = p_region) AND
                     (p_node_type IS NULL OR s.node_type_name = p_node_type) AND
                     (p_query IS NULL OR s.system_name ILIKE '%' || p_query || '%')
@@ -128,13 +127,13 @@ BEGIN
         'user_activity_last_30_days', v_user_activity,
 
         'systems_per_maintenance_area', COALESCE((
-            SELECT jsonb_object_agg(ma.name, s.system_count) 
+            SELECT jsonb_object_agg(COALESCE(ma.name, 'Unknown'), s.system_count) -- FIX: Coalesce here just in case
             FROM (
-                SELECT maintenance_terminal_id, COUNT(id) as system_count 
-                FROM public.systems 
-                WHERE maintenance_terminal_id IS NOT NULL 
+                SELECT maintenance_terminal_id, COUNT(id) as system_count
+                FROM public.systems
+                WHERE maintenance_terminal_id IS NOT NULL
                 GROUP BY maintenance_terminal_id
-            ) as s 
+            ) as s
             JOIN public.maintenance_areas ma ON s.maintenance_terminal_id = ma.id
         ), '{}'::jsonb)
     ) INTO result;
