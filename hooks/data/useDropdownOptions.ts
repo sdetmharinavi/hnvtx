@@ -267,7 +267,7 @@ export function usePortOptions(systemId: string | null) {
 
     const { data, error } = await createClient().rpc('get_paged_data', {
       p_view_name: 'v_ports_management_complete',
-      p_limit: 1000,
+      p_limit: 10000,
       p_offset: 0,
       p_order_by: 'port',
       p_order_dir: 'asc',

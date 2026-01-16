@@ -1,6 +1,5 @@
 // path: components/ofc/OfcForm/OfcForm.tsx
 import React, { useCallback, useMemo } from 'react';
-import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { Button } from '@/components/common/ui';
 import { useOfcFormData } from './hooks/useOfcFormData';
 import { useRouteGeneration } from '@/components/ofc/OfcForm/hooks/useRouteGeneration';
@@ -16,9 +15,12 @@ import {
   Ofc_cablesRowSchema,
   V_nodes_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { useCrudManager } from '@/hooks/useCrudManager';
-import { useNodesData } from '@/hooks/data/useNodesData';
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+// REMOVED: useCrudManager and useNodesData imports
+import {
+  useLookupTypeOptions,
+  useMaintenanceAreaOptions,
+  useActiveNodeOptions,
+} from '@/hooks/data/useDropdownOptions';
 import { FormSearchableSelect } from '@/components/common/form';
 import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 
@@ -48,13 +50,17 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
   const currentOfcTypeId = watch('ofc_type_id');
 
   // --- DATA FETCHING ---
-  const { data: nodesData, isLoading: nodesLoading } = useCrudManager<
-    'nodes',
-    V_nodes_completeRowSchema
-  >({
-    tableName: 'nodes',
-    dataQueryHook: useNodesData,
-  }).queryResult;
+
+  // THE FIX: Use useActiveNodeOptions instead of useCrudManager.
+  // useActiveNodeOptions has a hardcoded limit of 10,000, ignoring DEFAULTS.PAGE_SIZE.
+  const {
+    options: nodeOptions,
+    originalData: nodesRaw,
+    isLoading: nodesLoading,
+  } = useActiveNodeOptions();
+
+  // Cast raw data to correct type for internal logic usage
+  const nodes = useMemo(() => (nodesRaw || []) as V_nodes_completeRowSchema[], [nodesRaw]);
 
   const { options: ofcTypeOptions, isLoading: ofcTypesLoading } = useLookupTypeOptions(
     'OFC_TYPES',
@@ -75,15 +81,12 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
     [setValue]
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodes = useMemo(() => (nodesData as any)?.data || [], [nodesData]);
-
   const startingNodeName = useMemo(
-    () => nodes.find((node: V_nodes_completeRowSchema) => node.id === startingNodeId)?.name || null,
+    () => nodes.find((node) => node.id === startingNodeId)?.name || null,
     [nodes, startingNodeId]
   );
   const endingNodeName = useMemo(
-    () => nodes.find((node: V_nodes_completeRowSchema) => node.id === endingNodeId)?.name || null,
+    () => nodes.find((node) => node.id === endingNodeId)?.name || null,
     [nodes, endingNodeId]
   );
 
@@ -102,15 +105,6 @@ const OfcForm: React.FC<OfcFormProps> = ({ ofcCable, onSubmit, onClose, pageLoad
     ofcTypeOptions: ofcTypeOptions || [],
     setValue: setValueWithType,
   });
-
-  const nodeOptions = useMemo(
-    (): Option[] =>
-      nodes.map((node: V_nodes_completeRowSchema) => ({
-        value: String(node.id),
-        label: node.name || `Node ${node.id}`,
-      })),
-    [nodes]
-  );
 
   const startingNodeOptions = useMemo(
     () => nodeOptions.filter((option) => option.value !== endingNodeId),

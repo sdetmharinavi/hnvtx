@@ -1,8 +1,9 @@
+// components/layouts/DashboardPageLayout.tsx
 import React, { ReactNode } from 'react';
 import { PageHeader, PageHeaderProps } from '@/components/common/page-header';
 import { GenericFilterBar, FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { BulkActions } from '@/components/common/BulkActions';
-import { DataTable, DataTableProps } from '@/components/table';
+import { DataTable, DataTableProps, TablePagination } from '@/components/table'; // THE FIX: Added TablePagination import
 import { PublicTableOrViewName, Filters } from '@/hooks/database';
 
 interface DashboardPageLayoutProps<T extends PublicTableOrViewName> {
@@ -91,10 +92,16 @@ export function DashboardPageLayout<T extends PublicTableOrViewName>({
       {bulkActions && bulkActions.selectedCount > 0 && <BulkActions {...bulkActions} />}
 
       {viewMode === 'grid' ? (
-        <>
+        <div className="space-y-6">
           {renderGrid()}
           {isEmpty && emptyState}
-        </>
+          {/* THE FIX: Add Pagination for Grid View */}
+          {!isEmpty && tableProps.pagination && tableProps.pagination.total > 0 && (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+              <TablePagination pagination={tableProps.pagination} bordered={false} />
+            </div>
+          )}
+        </div>
       ) : (
         <DataTable<T> {...tableProps} />
       )}

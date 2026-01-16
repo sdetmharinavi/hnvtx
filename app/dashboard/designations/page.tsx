@@ -22,6 +22,8 @@ import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { Copy } from 'lucide-react';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
+// THE FIX: Import the dropdown hook
+import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 
 const DesignationFormModal = dynamic(
   () =>
@@ -62,16 +64,24 @@ export default function DesignationManagerPage() {
     syncTables: ['employee_designations', 'v_employee_designations'],
   });
 
+  // THE FIX: Fetch full list for dropdowns (limit 10,000)
+  const { options: parentOptions, isLoading: isLoadingParents } = useDropdownOptions({
+    tableName: 'employee_designations',
+    valueField: 'id',
+    labelField: 'name',
+    // We want all designations, even inactive ones might be parents historically,
+    // but usually only active ones should be selected. Let's show all for hierarchy completeness.
+    orderBy: 'name',
+    orderDir: 'asc',
+  });
+
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
     allDesignations,
     'name',
     'Designations'
   );
 
-  // --- PERMISSIONS ---
-  // Admins can Create/Edit
   const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  // Only Super Admin can Delete
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const isInitialLoad = isLoading && allDesignations.length === 0;
@@ -137,7 +147,6 @@ export default function DesignationManagerPage() {
     onRefresh: async () => {
       await refetch();
     },
-    // Only allow adding new items if user has edit permission
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
     exportConfig: canEdit ? { tableName: 'employee_designations' } : undefined,
@@ -184,7 +193,6 @@ export default function DesignationManagerPage() {
         isFetching={isFetching || isMutating}
         toggleStatusMutation={toggleStatusMutation}
         onEdit={canEdit ? handleOpenEditForm : () => {}}
-        // THE FIX: Pass delete handler only if user can delete
         onDelete={canDelete ? deleteManager.deleteSingle : undefined}
         onCreateNew={canEdit ? handleOpenCreateForm : () => {}}
         selectedEntityId={selectedDesignationId}
@@ -206,15 +214,22 @@ export default function DesignationManagerPage() {
           onClose={() => setFormOpen(false)}
           onSubmit={handleFormSubmit}
           designation={editingDesignation}
-          allDesignations={allDesignations.map((d) => ({
-            id: d.id ?? '',
-            name: d.name,
-            created_at: d.created_at ?? null,
-            updated_at: d.updated_at ?? null,
-            parent_id: d.parent_id ?? null,
-            status: d.status ?? null,
+          // THE FIX: Pass parentOptions instead of allDesignations
+          // We convert Option[] back to simple array of objects for the modal to process, or update modal to accept options directly.
+          // Since the modal expects Employee_designationsRowSchema[], we map:
+          allDesignations={parentOptions.map((opt) => ({
+            id: opt.value,
+            name: opt.label,
+            parent_id: null,
+            status: true,
+            created_at: null,
+            updated_at: null,
           }))}
-          isLoading={createDesignationMutation.isPending || updateDesignationMutation.isPending}
+          isLoading={
+            createDesignationMutation.isPending ||
+            updateDesignationMutation.isPending ||
+            isLoadingParents
+          }
         />
       )}
       <ConfirmModal
