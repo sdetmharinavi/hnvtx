@@ -7,7 +7,8 @@ import { getNodeIcon } from '@/utils/getNodeIcons';
 import { createLabelHtml } from './utils/labelUtils';
 import { DisplayNode } from '@/utils/mapUtils';
 import { PortDisplayInfo, RingMapNode } from './types';
-import { useEffect, useRef } from 'react';
+import { RefObject, useEffect, useRef } from 'react';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 interface NodeMarkerProps {
   node: DisplayNode<RingMapNode>;
@@ -18,8 +19,8 @@ interface NodeMarkerProps {
   isHighlighted: boolean;
   portsList: PortDisplayInfo[];
   displayIp: string | null;
-  markerRefs: React.MutableRefObject<{ [key: string]: L.Marker }>;
-  polylineRefs?: React.MutableRefObject<{ [key: string]: L.Polyline }>; // Type fix
+  markerRefs: RefObject<{ [key: string]: L.Marker }>;
+  polylineRefs?: RefObject<{ [key: string]: L.Polyline }>; // Type fix
   onNodeClick?: (nodeId: string) => void;
   onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
   rotation: number;
@@ -158,11 +159,7 @@ export const NodeMarker = ({
                   {node.lat.toFixed(5)}, {node.long.toFixed(5)}
                 </div>
               )}
-              {node.remark && (
-                <p className="italic text-xs text-gray-600 dark:text-gray-400 mt-2 border-t pt-2 dark:border-gray-700">
-                  {node.remark}
-                </p>
-              )}
+              <GenericRemarks remark={node.remark || ''} />
               {node.ip && (
                 <p className="font-mono text-xs mt-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded inline-block">
                   IP: {displayIp}

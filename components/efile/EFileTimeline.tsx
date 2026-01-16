@@ -7,6 +7,7 @@ import { UserRole } from '@/types/user-roles';
 import { Button } from '@/components/common/ui/Button';
 import { EditMovementModal } from './ActionModals';
 import { V_file_movements_extendedRowSchema } from '@/schemas/zod-schemas';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 interface Props {
   history: EFileMovementRow[];
@@ -145,13 +146,7 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
                 </div>
               </div>
 
-              {move.remarks && (
-                <div className="mt-3 p-3 bg-white/50 dark:bg-gray-900/30 rounded-lg border-l-2 border-gray-300 dark:border-gray-600">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 italic whitespace-pre-wrap wrap-break-words leading-relaxed">
-                    &quot;{move.remarks}&quot;
-                  </p>
-                </div>
-              )}
+              <GenericRemarks remark={move.remarks || ''} />
             </div>
           </div>
         );

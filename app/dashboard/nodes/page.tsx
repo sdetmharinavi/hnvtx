@@ -17,10 +17,11 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useStandardHeaderActions } from '@/components/common/page-header';
-import { FiCpu, FiMapPin, FiNavigation, FiMessageSquare, FiCopy } from 'react-icons/fi';
+import { FiCpu, FiMapPin, FiNavigation, FiCopy } from 'react-icons/fi';
 import { createStandardActions } from '@/components/table/action-helpers';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 const NodeFormModal = dynamic(
   () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
@@ -195,14 +196,7 @@ export default function NodesPage() {
                 ),
               },
             ]}
-            customFooter={
-              node.remark ? (
-                <div className="flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded w-full">
-                  <FiMessageSquare className="shrink-0 mt-0.5" />
-                  <span className="truncate">{node.remark}</span>
-                </div>
-              ) : null
-            }
+            customFooter={<GenericRemarks remark={node.remark || ''} />}
             onView={viewModal.open}
             onEdit={editModal.openEdit}
             onDelete={crudActions.handleDelete}

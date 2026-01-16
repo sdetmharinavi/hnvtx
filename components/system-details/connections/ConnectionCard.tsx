@@ -15,6 +15,7 @@ import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { formatIP } from '@/utils/formatters';
 import useIsMobile from '@/hooks/useIsMobile';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   service_end_node_name?: string | null;
@@ -291,15 +292,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 </div>
               </div>
             )}
-          {connection.remark && (
-              <div className="bg-white dark:bg-amber-800/50 px-3 py-2.5 rounded-lg border border-amber-200 dark:border-amber-700 shadow-sm">
-                <div className="text-xs text-amber-500 dark:text-amber-400 font-medium mb-1">
-                  Remarks
-                </div>
-                <TruncateTooltip className="font-medium text-gray-900 dark:text-gray-100 truncate" text={connection.remark} />
-                  
-              </div>
-            )}
+          <GenericRemarks remark={connection.remark || ''} />
           </div>
         )}
       </div>

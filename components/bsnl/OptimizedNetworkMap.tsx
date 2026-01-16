@@ -18,6 +18,7 @@ import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
 import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 // --- NEW CONTROLLER COMPONENT ---
 // Automatically zooms map to fit visible nodes ONLY when filters change or on mount.
@@ -201,7 +202,7 @@ const MapContent = ({
                     {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
                   </p>
                 )}
-                {node.remark && <p className="text-sm italic text-gray-500 mt-1">{node.remark}</p>}
+                <GenericRemarks remark={node.remark || ''} />
               </div>
             </Popup>
           </Marker>

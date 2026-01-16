@@ -2,8 +2,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, MessageSquare, Edit2, Save, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Save, X } from 'lucide-react';
 import { ButtonSpinner } from '@/components/common/ui';
+import GenericRemarks from '@/components/common/GenericRemarks';
+import { FiMessageSquare } from 'react-icons/fi';
 
 interface PopupRemarksRowProps {
   remark?: string | null;
@@ -60,16 +62,15 @@ export const PopupRemarksRow: React.FC<PopupRemarksRowProps> = ({
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </div>
         )}
-        <MessageSquare size={13} className="shrink-0 text-amber-500 dark:text-amber-400" />
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 truncate">
-          {remark ? remark : 'Remarks'}
-        </span>
+        <GenericRemarks remark={remark || ''} />
         {!hasRemark && canEdit && (
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">(Empty)</span>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">
+            <FiMessageSquare className="shrink-0 mt-0.5" />
+          </span>
         )}
         {canEdit && (
           <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-            {isExpanded ? 'Less' : 'More'}
+            {isExpanded ? 'Close' : 'See Remarks'}
           </span>
         )}
       </div>

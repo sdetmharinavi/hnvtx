@@ -4,7 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock, FiInfo } from 'react-icons/fi';
+import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
@@ -22,6 +22,7 @@ import { Row } from '@/hooks/database';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -154,18 +155,20 @@ export default function OfcPage() {
               { icon: FiMapPin, label: 'Area', value: cable.maintenance_area_name },
               { icon: FiActivity, label: 'Asset No', value: cable.asset_no, optional: true },
               { icon: FiDatabase, label: 'Transnet ID', value: cable.transnet_id, optional: true },
-              { icon: FiInfo, label: 'Remark', value: cable.remark, optional: true },
             ]}
             customFooter={
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full">
-                <div className="flex items-center gap-1.5">
-                  <FiClock className="w-3.5 h-3.5" />
-                  <span>Activity {timeAgo}</span>
+              <>
+                <GenericRemarks remark={cable.remark || ''} />
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full">
+                  <div className="flex items-center gap-1.5">
+                    <FiClock className="w-3.5 h-3.5" />
+                    <span>Activity {timeAgo}</span>
+                  </div>
+                  <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950">
+                    {cable.current_rkm} km
+                  </span>
                 </div>
-                <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950">
-                  {cable.current_rkm} km
-                </span>
-              </div>
+              </>
             }
             onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
             onEdit={editModal.openEdit}

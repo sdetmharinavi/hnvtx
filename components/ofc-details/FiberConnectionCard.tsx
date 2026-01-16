@@ -10,6 +10,7 @@ import {
 } from 'react-icons/fi';
 import { formatDate } from '@/utils/formatters';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 interface FiberConnectionCardProps {
   fiber: V_ofc_connections_completeRowSchema;
@@ -242,11 +243,7 @@ export const FiberConnectionCard: React.FC<FiberConnectionCardProps> = ({ fiber,
             </span>
           </div>
 
-          {fiber.remark && (
-            <div className="bg-gray-50 dark:bg-gray-900/20 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800/50 text-xs  text-amber-600 dark:text-amber-400 italic">
-              <TruncateTooltip text={fiber.remark} />
-            </div>
-          )}
+          <GenericRemarks remark={fiber.remark || ''} />
         </div>
       </div>
 

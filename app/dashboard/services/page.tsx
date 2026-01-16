@@ -18,7 +18,6 @@ import {
   Activity,
   Tag,
   Hash,
-  Info,
 } from 'lucide-react';
 import { useTableInsert, useTableUpdate } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
@@ -30,6 +29,7 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 // Helper Type for allocated systems JSON
 interface AllocatedSystem {
@@ -252,12 +252,7 @@ export default function ServicesPage() {
             customFooter={
               <div className="space-y-2 w-full">
                 {/* Remarks */}
-                {service.description && (
-                  <div className="flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded w-full">
-                    <Info className="shrink-0 w-3 h-3 mt-0.5" />
-                    <span className="truncate">{service.description}</span>
-                  </div>
-                )}
+                <GenericRemarks remark={service.description || ''} />
 
                 {/* Allocated Systems Logic */}
                 {allocatedSystems.length > 0 && (

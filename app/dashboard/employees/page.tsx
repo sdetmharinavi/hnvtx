@@ -20,9 +20,10 @@ import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useMaintenanceAreaOptions, useDropdownOptions } from '@/hooks/data/useDropdownOptions';
-import { FiUsers, FiPhone, FiMail, FiMapPin, FiMessageSquare } from 'react-icons/fi';
+import { FiUsers, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
 import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 const EmployeeForm = dynamic(
   () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
@@ -127,7 +128,6 @@ export default function EmployeesPage() {
       'from-cyan-500 to-cyan-600',
     ];
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    console.log(colors[index % colors.length]);
 
     return colors[index % colors.length];
   };
@@ -157,17 +157,10 @@ export default function EmployeesPage() {
           }
           dataItems={[
             { icon: FiPhone, label: 'Contact', value: emp.employee_contact || 'N/A' },
-            { icon: FiMail, label: 'Email', value: emp.employee_email || 'N/A' },
-            { icon: FiMapPin, label: 'Area', value: emp.maintenance_area_name || 'Unassigned' },
+            { icon: FiMail, label: 'Email', value: emp.employee_email, optional: true },
+            { icon: FiMapPin, label: 'Area', value: emp.maintenance_area_name, optional: true },
           ]}
-          customFooter={
-            emp.remark ? (
-              <div className="flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded w-full">
-                <FiMessageSquare className="shrink-0 mt-0.5" />
-                <span className="truncate">{emp.remark}</span>
-              </div>
-            ) : null
-          }
+          customFooter={<GenericRemarks remark={emp.remark || ''} />}
           onView={viewModal.open}
           onEdit={editModal.openEdit}
           onDelete={crudActions.handleDelete}
