@@ -1,3 +1,4 @@
+// app/dashboard/nodes/page.tsx
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -94,6 +95,8 @@ export default function NodesPage() {
         label: 'Node Type',
         options: nodeTypeOptions,
         isLoading: loadingNodeTypes,
+        // THE FIX: Disable client-side sorting to respect sort_order from DB
+        sortOptions: false,
       },
       {
         key: 'maintenance_terminal_id',

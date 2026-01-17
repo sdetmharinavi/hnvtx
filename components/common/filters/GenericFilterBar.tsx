@@ -3,7 +3,6 @@
 
 import React, { memo } from 'react';
 import { FiGrid, FiList, FiSearch } from 'react-icons/fi';
-// THE FIX: Import DebouncedInput instead of standard Input
 import { DebouncedInput } from '@/components/common/ui/Input/DebouncedInput';
 import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
@@ -16,6 +15,8 @@ export type FilterConfig = {
   placeholder?: string;
   isLoading?: boolean;
   type?: 'select' | 'native-select' | 'multi-select';
+  // THE FIX: Added sortOptions prop
+  sortOptions?: boolean;
 };
 
 interface GenericFilterBarProps {
@@ -53,7 +54,6 @@ export const GenericFilterBar = memo(
       >
         {/* Search Section */}
         <div className="w-full lg:w-96">
-          {/* THE FIX: Use DebouncedInput to prevent parent re-renders on every keystroke */}
           <DebouncedInput
             placeholder={searchPlaceholder}
             value={searchQuery}
@@ -61,7 +61,7 @@ export const GenericFilterBar = memo(
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
-            debounce={300} // Wait 300ms after typing stops before triggering search
+            debounce={600}
           />
         </div>
 
@@ -116,6 +116,8 @@ export const GenericFilterBar = memo(
                   onChange={(v) => onFilterChange(config.key, v)}
                   isLoading={config.isLoading}
                   clearable
+                  // THE FIX: Pass sortOptions down
+                  sortOptions={config.sortOptions}
                 />
               </div>
             );

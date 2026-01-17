@@ -96,6 +96,13 @@ export function useDropdownOptions({
         comparison = valA > valB ? 1 : valA < valB ? -1 : 0;
       }
 
+      // THE FIX: Secondary Sort by Label if primary sort is equal (e.g. all have sort_order 0)
+      if (comparison === 0 && orderBy !== labelField) {
+         const labelA = String(a[labelField] || '');
+         const labelB = String(b[labelField] || '');
+         return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+
       return orderDir === 'asc' ? comparison : -comparison;
     });
   };
@@ -135,7 +142,7 @@ export function useDropdownOptions({
   return { options, isLoading, originalData: data || [] };
 }
 
-// ... (Rest of exports remain same) ...
+// ... (Rest of exports) ...
 
 export const useLookupTypeOptions = (
   category: string,
