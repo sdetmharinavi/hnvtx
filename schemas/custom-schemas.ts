@@ -69,6 +69,7 @@ const segmentAtJcSchema = z.object({
   segment_name: z.string(),
   fiber_count: cable_segmentsRowSchema.shape.fiber_count,
   fibers: z.array(fiberAtSegmentSchema),
+  distance_km: z.number().nullable().optional(),
 });
 
 export const jcSplicingDetailsSchema = z.object({

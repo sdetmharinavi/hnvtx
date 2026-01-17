@@ -1,4 +1,4 @@
-// path: hooks/database/route-manager-hooks.ts
+// hooks/database/route-manager-hooks.ts
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
@@ -259,6 +259,7 @@ export function useJcSplicingDetails(jcId: string | null) {
             segment_id: seg.id,
             segment_name: segName,
             fiber_count: seg.fiber_count,
+            distance_km: seg.distance_km, // ADDED: Mapped from local DB
             fibers: fibers,
           };
         });

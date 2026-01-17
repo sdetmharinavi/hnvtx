@@ -367,7 +367,7 @@ GRANT EXECUTE ON FUNCTION public.manage_splice(TEXT, UUID, UUID, UUID, INT, UUID
 
 
 
--- Fetches structured JSON for the splice matrix UI, showing all connections at a physical node.
+-- UPDATED FUNCTION: Fetches structured JSON for the splice matrix UI with distance_km included.
 CREATE OR REPLACE FUNCTION public.get_jc_splicing_details(p_jc_id UUID)
 RETURNS JSONB
 LANGUAGE sql
@@ -375,68 +375,67 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
--- Fetches info about the requested JC
 WITH jc_info AS (
-  SELECT jc.id, n.name, jc.node_id 
-  FROM public.junction_closures jc 
-  JOIN public.nodes n ON jc.node_id = n.id 
+  SELECT jc.id, n.name, jc.node_id
+  FROM public.junction_closures jc
+  JOIN public.nodes n ON jc.node_id = n.id
   WHERE jc.id = p_jc_id
 ),
--- Finds all JCs at the same node 
 all_jcs_at_node AS (
-  SELECT id 
-  FROM public.junction_closures 
+  SELECT id
+  FROM public.junction_closures
   WHERE node_id = (SELECT node_id FROM jc_info)
-), 
--- Finds all segments at the same node 
+),
 segments_at_jc AS (
-  SELECT 
-    cs.id as segment_id, 
-    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name, 
-    cs.fiber_count
-  FROM public.cable_segments cs 
+  SELECT
+    cs.id as segment_id,
+    oc.route_name || ' (Seg ' || cs.segment_order || ')' as segment_name,
+    cs.fiber_count,
+    cs.distance_km -- ADDED
+  FROM public.cable_segments cs
   JOIN public.ofc_cables oc ON cs.original_cable_id = oc.id
-  WHERE cs.start_node_id = (SELECT node_id FROM jc_info) 
+  WHERE cs.start_node_id = (SELECT node_id FROM jc_info)
      OR cs.end_node_id = (SELECT node_id FROM jc_info)
-), 
+),
 fiber_universe AS (
-  SELECT s.segment_id, series.i as fiber_no 
+  SELECT s.segment_id, series.i as fiber_no
   FROM segments_at_jc s, generate_series(1, s.fiber_count) series(i)
-), 
+),
 splice_info AS (
   SELECT
-    fs.id as splice_id, 
-    fs.jc_id, 
-    fs.incoming_segment_id, 
-    fs.incoming_fiber_no, 
-    fs.outgoing_segment_id, 
-    fs.outgoing_fiber_no, 
+    fs.id as splice_id,
+    fs.jc_id,
+    fs.incoming_segment_id,
+    fs.incoming_fiber_no,
+    fs.outgoing_segment_id,
+    fs.outgoing_fiber_no,
     fs.loss_db,
-    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')' 
-     FROM cable_segments cs_out 
-     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id 
+    (SELECT oc.route_name || ' (Seg ' || cs_out.segment_order || ')'
+     FROM cable_segments cs_out
+     JOIN public.ofc_cables oc ON cs_out.original_cable_id = oc.id
      WHERE cs_out.id = fs.outgoing_segment_id) as outgoing_segment_name,
-    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')' 
-     FROM cable_segments cs_in 
-     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id 
+    (SELECT oc.route_name || ' (Seg ' || cs_in.segment_order || ')'
+     FROM cable_segments cs_in
+     JOIN public.ofc_cables oc ON cs_in.original_cable_id = oc.id
      WHERE cs_in.id = fs.incoming_segment_id) as incoming_segment_name
-  FROM public.fiber_splices fs 
+  FROM public.fiber_splices fs
   WHERE fs.jc_id IN (SELECT id FROM all_jcs_at_node)
 )
 SELECT jsonb_build_object(
   'junction_closure', (SELECT to_jsonb(j) FROM jc_info j),
   'segments_at_jc', (
     SELECT jsonb_agg(jsonb_build_object(
-      'segment_id', seg.segment_id, 
-      'segment_name', seg.segment_name, 
+      'segment_id', seg.segment_id,
+      'segment_name', seg.segment_name,
       'fiber_count', seg.fiber_count,
+      'distance_km', seg.distance_km, -- ADDED
       'fibers', (
         SELECT jsonb_agg(jsonb_build_object(
           'fiber_no', fu.fiber_no,
-          'status', CASE 
-            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming' 
-            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing' 
-            ELSE 'available' 
+          'status', CASE
+            WHEN s_in.splice_id IS NOT NULL THEN 'used_as_incoming'
+            WHEN s_out.splice_id IS NOT NULL THEN 'used_as_outgoing'
+            ELSE 'available'
           END,
           'splice_id', COALESCE(s_in.splice_id, s_out.splice_id),
           'connected_to_segment', COALESCE(s_in.outgoing_segment_name, s_out.incoming_segment_name),
@@ -444,11 +443,11 @@ SELECT jsonb_build_object(
           'loss_db', COALESCE(s_in.loss_db, s_out.loss_db)
         ) ORDER BY fu.fiber_no)
         FROM fiber_universe fu
-        LEFT JOIN splice_info s_in 
-          ON fu.segment_id = s_in.incoming_segment_id 
+        LEFT JOIN splice_info s_in
+          ON fu.segment_id = s_in.incoming_segment_id
           AND fu.fiber_no = s_in.incoming_fiber_no
-        LEFT JOIN splice_info s_out 
-          ON fu.segment_id = s_out.outgoing_segment_id 
+        LEFT JOIN splice_info s_out
+          ON fu.segment_id = s_out.outgoing_segment_id
           AND fu.fiber_no = s_out.outgoing_fiber_no
         WHERE fu.segment_id = seg.segment_id
       )

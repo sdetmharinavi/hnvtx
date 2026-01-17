@@ -374,13 +374,14 @@ export default function SystemsPage() {
           }
           // Data Rows
           dataItems={[
-            { icon: FiMapPin, label: 'Location', value: sys.node_name || 'Unknown' },
+            { icon: FiMapPin, label: 'Location', value: sys.node_name, optional: true },
             {
               icon: FiActivity,
               label: 'IP Address',
-              value: sys.ip_address ? formatIP(sys.ip_address) : 'No IP',
+              value: formatIP(sys.ip_address),
+              optional: true,
             },
-            { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name || 'Unknown' },
+            { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
           ]}
           // Footer: Manage Ports
           extraActions={

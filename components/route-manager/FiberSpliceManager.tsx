@@ -322,7 +322,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
           <Button size="sm" onClick={() => setShowVisualizationModal(true)} variant="outline">
             View All Splices
           </Button>
-          {/* Ensure Apply Path Updates is also guarded */}
           {canEdit && (
             <Button
               size="sm"
@@ -362,8 +361,15 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
             <h4 className="font-bold text-sm mb-2 truncate">
               <TruncateTooltip text={segment.segment_name} />
             </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Fibers: {segment.fiber_count}
+
+            {/* UPDATED: Display both Fiber Count and Distance */}
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 flex flex-wrap gap-2">
+              <span className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border dark:border-gray-700">
+                {segment.fiber_count} Fibers
+              </span>
+              <span className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border dark:border-gray-700 font-mono">
+                {segment.distance_km ? `${segment.distance_km} km` : '0 km'}
+              </span>
             </p>
 
             {index < segments_at_jc.length - 1 && canEdit && (
@@ -392,11 +398,9 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
         junctionClosureId={junctionClosureId}
       />
 
-      {/* ... (Loss Modal Logic) ... */}
       {showLossModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* ... modal contents ... */}
             <h3 className="text-lg font-semibold mb-4">
               {pendingSpliceAction?.type === 'auto'
                 ? 'Auto-Splice Configuration'
@@ -461,7 +465,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
                     <label htmlFor="lossDb" className="block text-sm font-medium mb-2">
                       Loss (dB) for all splices
                     </label>
-                    {/* THE FIX: Changed type to "text" and inputMode="text" */}
                     <input
                       id="lossDb"
                       type="text"
@@ -479,7 +482,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
                 ) : (
                   <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
-                      {/* THE FIX: Changed type to "text" and inputMode="text" */}
                       <input
                         type="text"
                         inputMode="text"
@@ -507,7 +509,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
                           >
                             <div className="text-sm font-mono">#{pair.fiber1No}</div>
                             <div className="text-sm font-mono">#{pair.fiber2No}</div>
-                            {/* THE FIX: Changed type to "text" and inputMode="text" */}
                             <input
                               type="text"
                               inputMode="text"
@@ -535,7 +536,6 @@ export const FiberSpliceManager: React.FC<FiberSpliceManagerProps> = ({
                   <label htmlFor="lossDb" className="block text-sm font-medium mb-2">
                     Loss (dB)
                   </label>
-                  {/* THE FIX: Changed type to "text" and inputMode="text" */}
                   <input
                     id="lossDb"
                     type="text"
