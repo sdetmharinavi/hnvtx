@@ -9,7 +9,7 @@ import { AdvancedSearchBar } from '@/components/bsnl/AdvancedSearchBar';
 import dynamic from 'next/dynamic';
 import { DataTable, TableAction } from '@/components/table';
 import AdvancedAllocationModal from '@/components/bsnl/NewAllocationModal';
-import { useBsnlDashboardData } from '@/components/bsnl/useBsnlDashboardData';
+import { useBsnlDashboardData } from '@/hooks/data/useBsnlDashboardData';
 import { PageSpinner, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
@@ -33,7 +33,7 @@ const OptimizedNetworkMap = dynamic(
         <PageSpinner text="Loading Map..." />
       </div>
     ),
-  }
+  },
 );
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'routes';
@@ -136,7 +136,7 @@ export default function ScalableFiberNetworkDashboard() {
         render: (val) => <StatusBadge status={val as boolean} />,
       },
     ],
-    []
+    [],
   );
 
   const cableColumns = useMemo(
@@ -173,7 +173,7 @@ export default function ScalableFiberNetworkDashboard() {
         render: (val) => <StatusBadge status={val as boolean} />,
       },
     ],
-    []
+    [],
   );
 
   const systemTableActions = useMemo(
@@ -188,7 +188,7 @@ export default function ScalableFiberNetworkDashboard() {
         },
       },
     ],
-    []
+    [],
   );
 
   const cableTableActions = useMemo(
@@ -203,7 +203,7 @@ export default function ScalableFiberNetworkDashboard() {
         },
       },
     ],
-    []
+    [],
   );
 
   const isInitialLoad = isLoading || isOverviewLoading;
