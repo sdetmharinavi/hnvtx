@@ -1,13 +1,14 @@
 // components/bsnl/OptimizedNetworkMap.tsx
 'use client';
 
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   Polyline,
+  CircleMarker,
   useMap,
   TileLayerProps,
 } from 'react-leaflet';
@@ -19,10 +20,9 @@ import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
 import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { useDebounce } from 'use-debounce';
 
-// --- NEW CONTROLLER COMPONENT ---
-// Automatically zooms map to fit visible nodes ONLY when filters change or on mount.
-// It ignores updates caused by panning/zooming which updates the 'nodes' list via viewport filtering.
+// --- CONTROLLER: Auto Fit ---
 const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: string }) => {
   const map = useMap();
   const isFirstRender = useRef(true);
@@ -31,7 +31,6 @@ const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: strin
   useEffect(() => {
     if (nodes.length === 0) return;
 
-    // Check if filter has actually changed
     const hasFilterChanged = prevFilterKey.current !== filterKey;
 
     if (isFirstRender.current || hasFilterChanged) {
@@ -57,6 +56,7 @@ const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: strin
   return null;
 };
 
+// --- CONTROLLER: Event Handler ---
 function MapEventHandler({
   setBounds,
   setZoom,
@@ -72,17 +72,21 @@ function MapEventHandler({
         if (!map || !map.getBounds || !map.getContainer()) return;
         const newBounds = map.getBounds();
         const newZoom = map.getZoom();
+
         const sw = newBounds.getSouthWest();
         const ne = newBounds.getNorthEast();
         if (!isFinite(sw.lat) || !isFinite(sw.lng) || !isFinite(ne.lat) || !isFinite(ne.lng))
           return;
         if (!isFinite(newZoom) || newZoom <= 0) return;
+
         setBounds(newBounds);
         setZoom(newZoom);
       } catch (error) {
         console.debug('Map not ready yet:', error);
       }
     };
+
+    handler();
 
     const invalidateSize = () =>
       setTimeout(() => {
@@ -91,7 +95,6 @@ function MapEventHandler({
 
     map.on('zoomend moveend', handler);
     window.addEventListener('resize', invalidateSize);
-    setTimeout(handler, 100);
 
     return () => {
       map.off('zoomend moveend', handler);
@@ -102,10 +105,13 @@ function MapEventHandler({
   return null;
 }
 
+// --- SUB-COMPONENT: Map Content ---
 const MapContent = ({
   cables,
   visibleLayers,
-  visibleNodes,
+  displayNodes,
+  mapBounds,
+  zoom,
   nodeMap,
   nodeSystemMap,
   mapUrl,
@@ -113,11 +119,13 @@ const MapContent = ({
   setMapBounds,
   setZoom,
   filteredNodes,
-  filterKey, // Added prop
+  filterKey,
 }: {
   cables: BsnlCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
-  visibleNodes: BsnlNode[];
+  displayNodes: DisplayNode<BsnlNode>[];
+  mapBounds: LatLngBounds | null;
+  zoom: number;
   nodeMap: Map<string, BsnlNode>;
   nodeSystemMap: Map<string, string>;
   mapUrl: string;
@@ -125,59 +133,128 @@ const MapContent = ({
   setMapBounds: (bounds: LatLngBounds | null) => void;
   setZoom: (zoom: number) => void;
   filteredNodes: BsnlNode[];
-  filterKey?: string; // Added prop type
+  filterKey?: string;
 }) => {
-  const displayNodes = useMemo(() => applyJitterToNodes<BsnlNode>(visibleNodes), [visibleNodes]);
+  // Determine Rendering Mode (LOD)
+  // Simple: Canvas CircleMarkers (Fast, supports thousands)
+  // Detailed: DOM Markers (Slow, detailed icons)
+  const renderMode = zoom >= 13 ? 'detailed' : 'simple';
+
+  const visibleDisplayNodes = useMemo(() => {
+    if (!mapBounds || !visibleLayers.nodes) return displayNodes;
+
+    // Adjust limits based on render mode
+    // Detailed mode creates DOM elements, so limit strictly to prevent UI freeze
+    // Simple mode uses Canvas, so we can render many more
+    const maxItems = renderMode === 'detailed' ? 250 : 5000;
+
+    const paddedBounds = mapBounds.pad(0.2);
+
+    return displayNodes
+      .filter((node) => paddedBounds.contains([node.displayLat, node.displayLng]))
+      .slice(0, maxItems);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayNodes, mapBounds, zoom, visibleLayers.nodes, renderMode]);
+
+  const visibleCables = useMemo(() => {
+    if (!visibleLayers.cables) return [];
+    if (!mapBounds) return cables.slice(0, 100);
+
+    const paddedBounds = mapBounds.pad(0.1);
+
+    return cables.filter((cable) => {
+      const s = nodeMap.get(cable.sn_id!);
+      const e = nodeMap.get(cable.en_id!);
+      if (!s?.latitude || !s?.longitude || !e?.latitude || !e?.longitude) return false;
+
+      return (
+        paddedBounds.contains([s.latitude, s.longitude]) ||
+        paddedBounds.contains([e.latitude, e.longitude])
+      );
+    });
+  }, [cables, visibleLayers.cables, mapBounds, nodeMap]);
 
   return (
     <>
       <MapEventHandler setBounds={setMapBounds} setZoom={setZoom} />
-
-      {/* Pass filterKey to MapAutoFit */}
       <MapAutoFit nodes={filteredNodes} filterKey={filterKey} />
 
       <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
 
-      {visibleLayers.cables &&
-        cables.map((cable: BsnlCable) => {
-          const startNode = nodeMap.get(cable.sn_id!);
-          const endNode = nodeMap.get(cable.en_id!);
+      {/* Render Cables */}
+      {visibleCables.map((cable: BsnlCable) => {
+        const startNode = nodeMap.get(cable.sn_id!);
+        const endNode = nodeMap.get(cable.en_id!);
 
-          if (
-            startNode?.latitude &&
-            startNode.longitude &&
-            endNode?.latitude &&
-            endNode.longitude
-          ) {
-            return (
-              <Polyline
-                key={cable.id}
-                positions={[
-                  [startNode.latitude, startNode.longitude],
-                  [endNode.latitude, endNode.longitude],
-                ]}
-                pathOptions={{
-                  color: cable.status ? '#3b82f6' : '#ef4444',
-                  weight: 3,
-                  opacity: 0.7,
-                }}
-              >
-                <Popup>
-                  <div className="min-w-48 max-w-72">
-                    <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                    <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                    <p className="text-sm">Capacity: {cable.capacity}F</p>
-                    <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                    <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
-                  </div>
-                </Popup>
-              </Polyline>
-            );
-          }
-          return null;
-        })}
+        if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
+          return (
+            <Polyline
+              key={cable.id}
+              positions={[
+                [startNode.latitude, startNode.longitude],
+                [endNode.latitude, endNode.longitude],
+              ]}
+              pathOptions={{
+                color: cable.status ? '#3b82f6' : '#ef4444',
+                weight: renderMode === 'simple' ? 1.5 : 3, // Thinner lines at low zoom
+                opacity: 0.7,
+              }}
+            >
+              <Popup>
+                <div className="min-w-48 max-w-72">
+                  <h3 className="font-semibold text-base">{cable.route_name}</h3>
+                  <p className="text-sm">Type: {cable.ofc_type_name}</p>
+                  <p className="text-sm">Capacity: {cable.capacity}F</p>
+                  <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
+                  <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
+                </div>
+              </Popup>
+            </Polyline>
+          );
+        }
+        return null;
+      })}
 
-      {displayNodes.map((node: DisplayNode<BsnlNode>) => {
+      {/* Render Nodes (LOD Switching) */}
+      {visibleDisplayNodes.map((node: DisplayNode<BsnlNode>) => {
+        // Shared Popup Content
+        const PopupContent = (
+          <div className="min-w-48 max-w-72">
+            <h3 className="font-semibold text-base">{node.name}</h3>
+            <p className="text-sm">Type: {node.node_type_code}</p>
+            <p className="text-sm">Region: {node.maintenance_area_name}</p>
+            {nodeSystemMap.get(node.id!) && (
+              <p className="text-sm text-blue-600 mt-1">Systems: {nodeSystemMap.get(node.id!)}</p>
+            )}
+            {node.latitude && (
+              <p className="text-sm mt-1 text-gray-500">
+                {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
+              </p>
+            )}
+            <GenericRemarks remark={node.remark || ''} />
+          </div>
+        );
+
+        // --- MODE 1: SIMPLE (Canvas Circles) ---
+        if (renderMode === 'simple') {
+          return (
+            <CircleMarker
+              key={node.id}
+              center={[node.displayLat, node.displayLng]}
+              radius={5}
+              pathOptions={{
+                color: '#ffffff',
+                weight: 1,
+                fillColor: node.status ? '#16a34a' : '#dc2626', // Green/Red
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>{PopupContent}</Popup>
+            </CircleMarker>
+          );
+        }
+
+        // --- MODE 2: DETAILED (DOM Markers) ---
         const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
         const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
 
@@ -189,22 +266,7 @@ const MapContent = ({
             riseOnHover={true}
             zIndexOffset={10}
           >
-            <Popup>
-              <div className="min-w-48 max-w-72">
-                <h3 className="font-semibold text-base">{node.name}</h3>
-                <p className="text-sm">Type: {node.node_type_code}</p>
-                <p className="text-sm">Region: {node.maintenance_area_name}</p>
-                {systemTypesAtNode && (
-                  <p className="text-sm text-blue-600 mt-1">Systems: {systemTypesAtNode}</p>
-                )}
-                {node.latitude && (
-                  <p className="text-sm mt-1 text-gray-500">
-                    {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
-                  </p>
-                )}
-                <GenericRemarks remark={node.remark || ''} />
-              </div>
-            </Popup>
+            <Popup>{PopupContent}</Popup>
           </Marker>
         );
       })}
@@ -224,7 +286,7 @@ interface OptimizedNetworkMapProps {
   zoom: number;
   onBoundsChange: (bounds: LatLngBounds | null) => void;
   onZoomChange: (zoom: number) => void;
-  filterKey?: string; // Added prop definition
+  filterKey?: string;
 }
 
 export function OptimizedNetworkMap({
@@ -236,9 +298,10 @@ export function OptimizedNetworkMap({
   zoom,
   onBoundsChange,
   onZoomChange,
-  filterKey, // Destructure filterKey
+  filterKey,
 }: OptimizedNetworkMapProps) {
-  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [debouncedBounds] = useDebounce(mapBounds, 100);
 
   useEffect(() => {
     fixLeafletIcons();
@@ -266,7 +329,7 @@ export function OptimizedNetworkMap({
 
   const nodeMap = useMemo(
     () => new Map<string, BsnlNode>(nodes.map((node) => [node.id!, node])),
-    [nodes]
+    [nodes],
   );
 
   const nodeSystemMap = useMemo(() => {
@@ -277,7 +340,7 @@ export function OptimizedNetworkMap({
         if (!current.includes(sys.system_type_code)) {
           map.set(
             sys.node_id,
-            current ? `${current}, ${sys.system_type_code}` : sys.system_type_code
+            current ? `${current}, ${sys.system_type_code}` : sys.system_type_code,
           );
         }
       }
@@ -285,23 +348,15 @@ export function OptimizedNetworkMap({
     return map;
   }, [systems]);
 
-  const visibleNodes = useMemo(() => {
-    if (!mapBounds || !visibleLayers.nodes) return nodes;
-    const maxItems = zoom > 14 ? 1000 : zoom > 12 ? 500 : 100;
-    return nodes.slice(0, maxItems).filter((node) => {
-      const lat = node.latitude;
-      const lng = node.longitude;
-      if (lat == null || lng == null || !isFinite(lat) || !isFinite(lng)) return false;
-      return mapBounds.contains([lat, lng]);
-    });
-  }, [nodes, mapBounds, zoom, visibleLayers.nodes]);
+  // Jitter calculation on full dataset
+  const displayNodes = useMemo(() => {
+    return applyJitterToNodes<BsnlNode>(nodes);
+  }, [nodes]);
 
   if (nodes.length > 0 && !initialBounds) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700">
-        <p className="text-gray-500 dark:text-gray-300">
-          No valid location data in the provided nodes.
-        </p>
+        <p className="text-gray-500 dark:text-gray-300">No valid location data.</p>
       </div>
     );
   }
@@ -309,9 +364,7 @@ export function OptimizedNetworkMap({
   if (nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700">
-        <p className="text-gray-500 dark:text-gray-300">
-          No location data available to display map.
-        </p>
+        <p className="text-gray-500 dark:text-gray-300">No location data available.</p>
       </div>
     );
   }
@@ -332,19 +385,23 @@ export function OptimizedNetworkMap({
           key="normal"
           bounds={initialBounds!}
           className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800"
+          // ENABLE CANVAS RENDERER FOR PERFORMANCE
+          preferCanvas={true}
         >
           <MapContent
             cables={cables}
             visibleLayers={visibleLayers}
-            visibleNodes={visibleNodes}
-            filteredNodes={nodes}
+            displayNodes={displayNodes}
+            mapBounds={debouncedBounds}
+            zoom={zoom}
             nodeMap={nodeMap}
             nodeSystemMap={nodeSystemMap}
             mapUrl={mapUrl}
             mapAttribution={mapAttribution}
             setMapBounds={onBoundsChange}
             setZoom={onZoomChange}
-            filterKey={filterKey} // Pass it down
+            filteredNodes={nodes}
+            filterKey={filterKey}
           />
         </MapContainer>
         <button
@@ -362,19 +419,23 @@ export function OptimizedNetworkMap({
             key="fullscreen"
             bounds={initialBounds!}
             className="h-full w-full bg-gray-200 dark:bg-gray-800"
+            // ENABLE CANVAS RENDERER FOR PERFORMANCE
+            preferCanvas={true}
           >
             <MapContent
               cables={cables}
               visibleLayers={visibleLayers}
-              visibleNodes={visibleNodes}
-              filteredNodes={nodes}
+              displayNodes={displayNodes}
+              mapBounds={debouncedBounds}
+              zoom={zoom}
               nodeMap={nodeMap}
               nodeSystemMap={nodeSystemMap}
               mapUrl={mapUrl}
               mapAttribution={mapAttribution}
               setMapBounds={onBoundsChange}
               setZoom={onZoomChange}
-              filterKey={filterKey} // Pass it down
+              filteredNodes={nodes}
+              filterKey={filterKey}
             />
           </MapContainer>
           <button
