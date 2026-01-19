@@ -11,6 +11,13 @@ import {
   Filters,
 } from './queries-type-helpers';
 import { applyFilters } from './utility-functions';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { getTable } from '@/hooks/data/localDb'; // For local DB access
+import { addMutationToQueue } from '@/hooks/data/useMutationQueue';
+import { toast } from 'sonner';
+import React from 'react';
+import { FiWifiOff } from 'react-icons/fi';
+import { v4 as uuidv4 } from 'uuid';
 
 // Enhanced bulk operations hook with filter support
 export function useTableBulkOperations<T extends PublicTableName>(
@@ -19,9 +26,12 @@ export function useTableBulkOperations<T extends PublicTableName>(
   batchSize = 1000
 ) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   const bulkInsert = useMutation({
     mutationFn: async (data: TableInsert<T>[]): Promise<TableRow<T>[]> => {
+      // NOTE: bulkInsert logic kept online-only for now as it's rarely used directly
+      // Most features use upsert or specific specialized hooks.
       const results: TableRow<T>[] = [];
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize) as any;
@@ -42,6 +52,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       updates: { id: string; data: TableUpdate<T> }[];
       filters?: Filters;
     }): Promise<TableRow<T>[]> => {
+      // NOTE: Complex bulk update logic kept online-only for simplicity
       const { updates, filters } = params;
       const results: TableRow<T>[] = [];
 
@@ -74,6 +85,7 @@ export function useTableBulkOperations<T extends PublicTableName>(
       filters?: Filters;
       deleteAll?: boolean;
     }): Promise<void> => {
+      // NOTE: Delete manager hooks typically handle offline deletes better per-item
       const { ids, filters, deleteAll = false } = params;
       if (!ids && !filters && !deleteAll) {
         throw new Error('Must provide either ids, filters, or set deleteAll to true');
@@ -102,18 +114,47 @@ export function useTableBulkOperations<T extends PublicTableName>(
     },
   });
 
-  // --- FIX: Explicitly define mutationFn payload type ---
+  // --- UPDATED BULK UPSERT ---
   const bulkUpsert = useMutation({
     mutationFn: async (params: {
       data: TableInsert<T>[];
       onConflict?: string;
     }): Promise<TableRow<T>[]> => {
       const { data, onConflict } = params;
+
+      // 1. OFFLINE LOGIC
+      if (!isOnline) {
+        const table = getTable(tableName);
+        const now = new Date().toISOString();
+
+        // Prepare data for local DB
+        const dataWithIds = data.map((item: any) => ({
+          ...item,
+          id: item.id || uuidv4(), // Generate ID if missing
+          created_at: item.created_at || now,
+          updated_at: now,
+        }));
+
+        // Perform local upsert (put)
+        await table.bulkPut(dataWithIds);
+
+        // Queue operation for sync
+        await addMutationToQueue({
+          tableName,
+          type: 'bulk_upsert',
+          payload: {
+            data: dataWithIds, // Send the pre-processed data with IDs
+            onConflict,
+          },
+        });
+
+        return dataWithIds as TableRow<T>[];
+      }
+
+      // 2. ONLINE LOGIC
       const results: TableRow<T>[] = [];
       for (let i = 0; i < data.length; i += batchSize) {
         const batch = data.slice(i, i + batchSize) as any;
-
-        // Use the onConflict parameter if provided
         const query = supabase.from(tableName).upsert(batch, { onConflict });
 
         const { data: batchResult, error } = await query.select();
@@ -122,14 +163,21 @@ export function useTableBulkOperations<T extends PublicTableName>(
       }
       return results;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (!isOnline) {
+        toast.warning(`Bulk operation queued locally. Sync pending.`, {
+          icon: React.createElement(FiWifiOff),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['table', tableName] });
       queryClient.invalidateQueries({ queryKey: ['unique', tableName] });
+      // Invalidate potential view hooks
+      queryClient.invalidateQueries({ queryKey: [`${tableName}-data`] });
+      queryClient.invalidateQueries({ queryKey: [`v_${tableName}`] });
     },
   });
 
-  // Keep existing functions...
-  const bulkInsertByFilters = useMutation({
+const bulkInsertByFilters = useMutation({
     mutationFn: async (params: {
       data: TableInsert<T>[];
       conflictResolution?: 'skip' | 'update' | 'error';
@@ -271,6 +319,6 @@ export function useTableBulkOperations<T extends PublicTableName>(
     bulkUpdateByFilters,
     bulkInsertByFilters,
     bulkUpsertByFilters,
-    conditionalBulkUpdate,
+    conditionalBulkUpdate,  
   };
 }

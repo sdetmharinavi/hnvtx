@@ -4,14 +4,14 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay, DebouncedInput } from '@/components/common/ui'; // IMPORT DebouncedInput
+import { ErrorDisplay, DebouncedInput, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { buildUploadConfig, TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { FiActivity, FiUpload, FiList, FiSearch } from 'react-icons/fi';
+import { FiActivity, FiUpload, FiList, FiSearch, FiGitCommit } from 'react-icons/fi'; // Added FiGitCommit
 import { useAllOfcConnectionsData } from '@/hooks/data/useAllOfcConnectionsData';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
@@ -20,6 +20,7 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { EnhancedUploadResult, Filters } from '@/hooks/database';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
+import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal'; // Added Import
 
 export default function GlobalOfcConnectionsPage() {
   const supabase = createClient();
@@ -31,6 +32,14 @@ export default function GlobalOfcConnectionsPage() {
     [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
 
   const [filters, setFilters] = useState<Filters>({});
+  
+  // -- NEW STATE FOR TRACING --
+  const [tracingFiber, setTracingFiber] = useState<{
+    startSegmentId: string;
+    fiberNo: number;
+    record?: V_ofc_connections_completeRowSchema;
+  } | null>(null);
+  const [isTracing, setIsTracing] = useState(false);
 
   const {
     data: fibers,
@@ -49,7 +58,7 @@ export default function GlobalOfcConnectionsPage() {
     dataQueryHook: useAllOfcConnectionsData,
     displayNameField: 'ofc_route_name',
     searchColumn: ['ofc_route_name', 'system_name'],
-    syncTables: ['ofc_connections', 'v_ofc_connections_complete', 'ofc_cables'],
+    syncTables: ['ofc_connections', 'v_ofc_connections_complete', 'ofc_cables', 'cable_segments'], // Added cable_segments for tracing
   });
 
   const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
@@ -79,12 +88,61 @@ export default function GlobalOfcConnectionsPage() {
     [uploadFibers]
   );
 
+  // -- NEW TRACE HANDLER --
+  const handleTraceClick = useCallback(async (record: V_ofc_connections_completeRowSchema) => {
+    if (!record.ofc_id || !record.fiber_no_sn) {
+      toast.error('Invalid fiber data for tracing.');
+      return;
+    }
+
+    setIsTracing(true);
+    try {
+      // 1. We need to find the START segment ID for this cable to begin the trace.
+      // We assume Segment Order 1 is the start.
+      const { data, error } = await supabase
+        .from('cable_segments')
+        .select('id')
+        .eq('original_cable_id', record.ofc_id)
+        .eq('segment_order', 1)
+        .single();
+
+      if (error) {
+        console.error('Error fetching start segment:', error);
+        toast.error('Could not initiate trace: Start segment not found.');
+        return;
+      }
+
+      if (data) {
+        setTracingFiber({
+          startSegmentId: data.id,
+          fiberNo: record.fiber_no_sn,
+          record: record,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred while initiating trace.');
+    } finally {
+      setIsTracing(false);
+    }
+  }, [supabase]);
+
   const columns = OfcDetailsTableColumns(fibers);
   const orderedColumns = useOrderedColumns(columns, [
     'ofc_route_name',
     'fiber_no_sn',
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
   ]);
+
+  const tableActions = [
+    {
+      key: 'trace',
+      label: 'Trace Path',
+      icon: <FiGitCommit className="w-4 h-4" />,
+      onClick: handleTraceClick,
+      variant: 'secondary' as const,
+    },
+  ];
 
   const headerActions = useStandardHeaderActions({
     data: fibers,
@@ -131,6 +189,15 @@ export default function GlobalOfcConnectionsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {/* Overlay spinner when initializing trace */}
+      {isTracing && (
+        <div className="fixed inset-0 bg-black/20 z-9999 flex items-center justify-center backdrop-blur-[1px]">
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg flex items-center gap-3">
+             <PageSpinner text="Preparing Trace..." />
+          </div>
+        </div>
+      )}
+
       <input
         type="file"
         ref={fileInputRef}
@@ -158,7 +225,6 @@ export default function GlobalOfcConnectionsPage() {
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
         <div className="w-full lg:w-96">
-          {/* THE FIX: Replaced Input with DebouncedInput */}
           <DebouncedInput
             placeholder="Search route, system, node..."
             value={search.searchQuery}
@@ -166,7 +232,7 @@ export default function GlobalOfcConnectionsPage() {
             leftIcon={<FiSearch className="text-gray-400" />}
             fullWidth
             clearable
-            debounce={900} // Optional customization
+            debounce={900}
           />
         </div>
 
@@ -202,6 +268,7 @@ export default function GlobalOfcConnectionsPage() {
         columns={orderedColumns}
         loading={isLoading}
         isFetching={isFetching}
+        actions={tableActions} // Added actions
         searchable={false}
         pagination={{
           current: pagination.currentPage,
@@ -215,6 +282,21 @@ export default function GlobalOfcConnectionsPage() {
         }}
         customToolbar={<></>}
       />
+
+      {/* Trace Modal */}
+      {tracingFiber && (
+        <FiberTraceModal
+          isOpen={!!tracingFiber}
+          onClose={() => setTracingFiber(null)}
+          startSegmentId={tracingFiber.startSegmentId}
+          fiberNo={tracingFiber.fiberNo}
+          // We pass undefined for allCables as we don't have the full list here, 
+          // and the visualizer will use the record data where possible
+          allCables={undefined}
+          record={tracingFiber.record}
+          refetch={refetch}
+        />
+      )}
     </div>
   );
 }

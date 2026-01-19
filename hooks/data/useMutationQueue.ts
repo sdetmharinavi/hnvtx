@@ -6,11 +6,6 @@ import { toast } from 'sonner';
 import { localDb, MutationTask } from '@/hooks/data/localDb';
 import { createClient } from '@/utils/supabase/client';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-
-/**
- * Recursively traverse an object/array and replace all occurrences of `oldId` with `newId`.
- * Used to update foreign keys in pending payloads when a parent record gets a real ID.
- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function swapIdsInPayload(payload: any, oldId: string, newId: string): any {
   if (typeof payload === 'string') {
@@ -52,7 +47,6 @@ export function useMutationQueue() {
   const processQueue = useCallback(async () => {
     if (isProcessing.current || !isOnline) return;
 
-    // Fetch pending tasks ordered by time (FIFO) to ensure parents are created before children
     const tasksToProcess = await localDb.mutation_queue
       .where('status')
       .equals('pending')
@@ -62,7 +56,6 @@ export function useMutationQueue() {
 
     isProcessing.current = true;
 
-    // Process sequentially
     for (const task of tasksToProcess) {
       try {
         await localDb.mutation_queue.update(task.id!, {
@@ -74,7 +67,6 @@ export function useMutationQueue() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let responseData: any = null;
 
-        // Perform the mutation
         switch (task.type) {
           case 'insert':
             const { data: insertData, error: insertError } = await supabase
@@ -82,7 +74,7 @@ export function useMutationQueue() {
               .from(task.tableName as any)
               .insert(task.payload)
               .select()
-              .single(); // Get the single created record
+              .single();
             error = insertError;
             responseData = insertData;
             break;
@@ -104,65 +96,60 @@ export function useMutationQueue() {
               .in('id', task.payload.ids);
             error = deleteError;
             break;
+
+          case 'bulk_upsert':
+            const { error: upsertError } = await supabase
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .from(task.tableName as any)
+              .upsert(task.payload.data, {
+                onConflict: task.payload.onConflict,
+              });
+            error = upsertError;
+            break;
         }
 
         if (error) throw error;
 
-        // --- ID SWAPPING LOGIC ---
-        // If this was an INSERT and we got a response with an ID
+        // ID Swapping (Only for single insert)
         if (task.type === 'insert' && responseData && responseData.id) {
-          const tempId = task.payload.id; // The ID we generated locally
-          const realId = responseData.id; // The ID from the server
+          const tempId = task.payload.id;
+          const realId = responseData.id;
 
-          // If the server assigned a different ID (it usually does for UUIDs unless we force it)
           if (tempId && tempId !== realId) {
             console.log(`[Queue] Swapping Temp ID ${tempId} -> Real ID ${realId}`);
 
-            // 1. Find all subsequent pending tasks
             const remainingTasks = await localDb.mutation_queue
               .where('status')
               .equals('pending')
               .toArray();
 
-            // 2. Update their payloads
             await localDb.transaction('rw', localDb.mutation_queue, async () => {
               for (const nextTask of remainingTasks) {
-                // Skip the current task we just finished
                 if (nextTask.id === task.id) continue;
-
                 const newPayload = swapIdsInPayload(nextTask.payload, tempId, realId);
-
-                // Check if anything actually changed to avoid unnecessary DB writes
                 if (JSON.stringify(newPayload) !== JSON.stringify(nextTask.payload)) {
                   await localDb.mutation_queue.update(nextTask.id!, {
                     payload: newPayload,
                   });
-                  console.log(`   -> Updated dependent task #${nextTask.id}`);
                 }
               }
             });
-            
-            // 3. Update Local DB Record with Real ID
-            // We need to delete the old local record (temp ID) and insert the new one (real ID)
-            // to keep the local cache consistent with the server until the next full sync.
+
+            // Update local cache with real ID
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const table = (localDb as any)[task.tableName];
             if (table) {
-                try {
-                    await table.delete(tempId);
-                    await table.put(responseData);
-                } catch(e) {
-                    console.warn("Failed to update local cache ID", e);
-                }
+              try {
+                await table.delete(tempId);
+                await table.put(responseData);
+              } catch (e) {
+                console.warn('Failed to update local cache ID', e);
+              }
             }
           }
         }
-        // -------------------------
 
-        // Mark as success (delete from queue)
         await localDb.mutation_queue.delete(task.id!);
-        // console.log(`✅ [Queue] Processed task #${task.id}`);
-
       } catch (err) {
         console.error(`❌ [Queue] Failed task #${task.id}:`, err);
         await localDb.mutation_queue.update(task.id!, {
@@ -173,14 +160,12 @@ export function useMutationQueue() {
       }
     }
 
-    // Check if any failed remaining to update toast state
     const remainingFailed = await localDb.mutation_queue.where('status').equals('failed').count();
 
     if (remainingFailed > 0) {
-      toast.error(
-        `${remainingFailed} changes failed to sync. Click the indicator to view details.`,
-        { id: 'mutation-sync' }
-      );
+      toast.error(`${remainingFailed} changes failed to sync. Check the sync status indicator.`, {
+        id: 'mutation-sync',
+      });
     } else {
       toast.success('Sync complete.', { id: 'mutation-sync' });
     }
@@ -189,17 +174,15 @@ export function useMutationQueue() {
     await queryClient.invalidateQueries();
   }, [isOnline, supabase, queryClient]);
 
-  // Trigger processing when online status changes
   useEffect(() => {
     if (isOnline) {
       processQueue();
     }
   }, [isOnline, processQueue]);
 
-  // Manual Actions for UI
   const retryTask = async (id: number) => {
     await localDb.mutation_queue.update(id, { status: 'pending', error: undefined });
-    processQueue(); // Try immediately
+    processQueue();
   };
 
   const removeTask = async (id: number) => {

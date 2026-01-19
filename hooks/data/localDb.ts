@@ -1,5 +1,6 @@
 // hooks/data/localDb.ts
 import Dexie, { Table } from 'dexie';
+
 import {
   Lookup_typesRowSchema as Lookup_typesRow,
   Maintenance_areasRowSchema as Maintenance_areasRow,
@@ -133,7 +134,8 @@ export interface SyncStatus {
 export interface MutationTask {
   id?: number;
   tableName: PublicTableName;
-  type: 'insert' | 'update' | 'delete';
+  // UPDATE: Added 'bulk_upsert' to supported types
+  type: 'insert' | 'update' | 'delete' | 'bulk_upsert';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any;
   timestamp: string;
@@ -215,8 +217,6 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-
-    // BUMP VERSION TO 38 to force schema update and fix missing index on mutation_queue
     this.version(38).stores({
       // --- MASTER DATA ---
       lookup_types: '&id, category, name, sort_order, status',
@@ -304,7 +304,6 @@ export class HNVTMDatabase extends Dexie {
 
       // --- SYSTEM TABLES ---
       sync_status: 'tableName',
-      // THE FIX: Added tableName index to mutation_queue
       mutation_queue: '++id, timestamp, status, tableName',
       route_distances: 'id, timestamp',
     });
