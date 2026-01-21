@@ -1,4 +1,4 @@
--- path: data/migrations/03_network_systems/06_rls_and_grants.sql
+-- path: data/migrations/03_network_systems/07_rls_and_grants.sql
 -- Description: Defines all RLS policies and Grants for the Network Systems module. [REVISED & CONSOLIDATED]
 
 -- =================================================================

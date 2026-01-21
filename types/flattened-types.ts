@@ -1271,6 +1271,7 @@ export type System_connectionsUpdate = {
 };
 
 export type SystemsRow = {
+    asset_no: string | null;
     commissioned_on: string | null;
     created_at: string | null;
     id: string;
@@ -1290,6 +1291,7 @@ export type SystemsRow = {
 };
 
 export type SystemsInsert = {
+    asset_no?: string | null;
     commissioned_on?: string | null;
     created_at?: string | null;
     id?: string;
@@ -1309,6 +1311,7 @@ export type SystemsInsert = {
 };
 
 export type SystemsUpdate = {
+    asset_no?: string | null;
     commissioned_on?: string | null;
     created_at?: string | null;
     id?: string;
@@ -1842,6 +1845,7 @@ export type V_system_connections_completeRow = {
 };
 
 export type V_systems_completeRow = {
+    asset_no: string | null;
     commissioned_on: string | null;
     created_at: string | null;
     id: string | null;

@@ -1,4 +1,5 @@
--- Path: migrations/03_network_systems/03_indexes.sql
+-- Path: data/migrations/03_network_systems/05_indexes.sql
+
 -- Description: Creates B-tree and GIN (FTS) indexes for the Network Systems module.
 
 -- =================================================================

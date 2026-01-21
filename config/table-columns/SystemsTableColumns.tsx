@@ -6,7 +6,6 @@ import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
-// THE FIX: Define a type for the new ring_associations JSON structure.
 interface RingAssociation {
   ring_id: string;
   ring_name: string;
@@ -21,8 +20,8 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'node_type_name',
       'system_type_name',
       'is_ring_based',
-      'ring_id', // Omit the old single ring_id
-      'order_in_ring', // Omit the old single order_in_ring
+      'ring_id', 
+      'order_in_ring', 
       'system_type_id',
       'node_id',
       'maintenance_terminal_id',
@@ -37,7 +36,7 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       'created_at',
       'status',
       'is_hub',
-      'system_capacity_id', // Omit the ID, we'll show the name
+      'system_capacity_id', 
     ],
     overrides: {
       system_name: {
@@ -54,6 +53,14 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
           </div>
         ),
       },
+      asset_no: { // Added Column
+        title: 'Asset No',
+        width: 120,
+        sortable: true,
+        render: (value) => (
+            <span className="font-mono text-xs">{value as string || '-'}</span>
+        )
+      },
       s_no: {
         title: 'S/N',
         width: 100,
@@ -65,7 +72,6 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         sortable: true,
         width: 120,
       },
-      // ADDED
       system_capacity_name: {
         title: 'Capacity',
         sortable: true,
@@ -85,22 +91,18 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
       ip_address: {
         title: 'IP Address',
         width: 180,
-        // Apply the transform for Excel export
         transform: (val) => formatIP(val),
         render: (value) => (
           <code className="rounded bg-gray-100 px-2 py-1 text-sm dark:bg-gray-700">
-            {/* Apply the formatter for UI display */}
             {formatIP(value) || 'N/A'}
           </code>
         ),
       },
-      // THE FIX: New column definition to render the aggregated ring associations.
       ring_associations: {
         key: 'ring_associations',
         title: 'Ring(s)',
         dataIndex: 'ring_associations',
         width: 200,
-        // This line ensures the complex object is properly stringified for the Excel export.
         excelFormat: 'json',
         render: (value) => {
           const associations = value as RingAssociation[] | null;

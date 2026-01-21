@@ -1,4 +1,4 @@
--- path: data/migrations/03_network_systems/05_functions_provisioning.sql
+-- path: data/migrations/03_network_systems/06_functions_provisioning.sql
 -- Description: Contains functions for provisioning fibers to system connections.
 
 -- path: data/migrations/03_network_systems/05_functions_provisioning.sql

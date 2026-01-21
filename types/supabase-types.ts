@@ -3412,6 +3412,7 @@ export type Database = {
       }
       systems: {
         Row: {
+          asset_no: string | null
           commissioned_on: string | null
           created_at: string | null
           id: string
@@ -3430,6 +3431,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          asset_no?: string | null
           commissioned_on?: string | null
           created_at?: string | null
           id?: string
@@ -3448,6 +3450,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          asset_no?: string | null
           commissioned_on?: string | null
           created_at?: string | null
           id?: string
@@ -5271,6 +5274,7 @@ export type Database = {
       }
       v_systems_complete: {
         Row: {
+          asset_no: string | null
           commissioned_on: string | null
           created_at: string | null
           id: string | null
@@ -6096,6 +6100,7 @@ export type Database = {
       }
       upsert_system_with_details: {
         Args: {
+          p_asset_no?: string
           p_commissioned_on?: string
           p_id?: string
           p_ip_address?: unknown
@@ -6113,6 +6118,7 @@ export type Database = {
           p_system_type_id: string
         }
         Returns: {
+          asset_no: string | null
           commissioned_on: string | null
           created_at: string | null
           id: string

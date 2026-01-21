@@ -15,10 +15,10 @@ CREATE OR REPLACE FUNCTION public.upsert_system_with_details(
     p_s_no TEXT DEFAULT NULL,
     p_remark TEXT DEFAULT NULL,
     p_id UUID DEFAULT NULL,
-    -- THE FIX: These parameters now accept arrays from the Excel upload logic.
     p_ring_associations JSONB DEFAULT NULL,
     p_make TEXT DEFAULT NULL,
-    p_system_capacity_id UUID DEFAULT NULL
+    p_system_capacity_id UUID DEFAULT NULL,
+    p_asset_no TEXT DEFAULT NULL -- Added parameter
 )
 RETURNS SETOF public.systems
 LANGUAGE plpgsql
@@ -36,10 +36,10 @@ BEGIN
     -- Step 1: Upsert the main system record
     INSERT INTO public.systems (
         id, system_name, system_type_id, maan_node_id, node_id, ip_address,
-        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub, system_capacity_id
+        maintenance_terminal_id, commissioned_on, s_no, remark, status, make, is_hub, system_capacity_id, asset_no
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()), p_system_name, p_system_type_id, p_maan_node_id, p_node_id, p_ip_address,
-        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub, p_system_capacity_id
+        p_maintenance_terminal_id, p_commissioned_on, p_s_no, p_remark, p_status, p_make, p_is_hub, p_system_capacity_id, p_asset_no
     )
     ON CONFLICT (id) DO UPDATE SET
         system_name = EXCLUDED.system_name,
@@ -55,21 +55,16 @@ BEGIN
         make = EXCLUDED.make,
         is_hub = EXCLUDED.is_hub,
         system_capacity_id = EXCLUDED.system_capacity_id,
+        asset_no = EXCLUDED.asset_no,
         updated_at = NOW()
     RETURNING id INTO v_system_id;
 
     -- Step 2: Handle ring associations if the system is ring-based and associations are provided.
     IF v_system_type_record.is_ring_based = true AND p_ring_associations IS NOT NULL AND jsonb_array_length(p_ring_associations) > 0 THEN
-        -- THE FIX: Removed the bulk DELETE statement here. 
-        -- We want to merge/upsert the provided associations without destroying existing ones 
-        -- for other rings that aren't part of this payload.
-        
-        -- Loop through the provided JSON array and insert the new associations.
         FOR ring_assoc_record IN SELECT * FROM jsonb_to_recordset(p_ring_associations) AS x(ring_id UUID, order_in_ring NUMERIC)
         LOOP
             INSERT INTO public.ring_based_systems (system_id, ring_id, order_in_ring)
             VALUES (v_system_id, ring_assoc_record.ring_id, ring_assoc_record.order_in_ring)
-            -- This conflict clause handles updates to the order for existing ring associations.
             ON CONFLICT (system_id, ring_id) DO UPDATE SET
                 order_in_ring = EXCLUDED.order_in_ring;
         END LOOP;
@@ -81,7 +76,7 @@ END;
 $$;
 
 -- Grant execute on the modified function signature
-GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_system_with_details(TEXT, UUID, UUID, BOOLEAN, BOOLEAN, TEXT, INET, UUID, DATE, TEXT, TEXT, UUID, JSONB, TEXT, UUID, TEXT) TO authenticated;
 
 
 CREATE OR REPLACE FUNCTION public.upsert_system_connection_with_details(

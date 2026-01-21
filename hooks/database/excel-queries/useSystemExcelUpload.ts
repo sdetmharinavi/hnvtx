@@ -142,6 +142,7 @@ export function useSystemExcelUpload(
             (processedData.maintenance_terminal_id as string | null) || undefined,
           p_commissioned_on: (processedData.commissioned_on as string | null) || undefined,
           p_s_no: (processedData.s_no as string | null) || undefined,
+          p_asset_no: (processedData.asset_no as string | null) || undefined, // Added
           p_remark: (processedData.remark as string | null) || undefined,
           p_make: (processedData.make as string | null) || undefined,
           p_ring_associations: ringAssociationsJson,
@@ -168,7 +169,7 @@ export function useSystemExcelUpload(
         return uploadResult;
       }
 
-      // THE FIX: Process with concurrency limit (e.g. 5 concurrent requests)
+      // Process with concurrency limit
       const CONCURRENCY_LIMIT = 5;
       toast.info(`Uploading ${recordsToProcess.length} systems in parallel...`);
 

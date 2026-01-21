@@ -1293,6 +1293,7 @@ export const system_connectionsUpdateSchema = z.object({
 });
 
 export const systemsRowSchema = z.object({
+  asset_no: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -1312,6 +1313,7 @@ export const systemsRowSchema = z.object({
 });
 
 export const systemsInsertSchema = z.object({
+  asset_no: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
@@ -1331,6 +1333,7 @@ export const systemsInsertSchema = z.object({
 });
 
 export const systemsUpdateSchema = z.object({
+  asset_no: z.string().nullable().optional(),
   commissioned_on: z.iso.date().nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
@@ -1862,6 +1865,7 @@ export const v_system_connections_completeRowSchema = z.object({
 });
 
 export const v_systems_completeRowSchema = z.object({
+  asset_no: z.string().nullable(),
   commissioned_on: z.iso.date().nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),

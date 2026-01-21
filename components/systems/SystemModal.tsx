@@ -52,6 +52,7 @@ const createDefaultFormValues = (): SystemFormValues => ({
   commissioned_on: null,
   remark: '',
   s_no: '',
+  asset_no: '', // Added default
   status: true,
   ring_id: '',
   order_in_ring: 0,
@@ -174,6 +175,8 @@ export const SystemModal: FC<SystemModalProps> = ({
           commissioned_on: rowData.commissioned_on || null,
           remark: rowData.remark || '',
           s_no: rowData.s_no || '',
+          // Use 'as any' if the type update hasn't propagated to rowData type yet
+          asset_no: (rowData as any).asset_no || '', 
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? '',
           order_in_ring: rowData.order_in_ring ?? 0,
@@ -292,6 +295,13 @@ export const SystemModal: FC<SystemModalProps> = ({
                 register={register}
                 error={errors.system_name}
                 required
+              />
+              <FormInput
+                name="asset_no"
+                label="Asset Number"
+                register={register}
+                error={errors.asset_no}
+                placeholder="e.g. AST-12345"
               />
               <FormSearchableSelect
                 name="system_type_id"

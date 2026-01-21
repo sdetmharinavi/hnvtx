@@ -5,7 +5,7 @@ import {
   type HeaderConfig,
   type SectionConfig,
 } from '@/components/common/ui/Modal/DetailsModal';
-import { FiCpu, FiMapPin, FiClock, FiServer, FiGitBranch, FiInfo } from 'react-icons/fi';
+import { FiCpu, FiMapPin, FiClock, FiServer, FiGitBranch, FiInfo, FiHash } from 'react-icons/fi'; // Added FiHash
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { BsnlSystem } from '@/components/bsnl/types';
 import { formatIP } from '@/utils/formatters';
@@ -30,6 +30,7 @@ export const systemDetailsConfig = {
         { key: 'system_name', label: 'System Name', icon: <FiInfo size={18} /> },
         { key: 'system_type_name', label: 'System Type', icon: <FiCpu size={18} /> },
         { key: 's_no', label: 'Serial Number', icon: <FiInfo size={18} /> },
+        { key: 'asset_no', label: 'Asset Number', icon: <FiHash size={18} /> }, // Added
         {
           key: 'ip_address',
           label: 'IP Address',

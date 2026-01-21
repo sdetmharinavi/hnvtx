@@ -1,4 +1,4 @@
--- path: data/migrations/03_network_systems/02_views.sql
+-- path: data/migrations/03_network_systems/04_views.sql
 -- Description: Defines denormalized views for the Network Systems module. [PERFORMANCE OPTIMIZED]
 
 -- View for a complete picture of a system and its specific details.
@@ -12,11 +12,11 @@ SELECT
   s.is_hub,
   s.system_capacity_id,
   -- THE FIX: Cast the ip_address from INET to TEXT directly in the view definition.
-  -- This makes it directly searchable with text operators like ILIKE.
   s.ip_address::text,
   s.maintenance_terminal_id,
   s.commissioned_on,
   s.s_no,
+  s.asset_no, -- Added asset_no
   s.make,
   s.remark,
   s.status,
@@ -34,7 +34,6 @@ SELECT
   ma.name AS system_maintenance_terminal_name,
   -- Aggregated ring information
   r_agg.ring_associations,
-  -- Extract first ring_id and order_in_ring for backward compatibility if needed, though using the array is preferred.
   (r_agg.ring_associations->0->>'ring_id')::UUID AS ring_id,
   (r_agg.ring_associations->0->>'order_in_ring')::NUMERIC AS order_in_ring,
   (r_agg.ring_associations->0->>'ring_logical_area_name')::TEXT AS ring_logical_area_name
@@ -154,7 +153,6 @@ SELECT
   svc.name AS service_name, 
   svc.node_id AS service_node_id,
   svc_node.name AS service_node_name,
-  -- NEW FIELDS
   svc.end_node_id AS service_end_node_id,
   svc_end_node.name AS service_end_node_name,
   
@@ -189,7 +187,6 @@ FROM public.system_connections sc
   JOIN public.lookup_types lt_system ON s.system_type_id = lt_system.id
   LEFT JOIN public.services svc ON sc.service_id = svc.id
   LEFT JOIN public.nodes svc_node ON svc.node_id = svc_node.id
-  -- NEW JOIN
   LEFT JOIN public.nodes svc_end_node ON svc.end_node_id = svc_end_node.id
   
   LEFT JOIN public.lookup_types lt_link_type ON svc.link_type_id = lt_link_type.id
@@ -204,8 +201,6 @@ FROM public.system_connections sc
 
 -- Grant permissions to new view
 GRANT SELECT ON public.v_system_connections_complete TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
-
-
 
 -- --- View for ports_management ---
 CREATE OR REPLACE VIEW public.v_ports_management_complete WITH (security_invoker = true) AS
@@ -238,8 +233,8 @@ FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 -- View for Ring Map Node Data
 CREATE OR REPLACE VIEW public.v_ring_nodes WITH (security_invoker = true) AS
 SELECT
-    s.id as id,          -- SYSTEM ID (Unique entity in the ring)
-    n.id as node_id,     -- Physical Location ID
+    s.id as id,
+    n.id as node_id,
     r.id as ring_id,
     r.name as ring_name,
     n.name,
@@ -281,11 +276,9 @@ SELECT
   r.status,
   r.created_at,
   r.updated_at,
-  -- New Columns
   r.ofc_status,
   r.spec_status,
   r.bts_status,
-  -- Aggregates/Joins
   (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
   lt_ring.name AS ring_type_name,
   lt_ring.code AS ring_type_code,

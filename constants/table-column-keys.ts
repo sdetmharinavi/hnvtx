@@ -437,7 +437,7 @@ const TABLE_COLUMN_OBJECTS = {
   systems: {
     id: 'id',
     system_name: 'system_name',
-
+    asset_no: 'asset_no',
     s_no: 's_no',
     node_id: 'node_id',
     system_type_id: 'system_type_id',
@@ -856,6 +856,7 @@ const TABLE_COLUMN_OBJECTS = {
     system_type_code: 'system_type_code',
     system_capacity_name: 'system_capacity_name',
     node_name: 'node_name',
+    asset_no: 'asset_no',
     is_hub: 'is_hub',
     ip_address: 'ip_address',
     is_ring_based: 'is_ring_based',

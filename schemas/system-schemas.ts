@@ -4,7 +4,7 @@ import { systemsInsertSchema, ring_based_systemsInsertSchema } from './zod-schem
 
 // THIS IS THE FINAL, CORRECT SCHEMA FOR THE FORM.
 // It uses .extend() and correctly marks the added fields as .optional()
-// to match the form's data structure, resolving the TypeScript error.
+// to match the form's data structure.
 export const systemFormValidationSchema = systemsInsertSchema
   .omit({
     created_at: true,
@@ -37,6 +37,13 @@ export const systemFormValidationSchema = systemsInsertSchema
       .optional()
       .nullable()
       .transform((val) => val || null),
+
+    // NEW FIELD: Asset Number
+    asset_no: z
+      .string()
+      .optional()
+      .nullable()
+      .transform(val => val === '' ? null : val),
   });
 
 // This is the type that will be used by the form state.
