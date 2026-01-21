@@ -4,7 +4,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ErrorDisplay, PageSpinner } from '@/components/common/ui'; // Fixed imports: Removed DebouncedInput as it's not used directly here or imported via GenericFilterBar
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -20,12 +20,11 @@ import { SystemConnectionDetailsModal } from '@/components/system-details/System
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { useRouter } from 'next/navigation';
-import { Row } from '@/hooks/database';
+import { Row, UploadColumnMapping } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { UploadColumnMapping } from '@/hooks/database';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
@@ -209,7 +208,7 @@ export default function GlobalConnectionsPage() {
       await refetch();
       toast.success('Refreshed!');
     },
-    isLoading: isBusy, // THE FIX
+    isLoading: isBusy,
     isFetching: isFetching,
     exportConfig: canEdit
       ? {
@@ -262,8 +261,8 @@ export default function GlobalConnectionsPage() {
       ip_address: selectedConnection.sn_ip as string | null,
       system_type_code: selectedConnection.system_type_name,
       system_type_name: selectedConnection.system_type_name,
+      asset_no: null, // Added missing property with null value
       commissioned_on: null,
-      asset_no: null,
       created_at: null,
       is_hub: null,
       is_ring_based: null,
