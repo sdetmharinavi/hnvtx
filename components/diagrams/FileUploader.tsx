@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThemeStore } from '@/stores/themeStore';
-import { Database, Download, Upload, WifiOff } from 'lucide-react';
+import { Database, Download, Upload, WifiOff, RefreshCw } from 'lucide-react';
 
 import { FileTable } from './FileTable';
 import { useUppyUploader } from './hooks/useUppyUploader';
@@ -22,7 +22,7 @@ import ErrorDisplay from "./uploader-components/ErrorDisplay";
 import { PageHeader } from '@/components/common/page-header';
 import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup';
 import { useUser } from '@/providers/UserProvider';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // ADDED
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
@@ -36,7 +36,7 @@ export default function FileUploader() {
   const uppyTheme = theme === 'system' ? 'auto' : theme;
 
   const { isSuperAdmin, role } = useUser();
-  const isOnline = useOnlineStatus(); // ADDED
+  const isOnline = useOnlineStatus();
 
   const canCreate = !!isSuperAdmin || role === 'admin' || role === 'admin_pro';
   const canDelete = !!isSuperAdmin || role === 'admin_pro';
@@ -61,6 +61,7 @@ export default function FileUploader() {
     handleCreateFolder,
     handleDeleteFolder,
     isDeletingFolder,
+    refreshFolders,
     isLoading: isLoadingFolders,
   } = useFolders({
     onError: (err) => setError(err),
@@ -114,6 +115,13 @@ export default function FileUploader() {
     queryClient.invalidateQueries({ queryKey: ['files'] });
   }, [refresh, queryClient]);
 
+  // Page Refresh Handler
+  const handlePageRefresh = useCallback(async () => {
+    await refreshFolders();
+    await queryClient.invalidateQueries({ queryKey: ['files'] });
+    toast.success("Refreshed folders and files.");
+  }, [refreshFolders, queryClient]);
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <Toaster position="top-right" duration={4000} />
@@ -133,6 +141,13 @@ export default function FileUploader() {
         description="Manage network diagrams, specifications, and other documents."
         icon={<Database className="h-6 w-6" />}
         actions={[
+            {
+                label: 'Refresh',
+                variant: 'outline',
+                leftIcon: <RefreshCw className={`h-4 w-4 ${isLoadingFolders ? 'animate-spin' : ''}`} />,
+                onClick: handlePageRefresh,
+                disabled: isLoadingFolders
+            },
             {
                 label: 'Backup / Restore',
                 variant: 'outline',
