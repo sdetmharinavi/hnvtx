@@ -341,6 +341,8 @@ export default function SystemsPage() {
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
+        // ** FIX: Added p_asset_no to payload **
+        p_asset_no: formData.asset_no || undefined,
         p_system_capacity_id: formData.system_capacity_id || undefined,
         p_ring_associations:
           formData.ring_id && formData.order_in_ring != null
