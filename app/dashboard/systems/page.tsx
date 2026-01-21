@@ -12,6 +12,7 @@ import {
   FiMapPin,
   FiActivity,
   FiGrid,
+  FiTag,
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
@@ -382,6 +383,7 @@ export default function SystemsPage() {
               optional: true,
             },
             { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
+            { icon: FiTag, label: 'Asset No', value: sys.asset_no, optional: true },
           ]}
           // Footer: Manage Ports
           extraActions={
