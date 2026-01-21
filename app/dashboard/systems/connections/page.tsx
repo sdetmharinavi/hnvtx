@@ -263,6 +263,7 @@ export default function GlobalConnectionsPage() {
       system_type_code: selectedConnection.system_type_name,
       system_type_name: selectedConnection.system_type_name,
       commissioned_on: null,
+      asset_no: null,
       created_at: null,
       is_hub: null,
       is_ring_based: null,
