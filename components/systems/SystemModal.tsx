@@ -176,6 +176,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           remark: rowData.remark || '',
           s_no: rowData.s_no || '',
           // Use 'as any' if the type update hasn't propagated to rowData type yet
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           asset_no: (rowData as any).asset_no || '', 
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? '',
