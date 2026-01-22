@@ -14,9 +14,9 @@ import {
   FiLoader,
   FiDatabase,
   FiUser,
-  FiGitBranch, // Added
-  FiZap, // Added
-  FiLayers, // Added
+  FiGitBranch,
+  FiZap,
+  FiLayers,
 } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import { useDebounce } from 'use-debounce';
@@ -42,7 +42,7 @@ export function CommandMenu() {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
 
-  // Toggle with Cmd+K OR "/"
+  // 1. Toggle with Cmd+K OR "/"
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -62,6 +62,24 @@ export function CommandMenu() {
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
+
+  // 2. THE FIX: Close on Escape key
+  // We attach this listener only when the menu is OPEN to avoid running logic unnecessarily.
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault(); // Prevent bubbling to other modals if open
+        e.stopPropagation();
+        setOpen(false);
+        setQuery(''); // Optional: clear query on close
+      }
+    };
+
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [open]);
 
   // Search Logic
   React.useEffect(() => {
@@ -132,13 +150,11 @@ export function CommandMenu() {
               .select('id, route_name')
               .ilike('route_name', rpcTerm)
               .limit(3),
-            // NEW: Search Services
             supabase
               .from('services')
               .select('id, name, vlan, unique_id')
               .or(`name.ilike.${rpcTerm},unique_id.ilike.${rpcTerm},vlan.ilike.${rpcTerm}`)
               .limit(3),
-            // NEW: Search Employees
             supabase
               .from('employees')
               .select('id, employee_name, employee_pers_no')
@@ -153,7 +169,7 @@ export function CommandMenu() {
               subtitle: s.ip_address ? String(s.ip_address).split('/')[0] : undefined,
               type: 'system',
               url: `/dashboard/systems/${s.id}`,
-            })
+            }),
           );
 
           nodes.data?.forEach((n) =>
@@ -162,7 +178,7 @@ export function CommandMenu() {
               title: n.name,
               type: 'node',
               url: `/dashboard/nodes?search=${encodeURIComponent(n.name)}`,
-            })
+            }),
           );
 
           cables.data?.forEach((c) =>
@@ -171,7 +187,7 @@ export function CommandMenu() {
               title: c.route_name,
               type: 'cable',
               url: `/dashboard/ofc/${c.id}`,
-            })
+            }),
           );
 
           services.data?.forEach((s) =>
@@ -180,8 +196,8 @@ export function CommandMenu() {
               title: s.name,
               subtitle: s.vlan ? `VLAN: ${s.vlan}` : s.unique_id ? `ID: ${s.unique_id}` : undefined,
               type: 'service',
-              url: `/dashboard/services?search=${encodeURIComponent(s.name)}`, // Navigate to filtered view
-            })
+              url: `/dashboard/services?search=${encodeURIComponent(s.name)}`,
+            }),
           );
 
           employees.data?.forEach((e) =>
@@ -191,7 +207,7 @@ export function CommandMenu() {
               subtitle: e.employee_pers_no ? `HR: ${e.employee_pers_no}` : undefined,
               type: 'employee',
               url: `/dashboard/employees?search=${encodeURIComponent(e.employee_name)}`,
-            })
+            }),
           );
         } else {
           // --- OFFLINE SEARCH (Dexie / LocalDb) ---
@@ -209,17 +225,15 @@ export function CommandMenu() {
                 .filter((c) => (c.route_name || '').toLowerCase().includes(searchTerm))
                 .limit(3)
                 .toArray(),
-              // NEW: Offline Service Search
               localDb.v_services
                 .filter(
                   (s) =>
                     (s.name || '').toLowerCase().includes(searchTerm) ||
                     (s.vlan || '').toLowerCase().includes(searchTerm) ||
-                    (s.unique_id || '').toLowerCase().includes(searchTerm)
+                    (s.unique_id || '').toLowerCase().includes(searchTerm),
                 )
                 .limit(3)
                 .toArray(),
-              // NEW: Offline Employee Search
               localDb.v_employees
                 .filter((e) => (e.employee_name || '').toLowerCase().includes(searchTerm))
                 .limit(3)
@@ -233,7 +247,7 @@ export function CommandMenu() {
               subtitle: s.ip_address ? String(s.ip_address).split('/')[0] : 'Offline',
               type: 'system',
               url: `/dashboard/systems/${s.id}`,
-            })
+            }),
           );
 
           localNodes.forEach((n) =>
@@ -242,7 +256,7 @@ export function CommandMenu() {
               title: n.name!,
               type: 'node',
               url: `/dashboard/nodes?search=${encodeURIComponent(n.name!)}`,
-            })
+            }),
           );
 
           localCables.forEach((c) =>
@@ -251,7 +265,7 @@ export function CommandMenu() {
               title: c.route_name!,
               type: 'cable',
               url: `/dashboard/ofc/${c.id}`,
-            })
+            }),
           );
 
           localServices.forEach((s) =>
@@ -261,7 +275,7 @@ export function CommandMenu() {
               subtitle: s.vlan ? `VLAN: ${s.vlan}` : 'Offline',
               type: 'service',
               url: `/dashboard/services?search=${encodeURIComponent(s.name!)}`,
-            })
+            }),
           );
 
           localEmployees.forEach((e) =>
@@ -270,7 +284,7 @@ export function CommandMenu() {
               title: e.employee_name!,
               type: 'employee',
               url: `/dashboard/employees?search=${encodeURIComponent(e.employee_name!)}`,
-            })
+            }),
           );
         }
       } catch (err) {
@@ -424,9 +438,12 @@ export function CommandMenu() {
             <span>
               <strong>Enter</strong> to select
             </span>
-            <span>
+            <button
+              onClick={() => setOpen(false)}
+              className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none"
+            >
               <strong>Esc</strong> to close
-            </span>
+            </button>
           </div>
         </Command>
       </div>

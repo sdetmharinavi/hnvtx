@@ -15,6 +15,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { NetworkStatusBar } from '@/components/common/ui/NetworkStatusBar';
 import { cn } from '@/lib/utils';
+// THE FIX: Import the modal
+import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
 
 // Inner component to safely use hooks inside providers
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -26,6 +28,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <>
       <CommandMenu />
       <NetworkStatusBar />
+      {/* THE FIX: Add Keyboard Shortcuts Modal here so it's always mounted and listening */}
+      <KeyboardShortcutsModal />
 
       {/* Sidebar - Fixed position */}
       {/* Hidden on print. Z-index 50 to stay above content but below modals. */}
@@ -37,8 +41,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         />
       </div>
 
-      {/* 
-         Main Container 
+      {/*
+         Main Container
          - Mobile: No margin (w-full)
          - Desktop (md+): Margin left based on sidebar state
          - Transition: Smooth width transition
@@ -50,7 +54,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           'ml-0',
           // Desktop: Dynamic margin based on collapsed state
           // We use arbitrary values matching sidebar widths: 64px (collapsed) and 260px (expanded)
-          isCollapsed ? 'md:ml-[64px]' : 'md:ml-[260px]'
+          isCollapsed ? 'md:ml-[64px]' : 'md:ml-[260px]',
         )}
       >
         <div className="no-print">

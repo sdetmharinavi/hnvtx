@@ -1,3 +1,5 @@
+// utils/formatters.ts
+
 export interface NumberFormatOptions extends Intl.NumberFormatOptions {
   locale?: string;
 }
@@ -85,7 +87,6 @@ export const formatNumber = (num: number, options: NumberFormatOptions = {}): st
   return formatter.format(num);
 };
 
-// THE FIX: Changed defaults to INR and en-IN
 export const formatCurrency = (
   amount: number,
   currency: string = 'INR',
@@ -223,7 +224,7 @@ export const formatDate = (
   options: FormatDateOptions = {}
 ): string => {
   const {
-    locale = 'en-IN', // Changed default
+    locale = 'en-IN',
     format,
     ...intlOptions
   } = options;
@@ -292,7 +293,7 @@ export const formatDate = (
 
 function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: Date): boolean {
   const time = dateObj.getTime();
-  const isUnixEpoch = time === 0; // January 1, 1970 00:00:00 UTC
+  const isUnixEpoch = time === 0;
 
   if (!isUnixEpoch) return false;
 
@@ -336,15 +337,49 @@ function isSuspiciousUnixEpoch(originalInput: Date | string | number, dateObj: D
 
 export const formatErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') return error;
-  if (error instanceof Error) return error.message;
+
+  // Handle Supabase/Postgres Error Objects
   if (error && typeof error === 'object') {
+    // 1. Check for specific Postgres error codes
+    if ('code' in error && typeof error.code === 'string') {
+      const code = error.code;
+      const details = 'details' in error ? String(error.details) : '';
+      const message = 'message' in error ? String(error.message) : '';
+
+      switch (code) {
+        case '23505': // Unique violation
+          if (details.includes('Key (email)')) return 'This email address is already registered.';
+          if (details.includes('Key (username)')) return 'This username is already taken.';
+          if (details.includes('Key (code)')) return 'A record with this code already exists.';
+          return 'This record already exists (duplicate entry).';
+
+        case '23503': // Foreign key violation
+          return 'Cannot delete or update: This record is currently being used by other data.';
+
+        case '42501': // RLS violation
+          return 'Access Denied: You do not have permission to perform this action.';
+
+        case '23502': // Not null violation
+          return `Missing required field: ${message}`;
+        
+        case 'PGRST116': // JSON object requested, multiple (or no) rows returned
+          return 'Data not found or multiple records returned unexpectedly.';
+      }
+    }
+
+    // 2. Fallback to message property
     if ('message' in error && typeof error.message === 'string') {
       return error.message;
     }
+    
+    // 3. Fallback to error property
     if ('error' in error && typeof error.error === 'string') {
       return error.error;
     }
   }
+
+  if (error instanceof Error) return error.message;
+
   return 'An unexpected error occurred';
 };
 
@@ -370,7 +405,7 @@ export const normalizeSearchQuery = (query: string): string => {
 
   return query
     .trim()
-    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .replace(/\s+/g, ' ')
     .toLowerCase();
 };
 
@@ -407,13 +442,12 @@ export const highlightSearchTerms = (
 
 export const sanitizeSheetFileName = (name: string) => {
   return name
-    .replace(/[*?:\\/\[\]]/g, '_') // replace invalid chars
-    .substring(0, 31); // Excel limit (31 chars)
+    .replace(/[*?:\\/\[\]]/g, '_')
+    .substring(0, 31);
 };
 
 export const formatIP = (ip: unknown): string => {
   if (!ip || typeof ip !== 'string') return '';
-  // Split by '/' to remove subnet mask if present (e.g., "192.168.1.1/32" -> "192.168.1.1")
   return ip.split('/')[0];
 };
 
