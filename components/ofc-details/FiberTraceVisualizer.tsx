@@ -54,7 +54,6 @@ const SegmentStep = ({ item }: { item: OrientedStep }) => {
 
 // Small helper component for rendering a single SPLICE step
 const SpliceStep = ({ item }: { item: FiberTraceSegment }) => {
-  // Removed prevStep usage as it's not strictly needed for basic display and simplifies logic
   return (
     <li className="mb-10 ml-8">
       <span className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 ring-8 ring-white dark:bg-gray-700 dark:ring-gray-900">
@@ -72,7 +71,6 @@ const SpliceStep = ({ item }: { item: FiberTraceSegment }) => {
         <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">{item.details}</p>
         <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
           <span>
-            {/* Hide fiber numbers for splice to avoid confusion in reverse mode, just show loss */}
             <strong>Loss:</strong> <span className="font-mono">{item.loss_db?.toFixed(2)} dB</span>
           </span>
         </div>
@@ -95,12 +93,11 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
       };
     }
 
-    // 1. Build Name Map for quick lookup
+    // 1. Build Name Map for quick lookup from details string
     const nodeNameMap = new Map<string, string>();
     traceData.forEach((step) => {
       if (step.element_type === 'SEGMENT' && step.details) {
         // Parse details string: "Segment X (StartNode -> EndNode)"
-        // This relies on the DB function `trace_fiber_path` outputting this format
         const match = step.details.match(/\((.+?) → (.+?)\)/);
         if (match) {
           if (step.start_node_id) nodeNameMap.set(step.start_node_id, match[1]);
@@ -109,11 +106,8 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
       }
     });
 
-    // 2. Extract Segments for Lookahead Logic
-    // const segments = traceData.filter(t => t.element_type === 'SEGMENT'); // Unused
-
-    // 3. Determine Orientation Logic
-    // We iterate the MAIN list (traceData) which might be reversed by the parent.
+    // 2. Determine Orientation Logic
+    // We iterate the MAIN list which might be reversed by the parent modal.
     const orientedSteps: OrientedStep[] = [];
     let previousExitNodeId: string | null = null;
 
@@ -126,7 +120,7 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
       const start = item.start_node_id!;
       const end = item.end_node_id!;
 
-      // Default to physical direction
+      // Default assumption
       let isForward = true;
 
       if (previousExitNodeId) {
@@ -143,10 +137,10 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
 
           // If this segment's END connects to next segment, it's forward (A->B, B->C)
           if (end === nextStart || end === nextEnd) isForward = true;
-          // If this segment's START connects to next segment, it's reverse (B->A, A->C?? - implies physical mismatch but logical continuity)
+          // If this segment's START connects to next segment, it's reverse (B->A, A->C logic in reversed array)
           else if (start === nextStart || start === nextEnd) isForward = false;
         }
-        // If single segment, we default to Forward (A->B) unless we want to use some other heuristic
+        // If single segment, use standard forward order
       }
 
       const fromId = isForward ? start : end;
@@ -161,10 +155,9 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
       previousExitNodeId = toId;
     });
 
-    // Determine visual start/end names for the header
+    // Determine visual start/end names for the header based on the FIRST and LAST segment in the list
     const firstSegment = orientedSteps.find((s) => s.element_type === 'SEGMENT');
-    // For end, find last segment. Array is already in display order.
-    // We iterate backwards to find the last segment.
+    // Iterate backwards to find the last segment
     const lastSegment = [...orientedSteps].reverse().find((s) => s.element_type === 'SEGMENT');
 
     return {
@@ -213,7 +206,6 @@ export const FiberTraceVisualizer: React.FC<FiberTraceVisualizerProps> = ({
           if (item.element_type === 'SEGMENT') {
             return <SegmentStep key={`${item.element_id}-${index}`} item={item} />;
           } else if (item.element_type === 'SPLICE') {
-            // Splice doesn't strictly need prevStep for basic display
             return <SpliceStep key={`${item.element_id}-${index}`} item={item} />;
           }
           return null;

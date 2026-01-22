@@ -36,21 +36,26 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
   refetch,
   cableName,
 }) => {
+  // Default to Forward (Start A -> End B)
   const [isForwardDirection, setIsForwardDirection] = useState(true);
 
-  // 1. Determine Start parameters
+  // 1. Determine Start parameters for the query
   const traceParams = useMemo(() => {
     if (!segments || segments.length === 0) return { segmentId: null, fiberNo: null };
     const sortedSegments = [...segments].sort((a, b) => a.segment_order - b.segment_order);
 
     if (isForwardDirection) {
+      // Start from the first segment
       return { segmentId: sortedSegments[0].id, fiberNo: fiberNoSn };
     } else {
+      // Start from the last segment
       return { segmentId: sortedSegments[sortedSegments.length - 1].id, fiberNo: fiberNoEn };
     }
   }, [segments, isForwardDirection, fiberNoSn, fiberNoEn]);
 
-  // 2. Fetch Trace
+  // 2. Fetch Trace Data
+  // The RPC 'trace_fiber_path' returns data ordered Topologically (A -> B)
+  // regardless of which segment we initiated the trace from.
   const {
     data: traceData,
     isLoading,
@@ -66,41 +71,28 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       return;
     }
 
-    // traceData is ALWAYS ordered by traversal step (Step 0 -> Step N)
     // Filter to just segments to find endpoints
+    // traceData is strictly ordered A -> B (Physical Start to End) by the DB
     const segmentSteps = traceData.filter((s) => s.element_type === 'SEGMENT');
     if (segmentSteps.length === 0) {
       toast.error('Cannot sync: No cable segments found in trace.');
       return;
     }
 
+    // Identify Physical Start (A) and Physical End (B)
     const firstSegment = segmentSteps[0];
     const lastSegment = segmentSteps[segmentSteps.length - 1];
 
-    let pathStartNodeId: string | null = null;
-    let pathEndNodeId: string | null = null;
+    // THE FIX: Always sync topological order (A->B), ignoring visual direction.
+    // firstSegment.start_node_id is the physical start of the route.
+    // lastSegment.end_node_id is the physical end of the route.
+    // firstSegment.fiber_in is the fiber entering at A.
+    // lastSegment.fiber_out is the fiber exiting at B.
 
-    // Fiber Logic:
-    // fiber_in = Fiber number entering the segment
-    // fiber_out = Fiber number exiting the segment
-    // This is relative to the traversal direction.
-
+    const pathStartNodeId = firstSegment.start_node_id || null;
+    const pathEndNodeId = lastSegment.end_node_id || null;
     const startFiber = firstSegment.fiber_in || 0;
     const endFiber = lastSegment.fiber_out || 0;
-
-    if (isForwardDirection) {
-      // Trace A -> B
-      // We entered at Start Node, Exited at End Node
-      pathStartNodeId = firstSegment.start_node_id || null;
-      pathEndNodeId = lastSegment.end_node_id || null;
-    } else {
-      // Trace B -> A
-      // We entered at the Physical End (B) of the last segment (Seg 3)
-      // We exited at the Physical Start (A) of the first segment (Seg 1)
-
-      pathStartNodeId = firstSegment.end_node_id || null;
-      pathEndNodeId = lastSegment.start_node_id || null;
-    }
 
     if (!pathStartNodeId || !pathEndNodeId) {
       toast.error('Cannot sync: Endpoints could not be determined.');
@@ -115,15 +107,13 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       p_end_fiber_no: endFiber,
     };
 
-    // console.log("Syncing Path:", payload);
-
     syncPathMutation.mutate(payload, {
       onSuccess: () => {
         refetch();
         onClose();
       },
     });
-  }, [traceData, record, syncPathMutation, refetch, onClose, isForwardDirection]);
+  }, [traceData, record, syncPathMutation, refetch, onClose]); // Removed isForwardDirection dependency
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Tracing fiber path..." />;
@@ -131,10 +121,13 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     if (!traceData || traceData.length === 0)
       return <div className="p-4 text-gray-500">Path could not be traced.</div>;
 
-    // Use traceData directly. Visualizer handles basic display.
+    // VISUALIZATION ONLY: Reverse the display list if requested by user
+    // This affects what they SEE, but not what is SYNCED above.
+    const displayData = isForwardDirection ? traceData : [...traceData].reverse();
+
     return (
       <FiberTraceVisualizer
-        traceData={traceData}
+        traceData={displayData}
         onSync={handleSyncPath}
         isSyncing={syncPathMutation.isPending}
       />
