@@ -57,8 +57,8 @@ export default function EFilesPage() {
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
 
-  const { sync: syncData, isSyncing: isSyncingData } = useDataSync(); // ADDED hook
-  const isOnline = useOnlineStatus(); // ADDED hook
+  const { sync: syncData, isSyncing: isSyncingData } = useDataSync(); 
+  const isOnline = useOnlineStatus(); 
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');

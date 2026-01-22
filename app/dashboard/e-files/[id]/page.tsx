@@ -29,7 +29,7 @@ export default function EFileDetailsPage() {
   const { data, isLoading, isError, error, refetch } = useEFileDetails(id as string);
   const closeMutation = useCloseFile();
 
-  const { sync: syncData, isSyncing } = useDataSync(); // ADDED
+  const { sync: syncData, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus(); //
 
   if (isLoading) return <PageSpinner text="Loading file details..." />;
@@ -178,8 +178,8 @@ export default function EFileDetailsPage() {
                     file.priority === 'immediate'
                       ? 'bg-red-100 text-red-800'
                       : file.priority === 'urgent'
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-gray-100 text-gray-800'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-gray-100 text-gray-800'
                   }`}
                 >
                   {file.priority} Priority
