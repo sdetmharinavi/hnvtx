@@ -1,12 +1,13 @@
-// components/common/filters/MultiSelectFilter.tsx
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
-import { FiChevronDown, FiCheck } from "react-icons/fi";
-import { Filters } from "@/hooks/database";
-import { Option } from "@/components/common/ui/select/SearchableSelect";
-import { Label } from "@/components/common/ui/label/Label";
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { FiChevronDown, FiCheck } from 'react-icons/fi';
+import { Filters } from '@/hooks/database';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { Label } from '@/components/common/ui/label/Label';
+// IMPORT FIX
+import useIsomorphicLayoutEffect from '@/hooks/useIsomorphicLayoutEffect';
 
 interface MultiSelectFilterProps {
   label: string;
@@ -27,27 +28,26 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
-  // Use state for dropdown positioning to ensure it re-renders
+
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   const selectedValues = (filters[filterKey] as string[]) || [];
 
-  // Handle outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
-        dropdownRef.current && !dropdownRef.current.contains(event.target as Node)
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update position when opening or scrolling
   const updatePosition = () => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -61,7 +61,8 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     }
   };
 
-  useLayoutEffect(() => {
+  // FIXED: useIsomorphicLayoutEffect
+  useIsomorphicLayoutEffect(() => {
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
@@ -69,7 +70,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleToggleOption = (value: string) => {
@@ -135,8 +135,8 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
               onClick={() => handleToggleOption(option.value)}
               className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors ${
                 isSelected
-                  ? "bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100"
-                  : "text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700"
+                  ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
+                  : 'text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {isSelected && (
@@ -164,31 +164,30 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 ${
           selectedValues.length > 0
-            ? "border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400"
-            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+            ? 'border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400'
+            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
         }`}
       >
         <span
           className={`block truncate ${
             selectedValues.length === 0
-              ? "text-gray-500 dark:text-gray-400"
-              : "text-gray-900 dark:text-white"
+              ? 'text-gray-500 dark:text-gray-400'
+              : 'text-gray-900 dark:text-white'
           }`}
         >
           {selectedValues.length === 0
             ? `Select ${label}...`
             : selectedValues.length === options.length
-            ? `All ${label} (${selectedValues.length})`
-            : `${selectedValues.length} selected`}
+              ? `All ${label} (${selectedValues.length})`
+              : `${selectedValues.length} selected`}
         </span>
         <FiChevronDown
           className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
+            isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
-      {/* THE FIX: Use createPortal to render the dropdown outside the parent container */}
       {isOpen && typeof document !== 'undefined' && createPortal(DropdownContent, document.body)}
     </div>
   );

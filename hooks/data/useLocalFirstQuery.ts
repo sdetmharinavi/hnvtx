@@ -6,6 +6,8 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { PublicTableOrViewName, Row } from '@/hooks/database';
 import { Table, PromiseExtended } from 'dexie';
 import { localDb } from '@/hooks/data/localDb';
+// IMPORT LODASH FOR DEEP COMPARISON
+import isEqual from 'lodash.isequal';
 
 interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow> {
   queryKey: QueryKey;
@@ -103,7 +105,9 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
   // 3. Safe Sync Network Data to Local DB (Upsert + Prune)
   useEffect(() => {
-    if (networkData && !isSyncingRef.current) {
+    // Only proceed if we have network data and aren't already working
+    if (networkData && !isSyncingRef.current && localData !== 'loading') {
+
       const syncToLocal = async () => {
         try {
           isSyncingRef.current = true;
@@ -118,7 +122,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
             .toArray();
 
           const dirtyIds = new Set<string>();
-          const pendingInsertIds = new Set<string>();
+          // const pendingInsertIds = new Set<string>(); // Not used currently in this specialized fetch
 
           pendingMutations.forEach((task) => {
             if (task.type === 'update' && task.payload?.id) {
@@ -126,7 +130,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
             } else if (task.type === 'delete' && task.payload?.ids) {
               task.payload.ids.forEach((id: string | number) => dirtyIds.add(String(id)));
             } else if (task.type === 'insert' && task.payload?.id) {
-              pendingInsertIds.add(String(task.payload.id));
+              // pendingInsertIds.add(String(task.payload.id));
             }
           });
 
@@ -145,14 +149,18 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
           });
 
           if (dataToSave.length > 0) {
-            await dexieTable.bulkPut(dataToSave);
-          }
+            // PERFORMANCE FIX: Deep compare with current local data to avoid unnecessary writes
+            // We use Lodash isEqual to check if the payload matches what we already have
+            // This prevents the infinite loop of Fetch -> Write -> LiveQuery Update -> Re-render
+            const shouldWrite = !isEqual(dataToSave, localData);
 
-          // Note: We deliberately do NOT perform deletions/pruning here.
-          // Since this hook usually fetches filtered subsets of data (e.g. search results),
-          // pruning items missing from `networkData` would incorrectly delete valid local items
-          // that just didn't match the current filter.
-          // Full synchronization/pruning is handled by `useDataSync`.
+            if (shouldWrite) {
+               // console.log(`[useLocalFirstQuery] Writing ${dataToSave.length} records to ${dexieTable.name}`);
+               await dexieTable.bulkPut(dataToSave);
+            } else {
+               // console.log(`[useLocalFirstQuery] Data identical for ${dexieTable.name}, skipping write.`);
+            }
+          }
         } catch (e) {
           console.error(`[useLocalFirstQuery] Sync failed for ${dexieTable.name}`, e);
         } finally {
@@ -162,7 +170,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
       syncToLocal();
     }
-  }, [networkData, dexieTable, tableName]);
+  }, [networkData, dexieTable, tableName, localData]); // Added localData to deps for comparison
 
   // 4. Enhanced Loading Logic
   // - If local data is loading, we are loading (hard load).

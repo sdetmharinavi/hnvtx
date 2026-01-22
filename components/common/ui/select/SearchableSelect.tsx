@@ -1,11 +1,11 @@
-// path: components/common/ui/select/SearchableSelect.tsx
 'use client';
 
 import { Label } from '@/components/common/ui/label/Label';
-import { useState, useRef, useEffect, useMemo, useLayoutEffect, useId } from 'react';
+import { useState, useRef, useEffect, useMemo, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { FiChevronDown, FiX, FiSearch } from 'react-icons/fi';
 import { ButtonSpinner } from '../LoadingSpinner';
+import useIsomorphicLayoutEffect from '@/hooks/useIsomorphicLayoutEffect';
 
 export interface Option {
   value: string;
@@ -72,14 +72,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     // Client-side natural sort
     if (sortOptions) {
       processedOptions.sort((a, b) =>
-        a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true })
+        a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }),
       );
     }
 
     if (!searchTerm.trim()) return processedOptions;
 
     return processedOptions.filter((option) =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase())
+      option.label.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [options, searchTerm, sortOptions, serverSide]);
 
@@ -90,7 +90,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const hasMoreOptions = filteredOptions.length > RENDER_LIMIT;
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value),
-    [options, value]
+    [options, value],
   );
   const selectedLabel = selectedOption?.label || '';
   const hasValue = !!value;
@@ -104,7 +104,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
   }, [searchTerm, serverSide, onSearch]);
 
-  useLayoutEffect(() => {
+  // FIXED: Use Isomorphic Layout Effect
+  useIsomorphicLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -116,9 +117,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         top: shouldFlip ? 'auto' : `${rect.bottom + 4}px`,
         bottom: shouldFlip ? `${viewportHeight - rect.top + 4}px` : 'auto',
         left: `${rect.left}px`,
-        // Use minWidth instead of strict width to allow expansion for long text
         minWidth: `${rect.width}px`,
-        maxWidth: '90vw', // Prevent going off-screen on small devices
+        maxWidth: '90vw',
         zIndex: 99999,
       });
     }
@@ -215,7 +215,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (!disabled) setIsOpen(!isOpen);
   };
 
-  // THE FIX: Changed 'rounded-md' to 'rounded-lg' and added 'text-sm' to match standard select inputs.
   const baseClasses = `relative w-full rounded-lg border px-3 py-2 transition-all duration-200 cursor-pointer text-sm
     ${
       error
@@ -235,7 +234,6 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      // THE FIX: Changed to rounded-lg
       className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
     >
       <div className="p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
