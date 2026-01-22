@@ -67,15 +67,22 @@ export default function OfcCableDetailsPage() {
 
   const [assignFiber, setAssignFiber] = useState<V_ofc_connections_completeRowSchema | null>(null);
   const [fiberToUnlink, setFiberToUnlink] = useState<V_ofc_connections_completeRowSchema | null>(
-    null
+    null,
   );
+
+  // -- UPDATED STATE FOR TRACING --
+  // We only need to store the record now; the modal calculates segments
+  const [tracingFiber, setTracingFiber] = useState<{
+    record: V_ofc_connections_completeRowSchema;
+  } | null>(null);
+
   const { mutate: unlinkFiber, isPending: isUnlinking } = useReleaseFiber();
   const createConnectionsMutation = useCreateOfcConnection();
 
   const {
     data: cableConnectionsData,
     isLoading,
-    isFetching, // THE FIX: Destructure isFetching
+    isFetching,
     refetch,
     pagination,
     search,
@@ -105,7 +112,6 @@ export default function OfcCableDetailsPage() {
   const canAdd = canEdit;
   const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
 
-  // ... (Filter config logic unchanged) ...
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
@@ -130,22 +136,22 @@ export default function OfcCableDetailsPage() {
         ],
       },
     ],
-    []
+    [],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
-  // ...
 
   const {
     data: routeDetails,
     isLoading: isLoadingRouteDetails,
     isError: isRouteDetailsError,
   } = useRouteDetails(cableId as string);
+
   const { data: allCablesData } = useOfcRoutesForSelection();
 
   const { data: utilResult, isLoading: isLoadingUtil } = usePagedData<V_cable_utilizationRowSchema>(
@@ -154,7 +160,7 @@ export default function OfcCableDetailsPage() {
     {
       filters: { cable_id: cableId as string },
       limit: 1,
-    }
+    },
   );
   const utilization = utilResult?.data?.[0] as ExtendedUtilization | undefined;
 
@@ -164,7 +170,7 @@ export default function OfcCableDetailsPage() {
       onSuccess: (result) => {
         if (result.successCount > 0) refetch();
       },
-    }
+    },
   );
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -178,19 +184,16 @@ export default function OfcCableDetailsPage() {
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [uploadConnections]
+    [uploadConnections],
   );
 
-  const [tracingFiber, setTracingFiber] = useState<{
-    startSegmentId: string;
-    fiberNo: number;
-    record?: V_ofc_connections_completeRowSchema;
-  } | null>(null);
-
-  const { data: cableSegments } = useTableQuery(createClient(), 'cable_segments', {
+  // -- FETCH CABLE SEGMENTS FOR TRACING --
+  const { data: cableSegmentsResult } = useTableQuery(supabase, 'cable_segments', {
     filters: { original_cable_id: cableId as string },
     orderBy: [{ column: 'segment_order', ascending: true }],
+    enabled: !!cableId,
   });
+  const cableSegments = cableSegmentsResult?.data || [];
 
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
@@ -200,21 +203,11 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, cableConnectionsData.length, hasInitializedView]);
 
-  const handleTraceClick = useCallback(
-    (record: V_ofc_connections_completeRowSchema) => {
-      const firstSegment = cableSegments?.data.find((s) => s.segment_order === 1);
-      if (firstSegment && record.fiber_no_sn) {
-        setTracingFiber({
-          startSegmentId: firstSegment.id,
-          fiberNo: record.fiber_no_sn,
-          record,
-        });
-      } else {
-        toast.error('Cannot trace fiber: No cable segments found.');
-      }
-    },
-    [cableSegments]
-  );
+  // -- UPDATED TRACE HANDLER --
+  const handleTraceClick = useCallback((record: V_ofc_connections_completeRowSchema) => {
+    // Just set the record, the Modal handles the logic
+    setTracingFiber({ record });
+  }, []);
 
   const handleUnlink = () => {
     if (fiberToUnlink && fiberToUnlink.id) {
@@ -294,7 +287,7 @@ export default function OfcCableDetailsPage() {
         </>
       );
     },
-    [canEdit, canDelete, editModal, crudActions, handleTraceClick]
+    [canEdit, canDelete, editModal, crudActions, handleTraceClick],
   );
 
   const columns = OfcDetailsTableColumns(cableConnectionsData);
@@ -348,7 +341,7 @@ export default function OfcCableDetailsPage() {
       canEdit,
       canDelete,
       handleTraceClick,
-    ]
+    ],
   );
 
   const handleVerifyAndCreateFibers = useCallback(() => {
@@ -377,7 +370,7 @@ export default function OfcCableDetailsPage() {
     },
     onAddNew: canAdd ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    isFetching: isFetching, // THE FIX: Pass isFetching
+    isFetching: isFetching,
     exportConfig: {
       tableName: 'v_ofc_connections_complete',
       fileName: `${routeDetails?.route.route_name}_fibers`,
@@ -439,7 +432,7 @@ export default function OfcCableDetailsPage() {
         />
       );
     },
-    []
+    [],
   );
 
   if (isLoading || isLoadingRouteDetails || isLoadingUtil) return <PageSpinner />;
@@ -475,7 +468,6 @@ export default function OfcCableDetailsPage() {
 
       <OfcDetailsHeader cable={routeDetails.route as V_ofc_cables_completeRowSchema} />
 
-      {/* REUSABLE FILTER BAR */}
       <GenericFilterBar
         searchQuery={search.searchQuery}
         onSearchChange={search.setSearchQuery}
@@ -566,12 +558,16 @@ export default function OfcCableDetailsPage() {
         loading={deleteModal.loading}
       />
 
+      {/* UPDATED FIBER TRACE MODAL */}
       <FiberTraceModal
         refetch={refetch}
         isOpen={!!tracingFiber}
         onClose={() => setTracingFiber(null)}
-        startSegmentId={tracingFiber?.startSegmentId || null}
-        fiberNo={tracingFiber?.fiberNo || null}
+        // Pass necessary data for bidirectional logic
+        segments={cableSegments}
+        fiberNoSn={tracingFiber?.record.fiber_no_sn || null}
+        fiberNoEn={tracingFiber?.record.fiber_no_en || null}
+        cableName={routeDetails?.route.route_name || ''}
         allCables={allCablesData}
         record={tracingFiber?.record}
       />

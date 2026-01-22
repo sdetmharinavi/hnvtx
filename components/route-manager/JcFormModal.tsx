@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { z } from 'zod';
-import { useForm, Resolver } from 'react-hook-form'; // Added Resolver
+import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput, FormSearchableSelect } from '@/components/common/form';
 import { createClient } from '@/utils/supabase/client';
@@ -13,6 +13,9 @@ import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { JointBox } from '@/schemas/custom-schemas';
 import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 import { BaseFormModal } from '@/components/common/form/BaseFormModal';
+import { useQueryClient } from '@tanstack/react-query'; // Added
+import { useDataSync } from '@/hooks/data/useDataSync'; // Added
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // Added
 
 interface JcFormModalProps {
   isOpen: boolean;
@@ -32,6 +35,9 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   rkm,
 }) => {
   const supabase = createClient();
+  const queryClient = useQueryClient(); // Added
+  const { sync: syncData } = useDataSync(); // Added
+  const isOnline = useOnlineStatus(); // Added
   const isEditMode = !!editingJc;
 
   const { originalData: allNodesRaw, isLoading: isLoadingNodes } = useDropdownOptions({
@@ -69,7 +75,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
 
     return finalNodes.map((n) => ({
       value: n.id!,
-      label: `${n.name} (${n.node_type_name || 'Unknown Type'})`,
+      label: `${n.name} ${n.node_type_name ? `(${n.node_type_name})` : ''}`,
     }));
   }, [allNodesRaw]);
 
@@ -81,7 +87,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   type JcFormValues = z.infer<typeof junction_closuresFormSchema>;
 
   const form = useForm<JcFormValues>({
-    // THE FIX: Explicitly cast the resolver
     resolver: zodResolver(junction_closuresFormSchema) as unknown as Resolver<JcFormValues>,
     defaultValues: {
       node_id: '',
@@ -123,7 +128,7 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
 
     if (formData.position_km && rkm && Number(formData.position_km) > Number(rkm)) {
       toast.error(
-        `Position (${formData.position_km} km) cannot be greater than Cable length (${rkm} km).`
+        `Position (${formData.position_km} km) cannot be greater than Cable length (${rkm} km).`,
       );
       return;
     }
@@ -150,7 +155,20 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
         if (error) throw error;
       }
 
-      onSave();
+      // THE FIX: Trigger sync logic immediately
+      // 1. Invalidate queries to force immediate refetch (for online mode)
+      queryClient.invalidateQueries({ queryKey: ['route-details', routeId] });
+      queryClient.invalidateQueries({ queryKey: ['jc-splicing-details'] });
+
+      // 2. Sync local DB in background so fallback/offline data is fresh
+      if (isOnline) {
+        // We sync 'cable_segments' too because adding a JC splits segments
+        syncData(['junction_closures', 'cable_segments', 'v_junction_closures_complete']).catch(
+          console.error,
+        );
+      }
+
+      onSave(); // Calls parent refetch
       toast.success(`Junction Closure ${isEditMode ? 'updated' : 'created'} successfully!`);
       onClose();
     } catch (error) {
@@ -161,7 +179,6 @@ export const JcFormModal: React.FC<JcFormModalProps> = ({
   };
 
   return (
-    // THE FIX: Pass generic type
     <BaseFormModal<JcFormValues>
       isOpen={isOpen}
       onClose={onClose}

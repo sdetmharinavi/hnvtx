@@ -73,7 +73,11 @@ export function useRouteDetails(routeId: string | null) {
       // 1. Try API
       if (isOnline) {
         try {
-          const res = await fetch(`/api/route/${routeId}`);
+          // THE FIX: Add cache: 'no-store' to ensure we get fresh data after a mutation
+          const res = await fetch(`/api/route/${routeId}`, {
+            cache: 'no-store'
+          });
+          
           if (res.ok) {
             const data = await res.json();
             const parsed = routeDetailsPayloadSchema.safeParse(data);
@@ -106,7 +110,6 @@ export function useRouteDetails(routeId: string | null) {
           const node = nodeMap.get(jc.node_id);
           return {
             ...jc,
-            // created_at/updated_at handling for schema compatibility
             created_at: jc.created_at || null,
             updated_at: jc.updated_at || null,
             node: { name: node?.name || 'Unknown Node' },
@@ -135,7 +138,7 @@ export function useRouteDetails(routeId: string | null) {
           },
           jointBoxes,
           segments: segmentsData,
-          splices: [], // We don't load all splices for the whole route here usually, unless needed
+          splices: [], 
         };
       } catch (err) {
         console.error('Local DB fetch failed for route details:', err);

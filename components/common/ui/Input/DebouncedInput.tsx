@@ -22,18 +22,25 @@ export const DebouncedInput = ({
 
   const isMounted = useRef(false);
 
-  // Sync internal state if parent value changes externally
+  // THE FIX: Sync internal state with parent ONLY if the change originated externally.
+  // We determine this by checking if the incoming value matches the last debounced value we sent.
+  // If they match, it's just the parent "echoing" our change back to us -> Ignore it to preserve current typing.
+  // If they don't match, it's a real external change (e.g. "Clear Filters" button clicked) -> Update local state.
   useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
+    if (initialValue !== value) {
+      if (initialValue !== debouncedValue) {
+        setValue(initialValue);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValue]); // We rely on closure state for 'value' and 'debouncedValue' to keep dep array clean, or include them carefully.
+  // Actually, including them in deps might trigger too often. The logic relies on the specific moment initialValue changes.
 
   // Handle debounced updates to parent
   useEffect(() => {
     if (isMounted.current) {
-      // THE FIX: Only propagate if the debounced value has 'caught up' to the current value.
-      // This prevents stale debounced values (e.g. "text") from overwriting
-      // the parent state immediately after a clear action (value is "")
-      // but before the debounce timer has expired.
+      // Only propagate if the debounced value has 'caught up' to the current value.
+      // AND it's different from what the parent already knows (optimization).
       if (value === debouncedValue && debouncedValue !== initialValue) {
         onChange(debouncedValue);
       }

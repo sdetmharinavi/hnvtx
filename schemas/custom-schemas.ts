@@ -139,8 +139,9 @@ export const fiberTraceSegmentSchema = z.object({
   step_order: z.number(),
   element_type: z.string(),
   element_id: z.uuid(),
-  element_name: z.string(),
-  details: z.string(),
+  // THE FIX: Made nullable to handle cases where names/details are missing in DB joins
+  element_name: z.string().nullable(),
+  details: z.string().nullable(),
   fiber_in: z.number().nullable(),
   fiber_out: z.number().nullable(),
   distance_km: z.number().nullable(),

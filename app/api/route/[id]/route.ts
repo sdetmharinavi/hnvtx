@@ -1,4 +1,4 @@
-// path: app/api/route/[id]/route.ts
+// app/api/route/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import z from 'zod';
@@ -8,7 +8,10 @@ import {
   Cable_segmentsRowSchema,
 } from '@/schemas/zod-schemas';
 
-// It is NOT a database model, but an API contract.
+// THE FIX: Opt out of static caching
+export const dynamic = 'force-dynamic';
+
+// ... (rest of the schema definitions)
 const evolutionCommitPayloadSchema = z.object({
   plannedJointBoxes: z.array(
     z.object({
@@ -37,7 +40,6 @@ const evolutionCommitPayloadSchema = z.object({
   ),
 });
 
-// Infer the TypeScript type from the schema.
 export type EvolutionCommitPayload = z.infer<typeof evolutionCommitPayloadSchema>;
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -49,7 +51,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const supabase = await createClient();
 
   try {
-    // 1. Fetch main route info using RPC to bypass RLS
+    // 1. Fetch main route info
     const { data: routeRpcData, error: routeError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_ofc_cables_complete',
       p_limit: 1,
@@ -59,14 +61,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
 
-    // Parse RPC result
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routeDataList = (routeRpcData as any)?.data as V_ofc_cables_completeRowSchema[];
     const routeData = routeDataList?.[0];
 
     if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
 
-    // 2. Fetch all existing JCs using RPC (v_junction_closures_complete already joins nodes)
+    // 2. Fetch JCs
     const { data: jcRpcData, error: jcError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_junction_closures_complete',
       p_limit: 1000,
@@ -79,16 +80,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const jcDataList = (jcRpcData as any)?.data as V_junction_closures_completeRowSchema[];
 
-    // Transform to match the UI's expected "JointBox" schema
+    // Transform
     const jointBoxes = (jcDataList || []).map((jc) => ({
       ...jc,
-      id: jc.id!, // Ensure ID is present
+      id: jc.id!, 
       node_id: jc.node_id!,
       ofc_cable_id: jc.ofc_cable_id!,
-      created_at: null, // View doesn't strictly require these for visualization
+      created_at: null,
       updated_at: null,
       status: 'existing' as const,
-      // Map the joined name from the view to the nested node object
       node: { name: jc.name },
       attributes: {
         position_on_route:
@@ -99,9 +99,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       },
     }));
 
-    // 3. Fetch all current segments using RPC
+    // 3. Fetch Segments
     const { data: segmentRpcData, error: segmentError } = await supabase.rpc('get_paged_data', {
-      p_view_name: 'cable_segments', // Can query tables directly via this RPC
+      p_view_name: 'cable_segments',
       p_limit: 1000,
       p_offset: 0,
       p_filters: { original_cable_id: routeId },
@@ -114,11 +114,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const segmentData = (segmentRpcData as any)?.data as Cable_segmentsRowSchema[];
 
-    // Construct the final payload correctly
     const payload = {
       route: {
         ...routeData,
-        // Add the nested objects the client side logic expects for start/end sites
         start_site: { id: routeData.sn_id, name: routeData.sn_name },
         end_site: { id: routeData.en_id, name: routeData.en_name },
         evolution_status:
@@ -130,7 +128,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       },
       jointBoxes,
       segments: segmentData || [],
-      splices: [], // Placeholder for splices
+      splices: [],
     };
 
     return NextResponse.json(payload);
@@ -149,8 +147,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   try {
     const payload = await request.json();
-
-    // Validate the incoming payload against our strict Zod schema
     const validationResult = evolutionCommitPayloadSchema.safeParse(payload);
     if (!validationResult.success) {
       return NextResponse.json(
