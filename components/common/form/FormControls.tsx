@@ -41,8 +41,7 @@ type BaseProps<T extends FieldValues> = {
 // --- FORM INPUT COMPONENT ---
 
 interface FormInputProps<T extends FieldValues>
-  extends BaseProps<T>,
-    Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
+  extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
   register: UseFormRegister<T>;
   treatAsNumber?: boolean; // NEW PROP
 }
@@ -58,6 +57,8 @@ export function FormInput<T extends FieldValues>({
   treatAsNumber = false, // Default false
   ...props
 }: FormInputProps<T>) {
+  const isNumber = type === 'number' || treatAsNumber;
+
   return (
     <div className={className}>
       <Label htmlFor={name} required={props.required} className={labelClassName}>
@@ -69,10 +70,16 @@ export function FormInput<T extends FieldValues>({
         error={typeof error?.message === 'string' ? error.message : undefined}
         {...props}
         {...register(name, {
-          // For number inputs OR if explicitly treated as number, coerce
-          ...((type === 'number' || treatAsNumber) && {
-            setValueAs: (v) =>
-              v === '' || v === null || typeof v === 'undefined' ? null : Number(v),
+          // FIX: Return undefined for empty strings so Zod .optional() works.
+          // Return valid number if parsed, or original string if NaN (to let Zod validator fail it).
+          ...(isNumber && {
+            setValueAs: (v) => {
+              if (v === '' || v === null || typeof v === 'undefined') {
+                return undefined;
+              }
+              const n = Number(v);
+              return isNaN(n) ? v : n;
+            },
           }),
           // For date inputs, map empty to null and non-empty to Date object
           ...(type === 'date' && {
@@ -87,7 +94,8 @@ export function FormInput<T extends FieldValues>({
 // --- FORM TEXTAREA COMPONENT ---
 
 interface FormTextareaProps<T extends FieldValues>
-  extends BaseProps<T>,
+  extends
+    BaseProps<T>,
     Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'name' | 'value' | 'onChange'> {
   register?: UseFormRegister<T>;
   control?: Control<T, any, any>;
@@ -246,7 +254,8 @@ export function FormSelect<T extends FieldValues>({
 // --- FORM DATE INPUT COMPONENT ---
 
 export interface FormDateInputProps<T extends FieldValues>
-  extends BaseProps<T>,
+  extends
+    BaseProps<T>,
     Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
   control: Control<T, any, any>;
   pickerProps?: Partial<
@@ -334,11 +343,11 @@ export function FormDateInput<T extends FieldValues>({
             raw == null || (raw as any) === ''
               ? null
               : typeof raw === 'object' && raw !== null && 'getTime' in (raw as object)
-              ? (raw as Date)
-              : new Date(raw as any);
+                ? (raw as Date)
+                : new Date(raw as any);
 
           return (
-            // @ts-expect-error - React Datepicker typing
+            // @ts-expect-error - React Datepicker typing mismatch with strict generic
             <DatePicker
               id={name}
               selected={selected}

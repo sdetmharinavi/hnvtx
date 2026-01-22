@@ -23,14 +23,13 @@ import {
   Trash2,
   Merge,
   Split,
-  Type, // Icon for Font Size
+  Type,
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { Label } from '@/components/common/ui/label/Label';
 
-// --- CUSTOM EXTENSIONS (Inline implementation to avoid new deps) ---
+// --- CUSTOM EXTENSIONS ---
 
-// 1. TextStyle Mark (Required base for attributes like font-size, color)
 const TextStyle = Mark.create({
   name: 'textStyle',
   addOptions() {
@@ -55,7 +54,6 @@ const TextStyle = Mark.create({
   },
 });
 
-// 2. FontSize Extension (Adds fontSize attribute to textStyle mark)
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     fontSize: {
@@ -136,7 +134,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     { label: '30px', value: '30px' },
   ];
 
-  // Helper to get current font size
   const currentFontSize = editor.getAttributes('textStyle').fontSize || '';
 
   return (
@@ -328,11 +325,11 @@ export const RichTextEditor = ({
     {
       extensions: [
         StarterKit.configure({ link: false }),
-        TextStyle, // Custom inline
-        FontSize, // Custom inline
+        TextStyle,
+        FontSize,
         LinkExtension.configure({
           openOnClick: false,
-          autolink: false, // THE FIX: Disabled auto-linking on typing
+          autolink: false,
           HTMLAttributes: { class: 'text-blue-500 hover:underline cursor-pointer' },
         }),
         Table.configure({
@@ -368,15 +365,29 @@ export const RichTextEditor = ({
       },
       immediatelyRender: false,
     },
-    []
+    [],
   );
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      if (editor.isEmpty && value) editor.commands.setContent(value);
-      if (value === '' && !editor.isEmpty) editor.commands.clearContent();
+      // Avoid infinite loop if content is semantically identical but syntactically different
+      // Tiptap might format HTML differently than raw string
+      if (editor.isEmpty && value) {
+        editor.commands.setContent(value);
+      } else if (value === '' && !editor.isEmpty) {
+        editor.commands.clearContent();
+      }
     }
   }, [value, editor]);
+
+  // Clean up editor on unmount
+  useEffect(() => {
+    return () => {
+      if (editor) {
+        editor.destroy();
+      }
+    };
+  }, [editor]);
 
   return (
     <div className="w-full">
