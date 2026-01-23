@@ -102,6 +102,8 @@ export default function OfcCableDetailsPage() {
       'ofc_cables',
       'v_cable_utilization',
       'v_ofc_cables_complete',
+      'fiber_splices',
+      'v_junction_closures_complete',
     ],
   });
 

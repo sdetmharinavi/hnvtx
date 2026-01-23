@@ -54,8 +54,6 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
   }, [segments, isForwardDirection, fiberNoSn, fiberNoEn]);
 
   // 2. Fetch Trace Data
-  // The RPC 'trace_fiber_path' returns data ordered Topologically (A -> B)
-  // regardless of which segment we initiated the trace from.
   const {
     data: traceData,
     isLoading,
@@ -65,34 +63,97 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
 
   const syncPathMutation = useSyncPathFromTrace();
 
+  // Helper to check if two nodes match
+  const isSameNode = (id1: string | null, id2: string | null) => id1 && id2 && id1 === id2;
+
   const handleSyncPath = useCallback(async () => {
     if (!traceData || traceData.length === 0 || !record?.id) {
       toast.error('Cannot sync: Trace data missing.');
       return;
     }
 
-    // Filter to just segments to find endpoints
-    // traceData is strictly ordered A -> B (Physical Start to End) by the DB
     const segmentSteps = traceData.filter((s) => s.element_type === 'SEGMENT');
     if (segmentSteps.length === 0) {
       toast.error('Cannot sync: No cable segments found in trace.');
       return;
     }
 
-    // Identify Physical Start (A) and Physical End (B)
-    const firstSegment = segmentSteps[0];
-    const lastSegment = segmentSteps[segmentSteps.length - 1];
+    // traceData is topologically ordered (Step -N ... Step 0 ... Step N)
+    // which effectively means Physical Path Order.
+    const firstSeg = segmentSteps[0];
+    const lastSeg = segmentSteps[segmentSteps.length - 1];
 
-    // THE FIX: Always sync topological order (A->B), ignoring visual direction.
-    // firstSegment.start_node_id is the physical start of the route.
-    // lastSegment.end_node_id is the physical end of the route.
-    // firstSegment.fiber_in is the fiber entering at A.
-    // lastSegment.fiber_out is the fiber exiting at B.
+    let pathStartNodeId: string | null = null;
+    let pathEndNodeId: string | null = null;
+    let startFiber = 0;
+    let endFiber = 0;
 
-    const pathStartNodeId = firstSegment.start_node_id || null;
-    const pathEndNodeId = lastSegment.end_node_id || null;
-    const startFiber = firstSegment.fiber_in || 0;
-    const endFiber = lastSegment.fiber_out || 0;
+    // --- LOGIC TO DETERMINE TRUE START/END INDEPENDENT OF CABLE ORIENTATION ---
+
+    if (segmentSteps.length === 1) {
+      // Single segment: Fallback to physical definition
+      // If we are tracing A->B, Start=Start, End=End.
+      // If we are tracing B->A, Start=End, End=Start.
+      if (isForwardDirection) {
+        pathStartNodeId = firstSeg.start_node_id || null;
+        pathEndNodeId = firstSeg.end_node_id || null;
+        startFiber = firstSeg.fiber_in || 0;
+        endFiber = firstSeg.fiber_out || 0;
+      } else {
+        pathStartNodeId = firstSeg.end_node_id || null;
+        pathEndNodeId = firstSeg.start_node_id || null;
+        startFiber = firstSeg.fiber_out || 0;
+        endFiber = firstSeg.fiber_in || 0;
+      }
+    } else {
+      // Multiple segments: Use connectivity to determine "Outer" nodes
+
+      // 1. Find Start Node (The node of First Segment that DOES NOT connect to Second Segment)
+      const secondSeg = segmentSteps[1];
+      const startConnectsToSecond =
+        isSameNode(firstSeg.start_node_id, secondSeg.start_node_id) ||
+        isSameNode(firstSeg.start_node_id, secondSeg.end_node_id);
+
+      if (startConnectsToSecond) {
+        // Start ID connects inward, so End ID is the outer start
+        pathStartNodeId = firstSeg.end_node_id || null;
+        startFiber = firstSeg.fiber_out || 0; // The fiber at End ID
+      } else {
+        // Start ID is outer
+        pathStartNodeId = firstSeg.start_node_id || null;
+        startFiber = firstSeg.fiber_in || 0;
+      }
+
+      // 2. Find End Node (The node of Last Segment that DOES NOT connect to Second-to-Last Segment)
+      const secondLastSeg = segmentSteps[segmentSteps.length - 2];
+      const endConnectsToPrev =
+        isSameNode(lastSeg.end_node_id, secondLastSeg.start_node_id) ||
+        isSameNode(lastSeg.end_node_id, secondLastSeg.end_node_id);
+
+      if (endConnectsToPrev) {
+        // End ID connects inward, so Start ID is the outer end
+        pathEndNodeId = lastSeg.start_node_id || null;
+        endFiber = lastSeg.fiber_in || 0;
+      } else {
+        // End ID is outer
+        pathEndNodeId = lastSeg.end_node_id || null;
+        endFiber = lastSeg.fiber_out || 0;
+      }
+    }
+
+    // --- DIRECTION SWAP ---
+    // The logic above finds the topological "Left" and "Right" ends of the chain.
+    // If the user wants Reverse (Right -> Left), we swap them.
+
+    if (!isForwardDirection) {
+      const tempNode = pathStartNodeId;
+      pathStartNodeId = pathEndNodeId;
+      pathEndNodeId = tempNode;
+
+      const tempFiber = startFiber;
+      startFiber = endFiber;
+      endFiber = tempFiber;
+    }
 
     if (!pathStartNodeId || !pathEndNodeId) {
       toast.error('Cannot sync: Endpoints could not be determined.');
@@ -113,7 +174,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
         onClose();
       },
     });
-  }, [traceData, record, syncPathMutation, refetch, onClose]); // Removed isForwardDirection dependency
+  }, [traceData, record, syncPathMutation, refetch, onClose, isForwardDirection]);
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text="Tracing fiber path..." />;
@@ -122,7 +183,6 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       return <div className="p-4 text-gray-500">Path could not be traced.</div>;
 
     // VISUALIZATION ONLY: Reverse the display list if requested by user
-    // This affects what they SEE, but not what is SYNCED above.
     const displayData = isForwardDirection ? traceData : [...traceData].reverse();
 
     return (

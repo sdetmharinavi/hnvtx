@@ -149,6 +149,7 @@ export const fiberTraceSegmentSchema = z.object({
   original_cable_id: z.uuid().nullable(),
   start_node_id: z.uuid().nullable(),
   end_node_id: z.uuid().nullable(),
+  capacity: z.number().nullable().optional(), // NEW FIELD
 });
 export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
 

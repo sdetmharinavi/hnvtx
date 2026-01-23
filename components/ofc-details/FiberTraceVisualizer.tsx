@@ -38,13 +38,16 @@ const SegmentStep = ({ item }: { item: OrientedStep }) => {
           </span>
         </div>
         <p className="mb-3 text-sm font-normal text-gray-500 dark:text-gray-400">{detailText}</p>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 dark:text-gray-300">
+        <div className="grid grid-cols-3 gap-2 text-xs text-gray-700 dark:text-gray-300">
           <span>
             <strong>Fiber:</strong> <span className="font-mono">{item.fiber_in}</span>
           </span>
           <span>
             <strong>Length:</strong>{' '}
             <span className="font-mono">{item.distance_km?.toFixed(2)} km</span>
+          </span>
+          <span>
+            <strong>Capacity:</strong> <span className="font-mono">{item.capacity ?? '-'}F</span>
           </span>
         </div>
       </div>

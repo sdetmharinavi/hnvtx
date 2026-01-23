@@ -5976,6 +5976,7 @@ export type Database = {
       trace_fiber_path: {
         Args: { p_start_fiber_no: number; p_start_segment_id: string }
         Returns: {
+          capacity: number
           details: string
           distance_km: number
           element_id: string
