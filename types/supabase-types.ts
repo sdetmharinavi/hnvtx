@@ -3558,6 +3558,7 @@ export type Database = {
           tags: string[] | null
           title: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
           author_id?: string | null
@@ -3568,6 +3569,7 @@ export type Database = {
           tags?: string[] | null
           title: string
           updated_at?: string | null
+          user_id?: string
         }
         Update: {
           author_id?: string | null
@@ -3578,11 +3580,19 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "technical_notes_author_id_fkey"
             columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technical_notes_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "v_user_profiles_extended"
             referencedColumns: ["id"]
@@ -5441,11 +5451,19 @@ export type Database = {
           tags: string[] | null
           title: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Relationships: [
           {
             foreignKeyName: "technical_notes_author_id_fkey"
             columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technical_notes_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "v_user_profiles_extended"
             referencedColumns: ["id"]

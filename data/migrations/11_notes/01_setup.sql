@@ -3,6 +3,7 @@
 -- 1. Ensure Table Exists
 CREATE TABLE IF NOT EXISTS public.technical_notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
     title TEXT NOT NULL,
     content TEXT,
     tags TEXT[],
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.technical_notes (
 CREATE OR REPLACE VIEW public.v_technical_notes WITH (security_invoker = true) AS
 SELECT
     n.id,
+    n.user_id,
     n.title,
     n.content,
     n.tags,

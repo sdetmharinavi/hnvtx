@@ -1361,6 +1361,7 @@ export const technical_notesRowSchema = z.object({
   tags: z.array(z.string()).nullable(),
   title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   updated_at: z.iso.datetime().nullable(),
+  user_id: z.uuid(),
 });
 
 export const technical_notesInsertSchema = z.object({
@@ -1372,6 +1373,7 @@ export const technical_notesInsertSchema = z.object({
   tags: z.array(z.string()).nullable().optional(),
   title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
   updated_at: z.iso.datetime().nullable().optional(),
+  user_id: z.uuid().optional(),
 });
 
 export const technical_notesUpdateSchema = z.object({
@@ -1383,6 +1385,7 @@ export const technical_notesUpdateSchema = z.object({
   tags: z.array(z.string()).nullable().optional(),
   title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
   updated_at: z.iso.datetime().nullable().optional(),
+  user_id: z.uuid().optional(),
 });
 
 export const user_activity_logsRowSchema = z.object({
@@ -1944,6 +1947,7 @@ export const v_technical_notesRowSchema = z.object({
   tags: z.array(z.string()).nullable(),
   title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   updated_at: z.iso.datetime().nullable(),
+  user_id: z.uuid().nullable(),
 });
 
 export const v_user_profiles_extendedRowSchema = z.object({

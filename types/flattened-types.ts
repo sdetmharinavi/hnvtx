@@ -1339,6 +1339,7 @@ export type Technical_notesRow = {
     tags: string[] | null;
     title: string;
     updated_at: string | null;
+    user_id: string;
 };
 
 export type Technical_notesInsert = {
@@ -1350,6 +1351,7 @@ export type Technical_notesInsert = {
     tags?: string[] | null;
     title: string;
     updated_at?: string | null;
+    user_id?: string;
 };
 
 export type Technical_notesUpdate = {
@@ -1361,6 +1363,7 @@ export type Technical_notesUpdate = {
     tags?: string[] | null;
     title?: string;
     updated_at?: string | null;
+    user_id?: string;
 };
 
 export type User_activity_logsRow = {
@@ -1924,6 +1927,7 @@ export type V_technical_notesRow = {
     tags: string[] | null;
     title: string | null;
     updated_at: string | null;
+    user_id: string | null;
 };
 
 export type V_user_profiles_extendedRow = {
