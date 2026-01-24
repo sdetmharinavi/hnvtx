@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Button } from '@/components/common/ui';
+import { useStandardHeaderActions } from '@/components/common/page-header';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { useCrudManager } from '@/hooks/useCrudManager';
@@ -10,19 +10,15 @@ import { useNotesData } from '@/hooks/data/useNotesData';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { FiBook, FiUser, FiCalendar, FiEye, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiBook, FiUser, FiCalendar} from 'react-icons/fi';
 import { NoteModal } from '@/components/notes/NoteModal';
 import { NoteViewModal } from '@/components/notes/NoteViewModal';
-import { createClient } from '@/utils/supabase/client'; // Added import for supabase client for useTableInsert/Update
-
-// Import necessary hooks for mutations
-import { useTableInsert, useTableUpdate } from '@/hooks/database'; // Import mutation hooks
-import { toast } from 'sonner';
+import { V_technical_notesRowSchema } from '@/schemas/zod-schemas';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 export default function NotesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { isSuperAdmin, role, profile } = useUser();
-  const supabase = createClient(); // Initialize client
 
   // Permissions
   const canCreate = !!profile; // Any authenticated user can create notes (logic in SQL policy)
@@ -44,9 +40,8 @@ export default function NotesPage() {
     editModal,
     viewModal,
     deleteModal,
-    bulkActions,
     actions: crudActions,
-  } = useCrudManager<'technical_notes', VTechnicalNoteRow>({
+  } = useCrudManager<'technical_notes', V_technical_notesRowSchema>({
     tableName: 'technical_notes',
     localTableName: 'v_technical_notes',
     dataQueryHook: useNotesData,
@@ -64,12 +59,12 @@ export default function NotesPage() {
   // So we just need to pass the correct data structure to `crudActions.handleSave`.
 
   // Columns for Table View
-  const columns = useMemo(() => [
+  const columns = useMemo<Column<V_technical_notesRowSchema>[]>(() => [
       { key: 'title', title: 'Title', dataIndex: 'title', sortable: true, searchable: true },
       { key: 'author_name', title: 'Author', dataIndex: 'author_name', sortable: true },
       { 
           key: 'is_published', title: 'Status', dataIndex: 'is_published', width: 100,
-          render: (val: boolean) => val ? (
+          render: (val) => (val as boolean) ? (
               <span className="text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded text-xs font-bold">Published</span>
           ) : (
               <span className="text-gray-600 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs font-bold">Draft</span>
@@ -77,7 +72,11 @@ export default function NotesPage() {
       },
       { 
           key: 'created_at', title: 'Created', dataIndex: 'created_at', width: 150,
-          render: (val: string) => new Date(val).toLocaleDateString() 
+          render: (val) => {
+              if (!val) return '—';
+              const dateValue = new Date(val as string | number | Date);
+              return isNaN(dateValue.getTime()) ? '—' : dateValue.toLocaleDateString();
+          }
       }
   ], []);
 
@@ -95,7 +94,7 @@ export default function NotesPage() {
   ], []);
 
   // Check if user can edit a specific note
-  const canEditNote = useCallback((note: VTechnicalNoteRow) => {
+  const canEditNote = useCallback((note: V_technical_notesRowSchema) => {
     if (canManageAll) return true;
     return note.author_id === profile?.id;
   }, [canManageAll, profile?.id]);
@@ -105,7 +104,7 @@ export default function NotesPage() {
   }, [filters]);
 
   const headerActions = useStandardHeaderActions({
-      data: notes as any, // Cast for export generic
+      data: notes,
       onRefresh: refetch,
       onAddNew: canCreate ? editModal.openAdd : undefined,
       isLoading,
@@ -119,7 +118,7 @@ export default function NotesPage() {
         <GenericEntityCard
           key={note.id}
           entity={note}
-          title={note.title}
+          title={note.title || ''}
           subtitle={note.author_name || 'Unknown Author'}
           status={note.is_published ? 'Active' : 'Inactive'} // Maps to green/red status badge
           headerIcon={<FiBook className="w-6 h-6 text-indigo-500" />}
@@ -176,14 +175,14 @@ export default function NotesPage() {
       renderGrid={renderGrid}
       tableProps={{
           tableName: 'v_technical_notes',
-          data: notes as any,
-          columns: columns as any,
+          data: notes,
+          columns,
           loading: isLoading,
           isFetching: isFetching || isCrudMutating,
           actions: createStandardActions({
-              onEdit: (rec) => canEditNote(rec as VTechnicalNoteRow) ? editModal.openEdit(rec as VTechnicalNoteRow) : undefined,
+              onEdit: (rec) => canEditNote(rec as V_technical_notesRowSchema) ? editModal.openEdit(rec as V_technical_notesRowSchema) : undefined,
               onView: viewModal.open,
-              onDelete: (rec) => canEditNote(rec as VTechnicalNoteRow) ? crudActions.handleDelete(rec) : undefined,
+              onDelete: (rec) => canEditNote(rec as V_technical_notesRowSchema) ? crudActions.handleDelete(rec) : undefined,
           }),
           pagination: {
             current: pagination.currentPage,
