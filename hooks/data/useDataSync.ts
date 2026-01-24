@@ -21,6 +21,7 @@ interface EntitySyncConfig {
 
 // Configuration Map for Sync Strategies
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
+  // ... (Keep existing config same as before) ...
   // --- Incremental Sync Tables (True Append-Only / History) ---
   v_audit_logs: {
     strategy: 'incremental',
@@ -42,7 +43,6 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   file_movements: { strategy: 'incremental', timestampColumn: 'created_at' },
 
   // --- FULL SYNC TABLES (Operational Data) ---
-  // We use full sync for these to ensure deletions propagate correctly via pruning
   systems: { strategy: 'full' },
   system_connections: { strategy: 'full' },
   ports_management: { strategy: 'full' },
@@ -78,7 +78,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_ofc_connections_complete: { strategy: 'full', relatedTable: 'ofc_connections' },
   v_services: { strategy: 'full', relatedTable: 'services' },
   v_nodes_complete: { strategy: 'full', relatedTable: 'nodes' },
-  v_ring_nodes: { strategy: 'full', relatedTable: 'systems' }, // Composite view, linking to systems is safest
+  v_ring_nodes: { strategy: 'full', relatedTable: 'systems' }, 
   v_rings: { strategy: 'full', relatedTable: 'rings' },
   v_ofc_cables_complete: { strategy: 'full', relatedTable: 'ofc_cables' },
   v_cable_utilization: { strategy: 'full', relatedTable: 'ofc_cables' },
@@ -96,7 +96,6 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
 };
 
 // Helper: Merges local pending changes into the server dataset
-// This prevents the "flash of old content" where server data overwrites a user's offline edit before the edit syncs up.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
@@ -105,20 +104,16 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
 
   pendingTasks.forEach((task) => {
     if (task.type === 'insert') {
-      // For inserts, add them if they don't collide with server IDs (which they shouldn't usually, as temp IDs are UUIDs)
       if (!serverIdMap.has(String(task.payload.id))) {
         merged.push(task.payload);
       }
     } else if (task.type === 'update') {
-      // For updates, apply local changes on top of server data
       const targetId = String(task.payload.id);
       const index = serverIdMap.get(targetId);
       if (index !== undefined) {
         merged[index] = { ...merged[index], ...task.payload.data };
       }
     } else if (task.type === 'delete') {
-      // For deletes, remove the item from the incoming server list
-      // This handles the race condition where server sends data, but user just deleted it locally
       const idsToDelete = new Set((task.payload.ids || []).map(String));
       for (let i = merged.length - 1; i >= 0; i--) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,25 +137,20 @@ async function performFullSync(
   let offset = 0;
   let hasMore = true;
   let totalSynced = 0;
-  let fetchSuccessful = true; // Track sync integrity
+  let fetchSuccessful = true;
 
   // 1. Fetch pending local mutations from the Queue
-  // We look at the 'relatedTable' (e.g. 'systems' for 'v_systems_complete') to find edits
   let pendingTasks: MutationTask[] = [];
   const targetTableForMutations = config.relatedTable || entityName;
 
-  // Only check queue if the target is a valid table name (not a view without mapping)
   if (targetTableForMutations) {
     pendingTasks = await db.mutation_queue
       .where('tableName')
       .equals(targetTableForMutations as string)
       .toArray();
-    // Only care about tasks not yet successfully synced
     pendingTasks = pendingTasks.filter((t) => t.status === 'pending' || t.status === 'processing');
   }
 
-  // Identify pending INSERT IDs.
-  // We must NOT delete these during the pruning phase, even if the server doesn't have them yet.
   const pendingInsertIds = new Set(
     pendingTasks
       .filter((t) => t.type === 'insert')
@@ -171,7 +161,8 @@ async function performFullSync(
   // Track all IDs seen from the server to identify what needs deletion (Pruning)
   const serverIdsSeen = new Set<string>();
 
-  // 2. Fetch & Upsert Loop (Streaming)
+  // 2. Clear table before full sync? No, we upsert. But we need to prune later.
+  
   while (hasMore) {
     try {
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
@@ -193,6 +184,14 @@ async function performFullSync(
           if (item.id !== undefined && item.id !== null) {
             serverIdsSeen.add(String(item.id));
           }
+          // Special case for composite keys (like ring_based_systems)
+          if (entityName === 'ring_based_systems' && item.system_id && item.ring_id) {
+             serverIdsSeen.add(`${item.system_id}+${item.ring_id}`);
+          }
+           // Special case for composite keys (like v_ring_nodes uses compound key in dexie)
+           if (entityName === 'v_ring_nodes' && item.id && item.ring_id) {
+             serverIdsSeen.add(`${item.id}+${item.ring_id}`); // Match Dexie key format
+           }
         });
 
         // B. Merge local edits onto server data
@@ -208,7 +207,6 @@ async function performFullSync(
         totalSynced += batchData.length;
       }
 
-      // Pagination check
       if (validDataCount < BATCH_SIZE) {
         hasMore = false;
       } else {
@@ -216,15 +214,13 @@ async function performFullSync(
       }
     } catch (error) {
       console.error(`[Sync] Error syncing batch for ${entityName}`, error);
-      fetchSuccessful = false; // Mark sync as tainted
-      hasMore = false; // Stop loop
-      throw error; // Propagate error to update status in DB
+      fetchSuccessful = false;
+      hasMore = false;
+      throw error;
     }
   }
 
   // 3. Handle Local Creations (Pending Inserts)
-  // If we created a new item locally, it won't be in the server response yet.
-  // We must ensure it exists in the table view.
   if (pendingTasks.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inserts = pendingTasks.filter((t) => t.type === 'insert').map((t) => t.payload as any);
@@ -232,7 +228,6 @@ async function performFullSync(
       await db.transaction('rw', table, async () => {
         await table.bulkPut(inserts);
       });
-      // Add these to "Seen" so we don't prune them
       inserts.forEach((item) => {
         if (item.id) serverIdsSeen.add(String(item.id));
       });
@@ -241,22 +236,23 @@ async function performFullSync(
   }
 
   // 4. Prune Stale Data (The "Sweep" Phase)
-  // Only prune if the fetch loop completed successfully without errors.
-  // This prevents deleting local data if the server connection drops midway.
-  // Also, only prune if the table uses 'id' as primary key (most do).
-  if (fetchSuccessful && table.schema.primKey.name === 'id') {
+  if (fetchSuccessful) {
     // Get all keys currently in local DB
     const allLocalKeys = await table.toCollection().primaryKeys();
 
-    // Find keys present locally but NOT on server AND NOT pending insert
     const keysToDelete = allLocalKeys.filter((key) => {
+      // Handle composite keys
+      if (Array.isArray(key)) {
+         const compositeKey = key.join('+');
+         return !serverIdsSeen.has(compositeKey);
+      }
+      
       const keyStr = String(key);
-      // Keep it if it's in the server list OR if it's a pending creation
       return !serverIdsSeen.has(keyStr) && !pendingInsertIds.has(keyStr);
     });
 
     if (keysToDelete.length > 0) {
-      // console.log(`[Sync] Pruning ${keysToDelete.length} stale records from ${entityName}`);
+      console.log(`[Sync] Pruning ${keysToDelete.length} stale records from ${entityName}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await table.bulkDelete(keysToDelete as any[]);
     }
@@ -267,8 +263,7 @@ async function performFullSync(
   return totalSynced;
 }
 
-// Incremental sync logic
-// Used for log tables where records are append-only and rarely deleted/modified
+// Incremental sync logic (Unchanged)
 async function performIncrementalSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -276,10 +271,7 @@ async function performIncrementalSync(
   timestampColumn: string = 'created_at',
 ) {
   const table = getTable(entityName);
-
-  // Find the most recent record locally
   const latestRecord = await table.orderBy(timestampColumn).last();
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let lastTimestamp: string | null = (latestRecord as any)?.[timestampColumn] || null;
 
@@ -312,8 +304,6 @@ async function performIncrementalSync(
     if (validData.length > 0) {
       await table.bulkPut(validData);
       totalSynced += validData.length;
-
-      // Update timestamp for next batch/loop check
       const lastItem = validData[validData.length - 1];
       if (lastItem[timestampColumn]) {
         lastTimestamp = lastItem[timestampColumn];
@@ -344,7 +334,6 @@ export async function syncEntity(
 
     let count = 0;
     const config = SYNC_CONFIG[entityName];
-    // Default to full sync if not configured
     const safeConfig = config || { strategy: 'full' };
 
     if (safeConfig.strategy === 'incremental') {
@@ -370,7 +359,6 @@ export async function syncEntity(
       lastSynced: new Date().toISOString(),
       error: errorMessage,
     });
-    // Propagate error
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   }
 }
@@ -386,7 +374,6 @@ export function useDataSync() {
 
   const executeSync = useCallback(
     async (specificTables?: PublicTableOrViewName[]) => {
-      // 1. Online Check
       if (!isOnline) {
         toast.error('Cannot sync while offline.');
         return;
@@ -409,7 +396,6 @@ export function useDataSync() {
           toast.info('Starting full sync...');
         }
 
-        // Process sequentially to control concurrency
         for (const entity of entitiesToSync) {
           try {
             await syncEntity(supabase, localDb, entity);
@@ -428,7 +414,6 @@ export function useDataSync() {
           toast.warning(`Sync completed with warnings. ${failures.length} tables failed.`);
         }
 
-        // Smart Invalidation
         if (isPartial) {
           await queryClient.invalidateQueries({
             predicate: (query) => {
@@ -455,7 +440,6 @@ export function useDataSync() {
         toast.error('Sync process failed.');
         throw err;
       } finally {
-        // Minimum Spin Time for UI feedback
         const elapsed = Date.now() - startTime;
         const minDuration = 800;
         if (elapsed < minDuration) {

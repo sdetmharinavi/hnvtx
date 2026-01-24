@@ -34,23 +34,23 @@ import { EnhancedUploadResult } from '@/hooks/database';
 
 const InventoryFormModal = dynamic(
   () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
-  { loading: () => <PageSpinner text="Loading Inventory Form..." /> }
+  { loading: () => <PageSpinner text="Loading Inventory Form..." /> },
 );
 
 const IssueItemModal = dynamic(
   () => import('@/components/inventory/IssueItemModal').then((mod) => mod.IssueItemModal),
-  { loading: () => <PageSpinner text="Loading Issue Form..." /> }
+  { loading: () => <PageSpinner text="Loading Issue Form..." /> },
 );
 
 const InventoryHistoryModal = dynamic(
   () =>
     import('@/components/inventory/InventoryHistoryModal').then((mod) => mod.InventoryHistoryModal),
-  { loading: () => <PageSpinner text="Loading History..." /> }
+  { loading: () => <PageSpinner text="Loading History..." /> },
 );
 
 const UploadResultModal = dynamic(
   () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
-  { loading: () => <PageSpinner text="Loading Import Report..." /> }
+  { loading: () => <PageSpinner text="Loading Import Report..." /> },
 );
 
 export default function InventoryPage() {
@@ -84,7 +84,6 @@ export default function InventoryPage() {
     dataQueryHook: useInventoryData,
     displayNameField: 'name',
     searchColumn: ['name', 'description', 'asset_no'],
-    // THE FIX: Define tables to sync on refresh
     syncTables: [
       'inventory_items',
       'v_inventory_items',
@@ -94,11 +93,16 @@ export default function InventoryPage() {
   });
 
   const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
   const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
 
-  const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload();
+  const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload({
+    onSuccess: (result) => {
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
+      if (result.successCount > 0) refetch();
+    },
+  });
 
   const { options: categoryOptions, isLoading: loadingCats } =
     useLookupTypeOptions('INVENTORY_CATEGORY');
@@ -110,14 +114,14 @@ export default function InventoryPage() {
       { key: 'category_id', label: 'Category', options: categoryOptions, isLoading: loadingCats },
       { key: 'location_id', label: 'Location', options: locationOptions, isLoading: loadingLocs },
     ],
-    [categoryOptions, locationOptions, loadingCats, loadingLocs]
+    [categoryOptions, locationOptions, loadingCats, loadingLocs],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const canEdit = useMemo(
@@ -126,7 +130,7 @@ export default function InventoryPage() {
       role === UserRole.ADMIN ||
       role === UserRole.ADMINPRO ||
       role === UserRole.ASSETADMIN,
-    [isSuperAdmin, role]
+    [isSuperAdmin, role],
   );
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
@@ -204,7 +208,6 @@ export default function InventoryPage() {
 
   const headerActions = useStandardHeaderActions({
     data: inventory,
-    // Pass the enhanced refetch that handles sync logic
     onRefresh: refetch,
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isFetching: isFetching,
@@ -378,7 +381,7 @@ export default function InventoryPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_inventory_itemsRowSchema & { id: string } => !!row.id
+            (row): row is V_inventory_itemsRowSchema & { id: string } => !!row.id,
           );
           bulkActions.handleRowSelect(validRows);
         },

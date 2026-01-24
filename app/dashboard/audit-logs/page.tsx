@@ -1,10 +1,10 @@
 // app/dashboard/audit-logs/page.tsx
 'use client';
 
-import { useMemo, useCallback } from 'react';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { useMemo, useCallback, useState } from 'react';
+import { useStandardHeaderActions } from '@/components/common/page-header';
 import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
-import { DataTable, TableAction } from '@/components/table';
+import { TableAction } from '@/components/table/datatable-types';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useAuditLogsData } from '@/hooks/data/useAuditLogsData';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
@@ -17,19 +17,22 @@ import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 import { UserRole } from '@/types/user-roles';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { BulkActions } from '@/components/common/BulkActions';
 import { Row } from '@/hooks/database';
 import { formatDate } from '@/utils/formatters';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+// CHANGED: Use Layout Component
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { FiDatabase } from 'react-icons/fi';
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   const {
     data: logs,
     totalCount,
     isLoading,
-    isFetching, // Destructured
+    isFetching,
     isMutating,
     error,
     refetch,
@@ -61,14 +64,14 @@ export default function AuditLogsPage() {
         ],
       },
     ],
-    []
+    [],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const columns = AuditLogsTableColumns(logs);
@@ -84,7 +87,7 @@ export default function AuditLogsPage() {
         variant: 'secondary',
       },
     ],
-    [viewModal.open]
+    [viewModal.open],
   );
 
   const headerActions = useStandardHeaderActions<'v_audit_logs'>({
@@ -94,7 +97,7 @@ export default function AuditLogsPage() {
       toast.success('Logs refreshed!');
     },
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: !!isSuperAdmin ? { tableName: 'v_audit_logs', useRpc: true } : undefined,
   });
 
@@ -117,9 +120,7 @@ export default function AuditLogsPage() {
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getActionColor(
-                record.action_type || ''
-              )}`}
+              className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getActionColor(record.action_type || '')}`}
             >
               {record.action_type}
             </span>
@@ -129,11 +130,9 @@ export default function AuditLogsPage() {
           </div>
           {actions}
         </div>
-
         <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 font-mono break-all line-clamp-2">
           ID: {record.record_id}
         </div>
-
         <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
           <div className="flex items-center gap-1.5">
             <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold">
@@ -156,6 +155,7 @@ export default function AuditLogsPage() {
     );
   }, []);
 
+  // PERMISSION CHECK
   const allowedAuditRoles = [UserRole.ADMIN, UserRole.ADMINPRO];
   if (!isSuperAdmin && !allowedAuditRoles.includes(role as UserRole)) {
     return <UnauthorizedModal allowedRoles={allowedAuditRoles} currentRole={role} />;
@@ -170,55 +170,61 @@ export default function AuditLogsPage() {
     );
   }
 
+  // --- RENDERING VIA LAYOUT ---
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        title="System Audit Logs"
-        description="Track all user activities and data changes across the platform."
-        icon={<FiShield />}
-        stats={[{ label: 'Total Logs', value: totalCount }]}
-        actions={headerActions}
-        isLoading={isLoading}
-        isFetching={isFetching}
-      />
-
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search logs..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-      />
-
-      <BulkActions
-        selectedCount={bulkActions.selectedCount}
-        onBulkDelete={bulkActions.handleBulkDelete}
-        onBulkUpdateStatus={() => {}}
-        onClearSelection={bulkActions.handleClearSelection}
-        showStatusUpdate={false}
-        entityName="audit log"
-        isOperationLoading={isMutating}
-      />
-
-      <DataTable
-        autoHideEmptyColumns={true}
-        tableName="v_audit_logs"
-        data={logs}
-        columns={orderedColumns}
-        loading={isLoading}
-        isFetching={isFetching || isMutating}
-        actions={tableActions}
-        searchable={false}
-        selectable={true}
-        onRowSelect={(selectedRows) => {
+    <DashboardPageLayout
+      header={{
+        title: 'System Audit Logs',
+        description: 'Track all user activities and data changes across the platform.',
+        icon: <FiShield />,
+        stats: [{ label: 'Total Logs', value: totalCount }],
+        actions: headerActions,
+        isLoading: isLoading,
+        isFetching: isFetching,
+      }}
+      searchQuery={search.searchQuery}
+      onSearchChange={search.setSearchQuery}
+      searchPlaceholder="Search logs..."
+      filters={filters.filters}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      // Audit logs are read-only except bulk delete for super admins
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: () => {}, // Not supported
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'audit log',
+        showStatusUpdate: false,
+        canDelete: () => !!isSuperAdmin,
+      }}
+      // "Grid" view for audit logs isn't very useful, so we just return an empty div or redirect to table if needed
+      // But we must provide the function to satisfy the interface.
+      renderGrid={() => (
+        <div className="text-center py-10 text-gray-500">
+          Grid view not available for logs. Please switch to Table view.
+        </div>
+      )}
+      tableProps={{
+        tableName: 'v_audit_logs',
+        data: logs,
+        columns: orderedColumns,
+        loading: isLoading,
+        isFetching: isFetching || isMutating,
+        actions: tableActions,
+        searchable: false,
+        selectable: true,
+        onRowSelect: (selectedRows) => {
           const validRows = selectedRows.filter(
-            (row): row is V_audit_logsRowSchema & { id: number } => row.id !== null
-          );
+            (row) => row.id !== null,
+          ) as (V_audit_logsRowSchema & { id: number })[];
           bulkActions.handleRowSelect(validRows);
-        }}
-        renderMobileItem={renderMobileItem}
-        pagination={{
+        },
+        renderMobileItem: renderMobileItem,
+        pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
@@ -227,25 +233,34 @@ export default function AuditLogsPage() {
             pagination.setCurrentPage(page);
             pagination.setPageLimit(limit);
           },
-        }}
-        customToolbar={<></>}
-      />
-
-      <AuditLogDetailsModal
-        isOpen={viewModal.isOpen}
-        onClose={viewModal.close}
-        log={viewModal.record as V_audit_logsRowSchema | null}
-      />
-
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type="danger"
-      />
-    </div>
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={logs.length === 0 && !isLoading}
+      emptyState={
+        <div className="col-span-full py-16 text-center text-gray-500">
+          <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>No audit logs found.</p>
+        </div>
+      }
+      modals={
+        <>
+          <AuditLogDetailsModal
+            isOpen={viewModal.isOpen}
+            onClose={viewModal.close}
+            log={viewModal.record as V_audit_logsRowSchema | null}
+          />
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title="Confirm Deletion"
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type="danger"
+          />
+        </>
+      }
+    />
   );
 }
