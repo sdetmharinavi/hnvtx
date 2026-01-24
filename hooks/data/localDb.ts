@@ -51,9 +51,9 @@ import {
   Sdh_connectionsRowSchema,
   V_junction_closures_completeRowSchema,
   V_cable_segments_at_jcRowSchema,
+  V_technical_notesRowSchema,
+  Technical_notesRowSchema,
 } from '@/schemas/zod-schemas';
-// ADDED
-import { TechnicalNoteRow, VTechnicalNoteRow } from '@/schemas/notes-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
 
@@ -182,8 +182,8 @@ export class HNVTMDatabase extends Dexie {
   folders!: Table<FoldersRowSchema, string>;
 
   // Added technical notes
-  technical_notes!: Table<TechnicalNoteRow, string>;
-  v_technical_notes!: Table<VTechnicalNoteRow, string>;
+  technical_notes!: Table<Technical_notesRowSchema, string>;
+  v_technical_notes!: Table<V_technical_notesRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
