@@ -1,3 +1,4 @@
+// app/dashboard/notes/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
@@ -9,6 +10,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useNotesData } from '@/hooks/data/useNotesData';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { useUser } from '@/providers/UserProvider';
+import { useAuth } from '@/hooks/useAuth'; // 1. IMPORT USEAUTH
 import { UserRole } from '@/types/user-roles';
 import { FiBook, FiUser, FiCalendar} from 'react-icons/fi';
 import { NoteModal } from '@/components/notes/NoteModal';
@@ -18,10 +20,12 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 export default function NotesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  
+  // 2. GET USER FROM AUTH HOOK
+  const { user } = useAuth(); 
   const { isSuperAdmin, role, profile } = useUser();
 
-  // Permissions
-  const canCreate = !!profile; // Any authenticated user can create notes (logic in SQL policy)
+  const canCreate = !!user; 
   const canManageAll = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
   const {
@@ -48,17 +52,17 @@ export default function NotesPage() {
     displayNameField: 'title',
     searchColumn: ['title', 'content', 'author_name'],
     syncTables: ['technical_notes', 'v_technical_notes'],
+    
+    // 3. INJECT AUTHOR ID HERE
+    processDataForSave: (data) => {
+      // If editing, keep existing author_id. If creating, use current user ID.
+      return {
+        ...data,
+        author_id: data.author_id || user?.id || null, 
+      };
+    },
   });
 
-  // --- MANUAL MUTATION HANDLING TO MATCH CRUD MANAGER PATTERN ---
-  // The useCrudManager exposes handlers but we need to wire up the actual mutation hooks manually 
-  // if we want specific success/error toasts or logic beyond the generic one, OR rely on the 
-  // crudManager's internal wiring. 
-  // However, useCrudManager exposes `actions.handleSave` which calls `insertItem` or `updateItem`.
-  // `insertItem` comes from `useTableInsert` called INSIDE useCrudManager.
-  // So we just need to pass the correct data structure to `crudActions.handleSave`.
-
-  // Columns for Table View
   const columns = useMemo<Column<V_technical_notesRowSchema>[]>(() => [
       { key: 'title', title: 'Title', dataIndex: 'title', sortable: true, searchable: true },
       { key: 'author_name', title: 'Author', dataIndex: 'author_name', sortable: true },
@@ -80,7 +84,6 @@ export default function NotesPage() {
       }
   ], []);
 
-  // Filter Config
   const filterConfigs = useMemo(() => [
     {
       key: 'is_published',
@@ -93,11 +96,10 @@ export default function NotesPage() {
     },
   ], []);
 
-  // Check if user can edit a specific note
   const canEditNote = useCallback((note: V_technical_notesRowSchema) => {
     if (canManageAll) return true;
-    return note.author_id === profile?.id;
-  }, [canManageAll, profile?.id]);
+    return note.author_id === user?.id;
+  }, [canManageAll, user?.id]);
 
   const handleFilterChange = useCallback((key: string, value: string | null) => {
       filters.setFilters(prev => ({ ...prev, [key]: value }));
@@ -120,7 +122,7 @@ export default function NotesPage() {
           entity={note}
           title={note.title || ''}
           subtitle={note.author_name || 'Unknown Author'}
-          status={note.is_published ? 'Active' : 'Inactive'} // Maps to green/red status badge
+          status={note.is_published ? 'Active' : 'Inactive'} 
           headerIcon={<FiBook className="w-6 h-6 text-indigo-500" />}
           dataItems={[
             { icon: FiUser, label: 'Author', value: note.author_name },
@@ -131,7 +133,6 @@ export default function NotesPage() {
           onDelete={canEditNote(note) ? crudActions.handleDelete : undefined}
           canEdit={canEditNote(note)}
           canDelete={canEditNote(note)}
-          // Custom footer to show tags
           customFooter={note.tags && note.tags.length > 0 ? (
               <div className="flex flex-wrap gap-1 mt-2">
                   {note.tags.slice(0, 3).map((tag, i) => (
