@@ -23,7 +23,6 @@ import { ActionButton } from '@/components/common/page-header';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-// CHANGED: Use GenericEntityCard and Layout
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { Button } from '@/components/common/ui';
@@ -31,23 +30,23 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { toast } from 'sonner';
 import { Row } from '@/hooks/database';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 
 const InitiateFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.InitiateFileModal),
-  { loading: () => <PageSpinner text="Loading File Form..." /> },
+  { loading: () => <PageSpinner text='Loading File Form...' /> },
 );
 
 const ForwardFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.ForwardFileModal),
-  { loading: () => <PageSpinner text="Loading Forward Form..." /> },
+  { loading: () => <PageSpinner text='Loading Forward Form...' /> },
 );
 
 const EditFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.EditFileModal),
-  { loading: () => <PageSpinner text="Loading Edit Form..." /> },
+  { loading: () => <PageSpinner text='Loading Edit Form...' /> },
 );
 
-// Hardcoded categories options
 const CATEGORY_OPTIONS = [
   { value: 'administrative', label: 'Administrative' },
   { value: 'technical', label: 'Technical' },
@@ -100,7 +99,6 @@ export default function EFilesPage() {
   const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
   const canDelete = isSuperAdmin === true || role === UserRole.ADMINPRO;
 
-  // --- FILTER CONFIG ---
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
@@ -218,7 +216,7 @@ export default function EFilesPage() {
         },
         variant: 'outline',
         leftIcon: isBusy ? (
-          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+          <div className='animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full' />
         ) : undefined,
         disabled: isBusy,
       },
@@ -228,7 +226,7 @@ export default function EFilesPage() {
       actions.push({
         label: 'Backup / Restore',
         variant: 'outline',
-        leftIcon: <Database className="h-4 w-4" />,
+        leftIcon: <Database className='h-4 w-4' />,
         disabled: isLoading || isRestoring || isBackingUp,
         'data-dropdown': true,
         hideTextOnMobile: true,
@@ -281,7 +279,7 @@ export default function EFilesPage() {
       sortable: true,
       width: 130,
       render: (val) => (
-        <span className="font-mono font-bold text-blue-700 dark:text-blue-300">
+        <span className='font-mono font-bold text-blue-700 dark:text-blue-300'>
           {val as string}
         </span>
       ),
@@ -293,9 +291,9 @@ export default function EFilesPage() {
       sortable: true,
       width: 220,
       render: (val, rec) => (
-        <div className="flex flex-col">
-          <TruncateTooltip text={val as string} className="font-medium text-sm" />
-          <span className="text-xs text-gray-500 truncate">{rec.description}</span>
+        <div className='flex flex-col'>
+          <TruncateTooltip text={val as string} className='font-medium text-sm' />
+          <span className='text-xs text-gray-500 truncate'>{rec.description}</span>
         </div>
       ),
     },
@@ -305,7 +303,7 @@ export default function EFilesPage() {
       dataIndex: 'category',
       width: 100,
       render: (val) => (
-        <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{val as string}</span>
+        <span className='text-xs text-gray-600 dark:text-gray-400 capitalize'>{val as string}</span>
       ),
     },
     {
@@ -334,9 +332,9 @@ export default function EFilesPage() {
       dataIndex: 'initiator_name',
       width: 160,
       render: (val, rec) => (
-        <div className="flex flex-col">
-          <span className="text-sm text-gray-900 dark:text-gray-100">{val as string}</span>
-          <span className="text-[10px] text-gray-500">{rec.initiator_designation}</span>
+        <div className='flex flex-col'>
+          <span className='text-sm text-gray-900 dark:text-gray-100'>{val as string}</span>
+          <span className='text-[10px] text-gray-500'>{rec.initiator_designation}</span>
         </div>
       ),
     },
@@ -346,16 +344,16 @@ export default function EFilesPage() {
       dataIndex: 'current_holder_name',
       width: 180,
       render: (val, rec) => (
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            <span className="font-semibold text-sm text-gray-900 dark:text-white">
+        <div className='flex flex-col'>
+          <div className='flex items-center gap-1.5'>
+            <div className='w-2 h-2 rounded-full bg-green-500'></div>
+            <span className='font-semibold text-sm text-gray-900 dark:text-white'>
               {val as string}
             </span>
           </div>
-          <span className="text-xs text-gray-500 pl-3.5">{rec.current_holder_designation}</span>
+          <span className='text-xs text-gray-500 pl-3.5'>{rec.current_holder_designation}</span>
           {rec.current_holder_area && (
-            <span className="text-[10px] text-gray-400 pl-3.5">{rec.current_holder_area}</span>
+            <span className='text-[10px] text-gray-400 pl-3.5'>{rec.current_holder_area}</span>
           )}
         </div>
       ),
@@ -368,7 +366,7 @@ export default function EFilesPage() {
       render: (val) => {
         const canFormat = typeof val === 'string' || typeof val === 'number' || val instanceof Date;
         return (
-          <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+          <span className='text-xs text-gray-600 dark:text-gray-400 font-mono'>
             {canFormat && val
               ? formatDate(val as string | number | Date, { format: 'dd-mm-yyyy' })
               : 'N/A'}
@@ -378,6 +376,84 @@ export default function EFilesPage() {
     },
   ];
 
+  // THE FIX: Created memoized renderItem function
+  const renderItem = useCallback(
+    (file: Row<'v_e_files_extended'>) => {
+      const isClosed = file.status === 'closed';
+      return (
+        <GenericEntityCard
+          key={file.id}
+          entity={file}
+          title={file.subject || 'Unnamed File'}
+          subtitle={file.file_number || ''}
+          status={file.status}
+          subBadge={
+            <div className='flex items-center gap-2 mb-2'>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                  file.priority === 'immediate'
+                    ? 'bg-red-100 text-red-800 border-red-200'
+                    : file.priority === 'urgent'
+                      ? 'bg-orange-100 text-orange-800 border-orange-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-100'
+                }`}
+              >
+                {file.priority}
+              </span>
+              <span className='text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600'>
+                {file.category}
+              </span>
+            </div>
+          }
+          headerIcon={<FileText className='w-6 h-6 text-blue-500' />}
+          dataItems={[
+            { icon: User, label: 'Started By', value: file.initiator_name },
+            { icon: Folder, label: 'Current Holder', value: file.current_holder_name },
+            { icon: Clock, label: 'Last Action', value: formatDate(file.updated_at || '') },
+          ]}
+          customFooter={
+            <div className='w-full'>
+              <GenericRemarks remark={file.description || ''} />
+            </div>
+          }
+          extraActions={
+            canEdit &&
+            !isClosed && (
+              <Button
+                size='xs'
+                variant='primary'
+                onClick={() => setForwardModal({ isOpen: true, fileId: file.id! })}
+                title='Forward File'
+              >
+                <Send className='w-3.5 h-3.5' />
+              </Button>
+            )
+          }
+          onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
+          onEdit={canEdit && !isClosed ? (f) => setEditModal({ isOpen: true, file: f }) : undefined}
+          onDelete={canDelete ? (f) => setDeleteModal({ isOpen: true, fileId: f.id! }) : undefined}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      );
+    },
+    [canEdit, canDelete, router, setEditModal, setDeleteModal, setForwardModal],
+  );
+
+  // THE FIX: Simplified renderGrid to use the new DataGrid component
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={filteredFiles}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={filteredFiles.length === 0 && !isLoading}
+        // Since pagination is not used on this page for grid view, we omit the prop
+      />
+    ),
+    [filteredFiles, renderItem, isLoading],
+  );
+
   if (error)
     return (
       <ErrorDisplay
@@ -385,74 +461,6 @@ export default function EFilesPage() {
         actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]}
       />
     );
-
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {filteredFiles.map((file) => {
-        const isClosed = file.status === 'closed';
-        return (
-          <GenericEntityCard
-            key={file.id}
-            entity={file}
-            title={file.subject || 'Unnamed File'}
-            subtitle={file.file_number || ''}
-            status={file.status}
-            subBadge={
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                    file.priority === 'immediate'
-                      ? 'bg-red-100 text-red-800 border-red-200'
-                      : file.priority === 'urgent'
-                        ? 'bg-orange-100 text-orange-800 border-orange-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-100'
-                  }`}
-                >
-                  {file.priority}
-                </span>
-                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600">
-                  {file.category}
-                </span>
-              </div>
-            }
-            headerIcon={<FileText className="w-6 h-6 text-blue-500" />}
-            dataItems={[
-              { icon: User, label: 'Started By', value: file.initiator_name },
-              { icon: Folder, label: 'Current Holder', value: file.current_holder_name },
-              { icon: Clock, label: 'Last Action', value: formatDate(file.updated_at || '') },
-            ]}
-            customFooter={
-              <div className="w-full">
-                <GenericRemarks remark={file.description || ''} />
-              </div>
-            }
-            extraActions={
-              canEdit &&
-              !isClosed && (
-                <Button
-                  size="xs"
-                  variant="primary"
-                  onClick={() => setForwardModal({ isOpen: true, fileId: file.id! })}
-                  title="Forward File"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </Button>
-              )
-            }
-            onView={(f) => router.push(`/dashboard/e-files/${f.id}`)}
-            onEdit={
-              canEdit && !isClosed ? (f) => setEditModal({ isOpen: true, file: f }) : undefined
-            }
-            onDelete={
-              canDelete ? (f) => setDeleteModal({ isOpen: true, fileId: f.id! }) : undefined
-            }
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-        );
-      })}
-    </div>
-  );
 
   return (
     <DashboardPageLayout
@@ -466,13 +474,13 @@ export default function EFilesPage() {
       }}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
-      searchPlaceholder="Search subject, number, holder..."
+      searchPlaceholder='Search subject, number, holder...'
       filters={filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      bulkActions={undefined} // Bulk actions not enabled for files yet
+      bulkActions={undefined}
       renderGrid={renderGrid}
       tableProps={{
         tableName: 'v_e_files_extended',
@@ -498,20 +506,14 @@ export default function EFilesPage() {
         }),
       }}
       isEmpty={filteredFiles.length === 0 && !isLoading}
-      emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No files found matching your criteria.</p>
-        </div>
-      }
       modals={
         <>
           <input
-            type="file"
+            type='file'
             ref={backupInputRef}
             onChange={handleBackupRestore}
-            className="hidden"
-            accept=".xlsx"
+            className='hidden'
+            accept='.xlsx'
           />
 
           <InitiateFileModal
@@ -536,10 +538,10 @@ export default function EFilesPage() {
             isOpen={deleteModal.isOpen}
             onCancel={() => setDeleteModal({ isOpen: false, fileId: null })}
             onConfirm={handleConfirmDelete}
-            title="Delete File Record"
-            message="Are you sure you want to delete this file? This will remove its history. This action cannot be undone."
-            type="danger"
-            confirmText="Delete Permanently"
+            title='Delete File Record'
+            message='Are you sure you want to delete this file? This will remove its history. This action cannot be undone.'
+            type='danger'
+            confirmText='Delete Permanently'
             loading={isDeleting}
           />
         </>

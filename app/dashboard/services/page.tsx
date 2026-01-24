@@ -1,3 +1,4 @@
+// app/dashboard/services/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
@@ -30,8 +31,8 @@ import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 
-// Helper Type for allocated systems JSON
 interface AllocatedSystem {
   id: string;
   name: string;
@@ -70,7 +71,7 @@ export default function ServicesPage() {
   const canEdit =
     !!isSuperAdmin ||
     [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(
-      role as UserRole
+      role as UserRole,
     );
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
@@ -83,13 +84,12 @@ export default function ServicesPage() {
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
     data,
     duplicateIdentity,
-    'Services'
+    'Services',
   );
 
   const columns = ServicesTableColumns(data, duplicateSet);
   const { options: linkTypeOptions, isLoading: loadingLinks } = useLookupTypeOptions('LINK_TYPES');
 
-  // --- Filter Config ---
   const filterConfigs = useMemo(
     () => [
       {
@@ -117,17 +117,16 @@ export default function ServicesPage() {
         ],
       },
     ],
-    [linkTypeOptions, loadingLinks]
+    [linkTypeOptions, loadingLinks],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
-  // --- Mutations ---
   const { mutate: insertService, isPending: isInserting } = useTableInsert(supabase, 'services', {
     onSuccess: () => {
       refetch();
@@ -165,133 +164,142 @@ export default function ServicesPage() {
       : undefined,
   });
 
-  // Inject Duplicate Action
   const enhancedHeaderActions: ActionButton[] = [
     ...headerActions,
     {
       label: showDuplicates ? 'Hide Duplicates' : 'Find Duplicates',
       onClick: toggleDuplicates,
-      variant: showDuplicates ? 'secondary' : 'outline',
-      leftIcon: <Copy className="w-4 h-4" />,
+      variant: 'outline',
+      leftIcon: <Copy className='w-4 h-4' />,
       hideTextOnMobile: true,
     },
   ];
-  // Ensure "Add New" is last
-  const addNewAction = enhancedHeaderActions.find((a) => a.label === 'Add New');
-  if (addNewAction) {
-    const idx = enhancedHeaderActions.indexOf(addNewAction);
-    enhancedHeaderActions.splice(idx, 1);
-    enhancedHeaderActions.push(addNewAction);
+  if (canEdit) {
+    const addNewAction = enhancedHeaderActions.find((a) => a.label === 'Add New');
+    if (addNewAction) {
+      const idx = enhancedHeaderActions.indexOf(addNewAction);
+      enhancedHeaderActions.splice(idx, 1);
+      enhancedHeaderActions.push(addNewAction);
+    }
   }
 
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {data.map((service) => {
-        const isDup = duplicateSet.has(
-          `${service.name?.trim().toLowerCase()}|${service.link_type_name?.trim().toLowerCase()}`
-        );
-        const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) || [];
+  // THE FIX: Abstracted the card rendering logic into a memoized function
+  const renderItem = useCallback(
+    (service: V_servicesRowSchema) => {
+      const isDup = duplicateSet.has(
+        `${service.name?.trim().toLowerCase()}|${service.link_type_name?.trim().toLowerCase()}`,
+      );
+      const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) || [];
 
-        // Build data items conditionally to hide empty fields
-        const dataItems: EntityCardItem[] = [];
+      const dataItems: EntityCardItem[] = [];
+      if (service.vlan) dataItems.push({ icon: Tag, label: 'VLAN', value: service.vlan });
+      if (service.unique_id)
+        dataItems.push({ icon: Hash, label: 'Unique ID', value: service.unique_id });
+      dataItems.push({
+        icon: Server,
+        label: 'Route',
+        value: (
+          <div className='flex items-center gap-1 text-xs'>
+            <TruncateTooltip text={service.node_name || '?'} className='font-medium max-w-[80px]' />
+            <span className='text-gray-400'>→</span>
+            <TruncateTooltip
+              text={service.end_node_name || '?'}
+              className='font-medium max-w-[80px]'
+            />
+          </div>
+        ),
+      });
 
-        if (service.vlan) {
-          dataItems.push({ icon: Tag, label: 'VLAN', value: service.vlan });
-        }
-        if (service.unique_id) {
-          dataItems.push({ icon: Hash, label: 'Unique ID', value: service.unique_id });
-        }
-
-        // Always show Route, using TruncateTooltip for overflow handling
-        dataItems.push({
-          icon: Server,
-          label: 'Route',
-          value: (
-            <div className="flex items-center gap-1 text-xs">
-              <TruncateTooltip
-                text={service.node_name || '?'}
-                className="font-medium max-w-[80px]"
-              />
-              <span className="text-gray-400">→</span>
-              <TruncateTooltip
-                text={service.end_node_name || '?'}
-                className="font-medium max-w-[80px]"
-              />
+      return (
+        <GenericEntityCard
+          key={service.id}
+          entity={service}
+          title={service.name || 'Unnamed Service'}
+          status={service.status}
+          subBadge={
+            <div className='flex gap-2 flex-wrap mb-2'>
+              {service.link_type_name && (
+                <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-blue-600 text-white shadow-sm'>
+                  <span className='w-1.5 h-1.5 rounded-full bg-white animate-pulse' />
+                  {service.link_type_name}
+                </span>
+              )}
+              {service.bandwidth_allocated && (
+                <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-purple-600 text-white shadow-sm'>
+                  <Activity className='w-3.5 h-3.5' />
+                  {service.bandwidth_allocated}
+                </span>
+              )}
+              {isDup && (
+                <span className='text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded border border-amber-200'>
+                  Duplicate
+                </span>
+              )}
             </div>
-          ),
-        });
-
-        return (
-          <GenericEntityCard
-            key={service.id}
-            entity={service}
-            title={service.name || 'Unnamed Service'}
-            status={service.status}
-            subBadge={
-              <div className="flex gap-2 flex-wrap mb-2">
-                {service.link_type_name && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-blue-600 text-white shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    {service.link_type_name}
-                  </span>
-                )}
-                {service.bandwidth_allocated && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-purple-600 text-white shadow-sm">
-                    <Activity className="w-3.5 h-3.5" />
-                    {service.bandwidth_allocated}
-                  </span>
-                )}
-                {isDup && (
-                  <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded border border-amber-200">
-                    Duplicate
-                  </span>
-                )}
-              </div>
-            }
-            dataItems={dataItems}
-            customFooter={
-              <div className="space-y-2 w-full">
-                {/* Remarks */}
-                <GenericRemarks remark={service.description || ''} />
-
-                {/* Allocated Systems Logic */}
-                {allocatedSystems.length > 0 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
-                    <div className="text-[10px] text-blue-600 font-bold uppercase mb-1 flex items-center gap-1">
-                      <Server className="w-3 h-3" /> Allocations
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {allocatedSystems.slice(0, 2).map((sys, idx) => (
-                        <a
-                          key={`${sys.id}-${idx}`} // Uniqueness fix
-                          href={`/dashboard/systems/${sys.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700 hover:underline flex items-center gap-1"
-                        >
-                          <span className="truncate max-w-[100px]">{sys.name}</span>
-                          <ExternalLink className="w-2 h-2" />
-                        </a>
-                      ))}
-                      {allocatedSystems.length > 2 && (
-                        <span className="text-[10px] text-blue-500">
-                          +{allocatedSystems.length - 2}
-                        </span>
-                      )}
-                    </div>
+          }
+          dataItems={dataItems}
+          customFooter={
+            <div className='space-y-2 w-full'>
+              <GenericRemarks remark={service.description || ''} />
+              {allocatedSystems.length > 0 && (
+                <div className='bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800'>
+                  <div className='text-[10px] text-blue-600 font-bold uppercase mb-1 flex items-center gap-1'>
+                    <Server className='w-3 h-3' /> Allocations
                   </div>
-                )}
-              </div>
-            }
-            onEdit={editModal.openEdit}
-            onDelete={crudActions.handleDelete}
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-        );
-      })}
-    </div>
+                  <div className='flex flex-wrap gap-1'>
+                    {allocatedSystems.slice(0, 2).map((sys, idx) => (
+                      <a
+                        key={`${sys.id}-${idx}`}
+                        href={`/dashboard/systems/${sys.id}`}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        onClick={(e) => e.stopPropagation()}
+                        className='text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700 hover:underline flex items-center gap-1'
+                      >
+                        <span className='truncate max-w-[100px]'>{sys.name}</span>
+                        <ExternalLink className='w-2 h-2' />
+                      </a>
+                    ))}
+                    {allocatedSystems.length > 2 && (
+                      <span className='text-[10px] text-blue-500'>
+                        +{allocatedSystems.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          }
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      );
+    },
+    [duplicateSet, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
+  );
+
+  // THE FIX: Simplified renderGrid to use the new DataGrid component
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={data}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={data.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+      />
+    ),
+    [data, renderItem, isLoading, totalCount, pagination],
   );
 
   if (error)
@@ -319,7 +327,7 @@ export default function ServicesPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search name, node, description..."
+      searchPlaceholder='Search name, node, description...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -349,7 +357,7 @@ export default function ServicesPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_servicesRowSchema & { id: string } => row.id != null
+            (row): row is V_servicesRowSchema & { id: string } => row.id != null,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -365,12 +373,6 @@ export default function ServicesPage() {
         customToolbar: <></>,
       }}
       isEmpty={data.length === 0 && !isLoading}
-      emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <DatabaseIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No services found matching your criteria.</p>
-        </div>
-      }
       modals={
         <>
           {editModal.isOpen && (
@@ -387,9 +389,9 @@ export default function ServicesPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Delete"
+            title='Confirm Delete'
             message={deleteModal.message}
-            type="danger"
+            type='danger'
             loading={deleteModal.loading}
           />
         </>

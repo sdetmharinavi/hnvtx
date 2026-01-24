@@ -1,3 +1,4 @@
+// app/dashboard/systems/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -47,27 +48,27 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 
-import dynamic from 'next/dynamic'; // Import dynamic
+import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
 
-// DYNAMIC IMPORTS
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
-  { loading: () => <PageSpinner text="Loading Form..." /> }
+  { loading: () => <PageSpinner text='Loading Form...' /> },
 );
 
 const SystemPortsManagerModal = dynamic(
   () =>
     import('@/components/systems/SystemPortsManagerModal').then(
-      (mod) => mod.SystemPortsManagerModal
+      (mod) => mod.SystemPortsManagerModal,
     ),
-  { loading: () => <PageSpinner text="Loading Ports..." /> }
+  { loading: () => <PageSpinner text='Loading Ports...' /> },
 );
 
 const UploadResultModal = dynamic(
   () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
-  { ssr: false }
+  { ssr: false },
 );
 
 export default function SystemsPage() {
@@ -165,19 +166,18 @@ export default function SystemsPage() {
         placeholder: 'Sort By',
       },
     ],
-    [systemTypeOptions, capacityOptions, loadingTypes, loadingCaps]
+    [systemTypeOptions, capacityOptions, loadingTypes, loadingCaps],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   // --- Upload / Export ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
-    // Disable default toasts to show modal instead for completion
     showToasts: false,
     onSuccess: (result) => {
       setUploadResult(result);
@@ -216,7 +216,7 @@ export default function SystemsPage() {
       if (system.id) router.push(`/dashboard/systems/${system.id}`);
       else toast.info('System needs to be created before managing connections.');
     },
-    [router]
+    [router],
   );
 
   const handleManagePorts = useCallback((system: V_systems_completeRowSchema) => {
@@ -227,7 +227,6 @@ export default function SystemsPage() {
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
 
-  // Enhanced actions for the table view
   const tableActions = useMemo(() => {
     const actions = createStandardActions<V_systems_completeRowSchema>({
       onEdit: canEdit ? editModal.openEdit : undefined,
@@ -283,7 +282,6 @@ export default function SystemsPage() {
           toast.success('Systems refreshed.');
         },
         variant: 'outline',
-        // THE FIX: Use isBusy for spinner
         leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
         disabled: isBusy,
       },
@@ -341,7 +339,6 @@ export default function SystemsPage() {
         p_s_no: formData.s_no || undefined,
         p_remark: formData.remark || undefined,
         p_make: formData.make || undefined,
-        // ** FIX: Added p_asset_no to payload **
         p_asset_no: formData.asset_no || undefined,
         p_system_capacity_id: formData.system_capacity_id || undefined,
         p_ring_associations:
@@ -351,63 +348,89 @@ export default function SystemsPage() {
       };
       upsertSystemMutation.mutate(payload);
     },
-    [editModal.record, upsertSystemMutation]
+    [editModal.record, upsertSystemMutation],
   );
 
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {systems.map((sys) => (
-        <GenericEntityCard
-          key={sys.id}
-          entity={sys}
-          title={sys.system_name || 'Unnamed System'}
-          status={sys.status}
-          // Badge logic for HUB + Type
-          subBadge={
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50">
-                {sys.system_type_code || sys.system_type_name}
+  // THE FIX: Created memoized renderItem function
+  const renderItem = useCallback(
+    (sys: V_systems_completeRowSchema) => (
+      <GenericEntityCard
+        key={sys.id}
+        entity={sys}
+        title={sys.system_name || 'Unnamed System'}
+        status={sys.status}
+        subBadge={
+          <div className='flex items-center gap-2 mb-2 flex-wrap'>
+            <span className='inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50'>
+              {sys.system_type_code || sys.system_type_name}
+            </span>
+            {sys.is_hub && (
+              <span className='inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50'>
+                HUB
               </span>
-              {sys.is_hub && (
-                <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50">
-                  HUB
-                </span>
-              )}
-            </div>
-          }
-          // Data Rows
-          dataItems={[
-            { icon: FiMapPin, label: 'Location', value: sys.node_name, optional: true },
-            {
-              icon: FiActivity,
-              label: 'IP Address',
-              value: formatIP(sys.ip_address),
-              optional: true,
-            },
-            { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
-            { icon: FiTag, label: 'Asset No', value: sys.asset_no, optional: true },
-          ]}
-          // Footer: Manage Ports
-          extraActions={
-            <Button
-              size="xs"
-              variant="secondary"
-              onClick={() => handleManagePorts(sys)}
-              title="Manage Ports"
-              className="font-medium"
-            >
-              <FiGrid className="w-4 h-4" />
-              <span className="ml-1.5 hidden sm:inline">Ports</span>
-            </Button>
-          }
-          onView={handleView}
-          onEdit={editModal.openEdit}
-          onDelete={crudActions.handleDelete}
-          canEdit={canEdit}
-          canDelete={canDelete}
-        />
-      ))}
-    </div>
+            )}
+          </div>
+        }
+        dataItems={[
+          { icon: FiMapPin, label: 'Location', value: sys.node_name, optional: true },
+          {
+            icon: FiActivity,
+            label: 'IP Address',
+            value: formatIP(sys.ip_address),
+            optional: true,
+          },
+          { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
+          { icon: FiTag, label: 'Asset No', value: sys.asset_no, optional: true },
+        ]}
+        extraActions={
+          <Button
+            size='xs'
+            variant='secondary'
+            onClick={() => handleManagePorts(sys)}
+            title='Manage Ports'
+            className='font-medium'
+          >
+            <FiGrid className='w-4 h-4' />
+            <span className='ml-1.5 hidden sm:inline'>Ports</span>
+          </Button>
+        }
+        onView={handleView}
+        onEdit={editModal.openEdit}
+        onDelete={crudActions.handleDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
+    ),
+    [
+      handleManagePorts,
+      handleView,
+      editModal.openEdit,
+      crudActions.handleDelete,
+      canEdit,
+      canDelete,
+    ],
+  );
+
+  // THE FIX: Created memoized renderGrid function
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={systems}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={systems.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+      />
+    ),
+    [systems, renderItem, isLoading, pagination, totalCount],
   );
 
   if (error)
@@ -430,7 +453,7 @@ export default function SystemsPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search system, node, IP..."
+      searchPlaceholder='Search system, node, IP...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -457,7 +480,7 @@ export default function SystemsPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_systems_completeRowSchema & { id: string } => !!row.id
+            (row): row is V_systems_completeRowSchema & { id: string } => !!row.id,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -474,27 +497,21 @@ export default function SystemsPage() {
         customToolbar: <></>,
       }}
       isEmpty={systems.length === 0 && !isLoading}
-      emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No systems found matching your criteria.</p>
-        </div>
-      }
       modals={
         <>
           <input
-            type="file"
+            type='file'
             ref={fileInputRef}
             onChange={handleFileChange}
-            className="hidden"
-            accept=".xlsx, .xls, .csv"
+            className='hidden'
+            accept='.xlsx, .xls, .csv'
           />
 
           <UploadResultModal
             isOpen={isUploadResultOpen}
             onClose={() => setIsUploadResultOpen(false)}
             result={uploadResult}
-            title="Systems Upload Report"
+            title='Systems Upload Report'
           />
 
           <SystemModal
@@ -515,10 +532,10 @@ export default function SystemsPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
             loading={deleteModal.loading}
-            type="danger"
+            type='danger'
           />
         </>
       }

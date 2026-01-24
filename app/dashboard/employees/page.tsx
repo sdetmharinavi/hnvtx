@@ -24,10 +24,11 @@ import { FiUsers, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
 import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { DataGrid } from '@/components/common/DataGrid';
 
 const EmployeeForm = dynamic(
   () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
-  { loading: () => <PageSpinner text="Loading Employee Form..." /> }
+  { loading: () => <PageSpinner text='Loading Employee Form...' /> },
 );
 
 export default function EmployeesPage() {
@@ -62,7 +63,7 @@ export default function EmployeesPage() {
 
   const canEdit = useMemo(
     () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
-    [isSuperAdmin, role]
+    [isSuperAdmin, role],
   );
   const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
@@ -92,14 +93,14 @@ export default function EmployeesPage() {
         isLoading: loadingAreas,
       },
     ],
-    [desOptions, areaOptions, loadingDes, loadingAreas]
+    [desOptions, areaOptions, loadingDes, loadingAreas],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const columns = useMemo(() => getEmployeeTableColumns(), []);
@@ -113,11 +114,10 @@ export default function EmployeesPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isInitialLoad,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'employees' } : undefined,
   });
 
-  // ... Helpers for Card Rendering ...
   const getAvatarColor = (name: string) => {
     const colors = [
       'from-blue-500 to-blue-600',
@@ -128,51 +128,71 @@ export default function EmployeesPage() {
       'from-cyan-500 to-cyan-600',
     ];
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
     return colors[index % colors.length];
   };
 
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {employees.map((emp) => (
-        <GenericEntityCard
-          key={emp.id}
-          entity={emp}
-          title={emp.employee_name || 'Unknown Employee'}
-          subtitle={emp.employee_designation_name || 'No Designation'}
-          initials={(emp.employee_name || '?')
-            .split(' ')
-            .map((n) => n[0])
-            .slice(0, 2)
-            .join('')
-            .toUpperCase()}
-          avatarColor={getAvatarColor(emp.employee_name || '')}
-          status={emp.status}
-          subBadge={
-            emp.employee_pers_no ? (
-              <span className="inline-flex items-center text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium">
-                ID: {emp.employee_pers_no}
-              </span>
-            ) : null
-          }
-          dataItems={[
-            { icon: FiPhone, label: 'Contact', value: emp.employee_contact || 'N/A' },
-            { icon: FiMail, label: 'Email', value: emp.employee_email, optional: true },
-            { icon: FiMapPin, label: 'Area', value: emp.maintenance_area_name, optional: true },
-          ]}
-          customFooter={<GenericRemarks remark={emp.remark || ''} />}
-          onView={viewModal.open}
-          onEdit={editModal.openEdit}
-          onDelete={crudActions.handleDelete}
-          canEdit={canEdit}
-          canDelete={canDelete}
-        />
-      ))}
-    </div>
+  const renderItem = useCallback(
+    (emp: V_employeesRowSchema) => (
+      <GenericEntityCard
+        key={emp.id}
+        entity={emp}
+        title={emp.employee_name || 'Unknown Employee'}
+        subtitle={emp.employee_designation_name || 'No Designation'}
+        initials={(emp.employee_name || '?')
+          .split(' ')
+          .map((n) => n[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase()}
+        avatarColor={getAvatarColor(emp.employee_name || '')}
+        status={emp.status}
+        subBadge={
+          emp.employee_pers_no ? (
+            <span className='inline-flex items-center text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium'>
+              ID: {emp.employee_pers_no}
+            </span>
+          ) : null
+        }
+        dataItems={[
+          { icon: FiPhone, label: 'Contact', value: emp.employee_contact || 'N/A' },
+          { icon: FiMail, label: 'Email', value: emp.employee_email, optional: true },
+          { icon: FiMapPin, label: 'Area', value: emp.maintenance_area_name, optional: true },
+        ]}
+        customFooter={<GenericRemarks remark={emp.remark || ''} />}
+        onView={viewModal.open}
+        onEdit={editModal.openEdit}
+        onDelete={crudActions.handleDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
+    ),
+    [viewModal.open, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
   );
 
-  if (error)
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={employees}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={employees.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+      />
+    ),
+    [employees, renderItem, isLoading, pagination, totalCount],
+  );
+
+  if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+  }
 
   return (
     <DashboardPageLayout
@@ -191,7 +211,7 @@ export default function EmployeesPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search employees..."
+      searchPlaceholder='Search employees...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -226,7 +246,7 @@ export default function EmployeesPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_employeesRowSchema & { id: string } => !!row.id
+            (row): row is V_employeesRowSchema & { id: string } => !!row.id,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -244,11 +264,6 @@ export default function EmployeesPage() {
         customToolbar: <></>,
       }}
       isEmpty={employees.length === 0 && !isLoading}
-      emptyState={
-        <div className="col-span-full py-12 text-center text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-          No employees found matching your criteria.
-        </div>
-      }
       modals={
         <>
           {canEdit && (
@@ -262,21 +277,19 @@ export default function EmployeesPage() {
               maintenanceAreaOptions={areaOptions}
             />
           )}
-
           <EmployeeDetailsModal
             employee={viewModal.record}
             onClose={viewModal.close}
             isOpen={viewModal.isOpen}
           />
-
           <ConfirmModal
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
             loading={deleteModal.loading}
-            type="danger"
+            type='danger'
           />
         </>
       }
