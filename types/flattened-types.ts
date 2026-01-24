@@ -1330,6 +1330,39 @@ export type SystemsUpdate = {
     updated_at?: string | null;
 };
 
+export type Technical_notesRow = {
+    author_id: string | null;
+    content: string | null;
+    created_at: string | null;
+    id: string;
+    is_published: boolean | null;
+    tags: string[] | null;
+    title: string;
+    updated_at: string | null;
+};
+
+export type Technical_notesInsert = {
+    author_id?: string | null;
+    content?: string | null;
+    created_at?: string | null;
+    id?: string;
+    is_published?: boolean | null;
+    tags?: string[] | null;
+    title: string;
+    updated_at?: string | null;
+};
+
+export type Technical_notesUpdate = {
+    author_id?: string | null;
+    content?: string | null;
+    created_at?: string | null;
+    id?: string;
+    is_published?: boolean | null;
+    tags?: string[] | null;
+    title?: string;
+    updated_at?: string | null;
+};
+
 export type User_activity_logsRow = {
     action_type: string;
     created_at: string | null;
@@ -1878,6 +1911,21 @@ export type V_systems_completeRow = {
     updated_at: string | null;
 };
 
+export type V_technical_notesRow = {
+    author_avatar: string | null;
+    author_email: string | null;
+    author_id: string | null;
+    author_name: string | null;
+    content: string | null;
+    created_at: string | null;
+    id: string | null;
+    is_published: boolean | null;
+    status_label: string | null;
+    tags: string[] | null;
+    title: string | null;
+    updated_at: string | null;
+};
+
 export type V_user_profiles_extendedRow = {
     account_age_days: number | null;
     address: Json | null;
@@ -1958,6 +2006,7 @@ export const tableNames = [
   "services",
   "system_connections",
   "systems",
+  "technical_notes",
   "user_activity_logs",
   "user_profiles"
 ] as const;
@@ -1985,6 +2034,7 @@ export const viewNames = [
   "v_services",
   "v_system_connections_complete",
   "v_systems_complete",
+  "v_technical_notes",
   "v_user_profiles_extended"
 ] as const;
 

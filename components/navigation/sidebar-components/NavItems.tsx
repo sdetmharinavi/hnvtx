@@ -17,6 +17,7 @@ import {
   FiAirplay,
   FiDatabase,
   FiActivity,
+  FiBook,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -45,6 +46,13 @@ function NavItems() {
         icon: <FiCalendar className="h-5 w-5" />,
         href: '/dashboard/diary',
         roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
+      },
+      {
+        id: 'notes',
+        label: 'Tech Notes',
+        icon: <FiBook className="h-5 w-5" />,
+        href: '/dashboard/notes',
+        roles: ROLES.VIEWERS,
       },
       {
         id: 'user-management',

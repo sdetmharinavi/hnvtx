@@ -84,6 +84,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return 'files';
       case 'services':
         return 'services';
+      case 'notes':
+        return 'technical_notes';
       default:
         return null;
     }

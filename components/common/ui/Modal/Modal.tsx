@@ -16,6 +16,8 @@ interface ModalProps {
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   className?: string;
+  /** Custom class for the inner content wrapper (e.g., to remove padding) */
+  contentClassName?: string;
   visible?: boolean;
 }
 
@@ -29,6 +31,7 @@ export const Modal = ({
   closeOnOverlayClick = true,
   closeOnEscape = true,
   className,
+  contentClassName,
   visible = true,
 }: ModalProps) => {
   const [mounted, setMounted] = useState(false);
@@ -145,7 +148,15 @@ export const Modal = ({
             )}
 
             {/* Content - Scrollable Area */}
-            <div className="flex-1 overflow-y-auto p-6 min-h-0">{children}</div>
+            {/* FIX: Use contentClassName to override default padding and overflow */}
+            <div
+              className={cn(
+                'flex-1 min-h-0',
+                contentClassName || 'overflow-y-auto p-6'
+              )}
+            >
+              {children}
+            </div>
           </motion.div>
         </div>
       )}

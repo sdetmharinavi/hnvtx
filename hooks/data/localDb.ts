@@ -52,6 +52,8 @@ import {
   V_junction_closures_completeRowSchema,
   V_cable_segments_at_jcRowSchema,
 } from '@/schemas/zod-schemas';
+// ADDED
+import { TechnicalNoteRow, VTechnicalNoteRow } from '@/schemas/notes-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
 
@@ -134,7 +136,6 @@ export interface SyncStatus {
 export interface MutationTask {
   id?: number;
   tableName: PublicTableName;
-  // UPDATE: Added 'bulk_upsert' to supported types
   type: 'insert' | 'update' | 'delete' | 'bulk_upsert';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any;
@@ -180,6 +181,10 @@ export class HNVTMDatabase extends Dexie {
   files!: Table<FilesRowSchema, string>;
   folders!: Table<FoldersRowSchema, string>;
 
+  // Added technical notes
+  technical_notes!: Table<TechnicalNoteRow, string>;
+  v_technical_notes!: Table<VTechnicalNoteRow, string>;
+
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
   v_systems_complete!: Table<V_systems_completeRowSchema, string>;
@@ -217,8 +222,9 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-    this.version(38).stores({
-      // --- MASTER DATA ---
+    // Bumped version number to force schema update
+    this.version(39).stores({
+      // ... previous stores ...
       lookup_types: '&id, category, name, sort_order, status',
       v_lookup_types: '&id, category, name',
 
@@ -234,7 +240,6 @@ export class HNVTMDatabase extends Dexie {
       nodes: '&id, name, node_type_id, status',
       v_nodes_complete: '&id, name, node_type_id, maintenance_terminal_id, status',
 
-      // --- OFC NETWORK ---
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
 
@@ -249,7 +254,6 @@ export class HNVTMDatabase extends Dexie {
       v_junction_closures_complete: '&id, node_id, ofc_cable_id',
       v_cable_segments_at_jc: '&id, original_cable_id',
 
-      // --- SYSTEMS & LOGICAL ---
       rings: '&id, name, ring_type_id, status',
       v_rings: '&id, name, ring_type_id, maintenance_terminal_id, status',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
@@ -277,21 +281,18 @@ export class HNVTMDatabase extends Dexie {
 
       sdh_connections: '&system_connection_id',
 
-      // --- INVENTORY ---
       inventory_items: '&id, asset_no, name',
       v_inventory_items: '&id, asset_no, name, category_id, location_id',
 
       inventory_transactions: '&id, inventory_item_id, created_at',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
 
-      // --- E-FILES ---
       e_files: '&id, file_number, current_holder_employee_id, status',
       v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at',
 
       file_movements: '&id, file_id, created_at',
       v_file_movements_extended: '&id, file_id, created_at',
 
-      // --- USERS & DOCS ---
       user_profiles: '&id, first_name, last_name, role, status',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       diary_notes: '&id, &[user_id+note_date], note_date',
@@ -299,10 +300,13 @@ export class HNVTMDatabase extends Dexie {
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
 
+      // ADDED: Notes
+      technical_notes: '&id, title, is_published, created_at, updated_at',
+      v_technical_notes: '&id, title, is_published, author_id, created_at, updated_at',
+
       user_activity_logs: '&id, action_type, table_name, created_at',
       v_audit_logs: '&id, action_type, table_name, created_at',
 
-      // --- SYSTEM TABLES ---
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status, tableName',
       route_distances: 'id, timestamp',
@@ -313,7 +317,7 @@ export class HNVTMDatabase extends Dexie {
 export const localDb = new HNVTMDatabase();
 
 export function getTable<T extends PublicTableOrViewName>(
-  tableName: T
+  tableName: T,
 ): Table<Row<T>, string | number | [string, string]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const table = (localDb as any)[tableName];

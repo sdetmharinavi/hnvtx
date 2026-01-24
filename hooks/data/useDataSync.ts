@@ -69,6 +69,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   fiber_splices: { strategy: 'full' },
   logical_path_segments: { strategy: 'full' },
   sdh_connections: { strategy: 'full' },
+  technical_notes: { strategy: 'full' },
 
   // Views mapped to their underlying tables for mutation checking
   v_systems_complete: { strategy: 'full', relatedTable: 'systems' },
@@ -91,6 +92,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_lookup_types: { strategy: 'full', relatedTable: 'lookup_types' },
   v_user_profiles_extended: { strategy: 'full', relatedTable: 'user_profiles' },
   v_employees: { strategy: 'full', relatedTable: 'employees' },
+  v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
 // Helper: Merges local pending changes into the server dataset

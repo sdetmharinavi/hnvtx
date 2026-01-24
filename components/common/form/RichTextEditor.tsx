@@ -8,6 +8,9 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { Table } from '@tiptap/extension-table';
+import EmojiExtension from '@tiptap/extension-emoji'; // Import Emoji
+import { ExcalidrawExtension } from './extensions/ExcalidrawNode'; // Import Diagram
+import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react'; // Import Picker
 import {
   Bold,
   Italic,
@@ -24,28 +27,25 @@ import {
   Merge,
   Split,
   Type,
+  Smile, // New Icon
+  PenTool, // New Icon
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/common/ui/label/Label';
+import { useThemeStore } from '@/stores/themeStore'; // For Emoji Picker Theme
 
-// --- CUSTOM EXTENSIONS ---
+// --- EXISTING CUSTOM EXTENSIONS (TextStyle, FontSize) REMAIN UNCHANGED ---
 
 const TextStyle = Mark.create({
   name: 'textStyle',
   addOptions() {
-    return {
-      HTMLAttributes: {},
-    };
+    return { HTMLAttributes: {} };
   },
   parseHTML() {
     return [
       {
         tag: 'span',
-        getAttrs: (element) => {
-          const hasStyle = (element as HTMLElement).hasAttribute('style');
-          if (!hasStyle) return false;
-          return {};
-        },
+        getAttrs: (element) => ((element as HTMLElement).hasAttribute('style') ? {} : false),
       },
     ];
   },
@@ -60,15 +60,16 @@ declare module '@tiptap/core' {
       setFontSize: (size: string) => ReturnType;
       unsetFontSize: () => ReturnType;
     };
+    excalidraw: {
+      setExcalidraw: () => ReturnType;
+    };
   }
 }
 
 const FontSize = Mark.create({
   name: 'fontSize',
   addOptions() {
-    return {
-      types: ['textStyle'],
-    };
+    return { types: ['textStyle'] };
   },
   addGlobalAttributes() {
     return [
@@ -78,14 +79,8 @@ const FontSize = Mark.create({
           fontSize: {
             default: null,
             parseHTML: (element) => element.style.fontSize || null,
-            renderHTML: (attributes) => {
-              if (!attributes.fontSize) {
-                return {};
-              }
-              return {
-                style: `font-size: ${attributes.fontSize}`,
-              };
-            },
+            renderHTML: (attributes) =>
+              attributes.fontSize ? { style: `font-size: ${attributes.fontSize}` } : {},
           },
         },
       },
@@ -95,14 +90,12 @@ const FontSize = Mark.create({
     return {
       setFontSize:
         (fontSize) =>
-        ({ chain }) => {
-          return chain().setMark('textStyle', { fontSize }).run();
-        },
+        ({ chain }) =>
+          chain().setMark('textStyle', { fontSize }).run(),
       unsetFontSize:
         () =>
-        ({ chain }) => {
-          return chain().setMark('textStyle', { fontSize: null }).run();
-        },
+        ({ chain }) =>
+          chain().setMark('textStyle', { fontSize: null }).run(),
     };
   },
 });
@@ -117,10 +110,32 @@ interface RichTextEditorProps {
 }
 
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const { theme } = useThemeStore();
+
+  // Fix: Moved useEffect before the conditional return
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiButtonRef.current && !emojiButtonRef.current.contains(event.target as Node)) {
+        // Check if click is inside the picker (it renders in a portal usually or absolute)
+        const picker = document.querySelector('.EmojiPickerReact');
+        if (picker && !picker.contains(event.target as Node)) {
+          setShowEmojiPicker(false);
+        }
+      }
+    };
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
+
+  // Fix: Conditional return is now SAFE after all hooks are called
   if (!editor) return null;
 
   const baseBtn =
-    'p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300 flex items-center justify-center';
+    'p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300 flex items-center justify-center relative';
   const activeBtn = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
 
   const fontSizes = [
@@ -137,23 +152,19 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const currentFontSize = editor.getAttributes('textStyle').fontSize || '';
 
   return (
-    <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg items-center">
+    <div className='flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-lg items-center z-20 relative'>
       {/* Font Size Dropdown */}
-      <div className="relative flex items-center mr-1">
-        <Type size={14} className="absolute left-2 text-gray-400 pointer-events-none" />
+      <div className='relative flex items-center mr-1'>
+        <Type size={14} className='absolute left-2 text-gray-400 pointer-events-none' />
         <select
           value={currentFontSize}
           onChange={(e) => {
             const size = e.target.value;
-            if (size) {
-              editor.chain().focus().setFontSize(size).run();
-            } else {
-              editor.chain().focus().unsetFontSize().run();
-            }
+            if (size) editor.chain().focus().setFontSize(size).run();
+            else editor.chain().focus().unsetFontSize().run();
           }}
-          className="pl-7 pr-2 py-1 h-8 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          title="Font Size"
-        >
+          className='pl-7 pr-2 py-1 h-8 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500'
+          title='Font Size'>
           {fontSizes.map((size) => (
             <option key={size.label} value={size.value}>
               {size.label}
@@ -162,151 +173,185 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         </select>
       </div>
 
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+      <div className='w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1' />
 
+      {/* Basic Formatting */}
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
         className={`${baseBtn} ${editor.isActive('bold') ? activeBtn : ''}`}
-        title="Bold"
-      >
+        title='Bold (Ctrl+B)'>
         <Bold size={16} />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
         className={`${baseBtn} ${editor.isActive('italic') ? activeBtn : ''}`}
-        title="Italic"
-      >
+        title='Italic (Ctrl+I)'>
         <Italic size={16} />
       </button>
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      <div className='w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1' />
+
+      {/* Headings */}
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         className={`${baseBtn} ${editor.isActive('heading', { level: 1 }) ? activeBtn : ''}`}
-        title="Heading 1"
-      >
+        title='Heading 1'>
         <Heading1 size={16} />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         className={`${baseBtn} ${editor.isActive('heading', { level: 2 }) ? activeBtn : ''}`}
-        title="Heading 2"
-      >
+        title='Heading 2'>
         <Heading2 size={16} />
       </button>
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      {/* Lists */}
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         className={`${baseBtn} ${editor.isActive('bulletList') ? activeBtn : ''}`}
-        title="Bullet List"
-      >
+        title='Bullet List'>
         <List size={16} />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         className={`${baseBtn} ${editor.isActive('orderedList') ? activeBtn : ''}`}
-        title="Ordered List"
-      >
+        title='Ordered List'>
         <ListOrdered size={16} />
       </button>
-      <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+
+      <div className='w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1' />
+
+      {/* Rich Features: Emojis & Diagrams */}
+      <div className='relative'>
+        <button
+          ref={emojiButtonRef}
+          type='button'
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className={`${baseBtn} ${showEmojiPicker ? activeBtn : ''}`}
+          title='Insert Emoji'>
+          <Smile size={16} />
+        </button>
+
+        {showEmojiPicker && (
+          <div className='absolute top-full left-0 mt-2 z-50 shadow-xl rounded-lg'>
+            <EmojiPicker
+              theme={theme === 'dark' ? EmojiTheme.DARK : EmojiTheme.LIGHT}
+              onEmojiClick={(emojiData) => {
+                editor.chain().focus().insertContent(emojiData.emoji).run();
+                setShowEmojiPicker(false);
+              }}
+              width={300}
+              height={400}
+            />
+          </div>
+        )}
+      </div>
+
       <button
-        type="button"
+        type='button'
+        onClick={() => {
+          // Insert Excalidraw Node
+          editor
+            .chain()
+            .focus()
+            .insertContent({ type: 'excalidraw', attrs: { data: '[]' } })
+            .run();
+        }}
+        className={baseBtn}
+        title='Insert Drawing/Diagram'>
+        <PenTool size={16} />
+      </button>
+
+      <div className='w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1' />
+
+      {/* Table Controls (unchanged) */}
+      <button
+        type='button'
         onClick={() =>
           editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
         }
         className={`${baseBtn}`}
-        title="Insert Table"
-      >
+        title='Insert Table'>
         <TableIcon size={16} />
       </button>
-
       {editor.isActive('table') && (
         <>
-          <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+          <div className='w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1' />
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().addColumnAfter().run()}
             className={`${baseBtn}`}
-            title="Add Column"
-          >
-            <PlusSquare size={16} className="rotate-90" />
+            title='Add Column'>
+            <PlusSquare size={16} className='rotate-90' />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().deleteColumn().run()}
             className={`${baseBtn} hover:text-red-500`}
-            title="Delete Column"
-          >
-            <MinusSquare size={16} className="rotate-90" />
+            title='Delete Column'>
+            <MinusSquare size={16} className='rotate-90' />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().addRowAfter().run()}
             className={`${baseBtn}`}
-            title="Add Row"
-          >
+            title='Add Row'>
             <PlusSquare size={16} />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().deleteRow().run()}
             className={`${baseBtn} hover:text-red-500`}
-            title="Delete Row"
-          >
+            title='Delete Row'>
             <MinusSquare size={16} />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().mergeCells().run()}
             className={`${baseBtn}`}
-            title="Merge Cells"
-          >
+            title='Merge Cells'>
             <Merge size={16} />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().splitCell().run()}
             className={`${baseBtn}`}
-            title="Split Cell"
-          >
+            title='Split Cell'>
             <Split size={16} />
           </button>
           <button
-            type="button"
+            type='button'
             onClick={() => editor.chain().focus().deleteTable().run()}
             className={`${baseBtn} text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`}
-            title="Delete Table"
-          >
+            title='Delete Table'>
             <Trash2 size={16} />
           </button>
         </>
       )}
 
-      <div className="flex-1" />
+      <div className='flex-1' />
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().chain().focus().undo().run()}
         className={`${baseBtn} disabled:opacity-50`}
-        title="Undo"
-      >
+        title='Undo'>
         <Undo size={16} />
       </button>
       <button
-        type="button"
+        type='button'
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().chain().focus().redo().run()}
         className={`${baseBtn} disabled:opacity-50`}
-        title="Redo"
-      >
+        title='Redo'>
         <Redo size={16} />
       </button>
     </div>
@@ -324,12 +369,17 @@ export const RichTextEditor = ({
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ link: false }),
+        StarterKit.configure({
+          link: false,
+          // Enabling History is default in StarterKit
+        }),
         TextStyle,
         FontSize,
+        EmojiExtension, // Shortcode support :smile:
+        ExcalidrawExtension, // Drawing Support
         LinkExtension.configure({
           openOnClick: false,
-          autolink: false,
+          autolink: true, // Auto-detect links
           HTMLAttributes: { class: 'text-blue-500 hover:underline cursor-pointer' },
         }),
         Table.configure({
@@ -352,14 +402,16 @@ export const RichTextEditor = ({
           },
         }),
       ],
-      content: value,
-      editable: !disabled,
       editorProps: {
         attributes: {
           class:
             'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
+          // Native Spellcheck enabled (browser default behavior)
+          spellcheck: 'true',
         },
       },
+      content: value,
+      editable: !disabled,
       onUpdate: ({ editor }) => {
         onChange(editor.getHTML());
       },
@@ -370,8 +422,6 @@ export const RichTextEditor = ({
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      // Avoid infinite loop if content is semantically identical but syntactically different
-      // Tiptap might format HTML differently than raw string
       if (editor.isEmpty && value) {
         editor.commands.setContent(value);
       } else if (value === '' && !editor.isEmpty) {
@@ -380,31 +430,23 @@ export const RichTextEditor = ({
     }
   }, [value, editor]);
 
-  // Clean up editor on unmount
   useEffect(() => {
     return () => {
-      if (editor) {
-        editor.destroy();
-      }
+      if (editor) editor.destroy();
     };
   }, [editor]);
 
   return (
-    <div className="w-full">
-      {label && <Label className="mb-2">{label}</Label>}
+    <div className='w-full'>
+      {label && <Label className='mb-2'>{label}</Label>}
       <div
-        className={`border rounded-lg bg-white dark:bg-gray-900 transition-colors flex flex-col ${
-          error
-            ? 'border-red-500 dark:border-red-500'
-            : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent'
-        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-      >
+        className={`border rounded-lg bg-white dark:bg-gray-900 transition-colors flex flex-col ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
         <MenuBar editor={editor} />
-        <div className="overflow-x-auto w-full">
+        <div className='overflow-x-auto w-full'>
           <EditorContent editor={editor} placeholder={placeholder} />
         </div>
       </div>
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+      {error && <p className='mt-1 text-sm text-red-500'>{error}</p>}
     </div>
   );
 };

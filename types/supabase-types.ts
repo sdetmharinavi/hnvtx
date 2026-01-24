@@ -3548,6 +3548,47 @@ export type Database = {
           },
         ]
       }
+      technical_notes: {
+        Row: {
+          author_id: string | null
+          content: string | null
+          created_at: string | null
+          id: string
+          is_published: boolean | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_activity_logs: {
         Row: {
           action_type: string
@@ -5382,6 +5423,31 @@ export type Database = {
             columns: ["system_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_technical_notes: {
+        Row: {
+          author_avatar: string | null
+          author_email: string | null
+          author_id: string | null
+          author_name: string | null
+          content: string | null
+          created_at: string | null
+          id: string | null
+          is_published: boolean | null
+          status_label: string | null
+          tags: string[] | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
             referencedColumns: ["id"]
           },
         ]

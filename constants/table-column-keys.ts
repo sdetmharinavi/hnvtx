@@ -77,6 +77,11 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: 'id',
     isUploadEnabled: true,
   },
+  technical_notes: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -640,6 +645,16 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: 'created_at',
     updated_at: 'updated_at',
   },
+  technical_notes: {
+    author_id: 'author_id',
+    content: 'content',
+    created_at: 'created_at',
+    id: 'id',
+    is_published: 'is_published',
+    tags: 'tags',
+    title: 'title',
+    updated_at: 'updated_at',
+  },
   inventory_items: {
     id: 'id',
     asset_no: 'asset_no',
@@ -1148,16 +1163,33 @@ const TABLE_COLUMN_OBJECTS = {
     to_employee_name: 'to_employee_name',
     id: 'id',
   },
+  v_technical_notes: {
+    author_avatar: 'author_avatar',
+    author_email: 'author_email',
+    author_id: 'author_id',
+    author_name: 'author_name',
+    content: 'content',
+    created_at: 'created_at',
+    id: 'id',
+    is_published: 'is_published',
+    status_label: 'status_label',
+    tags: 'tags',
+    title: 'title',
+    updated_at: 'updated_at',
+  },
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
 export const TABLE_COLUMN_KEYS = (
   Object.keys(TABLE_COLUMN_OBJECTS) as Array<keyof typeof TABLE_COLUMN_OBJECTS>
-).reduce((acc, tableName) => {
-  const value = TABLE_COLUMN_OBJECTS[tableName];
-  acc[tableName] = Object.keys(value) as (keyof Row<typeof tableName>)[];
-  return acc;
-}, {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] });
+).reduce(
+  (acc, tableName) => {
+    const value = TABLE_COLUMN_OBJECTS[tableName];
+    acc[tableName] = Object.keys(value) as (keyof Row<typeof tableName>)[];
+    return acc;
+  },
+  {} as { [K in PublicTableOrViewName]: (keyof Row<K>)[] },
+);
 
 export const TABLES = {
   user_profiles: 'user_profiles',
@@ -1191,6 +1223,7 @@ export const TABLES = {
   services: 'services',
   e_files: 'e_files',
   file_movements: 'file_movements',
+  technical_notes: 'technical_notes',
 } as const;
 
 export const VIEWS = {
@@ -1215,6 +1248,7 @@ export const VIEWS = {
   v_services: 'v_services',
   v_e_files_extended: 'v_e_files_extended',
   v_file_movements_extended: 'v_file_movements_extended',
+  v_technical_notes: 'v_technical_notes',
 } as const;
 
 export const TABLE_NAMES = {

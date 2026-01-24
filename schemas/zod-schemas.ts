@@ -1352,6 +1352,39 @@ export const systemsUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const technical_notesRowSchema = z.object({
+  author_id: z.uuid().nullable(),
+  content: z.string().max(10000, "Text is too long").nullable(),
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid(),
+  is_published: z.boolean().nullable(),
+  tags: z.array(z.string()).nullable(),
+  title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  updated_at: z.iso.datetime().nullable(),
+});
+
+export const technical_notesInsertSchema = z.object({
+  author_id: z.uuid().nullable().optional(),
+  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  is_published: z.boolean().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long"),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
+export const technical_notesUpdateSchema = z.object({
+  author_id: z.uuid().nullable().optional(),
+  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  id: z.uuid().optional(),
+  is_published: z.boolean().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").optional(),
+  updated_at: z.iso.datetime().nullable().optional(),
+});
+
 export const user_activity_logsRowSchema = z.object({
   action_type: z.string(),
   created_at: z.iso.datetime().nullable(),
@@ -1898,6 +1931,21 @@ export const v_systems_completeRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
 });
 
+export const v_technical_notesRowSchema = z.object({
+  author_avatar: z.string().nullable(),
+  author_email: z.email().nullable(),
+  author_id: z.uuid().nullable(),
+  author_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  content: z.string().max(10000, "Text is too long").nullable(),
+  created_at: z.iso.datetime().nullable(),
+  id: z.uuid().nullable(),
+  is_published: z.boolean().nullable(),
+  status_label: z.string().min(1, "Status cannot be empty").nullable(),
+  tags: z.array(z.string()).nullable(),
+  title: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  updated_at: z.iso.datetime().nullable(),
+});
+
 export const v_user_profiles_extendedRowSchema = z.object({
   account_age_days: z.number().int().min(0).max(150).nullable(),
   address: z.object({ street: z.string().optional().nullable(), city: z.string().optional().nullable(), state: z.string().optional().nullable(), zip_code: z.string().optional().nullable(), country: z.string().optional().nullable(), }).nullable(),
@@ -2014,6 +2062,9 @@ export type System_connectionsUpdateSchema = z.infer<typeof system_connectionsUp
 export type SystemsRowSchema = z.infer<typeof systemsRowSchema>;
 export type SystemsInsertSchema = z.infer<typeof systemsInsertSchema>;
 export type SystemsUpdateSchema = z.infer<typeof systemsUpdateSchema>;
+export type Technical_notesRowSchema = z.infer<typeof technical_notesRowSchema>;
+export type Technical_notesInsertSchema = z.infer<typeof technical_notesInsertSchema>;
+export type Technical_notesUpdateSchema = z.infer<typeof technical_notesUpdateSchema>;
 export type User_activity_logsRowSchema = z.infer<typeof user_activity_logsRowSchema>;
 export type User_activity_logsInsertSchema = z.infer<typeof user_activity_logsInsertSchema>;
 export type User_activity_logsUpdateSchema = z.infer<typeof user_activity_logsUpdateSchema>;
@@ -2042,4 +2093,5 @@ export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;
 export type V_servicesRowSchema = z.infer<typeof v_servicesRowSchema>;
 export type V_system_connections_completeRowSchema = z.infer<typeof v_system_connections_completeRowSchema>;
 export type V_systems_completeRowSchema = z.infer<typeof v_systems_completeRowSchema>;
+export type V_technical_notesRowSchema = z.infer<typeof v_technical_notesRowSchema>;
 export type V_user_profiles_extendedRowSchema = z.infer<typeof v_user_profiles_extendedRowSchema>;

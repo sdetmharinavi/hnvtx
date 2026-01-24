@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all lets fix fiber trace modal. Take an example of the screenshot attached. It should be FUTURE INSTITUTE OF ENGG AND MANAGEMENT and SONARPUR instead its updating both end BJC FIEM in reverse mode(starting from last)
+Let's begin! First of all fix the error I am getting while opening the form for notes having rich text editor
