@@ -31,26 +31,27 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import { EnhancedUploadResult } from '@/hooks/database';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 
 const InventoryFormModal = dynamic(
   () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
-  { loading: () => <PageSpinner text="Loading Inventory Form..." /> },
+  { loading: () => <PageSpinner text='Loading Inventory Form...' /> },
 );
 
 const IssueItemModal = dynamic(
   () => import('@/components/inventory/IssueItemModal').then((mod) => mod.IssueItemModal),
-  { loading: () => <PageSpinner text="Loading Issue Form..." /> },
+  { loading: () => <PageSpinner text='Loading Issue Form...' /> },
 );
 
 const InventoryHistoryModal = dynamic(
   () =>
     import('@/components/inventory/InventoryHistoryModal').then((mod) => mod.InventoryHistoryModal),
-  { loading: () => <PageSpinner text="Loading History..." /> },
+  { loading: () => <PageSpinner text='Loading History...' /> },
 );
 
 const UploadResultModal = dynamic(
   () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
-  { loading: () => <PageSpinner text="Loading Import Report..." /> },
+  { loading: () => <PageSpinner text='Loading Import Report...' /> },
 );
 
 export default function InventoryPage() {
@@ -190,7 +191,7 @@ export default function InventoryPage() {
       standardActions.unshift({
         key: 'issue',
         label: 'Issue',
-        icon: <FiMinusCircle className="text-orange-600" />,
+        icon: <FiMinusCircle className='text-orange-600' />,
         onClick: (r) => handleOpenIssueModal(r),
         variant: 'secondary',
         disabled: (r) => (r.quantity || 0) <= 0,
@@ -226,113 +227,105 @@ export default function InventoryPage() {
     });
   }
 
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {inventory.map((item) => {
-        const quantity = item.quantity || 0;
-        const totalValue = (item.cost || 0) * quantity;
+  // --- REFACTORED RENDER GRID using DataGrid ---
+  const renderItem = useCallback(
+    (item: V_inventory_itemsRowSchema) => {
+      const quantity = item.quantity || 0;
+      const totalValue = (item.cost || 0) * quantity;
 
-        let stockStatusColor =
-          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-        let stockLabel = 'In Stock';
-        if (quantity === 0) {
-          stockStatusColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-          stockLabel = 'Out of Stock';
-        } else if (quantity < 5) {
-          stockStatusColor =
-            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
-          stockLabel = 'Low Stock';
-        }
+      let stockStatusColor = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      let stockLabel = 'In Stock';
+      if (quantity === 0) {
+        stockStatusColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+        stockLabel = 'Out of Stock';
+      } else if (quantity < 5) {
+        stockStatusColor =
+          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        stockLabel = 'Low Stock';
+      }
 
-        return (
-          <GenericEntityCard
-            key={item.id}
-            entity={item}
-            title={item.name || 'Unnamed Item'}
-            status={item.status_name || 'Unknown'}
-            // Custom Status Badge (Stock Level)
-            subBadge={
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-mono text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">
-                  {item.asset_no || 'NO ID'}
+      return (
+        <GenericEntityCard
+          key={item.id}
+          entity={item}
+          title={item.name || 'Unnamed Item'}
+          status={item.status_name || 'Unknown'}
+          subBadge={
+            <div className='flex items-center gap-2 mb-2'>
+              <span className='font-mono text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded'>
+                {item.asset_no || 'NO ID'}
+              </span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stockStatusColor}`}
+              >
+                {stockLabel}
+              </span>
+            </div>
+          }
+          headerIcon={<FiArchive className='w-6 h-6 text-blue-500' />}
+          dataItems={[
+            { icon: FiMapPin, label: 'Location', value: item.store_location || 'Unknown' },
+            { icon: FiTag, label: 'Category', value: item.category_name || 'Uncategorized' },
+            {
+              icon: FiDollarSign,
+              label: 'Total Value',
+              value: (
+                <span className='font-bold text-emerald-600 dark:text-emerald-400'>
+                  {formatCurrency(totalValue)}
                 </span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stockStatusColor}`}
-                >
-                  {stockLabel}
-                </span>
+              ),
+            },
+          ]}
+          customFooter={
+            <div className='flex items-center justify-between w-full'>
+              <div className='text-xs text-gray-500 dark:text-gray-400'>
+                Unit Cost: {formatCurrency(item.cost || 0)}
               </div>
-            }
-            // Use header icon instead of avatar
-            headerIcon={<FiArchive className="w-6 h-6 text-blue-500" />}
-            // Data Rows
-            dataItems={[
-              { icon: FiMapPin, label: 'Location', value: item.store_location || 'Unknown' },
-              { icon: FiTag, label: 'Category', value: item.category_name || 'Uncategorized' },
-              {
-                icon: FiDollarSign,
-                label: 'Total Value',
-                value: (
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(totalValue)}
-                  </span>
-                ),
-              },
-            ]}
-            // Custom Footer (Quantity)
-            customFooter={
-              <div className="flex items-center justify-between w-full">
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Unit Cost: {formatCurrency(item.cost || 0)}
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {quantity}
-                  </span>
-                  <div className="text-[10px] text-gray-500 uppercase">Qty</div>
-                </div>
+              <div className='text-right'>
+                <span className='text-2xl font-bold text-gray-900 dark:text-white'>{quantity}</span>
+                <div className='text-[10px] text-gray-500 uppercase'>Qty</div>
               </div>
-            }
-            // Actions
-            extraActions={
-              <>
-                {canEdit && (
-                  <Button
-                    size="xs"
-                    variant="primary"
-                    onClick={() => handleOpenIssueModal(item)}
-                    disabled={quantity <= 0}
-                    title="Issue Stock"
-                  >
-                    <FiMinusCircle className="w-4 h-4" />
-                  </Button>
-                )}
+            </div>
+          }
+          extraActions={
+            <>
+              {canEdit && (
                 <Button
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => handleOpenHistory(item)}
-                  title="View History"
+                  size='xs'
+                  variant='primary'
+                  onClick={() => handleOpenIssueModal(item)}
+                  disabled={quantity <= 0}
+                  title='Issue Stock'
                 >
-                  <FiClock className="w-4 h-4" />
+                  <FiMinusCircle className='w-4 h-4' />
                 </Button>
-                <Button
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)}
-                  title="QR Code"
-                >
-                  <FaQrcode className="w-4 h-4" />
-                </Button>
-              </>
-            }
-            onEdit={editModal.openEdit}
-            onDelete={crudActions.handleDelete}
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-        );
-      })}
-    </div>
+              )}
+              <Button
+                size='xs'
+                variant='secondary'
+                onClick={() => handleOpenHistory(item)}
+                title='View History'
+              >
+                <FiClock className='w-4 h-4' />
+              </Button>
+              <Button
+                size='xs'
+                variant='secondary'
+                onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)}
+                title='QR Code'
+              >
+                <FaQrcode className='w-4 h-4' />
+              </Button>
+            </>
+          }
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      );
+    },
+    [canEdit, canDelete, crudActions.handleDelete, editModal.openEdit, router],
   );
 
   if (error)
@@ -354,7 +347,7 @@ export default function InventoryPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search asset, name, desc..."
+      searchPlaceholder='Search asset, name, desc...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -370,7 +363,19 @@ export default function InventoryPage() {
         showStatusUpdate: false,
         canDelete: () => canDelete,
       }}
-      renderGrid={renderGrid}
+      // THE FIX: Use DataGrid component here
+      renderGrid={() => (
+        <DataGrid
+          data={inventory}
+          renderItem={renderItem}
+          isLoading={isLoading}
+          isEmpty={inventory.length === 0}
+          // The Layout handles the pagination rendering for the grid via tableProps,
+          // but our DataGrid also supports it if passed directly.
+          // Since DashboardPageLayout renders pagination for the grid slot based on tableProps,
+          // we don't need to pass it again here to avoid double pagination.
+        />
+      )}
       tableProps={{
         tableName: 'v_inventory_items',
         data: inventory,
@@ -398,27 +403,31 @@ export default function InventoryPage() {
         customToolbar: <></>,
       }}
       isEmpty={inventory.length === 0 && !isLoading}
+      // Note: Empty state is handled by DataGrid internally if renderGrid is used,
+      // but DashboardPageLayout might render it too.
+      // Ideally, DashboardPageLayout should pass the empty state to renderGrid or handle it.
+      // Current implementation of DashboardPageLayout renders emptyState if isEmpty is true.
       emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <FiArchive className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+        <div className='col-span-full py-16 text-center text-gray-500'>
+          <FiArchive className='w-12 h-12 mx-auto mb-3 text-gray-300' />
           <p>No items found matching your criteria.</p>
         </div>
       }
       modals={
         <>
           <input
-            type="file"
+            type='file'
             ref={fileInputRef}
             onChange={handleFileChange}
-            className="hidden"
-            accept=".xlsx, .xls"
+            className='hidden'
+            accept='.xlsx, .xls'
           />
 
           <UploadResultModal
             isOpen={isUploadResultOpen}
             onClose={() => setIsUploadResultOpen(false)}
             result={uploadResult}
-            title="Inventory Import Report"
+            title='Inventory Import Report'
           />
 
           <InventoryFormModal
@@ -452,10 +461,10 @@ export default function InventoryPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
             loading={deleteModal.loading}
-            type="danger"
+            type='danger'
           />
         </>
       }
