@@ -64,10 +64,10 @@ export const Modal = ({
   }, []);
 
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-4xl',
-    xl: 'max-w-6xl',
+    sm: 'max-w-lg',
+    md: 'max-w-2xl',
+    lg: 'max-w-6xl',
+    xl: 'max-w-7xl',
     xxl: 'max-w-11/12',
     full: 'max-w-[98vw] max-h-[95vh]',
   };
