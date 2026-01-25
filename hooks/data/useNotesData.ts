@@ -1,3 +1,4 @@
+// path: hooks/data/useNotesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
 import { DEFAULTS } from '@/constants/constants';
 
@@ -7,6 +8,8 @@ export const useNotesData = createGenericDataQuery<'v_technical_notes'>({
   defaultSortField: 'created_at',
   orderBy: 'desc',
   rpcLimit: DEFAULTS.PAGE_SIZE,
+  // THE FIX: Specify the correct column for status calculation
+  activeStatusField: 'is_published',
   filterFn: (note, filters) => {
     // 1. Status Filter
     if (filters.is_published) {

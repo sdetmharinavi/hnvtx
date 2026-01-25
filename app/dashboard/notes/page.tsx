@@ -1,4 +1,4 @@
-// app/dashboard/notes/page.tsx
+// path: app/dashboard/notes/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
@@ -18,7 +18,7 @@ import { NoteModal } from '@/components/notes/NoteModal';
 import { NoteViewModal } from '@/components/notes/NoteViewModal';
 import { V_technical_notesRowSchema } from '@/schemas/zod-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { DataGrid } from '@/components/common/DataGrid';
 
 export default function NotesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -32,6 +32,7 @@ export default function NotesPage() {
   const {
     data: notes,
     totalCount,
+    // THE FIX: Restore activeCount and inactiveCount as they are now correct
     activeCount,
     inactiveCount,
     isLoading,
@@ -135,7 +136,6 @@ export default function NotesPage() {
     exportConfig: { tableName: 'v_technical_notes' },
   });
 
-  // THE FIX: Created memoized renderItem function
   const renderItem = useCallback(
     (note: V_technical_notesRowSchema) => (
       <GenericEntityCard
@@ -180,7 +180,6 @@ export default function NotesPage() {
     [viewModal.open, editModal.openEdit, crudActions.handleDelete, canEditNote],
   );
 
-  // THE FIX: Simplified renderGrid to use the new DataGrid component
   const renderGrid = useCallback(
     () => (
       <DataGrid
@@ -211,6 +210,7 @@ export default function NotesPage() {
         title: 'Technical Notes',
         description: 'Knowledge base, technical documentation, and team updates.',
         icon: <FiBook />,
+        // THE FIX: Use the corrected counts from the hook
         stats: [
           { value: totalCount, label: 'Total Notes' },
           { value: activeCount, label: 'Published', color: 'success' },

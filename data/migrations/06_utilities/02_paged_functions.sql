@@ -10,30 +10,33 @@
 -- THE DEFINITIVE FIX: The count query now explicitly casts the status column to text before comparison.
 -- This resolves the "operator does not exist: text = boolean" error.
 CREATE OR REPLACE FUNCTION public.get_paged_data(
-    p_view_name TEXT, 
-    p_limit INT, 
-    p_offset INT, 
+    p_view_name TEXT,
+    p_limit INT,
+    p_offset INT,
     p_order_by TEXT DEFAULT 'name',
-    p_order_dir TEXT DEFAULT 'asc', 
+    p_order_dir TEXT DEFAULT 'asc',
     p_filters JSONB DEFAULT '{}',
+    -- THE FIX: Added a new optional parameter for the status column name
+    p_status_column_name TEXT DEFAULT 'status',
     row_limit INT DEFAULT NULL
 )
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-    data_query TEXT; 
-    count_query TEXT; 
-    where_clause TEXT; 
+    data_query TEXT;
+    count_query TEXT;
+    where_clause TEXT;
     order_by_column TEXT;
-    result_data JSONB; 
-    total_records BIGINT; 
-    active_records BIGINT := 0; 
+    result_data JSONB;
+    total_records BIGINT;
+    active_records BIGINT := 0;
     inactive_records BIGINT := 0;
     status_column_exists BOOLEAN;
     effective_limit INT;
 BEGIN
     effective_limit := COALESCE(p_limit, row_limit, 1000);
 
-    status_column_exists := public.column_exists('public', p_view_name, 'status');
+    -- THE FIX: Use the provided status column name to check for existence
+    status_column_exists := public.column_exists('public', p_view_name, p_status_column_name);
     where_clause := public.build_where_clause(p_filters, p_view_name);
 
     IF public.column_exists('public', p_view_name, p_order_by) THEN
@@ -54,11 +57,10 @@ BEGIN
     );
 
     IF status_column_exists THEN
-        -- THE FIX: Cast the status column to text before comparing with 'true' or 'false'.
-        -- This works for both actual boolean columns and text columns containing 'true'/'false'.
+        -- THE FIX: Dynamically use the provided status column name in the count query.
         count_query := format(
-            'SELECT count(*), count(*) FILTER (WHERE v.status::text = ''true''), count(*) FILTER (WHERE v.status::text = ''false'')
-             FROM public.%I v %s', p_view_name, where_clause
+            'SELECT count(*), count(*) FILTER (WHERE v.%I::text = ''true''), count(*) FILTER (WHERE v.%I::text = ''false'')
+             FROM public.%I v %s', p_status_column_name, p_status_column_name, p_view_name, where_clause
         );
         EXECUTE count_query INTO total_records, active_records, inactive_records;
     ELSE
@@ -75,4 +77,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_paged_data(TEXT, INT, INT, TEXT, TEXT, JSONB, TEXT, INT) TO authenticated;
