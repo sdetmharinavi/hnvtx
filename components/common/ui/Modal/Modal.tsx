@@ -66,9 +66,9 @@ export const Modal = ({
   const sizeClasses = {
     sm: 'max-w-md',
     md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    xxl: 'max-w-6xl',
+    lg: 'max-w-4xl',
+    xl: 'max-w-6xl',
+    xxl: 'max-w-11/12',
     full: 'max-w-[98vw] max-h-[95vh]',
   };
 
@@ -94,9 +94,9 @@ export const Modal = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-9999 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
+          className='fixed inset-0 z-9999 flex items-center justify-center p-4'
+          role='dialog'
+          aria-modal='true'
           aria-labelledby={title ? 'modal-title' : undefined}
         >
           {/* Backdrop */}
@@ -104,10 +104,10 @@ export const Modal = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className='absolute inset-0 bg-black/50 backdrop-blur-sm'
             onMouseDown={handleMouseDown}
             onClick={handleOverlayClick}
-            aria-hidden="true"
+            aria-hidden='true'
           />
 
           {/* Modal Container */}
@@ -120,17 +120,17 @@ export const Modal = ({
               'relative flex flex-col max-h-full w-full rounded-lg bg-white shadow-xl',
               'dark:bg-gray-900 dark:border dark:border-gray-700 dark:shadow-2xl',
               sizeClasses[size],
-              className
+              className,
             )}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             {(title || showCloseButton) && visible && (
-              <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
+              <div className='flex shrink-0 items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700'>
                 {title && (
                   <h2
-                    id="modal-title"
-                    className="text-xl font-semibold text-gray-900 dark:text-gray-100"
+                    id='modal-title'
+                    className='text-xl font-semibold text-gray-900 dark:text-gray-100'
                   >
                     {title}
                   </h2>
@@ -138,8 +138,8 @@ export const Modal = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="ml-auto rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="Close modal"
+                    className='ml-auto rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    aria-label='Close modal'
                   >
                     <IoClose size={20} />
                   </button>
@@ -149,12 +149,7 @@ export const Modal = ({
 
             {/* Content - Scrollable Area */}
             {/* FIX: Use contentClassName to override default padding and overflow */}
-            <div
-              className={cn(
-                'flex-1 min-h-0',
-                contentClassName || 'overflow-y-auto p-6'
-              )}
-            >
+            <div className={cn('flex-1 min-h-0', contentClassName || 'overflow-y-auto p-6')}>
               {children}
             </div>
           </motion.div>

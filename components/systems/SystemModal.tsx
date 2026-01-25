@@ -111,14 +111,14 @@ export const SystemModal: FC<SystemModalProps> = ({
   const isRingBasedSystem = useMemo(() => {
     if (!systemTypesRaw || !selectedSystemTypeId) return false;
     const typeRecord = (systemTypesRaw as unknown as Lookup_typesRowSchema[]).find(
-      (t) => t.id === selectedSystemTypeId
+      (t) => t.id === selectedSystemTypeId,
     );
     return typeRecord?.is_ring_based === true;
   }, [systemTypesRaw, selectedSystemTypeId]);
 
   const selectedSystemTypeLabel = useMemo(
     () => systemTypeOptions.find((st) => st.value === selectedSystemTypeId)?.label || '',
-    [systemTypeOptions, selectedSystemTypeId]
+    [systemTypeOptions, selectedSystemTypeId],
   );
 
   const isSdhSystem = useMemo(() => {
@@ -177,7 +177,7 @@ export const SystemModal: FC<SystemModalProps> = ({
           s_no: rowData.s_no || '',
           // Use 'as any' if the type update hasn't propagated to rowData type yet
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          asset_no: (rowData as any).asset_no || '', 
+          asset_no: (rowData as any).asset_no || '',
           status: rowData.status ?? true,
           ring_id: rowData.ring_id ?? '',
           order_in_ring: rowData.order_in_ring ?? 0,
@@ -203,7 +203,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       const payload = formData as unknown as SystemFormData;
       onSubmit(payload);
     },
-    [onSubmit]
+    [onSubmit],
   );
 
   const onInvalidSubmit: SubmitErrorHandler<SystemFormValues> = (errors) => {
@@ -211,7 +211,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     toast.error(`Validation failed. Check fields: ${errorFields.join(', ')}`);
     const step1Fields: (keyof SystemFormValues)[] = ['system_name', 'system_type_id', 'node_id'];
     const hasErrorInStep1 = errorFields.some((key) =>
-      step1Fields.includes(key as keyof SystemFormValues)
+      step1Fields.includes(key as keyof SystemFormValues),
     );
     if (hasErrorInStep1 && step !== 1) setStep(1);
   };
@@ -228,23 +228,23 @@ export const SystemModal: FC<SystemModalProps> = ({
   };
 
   const renderFooter = (
-    <div className="flex justify-end gap-2 w-full">
+    <div className='flex justify-end gap-2 w-full'>
       {step === 2 ? (
-        <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isLoading}>
+        <Button type='button' variant='outline' onClick={() => setStep(1)} disabled={isLoading}>
           Back
         </Button>
       ) : (
-        <Button type="button" variant="secondary" onClick={onClose} disabled={isLoading}>
+        <Button type='button' variant='secondary' onClick={onClose} disabled={isLoading}>
           Cancel
         </Button>
       )}
       {step === 1 && needsStep2 ? (
-        <Button type="button" onClick={handleNext} disabled={isLoading}>
+        <Button type='button' onClick={handleNext} disabled={isLoading}>
           Next
         </Button>
       ) : (
         <Button
-          type="submit"
+          type='submit'
           disabled={isLoading}
           onClick={handleSubmit(onValidSubmit, onInvalidSubmit)}
         >
@@ -258,18 +258,18 @@ export const SystemModal: FC<SystemModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="System"
+      title='System'
       isEditMode={isEditMode}
       isLoading={isLoading || loadingNodes}
       form={form}
       onSubmit={(data) => onValidSubmit(data)} // Dummy, real submit handled by custom footer
-      widthClass="w-full max-w-4xl"
-      heightClass="h-full"
+      widthClass='w-full max-w-7xl'
+      heightClass='h-full'
       footerContent={renderFooter}
       subtitle={needsStep2 ? `Step ${step} of 2` : 'Basic Information'}
     >
       {needsStep2 && (
-        <div className="mb-6 px-4">
+        <div className='mb-6 px-4'>
           <Stepper
             currentStep={step}
             steps={[
@@ -280,49 +280,49 @@ export const SystemModal: FC<SystemModalProps> = ({
         </div>
       )}
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode='wait'>
         {step === 1 ? (
           <motion.div
-            key="step1"
+            key='step1'
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <FormInput
-                name="system_name"
-                label="System Name"
+                name='system_name'
+                label='System Name'
                 register={register}
                 error={errors.system_name}
                 required
               />
               <FormInput
-                name="asset_no"
-                label="Asset Number"
+                name='asset_no'
+                label='Asset Number'
                 register={register}
                 error={errors.asset_no}
-                placeholder="e.g. AST-12345"
+                placeholder='e.g. AST-12345'
               />
               <FormSearchableSelect
-                name="system_type_id"
-                label="System Type"
+                name='system_type_id'
+                label='System Type'
                 control={control}
                 options={systemTypeOptions}
                 error={errors.system_type_id}
                 required
               />
               <FormSearchableSelect
-                name="system_capacity_id"
-                label="Capacity"
+                name='system_capacity_id'
+                label='Capacity'
                 control={control}
                 options={capacityOptions}
                 error={errors.system_capacity_id}
-                placeholder="Select capacity"
+                placeholder='Select capacity'
               />
               <FormSearchableSelect
-                name="node_id"
-                label="Node / Location"
+                name='node_id'
+                label='Node / Location'
                 control={control}
                 options={nodeOptions}
                 error={errors.node_id}
@@ -331,28 +331,28 @@ export const SystemModal: FC<SystemModalProps> = ({
               {(selectedSystemTypeLabel.includes('MAAN') ||
                 selectedSystemTypeLabel.includes('Multi-Access Aggregation Node')) && (
                 <FormInput
-                  name="maan_node_id"
-                  label="MAAN Node ID"
+                  name='maan_node_id'
+                  label='MAAN Node ID'
                   register={register}
                   error={errors.maan_node_id}
                 />
               )}
               <FormSearchableSelect
-                name="maintenance_terminal_id"
-                label="Maintenance Terminal"
+                name='maintenance_terminal_id'
+                label='Maintenance Terminal'
                 control={control}
                 options={effectiveTerminalOptions}
                 error={errors.maintenance_terminal_id}
               />
               <FormIPAddressInput
-                name="ip_address"
-                label="IP Address"
+                name='ip_address'
+                label='IP Address'
                 control={control}
                 error={errors.ip_address}
               />
               <FormDateInput
-                name="commissioned_on"
-                label="Commissioned On"
+                name='commissioned_on'
+                label='Commissioned On'
                 control={control}
                 error={errors.commissioned_on}
               />
@@ -360,55 +360,55 @@ export const SystemModal: FC<SystemModalProps> = ({
           </motion.div>
         ) : (
           <motion.div
-            key="step2"
+            key='step2'
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               {isRingBasedSystem && (
                 <>
                   <FormSearchableSelect
-                    name="ring_id"
-                    label="Ring"
+                    name='ring_id'
+                    label='Ring'
                     control={control}
                     options={ringOptions}
                     error={errors.ring_id}
-                    placeholder="Select a ring (optional)"
+                    placeholder='Select a ring (optional)'
                   />
                   <FormInput
-                    name="order_in_ring"
-                    label="Order in Ring"
-                    type="number"
-                    step="0.1"
+                    name='order_in_ring'
+                    label='Order in Ring'
+                    type='number'
+                    step='0.1'
                     register={register}
                     error={errors.order_in_ring}
-                    placeholder="e.g. 1, 2, 2.1..."
+                    placeholder='e.g. 1, 2, 2.1...'
                   />
                   <FormSwitch
-                    name="is_hub"
-                    label="Is Hub System"
+                    name='is_hub'
+                    label='Is Hub System'
                     control={control}
-                    description="Acts as a major aggregation point"
+                    description='Acts as a major aggregation point'
                   />
                 </>
               )}
               {isSdhSystem && (
-                <FormInput name="make" label="Make" register={register} error={errors.make} />
+                <FormInput name='make' label='Make' register={register} error={errors.make} />
               )}
-              <div className="md:col-span-2">
+              <div className='md:col-span-2'>
                 <FormInput
-                  name="s_no"
-                  label="Serial Number"
+                  name='s_no'
+                  label='Serial Number'
                   register={register}
                   error={errors.s_no}
                 />
               </div>
-              <div className="md:col-span-2">
+              <div className='md:col-span-2'>
                 <FormTextarea
-                  name="remark"
-                  label="Remark"
+                  name='remark'
+                  label='Remark'
                   control={control}
                   error={errors.remark}
                 />

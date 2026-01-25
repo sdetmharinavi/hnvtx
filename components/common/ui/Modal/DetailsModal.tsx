@@ -1,9 +1,9 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { FiX } from "react-icons/fi";
-import Image from "next/image";
-import { Modal } from "@/components/common/ui";
-import { CardSpinner } from "@/components/common/ui/LoadingSpinner";
-import { ReactNode } from "react";
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiX } from 'react-icons/fi';
+import Image from 'next/image';
+import { Modal } from '@/components/common/ui';
+import { CardSpinner } from '@/components/common/ui/LoadingSpinner';
+import { ReactNode } from 'react';
 
 type FieldKey<T extends Record<string, unknown>> = keyof T | string;
 
@@ -52,30 +52,30 @@ export interface DetailsModalProps<T extends Record<string, unknown> = Record<st
 
 const defaultFormatters = {
   date: (dateString: string | null | undefined): string => {
-    if (!dateString) return "Not provided";
+    if (!dateString) return 'Not provided';
     try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
     } catch {
-      return "Invalid date";
+      return 'Invalid date';
     }
   },
 
   dateTime: (dateString: string | null | undefined): string => {
-    if (!dateString) return "Never";
+    if (!dateString) return 'Never';
     try {
-      return new Date(dateString).toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      return new Date(dateString).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
-      return "Invalid date";
+      return 'Invalid date';
     }
   },
 
@@ -100,13 +100,13 @@ const defaultFormatters = {
       address.zip_code ?? address.zipCode,
       address.country,
     ].filter((part) => part != null) as string[];
-    return parts.length > 0 ? parts.join(", ") : null;
+    return parts.length > 0 ? parts.join(', ') : null;
   },
 
   json: (value: unknown): ReactNode => {
-    if (value === null || value === undefined) return "Not provided";
+    if (value === null || value === undefined) return 'Not provided';
     return (
-      <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+      <pre className='text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto'>
         {JSON.stringify(value, null, 2)}
       </pre>
     );
@@ -116,26 +116,26 @@ const defaultFormatters = {
     <span
       className={`text-xs px-3 py-1 rounded-full font-semibold ${
         value
-          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
       }`}
     >
-      {value ? "✓ Yes" : "✗ No"}
+      {value ? '✓ Yes' : '✗ No'}
     </span>
   ),
 
   email: (email: string, isVerified?: boolean): ReactNode => (
-    <div className="flex items-center justify-between">
-      <span className="text-gray-900 dark:text-white font-medium flex-1">{email}</span>
-      {typeof isVerified === "boolean" && (
+    <div className='flex items-center justify-between'>
+      <span className='text-gray-900 dark:text-white font-medium flex-1'>{email}</span>
+      {typeof isVerified === 'boolean' && (
         <span
           className={`text-xs px-3 py-1 rounded-full font-semibold ml-3 ${
             isVerified
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
           }`}
         >
-          {isVerified ? "✓ Verified" : "✗ Unverified"}
+          {isVerified ? '✓ Verified' : '✗ Unverified'}
         </span>
       )}
     </div>
@@ -144,18 +144,18 @@ const defaultFormatters = {
 
 const formatDefaultValue = (value: unknown): ReactNode => {
   if (value === null || value === undefined) {
-    return "Not provided";
+    return 'Not provided';
   }
 
-  if (typeof value === "string") {
-    return value.trim() ? value : "Not provided";
+  if (typeof value === 'string') {
+    return value.trim() ? value : 'Not provided';
   }
 
-  if (typeof value === "number" || typeof value === "bigint") {
+  if (typeof value === 'number' || typeof value === 'bigint') {
     return value.toString();
   }
 
-  if (typeof value === "boolean") {
+  if (typeof value === 'boolean') {
     return defaultFormatters.boolean(value);
   }
 
@@ -163,9 +163,9 @@ const formatDefaultValue = (value: unknown): ReactNode => {
 };
 
 const getNestedValue = <T extends Record<string, unknown>>(obj: T, key: string): unknown => {
-  return key.split(".").reduce<unknown>((current, prop) => {
+  return key.split('.').reduce<unknown>((current, prop) => {
     if (current === null || current === undefined) return undefined;
-    if (typeof current !== "object") return undefined;
+    if (typeof current !== 'object') return undefined;
     return (current as Record<string, unknown>)[prop];
   }, obj);
 };
@@ -176,7 +176,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
   isOpen,
   config,
   loading = false,
-  className = "",
+  className = '',
 }: DetailsModalProps<T>) => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -206,7 +206,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
       scale: 1,
       y: 0,
       transition: {
-        type: "spring" as const,
+        type: 'spring' as const,
         damping: 25,
         stiffness: 300,
       },
@@ -228,7 +228,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
       y: 0,
       transition: {
         duration: 0.4,
-        ease: "easeOut" as const,
+        ease: 'easeOut' as const,
       },
     },
   };
@@ -251,26 +251,28 @@ const DetailsModal = <T extends Record<string, unknown>>({
 
     const key = String(field.key);
     const value = getNestedValue(record, key);
-    const formattedValue = field.formatter ? field.formatter(value, record) : formatDefaultValue(value);
-    const isPrimitive = typeof formattedValue === "string" || typeof formattedValue === "number";
+    const formattedValue = field.formatter
+      ? field.formatter(value, record)
+      : formatDefaultValue(value);
+    const isPrimitive = typeof formattedValue === 'string' || typeof formattedValue === 'number';
 
     return (
       <motion.div
         key={key}
-        className={`group ${field.className || ""}`}
+        className={`group ${field.className || ''}`}
         variants={fieldVariants}
         whileHover={{ x: 4 }}
-        transition={{ type: "spring", stiffness: 300 }}
+        transition={{ type: 'spring', stiffness: 300 }}
       >
-        <label className="text-sm font-semibold text-gray-500 dark:text-gray-400 block mb-2 uppercase tracking-wider">
+        <label className='text-sm font-semibold text-gray-500 dark:text-gray-400 block mb-2 uppercase tracking-wider'>
           {field.label}
         </label>
-        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-600 transition-colors">
-          <div className="flex items-center gap-3">
-            {field.icon && <div className="text-gray-400 shrink-0">{field.icon}</div>}
-            <div className="flex-1">
+        <div className='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 group-hover:border-blue-300 dark:group-hover:border-blue-600 transition-colors'>
+          <div className='flex items-center gap-3'>
+            {field.icon && <div className='text-gray-400 shrink-0'>{field.icon}</div>}
+            <div className='flex-1'>
               {isPrimitive ? (
-                <p className="text-gray-900 dark:text-white font-medium">{formattedValue}</p>
+                <p className='text-gray-900 dark:text-white font-medium'>{formattedValue}</p>
               ) : (
                 formattedValue
               )}
@@ -289,18 +291,20 @@ const DetailsModal = <T extends Record<string, unknown>>({
     return (
       <motion.div
         key={section.title}
-        className={`space-y-6 ${section.className || ""}`}
+        className={`space-y-6 ${section.className || ''}`}
         variants={sectionVariants}
       >
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-          {section.icon && <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">{section.icon}</div>}
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{section.title}</h3>
+        <div className='flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700'>
+          {section.icon && (
+            <div className='p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg'>{section.icon}</div>
+          )}
+          <h3 className='text-xl font-semibold text-gray-900 dark:text-white'>{section.title}</h3>
         </div>
 
         {section.renderCustom ? (
           section.renderCustom(record)
         ) : (
-          <div className="space-y-5">
+          <div className='space-y-5'>
             {section.fields.map((fieldConfig) => renderField(fieldConfig, record))}
           </div>
         )}
@@ -314,55 +318,63 @@ const DetailsModal = <T extends Record<string, unknown>>({
     const subtitle = header.subtitle ? header.subtitle(record) : null;
     const avatarKey = header.avatar ? String(header.avatar.urlKey) : null;
     const avatarValue = avatarKey ? getNestedValue(record, avatarKey) : undefined;
-    const avatarUrl = typeof avatarValue === "string" ? avatarValue : undefined;
+    const avatarUrl = typeof avatarValue === 'string' ? avatarValue : undefined;
 
     return (
-      <div className="relative px-8 py-6 dark:from-gray-800 dark:via-gray-850 dark:to-gray-900 border-b border-gray-200/50 dark:border-gray-700/50">
-        <div className="flex items-center justify-between">
-          <motion.div className="flex items-center gap-4" variants={fieldVariants}>
+      <div className='relative px-8 py-6 dark:from-gray-800 dark:via-gray-850 dark:to-gray-900 border-b border-gray-200/50 dark:border-gray-700/50'>
+        <div className='flex items-center justify-between'>
+          <motion.div className='flex items-center gap-4' variants={fieldVariants}>
             {header.avatar && (
               <motion.div
-                className="shrink-0 relative"
+                className='shrink-0 relative'
                 whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 300 }}
+                transition={{ type: 'spring', stiffness: 300 }}
               >
                 {avatarUrl ? (
-                  <div className="relative">
+                  <div className='relative'>
                     <Image
-                      className="h-16 w-16 rounded-full object-cover border-4 border-white shadow-lg ring-2 ring-blue-500/20"
+                      className='h-16 w-16 rounded-full object-cover border-4 border-white shadow-lg ring-2 ring-blue-500/20'
                       src={avatarUrl}
                       alt={title}
                       width={64}
                       height={64}
                       onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                        e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
                       }}
                     />
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+                    <div className='absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full'></div>
                   </div>
                 ) : null}
                 <div
                   className={`h-16 w-16 rounded-full bg-blue-500 bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg ring-2 ring-blue-500/20 ${
-                    avatarUrl ? "hidden" : ""
+                    avatarUrl ? 'hidden' : ''
                   }`}
                 >
-                  <span className="text-xl font-bold text-white">{header.avatar.fallbackText(record)}</span>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+                  <span className='text-xl font-bold text-white'>
+                    {header.avatar.fallbackText(record)}
+                  </span>
+                  <div className='absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full'></div>
                 </div>
               </motion.div>
             )}
-            <div className="space-y-1">
-              <motion.h2 className="text-2xl font-bold text-gray-900 dark:text-white" variants={fieldVariants}>
+            <div className='space-y-1'>
+              <motion.h2
+                className='text-2xl font-bold text-gray-900 dark:text-white'
+                variants={fieldVariants}
+              >
                 {title}
               </motion.h2>
               {subtitle && (
-                <motion.p className="text-gray-600 dark:text-gray-300 font-medium" variants={fieldVariants}>
+                <motion.p
+                  className='text-gray-600 dark:text-gray-300 font-medium'
+                  variants={fieldVariants}
+                >
                   {subtitle}
                 </motion.p>
               )}
               {header.badges && (
-                <motion.div className="flex items-center gap-2 flex-wrap" variants={fieldVariants}>
+                <motion.div className='flex items-center gap-2 flex-wrap' variants={fieldVariants}>
                   {header.badges.map((badge, index) => (
                     <div key={`${String(badge.key)}-${index}`}>
                       {badge.component(getNestedValue(record, String(badge.key)), record)}
@@ -374,11 +386,11 @@ const DetailsModal = <T extends Record<string, unknown>>({
           </motion.div>
           <motion.button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all duration-200 backdrop-blur-sm"
-            aria-label="Close modal"
+            className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-gray-800/50 transition-all duration-200 backdrop-blur-sm'
+            aria-label='Close modal'
             whileHover={{ scale: 1.1, rotate: 90 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300 }}
+            transition={{ type: 'spring', stiffness: 300 }}
           >
             <FiX size={24} />
           </motion.button>
@@ -388,7 +400,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode='wait'>
       {isOpen && (
         <Modal isOpen={isOpen} onClose={onClose}>
           {loading ? (
@@ -396,25 +408,25 @@ const DetailsModal = <T extends Record<string, unknown>>({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+              className='fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50'
             >
               <CardSpinner />
             </motion.div>
           ) : data ? (
             <motion.div
               variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              initial='hidden'
+              animate='visible'
+              exit='exit'
+              className='fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4'
             >
               <motion.div
                 variants={modalVariants}
-                className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-gray-200/50 dark:border-gray-700/50 ${className}`}
+                className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden border border-gray-200/50 dark:border-gray-700/50 ${className}`}
               >
                 {renderHeader(data)}
-                <div className="p-8 overflow-y-auto max-h-[calc(90vh-160px)] custom-scrollbar">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div className='p-8 overflow-y-auto max-h-[calc(90vh-160px)] custom-scrollbar'>
+                  <div className='grid grid-cols-1 xl:grid-cols-2 gap-8'>
                     {config.sections.map((section) => renderSection(section, data))}
                   </div>
                 </div>

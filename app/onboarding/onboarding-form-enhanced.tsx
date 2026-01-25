@@ -100,7 +100,7 @@ export default function OnboardingFormEnhanced() {
       onError: (error) => {
         toast.error(`Update failed: ${error.message}`);
       },
-    }
+    },
   );
 
   const isLoading = isProfileLoading || isUpdatePending;
@@ -161,12 +161,12 @@ export default function OnboardingFormEnhanced() {
 
   if (isProfileLoading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-        <div className="space-y-3">
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div className='animate-pulse space-y-4'>
+        <div className='h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4'></div>
+        <div className='space-y-3'>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
+          <div className='h-10 bg-gray-200 dark:bg-gray-700 rounded'></div>
         </div>
       </div>
     );
@@ -174,12 +174,12 @@ export default function OnboardingFormEnhanced() {
 
   if (profileError) {
     return (
-      <div className="p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-        <h3 className="font-medium">Error loading profile</h3>
-        <p className="text-sm mt-1">{profileError.message}</p>
+      <div className='p-4 rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'>
+        <h3 className='font-medium'>Error loading profile</h3>
+        <p className='text-sm mt-1'>{profileError.message}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-3 text-sm underline hover:no-underline text-red-600 dark:text-red-400"
+          className='mt-3 text-sm underline hover:no-underline text-red-600 dark:text-red-400'
         >
           Try again
         </button>
@@ -188,133 +188,133 @@ export default function OnboardingFormEnhanced() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 w-full max-w-3xl mx-auto">
-      <div className="flex items-center gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} className='space-y-6 w-full max-w-6xl mx-auto'>
+      <div className='flex items-center gap-4'>
         <Image
           src={avatarUrl || '/default-avatar.png'}
-          alt="Profile"
+          alt='Profile'
           width={64}
           height={64}
-          className="w-16 h-16 rounded-full object-cover bg-gray-200"
+          className='w-16 h-16 rounded-full object-cover bg-gray-200'
         />
-        <div className="flex-1">
-          <Label htmlFor="avatar_url">Avatar URL</Label>
+        <div className='flex-1'>
+          <Label htmlFor='avatar_url'>Avatar URL</Label>
           <Input
-            id="avatar_url"
+            id='avatar_url'
             {...register('avatar_url')}
-            placeholder="https://example.com/avatar.jpg"
-            className="mt-1"
+            placeholder='https://example.com/avatar.jpg'
+            className='mt-1'
           />
           {errors.avatar_url && (
-            <p className="text-red-500 text-xs mt-1">{errors.avatar_url.message}</p>
+            <p className='text-red-500 text-xs mt-1'>{errors.avatar_url.message}</p>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className='grid grid-cols-1 gap-6 sm:grid-cols-2'>
         <div>
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor='email'>Email</Label>
           <Input
-            id="email"
-            type="email"
+            id='email'
+            type='email'
             value={user?.email || ''}
             disabled
-            className="mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500"
+            className='mt-1 bg-gray-50 dark:bg-gray-700 text-gray-500'
           />
         </div>
         <div>
-          <Label htmlFor="phone_number">Phone Number</Label>
+          <Label htmlFor='phone_number'>Phone Number</Label>
           <Input
-            id="phone_number"
-            type="tel"
+            id='phone_number'
+            type='tel'
             {...register('phone_number')}
-            placeholder="+1 (555) 123-4567"
-            className="mt-1"
+            placeholder='+1 (555) 123-4567'
+            className='mt-1'
           />
           {errors.phone_number && (
-            <p className="text-red-500 text-xs mt-1">{errors.phone_number.message}</p>
+            <p className='text-red-500 text-xs mt-1'>{errors.phone_number.message}</p>
           )}
         </div>
         <div>
-          <Label htmlFor="first_name">
-            First Name <span className="text-red-500">*</span>
+          <Label htmlFor='first_name'>
+            First Name <span className='text-red-500'>*</span>
           </Label>
-          <Input id="first_name" type="text" {...register('first_name')} className="mt-1" />
+          <Input id='first_name' type='text' {...register('first_name')} className='mt-1' />
           {errors.first_name && (
-            <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>
+            <p className='text-red-500 text-xs mt-1'>{errors.first_name.message}</p>
           )}
         </div>
         <div>
-          <Label htmlFor="last_name">
-            Last Name <span className="text-red-500">*</span>
+          <Label htmlFor='last_name'>
+            Last Name <span className='text-red-500'>*</span>
           </Label>
-          <Input id="last_name" type="text" {...register('last_name')} className="mt-1" />
+          <Input id='last_name' type='text' {...register('last_name')} className='mt-1' />
           {errors.last_name && (
-            <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>
+            <p className='text-red-500 text-xs mt-1'>{errors.last_name.message}</p>
           )}
         </div>
       </div>
 
-      <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6">
-        <h3 className="text-md font-medium text-gray-700 dark:text-gray-300">
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>
           Address Information
         </h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label htmlFor="address_street">Street Address</Label>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+          <div className='sm:col-span-2'>
+            <Label htmlFor='address_street'>Street Address</Label>
             <Input
-              id="address_street"
+              id='address_street'
               {...register('address.street')}
-              placeholder="123 Main St"
-              className="mt-1"
+              placeholder='123 Main St'
+              className='mt-1'
             />
           </div>
           <div>
-            <Label htmlFor="address_city">City</Label>
+            <Label htmlFor='address_city'>City</Label>
             <Input
-              id="address_city"
+              id='address_city'
               {...register('address.city')}
-              placeholder="New York"
-              className="mt-1"
+              placeholder='New York'
+              className='mt-1'
             />
           </div>
           <div>
-            <Label htmlFor="address_state">State/Province</Label>
+            <Label htmlFor='address_state'>State/Province</Label>
             <Input
-              id="address_state"
+              id='address_state'
               {...register('address.state')}
-              placeholder="NY"
-              className="mt-1"
+              placeholder='NY'
+              className='mt-1'
             />
           </div>
           <div>
-            <Label htmlFor="address_zip_code">Zip Code</Label>
+            <Label htmlFor='address_zip_code'>Zip Code</Label>
             <Input
-              id="address_zip_code"
+              id='address_zip_code'
               {...register('address.zip_code')}
-              placeholder="12345"
-              className="mt-1"
+              placeholder='12345'
+              className='mt-1'
             />
           </div>
           <div>
-            <Label htmlFor="address_country">Country</Label>
+            <Label htmlFor='address_country'>Country</Label>
             <Input
-              id="address_country"
+              id='address_country'
               {...register('address.country')}
-              placeholder="USA"
-              className="mt-1"
+              placeholder='USA'
+              className='mt-1'
             />
           </div>
         </div>
       </div>
 
-      <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6">
-        <h3 className="text-md font-medium text-gray-700 dark:text-gray-300">Preferences</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className='space-y-4 border-t border-gray-200 dark:border-gray-700 pt-6'>
+        <h3 className='text-md font-medium text-gray-700 dark:text-gray-300'>Preferences</h3>
+        <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
           <div>
             <Controller
               control={control}
-              name="preferences.language"
+              name='preferences.language'
               render={({ field }) => {
                 const currentValue = field.value || 'en';
                 const handleChange = (value: string) => {
@@ -324,22 +324,22 @@ export default function OnboardingFormEnhanced() {
                 return (
                   <div>
                     <Label
-                      htmlFor="preferences_language"
-                      className="block text-sm font-medium mb-1"
+                      htmlFor='preferences_language'
+                      className='block text-sm font-medium mb-1'
                     >
                       Language
                     </Label>
                     <Select onValueChange={handleChange} value={currentValue}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a language" />
+                        <SelectValue placeholder='Select a language' />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="ar">Arabic</SelectItem>
+                        <SelectItem value='en'>English</SelectItem>
+                        <SelectItem value='ar'>Arabic</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.preferences?.language && (
-                      <p className="text-sm text-red-500 mt-1">
+                      <p className='text-sm text-red-500 mt-1'>
                         {errors.preferences.language.message}
                       </p>
                     )}
@@ -350,7 +350,7 @@ export default function OnboardingFormEnhanced() {
           </div>
           <div>
             <Controller
-              name="preferences.theme"
+              name='preferences.theme'
               control={control}
               render={({ field }) => {
                 const currentValue = field.value || 'light';
@@ -360,21 +360,21 @@ export default function OnboardingFormEnhanced() {
 
                 return (
                   <div>
-                    <Label htmlFor="preferences_theme" className="block text-sm font-medium mb-1">
+                    <Label htmlFor='preferences_theme' className='block text-sm font-medium mb-1'>
                       Theme
                     </Label>
                     <Select onValueChange={handleChange} value={currentValue}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a theme" />
+                        <SelectValue placeholder='Select a theme' />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
+                        <SelectItem value='light'>Light</SelectItem>
+                        <SelectItem value='dark'>Dark</SelectItem>
+                        <SelectItem value='system'>System</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.preferences?.theme && (
-                      <p className="text-sm text-red-500 mt-1">
+                      <p className='text-sm text-red-500 mt-1'>
                         {errors.preferences.theme.message}
                       </p>
                     )}
@@ -386,39 +386,39 @@ export default function OnboardingFormEnhanced() {
         </div>
       </div>
 
-      <div className="flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex space-x-3">
+      <div className='flex justify-end items-center pt-4 border-t border-gray-200 dark:border-gray-700'>
+        <div className='flex space-x-3'>
           <button
-            type="button"
+            type='button'
             onClick={() => reset()}
             disabled={!isDirty || isLoading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
+            className='px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50'
           >
             Reset
           </button>
           <button
-            type="submit"
+            type='submit'
             disabled={!isDirty || isLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center"
+            className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 disabled:opacity-50 flex items-center'
           >
             {isLoading && (
               <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
+                className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                fill='none'
+                viewBox='0 0 24 24'
               >
                 <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
+                  className='opacity-25'
+                  cx='12'
+                  cy='12'
+                  r='10'
+                  stroke='currentColor'
+                  strokeWidth='4'
                 />
                 <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  className='opacity-75'
+                  fill='currentColor'
+                  d='M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                 />
               </svg>
             )}
