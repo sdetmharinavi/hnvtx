@@ -1354,7 +1354,7 @@ export const systemsUpdateSchema = z.object({
 
 export const technical_notesRowSchema = z.object({
   author_id: z.uuid().nullable(),
-  content: z.string().max(10000, "Text is too long").nullable(),
+  content: z.string().max(500000, "Text is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
   is_published: z.boolean().nullable(),
@@ -1366,7 +1366,7 @@ export const technical_notesRowSchema = z.object({
 
 export const technical_notesInsertSchema = z.object({
   author_id: z.uuid().nullable().optional(),
-  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  content: z.string().max(500000, "Text is too long").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   is_published: z.boolean().nullable().optional(),
@@ -1378,7 +1378,7 @@ export const technical_notesInsertSchema = z.object({
 
 export const technical_notesUpdateSchema = z.object({
   author_id: z.uuid().nullable().optional(),
-  content: z.string().max(10000, "Text is too long").nullable().optional(),
+  content: z.string().max(500000, "Text is too long").nullable().optional(),
   created_at: z.iso.datetime().nullable().optional(),
   id: z.uuid().optional(),
   is_published: z.boolean().nullable().optional(),
@@ -1939,7 +1939,7 @@ export const v_technical_notesRowSchema = z.object({
   author_email: z.email().nullable(),
   author_id: z.uuid().nullable(),
   author_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  content: z.string().max(10000, "Text is too long").nullable(),
+  content: z.string().max(500000, "Text is too long").nullable(),
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   is_published: z.boolean().nullable(),

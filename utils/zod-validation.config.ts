@@ -241,6 +241,12 @@ export const defaultValidationConfig: ValidationConfig = {
       validation: 'z.string().max(500000, "Text is too long")',
       description: 'Allow large rich text content for diary notes',
     },
+    {
+      fieldName: 'content',
+      tableName: 'technical_notes',
+      validation: 'z.string().max(500000, "Text is too long")',
+      description: 'Allow large rich text content for technical notes, including embedded images.',
+    },
   ],
 };
 

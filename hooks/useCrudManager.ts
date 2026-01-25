@@ -23,7 +23,7 @@ import { useOnlineStatus } from './useOnlineStatus';
 import { addMutationToQueue } from './data/useMutationQueue';
 import { getTable } from '@/hooks/data/localDb';
 import { DEFAULTS } from '@/constants/constants';
-import { UseQueryResult } from '@tanstack/react-query';
+import { useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { FiWifiOff } from 'react-icons/fi';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -252,11 +252,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     [tableName, localTableName, idType]
   );
 
+  const QueryClient = useQueryClient();
+
   const deleteManager = useDeleteManager({
     tableName,
     onSuccess: async (deletedIds) => {
       await handleLocalCleanup(deletedIds);
-      refetch();
+      QueryClient.invalidateQueries({ queryKey: [`${localTableName || tableName}-data`] });
       handleClearSelection();
     },
   });
