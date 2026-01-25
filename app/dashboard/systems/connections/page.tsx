@@ -3,9 +3,8 @@
 
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay, PageSpinner } from '@/components/common/ui'; // Fixed imports: Removed DebouncedInput as it's not used directly here or imported via GenericFilterBar
-import { DataTable, TableAction } from '@/components/table';
+import { useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_system_connections_completeRowSchema,
@@ -20,14 +19,17 @@ import { SystemConnectionDetailsModal } from '@/components/system-details/System
 import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import SystemFiberTraceModal from '@/components/system-details/SystemFiberTraceModal';
 import { useRouter } from 'next/navigation';
-import { Row, UploadColumnMapping } from '@/hooks/database';
+import { UploadColumnMapping } from '@/hooks/database';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { useSystemConnectionExcelUpload } from '@/hooks/database/excel-queries/useSystemConnectionExcelUpload';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout'; // NEW IMPORT
+import { TableAction } from '@/components/table';
 
 export default function GlobalConnectionsPage() {
   const supabase = createClient();
@@ -100,16 +102,15 @@ export default function GlobalConnectionsPage() {
         ],
       },
     ],
-    [linkTypeOptions, mediaOptions, linkTypeLoading, mediaLoading]
+    [linkTypeOptions, mediaOptions, linkTypeLoading, mediaLoading],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
-  // -------------------------
 
   const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(
     supabase,
@@ -117,7 +118,7 @@ export default function GlobalConnectionsPage() {
       onSuccess: (result) => {
         if (result.successCount > 0) refetch();
       },
-    }
+    },
   );
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -135,7 +136,7 @@ export default function GlobalConnectionsPage() {
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [uploadConnections]
+    [uploadConnections],
   );
 
   const columns = SystemConnectionsTableColumns(connections, true);
@@ -144,31 +145,37 @@ export default function GlobalConnectionsPage() {
     ...TABLE_COLUMN_KEYS.v_system_connections_complete,
   ]);
 
-  const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
+  const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
     setSelectedConnection(record);
     setIsDetailsModalOpen(true);
-  };
+  }, []);
 
-  const handleTracePath = async (record: V_system_connections_completeRowSchema) => {
-    setIsTracing(true);
-    setIsTraceModalOpen(true);
-    setTraceModalData(null);
-    try {
-      const traceData = await tracePath(record);
-      setTraceModalData(traceData);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to trace path');
-      setIsTraceModalOpen(false);
-    } finally {
-      setIsTracing(false);
-    }
-  };
+  const handleTracePath = useCallback(
+    async (record: V_system_connections_completeRowSchema) => {
+      setIsTracing(true);
+      setIsTraceModalOpen(true);
+      setTraceModalData(null);
+      try {
+        const traceData = await tracePath(record);
+        setTraceModalData(traceData);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to trace path');
+        setIsTraceModalOpen(false);
+      } finally {
+        setIsTracing(false);
+      }
+    },
+    [tracePath],
+  );
 
-  const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
-    if (record.system_id) {
-      router.push(`/dashboard/systems/${record.system_id}`);
-    }
-  };
+  const handleGoToSystem = useCallback(
+    (record: V_system_connections_completeRowSchema) => {
+      if (record.system_id) {
+        router.push(`/dashboard/systems/${record.system_id}`);
+      }
+    },
+    [router],
+  );
 
   const tableActions = useMemo(
     (): TableAction<'v_system_connections_complete'>[] => [
@@ -196,8 +203,7 @@ export default function GlobalConnectionsPage() {
         variant: 'secondary',
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleGoToSystem]
+    [handleGoToSystem, handleTracePath, handleViewDetails],
   );
 
   const isBusy = isLoading || isFetching;
@@ -236,19 +242,42 @@ export default function GlobalConnectionsPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  const renderMobileItem = useCallback(
-    (record: Row<'v_system_connections_complete'>) => {
+  // THE FIX: Extracted renderItem logic
+  const renderItem = useCallback(
+    (record: V_system_connections_completeRowSchema) => {
       return (
         <ConnectionCard
-          connection={record as V_system_connections_completeRowSchema}
+          key={record.id}
+          connection={record}
           onViewDetails={handleViewDetails}
           onViewPath={handleTracePath}
           onGoToSystem={handleGoToSystem}
         />
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleGoToSystem]
+    [handleGoToSystem, handleTracePath, handleViewDetails],
+  );
+
+  // THE FIX: Simplified renderGrid
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={connections}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={connections.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+      />
+    ),
+    [connections, renderItem, isLoading, totalCount, pagination],
   );
 
   const parentSystemForModal = useMemo((): V_systems_completeRowSchema | null => {
@@ -261,7 +290,7 @@ export default function GlobalConnectionsPage() {
       ip_address: selectedConnection.sn_ip as string | null,
       system_type_code: selectedConnection.system_type_name,
       system_type_name: selectedConnection.system_type_name,
-      asset_no: null, // Added missing property with null value
+      asset_no: null,
       commissioned_on: null,
       created_at: null,
       is_hub: null,
@@ -298,94 +327,74 @@ export default function GlobalConnectionsPage() {
     );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
-      />
+    <DashboardPageLayout
+      header={{
+        title: 'Global Connection Explorer',
+        description: 'View and search all service connections across the entire network.',
+        icon: <FiGitBranch />,
+        stats: headerStats,
+        actions: headerActions,
+        isLoading: isLoading && connections.length === 0,
+        isFetching: isFetching,
+      }}
+      searchQuery={search.searchQuery}
+      onSearchChange={search.setSearchQuery}
+      searchPlaceholder='Search service, system, or ID...'
+      filters={filters.filters}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      renderGrid={renderGrid}
+      tableProps={{
+        tableName: 'v_system_connections_complete',
+        data: connections,
+        columns: orderedColumns,
+        loading: isLoading,
+        isFetching: isFetching,
+        actions: tableActions,
+        searchable: false,
+        renderMobileItem: (record) => renderItem(record as V_system_connections_completeRowSchema),
+        pagination: {
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={connections.length === 0 && !isLoading}
+      modals={
+        <>
+          <input
+            type='file'
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className='hidden'
+            accept='.xlsx, .xls, .csv'
+          />
 
-      <PageHeader
-        title="Global Connection Explorer"
-        description="View and search all service connections across the entire network."
-        icon={<FiGitBranch />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading && connections.length === 0}
-        isFetching={isFetching}
-      />
-
-      {/* REUSABLE FILTER BAR */}
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search service, system, or ID..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
-
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {connections.map((conn) => (
-            <ConnectionCard
-              key={conn.id}
-              connection={conn}
-              onViewDetails={handleViewDetails}
-              onViewPath={handleTracePath}
-              onGoToSystem={handleGoToSystem}
-            />
-          ))}
-          {connections.length === 0 && !isLoading && (
-            <div className="col-span-full py-16 text-center text-gray-500">
-              <FiGitBranch className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No connections found matching your criteria.</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <DataTable
-          autoHideEmptyColumns={true}
-          tableName="v_system_connections_complete"
-          data={connections}
-          columns={orderedColumns}
-          loading={isLoading}
-          isFetching={isFetching}
-          actions={tableActions}
-          renderMobileItem={renderMobileItem}
-          pagination={{
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => {
-              pagination.setCurrentPage(p);
-              pagination.setPageLimit(s);
-            },
-          }}
-          customToolbar={<></>}
-        />
-      )}
-
-      <SystemConnectionDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => {
-          setIsDetailsModalOpen(false);
-          setSelectedConnection(null);
-        }}
-        connectionId={selectedConnection?.id ?? null}
-        parentSystem={parentSystemForModal}
-      />
-      <SystemFiberTraceModal
-        isOpen={isTraceModalOpen}
-        onClose={() => setIsTraceModalOpen(false)}
-        traceData={traceModalData}
-        isLoading={isTracing}
-      />
-    </div>
+          <SystemConnectionDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => {
+              setIsDetailsModalOpen(false);
+              setSelectedConnection(null);
+            }}
+            connectionId={selectedConnection?.id ?? null}
+            parentSystem={parentSystemForModal}
+          />
+          <SystemFiberTraceModal
+            isOpen={isTraceModalOpen}
+            onClose={() => setIsTraceModalOpen(false)}
+            traceData={traceModalData}
+            isLoading={isTracing}
+          />
+        </>
+      }
+    />
   );
 }

@@ -3,12 +3,12 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay, ConfirmModal } from '@/components/common/ui';
+import { ErrorDisplay } from '@/components/common/ui';
 import { TableAction } from '@/components/table/datatable-types';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useAuditLogsData } from '@/hooks/data/useAuditLogsData';
 import { V_audit_logsRowSchema } from '@/schemas/zod-schemas';
-import { FiShield, FiEye, FiClock } from 'react-icons/fi';
+import { FiShield, FiEye, FiClock, FiDatabase } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { AuditLogsTableColumns } from '@/config/table-columns/AuditLogsTableColumns';
 import { AuditLogDetailsModal } from '@/components/audit/AuditLogDetailsModal';
@@ -20,13 +20,20 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { Row } from '@/hooks/database';
 import { formatDate } from '@/utils/formatters';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
-// CHANGED: Use Layout Component
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { FiDatabase } from 'react-icons/fi';
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+
+  const crud = useCrudManager<'user_activity_logs', V_audit_logsRowSchema>({
+    tableName: 'user_activity_logs',
+    localTableName: 'v_audit_logs',
+    idType: 'number',
+    dataQueryHook: useAuditLogsData,
+    displayNameField: 'action_type',
+    syncTables: ['user_activity_logs', 'v_audit_logs'],
+  });
 
   const {
     data: logs,
@@ -37,19 +44,9 @@ export default function AuditLogsPage() {
     error,
     refetch,
     pagination,
-    search,
-    filters,
     viewModal,
     bulkActions,
-    deleteModal,
-  } = useCrudManager<'user_activity_logs', V_audit_logsRowSchema>({
-    tableName: 'user_activity_logs',
-    localTableName: 'v_audit_logs',
-    idType: 'number',
-    dataQueryHook: useAuditLogsData,
-    displayNameField: 'action_type',
-    syncTables: ['user_activity_logs', 'v_audit_logs'],
-  });
+  } = crud;
 
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
@@ -65,13 +62,6 @@ export default function AuditLogsPage() {
       },
     ],
     [],
-  );
-
-  const handleFilterChange = useCallback(
-    (key: string, value: string | null) => {
-      filters.setFilters((prev) => ({ ...prev, [key]: value }));
-    },
-    [filters],
   );
 
   const columns = AuditLogsTableColumns(logs);
@@ -116,32 +106,32 @@ export default function AuditLogsPage() {
     };
 
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
+      <div className='flex flex-col gap-2'>
+        <div className='flex justify-between items-start'>
+          <div className='flex items-center gap-2'>
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getActionColor(record.action_type || '')}`}
             >
               {record.action_type}
             </span>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <span className='text-sm font-semibold text-gray-800 dark:text-gray-200'>
               {record.table_name}
             </span>
           </div>
           {actions}
         </div>
-        <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 font-mono break-all line-clamp-2">
+        <div className='text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-100 dark:border-gray-700 font-mono break-all line-clamp-2'>
           ID: {record.record_id}
         </div>
-        <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold">
+        <div className='flex items-center justify-between mt-1 text-xs text-gray-500'>
+          <div className='flex items-center gap-1.5'>
+            <div className='w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold'>
               {record.performed_by_name?.charAt(0) || '?'}
             </div>
-            <span className="truncate max-w-[100px]">{record.performed_by_name || 'System'}</span>
+            <span className='truncate max-w-[100px]'>{record.performed_by_name || 'System'}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <FiClock className="w-3 h-3" />
+          <div className='flex items-center gap-1'>
+            <FiClock className='w-3 h-3' />
             {record.created_at
               ? formatDate(record.created_at, {
                   format: 'dd-mm-yyyy',
@@ -155,7 +145,6 @@ export default function AuditLogsPage() {
     );
   }, []);
 
-  // PERMISSION CHECK
   const allowedAuditRoles = [UserRole.ADMIN, UserRole.ADMINPRO];
   if (!isSuperAdmin && !allowedAuditRoles.includes(role as UserRole)) {
     return <UnauthorizedModal allowedRoles={allowedAuditRoles} currentRole={role} />;
@@ -170,9 +159,9 @@ export default function AuditLogsPage() {
     );
   }
 
-  // --- RENDERING VIA LAYOUT ---
   return (
     <DashboardPageLayout
+      crud={crud} // Pass CRUD manager to auto-wire logic
       header={{
         title: 'System Audit Logs',
         description: 'Track all user activities and data changes across the platform.',
@@ -182,15 +171,10 @@ export default function AuditLogsPage() {
         isLoading: isLoading,
         isFetching: isFetching,
       }}
-      searchQuery={search.searchQuery}
-      onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search logs..."
-      filters={filters.filters}
-      onFilterChange={handleFilterChange}
+      searchPlaceholder='Search logs...'
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      // Audit logs are read-only except bulk delete for super admins
       bulkActions={{
         selectedCount: bulkActions.selectedCount,
         isOperationLoading: isMutating,
@@ -201,10 +185,8 @@ export default function AuditLogsPage() {
         showStatusUpdate: false,
         canDelete: () => !!isSuperAdmin,
       }}
-      // "Grid" view for audit logs isn't very useful, so we just return an empty div or redirect to table if needed
-      // But we must provide the function to satisfy the interface.
       renderGrid={() => (
-        <div className="text-center py-10 text-gray-500">
+        <div className='text-center py-10 text-gray-500 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700'>
           Grid view not available for logs. Please switch to Table view.
         </div>
       )}
@@ -238,8 +220,8 @@ export default function AuditLogsPage() {
       }}
       isEmpty={logs.length === 0 && !isLoading}
       emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+        <div className='col-span-full py-16 text-center text-gray-500'>
+          <FiDatabase className='w-12 h-12 mx-auto mb-3 text-gray-300' />
           <p>No audit logs found.</p>
         </div>
       }
@@ -250,15 +232,13 @@ export default function AuditLogsPage() {
             onClose={viewModal.close}
             log={viewModal.record as V_audit_logsRowSchema | null}
           />
-          <ConfirmModal
-            isOpen={deleteModal.isOpen}
-            onConfirm={deleteModal.onConfirm}
-            onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
-            message={deleteModal.message}
-            loading={deleteModal.loading}
-            type="danger"
-          />
+          {/* Note: Delete modal is now handled by Layout automatically via 'crud' prop, 
+              but we didn't pass deleteModal in crud options explicitly for 'user_activity_logs' 
+              because it uses a different delete hook if needed. 
+              However, useCrudManager provides a generic one. 
+              Since Audit Logs uses bulk delete only for super admins via useCrudManager, 
+              the auto modal should work fine.
+          */}
         </>
       }
     />

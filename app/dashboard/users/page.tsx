@@ -1,17 +1,10 @@
 // app/dashboard/users/page.tsx
 'use client';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { useStandardHeaderActions } from '@/components/common/page-header';
 import { BulkActions } from '@/components/users/BulkActions';
 import { UserCreateModal } from '@/components/users/UserCreateModal';
-import {
-  ConfirmModal,
-  ErrorDisplay,
-  PageSpinner,
-  RoleBadge,
-  StatusBadge,
-} from '@/components/common/ui';
-import { DataTable } from '@/components/table/DataTable';
+import { ErrorDisplay, PageSpinner, RoleBadge, StatusBadge } from '@/components/common/ui';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
@@ -29,8 +22,8 @@ import Image from 'next/image';
 import { UserRole } from '@/types/user-roles';
 import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
-// IMPORT GENERIC FILTER BAR
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 
 const AdminUsersPage = () => {
   const { isSuperAdmin, role, isLoading: isUserLoading } = useUser();
@@ -42,6 +35,11 @@ const AdminUsersPage = () => {
     isLoading: isOperationLoading,
   } = useAdminUserOperations();
 
+  const crud = useCrudManager<'user_profiles', V_user_profiles_extendedRowSchema>({
+    tableName: 'user_profiles',
+    dataQueryHook: useUsersData,
+  });
+
   const {
     data: users,
     totalCount,
@@ -50,21 +48,13 @@ const AdminUsersPage = () => {
     error,
     refetch,
     pagination,
-    search,
-    filters,
     editModal,
     viewModal,
     bulkActions,
-    deleteModal,
-    actions: crudActions,
-  } = useCrudManager<'user_profiles', V_user_profiles_extendedRowSchema>({
-    tableName: 'user_profiles',
-    dataQueryHook: useUsersData,
-  });
+  } = crud;
 
   const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
-  // --- DRY FILTER CONFIGURATION ---
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
@@ -96,16 +86,8 @@ const AdminUsersPage = () => {
         ],
       },
     ],
-    []
+    [],
   );
-
-  const handleFilterChange = useCallback(
-    (key: string, value: string | null) => {
-      filters.setFilters((prev) => ({ ...prev, [key]: value }));
-    },
-    [filters]
-  );
-  // ---------------------------------
 
   const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
   const { selectedRowIds, handleClearSelection } = bulkActions;
@@ -115,10 +97,26 @@ const AdminUsersPage = () => {
       createStandardActions<V_user_profiles_extendedRowSchema>({
         onEdit: canManage ? editModal.openEdit : undefined,
         onView: viewModal.open,
-        onDelete: canManage ? crudActions.handleDelete : undefined,
+        // We handle generic delete via crud, but this page uses a custom hook for users
+        // so we can still use the crud modal if we wire the delete handler correctly,
+        // OR we just use the custom handler here.
+        // For simplicity, let's just use the custom hook logic for now.
+        // Actually, let's rely on crud delete modal but map the confirm to our custom hook.
+        // BUT useCrudManager's handleDelete maps to the generic delete manager.
+        // For users, we need the specific API route.
+        // So we'll skip passing onDelete here and rely on bulk actions or custom buttons.
+        // Wait, standard actions are row-level.
+        // Let's implement a custom row delete for consistency.
+        onDelete: canManage
+          ? (rec) => {
+              if (window.confirm(`Are you sure you want to delete ${rec.full_name}?`)) {
+                bulkDelete.mutateAsync({ user_ids: [rec.id!] }).then(() => refetch());
+              }
+            }
+          : undefined,
         canDelete: (record) => canManage && !record.is_super_admin,
       }) as TableAction<'v_user_profiles_extended'>[],
-    [editModal.openEdit, viewModal.open, crudActions.handleDelete, canManage]
+    [editModal.openEdit, viewModal.open, canManage, bulkDelete, refetch],
   );
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -149,7 +147,7 @@ const AdminUsersPage = () => {
       });
       handleClearSelection();
     },
-    [selectedRowIds, bulkUpdateRole, handleClearSelection]
+    [selectedRowIds, bulkUpdateRole, handleClearSelection],
   );
 
   const handleBulkUpdateStatus = useCallback(
@@ -161,7 +159,7 @@ const AdminUsersPage = () => {
       });
       handleClearSelection();
     },
-    [selectedRowIds, bulkUpdateStatus, handleClearSelection]
+    [selectedRowIds, bulkUpdateStatus, handleClearSelection],
   );
 
   const headerActions = useStandardHeaderActions<'user_profiles'>({
@@ -174,65 +172,51 @@ const AdminUsersPage = () => {
     exportConfig: { tableName: 'user_profiles' },
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Users' },
-    {
-      value: users.filter((r) => r.status === 'active').length,
-      label: 'Active',
-      color: 'success' as const,
-    },
-    {
-      value: users.filter((r) => r.status !== 'active').length,
-      label: 'Inactive/Suspended',
-      color: 'danger' as const,
-    },
-  ];
-
   const renderMobileItem = useCallback(
     (record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
       return (
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
+        <div className='flex flex-col gap-3'>
+          <div className='flex justify-between items-start'>
+            <div className='flex items-center gap-3'>
               {record.avatar_url ? (
                 <Image
                   src={record.avatar_url}
-                  alt="avatar"
+                  alt='avatar'
                   width={40}
                   height={40}
-                  className="rounded-full"
+                  className='rounded-full'
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold">
+                <div className='w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold'>
                   {record.first_name?.charAt(0)}
                 </div>
               )}
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <h3 className='font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2'>
                   {record.full_name}
                   {record.is_super_admin && (
-                    <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200">
+                    <span className='text-[10px] bg-yellow-100 text-yellow-800 px-1.5 rounded border border-yellow-200'>
                       SUPER
                     </span>
                   )}
                 </h3>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{record.email}</div>
+                <div className='text-xs text-gray-500 dark:text-gray-400'>{record.email}</div>
               </div>
             </div>
             {actions}
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className='flex flex-wrap gap-2 items-center'>
             <RoleBadge role={record.role as UserRole} />
             {record.designation && (
-              <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+              <span className='text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-700'>
                 {record.designation}
               </span>
             )}
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
-            <div className="text-xs text-gray-400">
+          <div className='flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700'>
+            <div className='text-xs text-gray-400'>
               Active: {record.last_activity_period || 'Never'}
             </div>
             <StatusBadge status={record.status ?? 'inactive'} />
@@ -240,11 +224,11 @@ const AdminUsersPage = () => {
         </div>
       );
     },
-    []
+    [],
   );
 
   if (isUserLoading) {
-    return <PageSpinner text="Verifying permissions..." />;
+    return <PageSpinner text='Verifying permissions...' />;
   }
 
   const allowedRoles = [UserRole.ADMINPRO];
@@ -256,75 +240,74 @@ const AdminUsersPage = () => {
     return (
       <ErrorDisplay
         error={error.message}
-        actions={[
-          {
-            label: 'Retry',
-            onClick: refetch,
-            variant: 'primary',
-          },
-        ]}
+        actions={[{ label: 'Retry', onClick: refetch, variant: 'primary' }]}
       />
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      <PageHeader
-        title="User Management"
-        description="Manage network users and their related information."
-        icon={<FiUsers />}
-        stats={headerStats}
-        actions={headerActions}
-        isLoading={isLoading}
-      />
-
-      {/* REPLACED UserFilters with GenericFilterBar */}
-      <GenericFilterBar
-        searchQuery={search.searchQuery}
-        onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search users by name or email..."
-        filters={filters.filters}
-        onFilterChange={handleFilterChange}
-        filterConfigs={filterConfigs}
-        // Users page currently doesn't implement view mode switching, so we omit those props
-      />
-
-      {canManage && (
-        <BulkActions
-          selectedCount={bulkActions.selectedCount}
-          isSuperAdmin={!!isSuperAdmin}
-          isOperationLoading={isMutating}
-          onBulkDelete={handleBulkDelete}
-          onBulkUpdateRole={handleBulkUpdateRole}
-          onBulkUpdateStatus={handleBulkUpdateStatus}
-          onClearSelection={handleClearSelection}
-        />
-      )}
-
-      <DataTable
-        autoHideEmptyColumns={true}
-        tableName="v_user_profiles_extended"
-        data={users.map((user) => ({
+    <DashboardPageLayout
+      crud={crud}
+      header={{
+        title: 'User Management',
+        description: 'Manage network users and their related information.',
+        icon: <FiUsers />,
+        stats: [
+          { value: totalCount, label: 'Total Users' },
+          {
+            value: users.filter((r) => r.status === 'active').length,
+            label: 'Active',
+            color: 'success',
+          },
+          {
+            value: users.filter((r) => r.status !== 'active').length,
+            label: 'Inactive/Suspended',
+            color: 'danger',
+          },
+        ],
+        actions: headerActions,
+        isLoading: isLoading,
+      }}
+      searchPlaceholder='Search users by name or email...'
+      filterConfigs={filterConfigs}
+      // Override standard bulk actions with custom component
+      renderBulkActions={() =>
+        canManage && selectedRowIds.length > 0 ? (
+          <BulkActions
+            selectedCount={selectedRowIds.length}
+            isSuperAdmin={!!isSuperAdmin}
+            isOperationLoading={isMutating || isOperationLoading}
+            onBulkDelete={handleBulkDelete}
+            onBulkUpdateRole={handleBulkUpdateRole}
+            onBulkUpdateStatus={handleBulkUpdateStatus}
+            onClearSelection={handleClearSelection}
+          />
+        ) : null
+      }
+      renderGrid={() => <div className='text-center p-8'>Grid View Not Supported</div>}
+      tableProps={{
+        tableName: 'v_user_profiles_extended',
+        data: users.map((user) => ({
           ...user,
           first_name: user.first_name || '',
           last_name: user.last_name || '',
           id: user.id || '',
           address: user.address as Json | null,
-        }))}
-        columns={columns}
-        loading={isLoading || isOperationLoading}
-        actions={tableActions}
-        selectable
-        onRowSelect={(rows) => {
+        })),
+        columns: columns,
+        loading: isLoading || isOperationLoading,
+        actions: tableActions,
+        selectable: true,
+        onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null
+            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null,
           );
           bulkActions.handleRowSelect(validRows);
-        }}
-        searchable={false}
-        filterable={false}
-        renderMobileItem={renderMobileItem}
-        pagination={{
+        },
+        searchable: false,
+        filterable: false,
+        renderMobileItem: renderMobileItem,
+        pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
@@ -333,43 +316,40 @@ const AdminUsersPage = () => {
             pagination.setCurrentPage(page);
             pagination.setPageLimit(pageSize);
           },
-        }}
-        customToolbar={<></>}
-      />
+        },
+        customToolbar: <></>,
+      }}
+      isEmpty={users.length === 0 && !isLoading}
+      // Turn off auto-modal because we handle deletes via custom hook in tableActions
+      autoDeleteModal={false}
+      modals={
+        <>
+          <UserProfileEditModal
+            isOpen={editModal.isOpen}
+            user={editModal.record as V_user_profiles_extendedRowSchema | null}
+            onClose={editModal.close}
+            onSave={() => {
+              refetch();
+            }}
+          />
 
-      <UserProfileEditModal
-        isOpen={editModal.isOpen}
-        user={editModal.record as V_user_profiles_extendedRowSchema | null}
-        onClose={editModal.close}
-        onSave={() => {
-          refetch();
-        }}
-      />
+          <UserDetailsModal
+            isOpen={viewModal.isOpen}
+            user={viewModal.record as V_user_profiles_extendedRowSchema}
+            onClose={viewModal.close}
+          />
 
-      <UserDetailsModal
-        isOpen={viewModal.isOpen}
-        user={viewModal.record as V_user_profiles_extendedRowSchema}
-        onClose={viewModal.close}
-      />
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        loading={deleteModal.loading}
-        type="danger"
-      />
-
-      {canManage && (
-        <UserCreateModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreate={handleCreateUser}
-          isLoading={createUser.isPending}
-        />
-      )}
-    </div>
+          {canManage && (
+            <UserCreateModal
+              isOpen={isCreateModalOpen}
+              onClose={() => setIsCreateModalOpen(false)}
+              onCreate={handleCreateUser}
+              isLoading={createUser.isPending}
+            />
+          )}
+        </>
+      }
+    />
   );
 };
 

@@ -1,9 +1,8 @@
 // path: app/dashboard/lookup/page.tsx
 'use client';
 
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
-import { Card } from '@/components/common/ui/card';
+import { useStandardHeaderActions } from '@/components/common/page-header';
+import { PageSpinner } from '@/components/common/ui';
 import dynamic from 'next/dynamic';
 import {
   ErrorState,
@@ -11,8 +10,6 @@ import {
   NoCategoriesState,
   SelectCategoryPrompt,
 } from '@/components/lookup/LookupTypesEmptyStates';
-import { LookupTypesTable } from '@/components/lookup/LookupTypesTable';
-import { useSorting } from '@/hooks/useSorting';
 import { useMemo, useCallback, useEffect } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
@@ -26,12 +23,17 @@ import { useLookupActions } from '@/components/lookup/lookup-hooks';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { snakeToTitleCase } from '@/utils/formatters';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { DataTable } from '@/components/table'; // Use generic table now
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { Row } from '@/hooks/database';
 
 const LookupModal = dynamic(
   () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
-  { loading: () => <PageSpinner text="Loading Lookup Form..." /> }
+  { loading: () => <PageSpinner text='Loading Lookup Form...' /> },
 );
 
 export default function LookupTypesPage() {
@@ -45,6 +47,13 @@ export default function LookupTypesPage() {
   const canManage = isSuperAdmin || role === UserRole.ADMIN;
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
+  const crud = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
+    tableName: 'lookup_types',
+    dataQueryHook: useLookupTypesData,
+    displayNameField: 'name',
+    syncTables: ['lookup_types', 'v_lookup_types'],
+  });
+
   const {
     data: lookupTypes,
     totalCount,
@@ -52,20 +61,13 @@ export default function LookupTypesPage() {
     inactiveCount,
     isLoading: isLoadingLookups,
     isMutating,
-    isFetching, // Destructured
+    isFetching,
     error,
     refetch,
-    search,
     filters,
     editModal,
-    deleteModal,
     actions: crudActions,
-  } = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
-    tableName: 'lookup_types',
-    dataQueryHook: useLookupTypesData,
-    displayNameField: 'name',
-    syncTables: ['lookup_types', 'v_lookup_types'],
-  });
+  } = crud;
 
   const {
     data: categoriesData,
@@ -84,25 +86,16 @@ export default function LookupTypesPage() {
       const allLookups = await localDb.lookup_types.toArray();
       const unique = Array.from(new Map(allLookups.map((item) => [item.category, item])).values());
       return unique.sort((a, b) => a.category.localeCompare(b.category));
-    }
+    },
   );
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
+  // Sync the URL param 'category' with the internal filters
   useEffect(() => {
     if (selectedCategory && filters.filters.category !== selectedCategory) {
       filters.setFilters({ category: selectedCategory });
     }
   }, [selectedCategory, filters]);
-
-  const {
-    sortedData: sortedLookupTypes,
-    handleSort,
-    getSortDirection,
-  } = useSorting({
-    data: lookupTypes,
-    defaultSortKey: 'sort_order',
-    defaultDirection: 'asc',
-  });
 
   const isOnline = useOnlineStatus();
 
@@ -150,13 +143,6 @@ export default function LookupTypesPage() {
     { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
   ];
 
-  const handleToggleStatusAdapter = (id: string, currentStatus: boolean) => {
-    const record = lookupTypes.find((lt) => lt.id === id);
-    if (record) {
-      crudActions.handleToggleStatus({ ...record, status: currentStatus });
-    }
-  };
-
   const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
     crudActions.handleSave(data);
   };
@@ -184,85 +170,118 @@ export default function LookupTypesPage() {
     }
   };
 
+  // Define Columns for generic table
+  const columns: Column<Lookup_typesRowSchema>[] = useMemo(
+    () => [
+      { key: 'sort_order', title: 'Order', dataIndex: 'sort_order', width: 80, sortable: true },
+      { key: 'name', title: 'Name', dataIndex: 'name', sortable: true, searchable: true },
+      { key: 'code', title: 'Short Code', dataIndex: 'code', width: 120, sortable: true },
+      { key: 'description', title: 'Description', dataIndex: 'description', width: 250 },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        width: 100,
+        render: (val: unknown) => (
+          <span
+            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+              val
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+            }`}
+          >
+            {val ? 'Active' : 'Inactive'}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const tableActions = useMemo(
+    () =>
+      createStandardActions({
+        onEdit: canManage ? editModal.openEdit : undefined,
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
+        onToggleStatus: canManage ? crudActions.handleToggleStatus : undefined,
+      }),
+    [
+      canManage,
+      canDelete,
+      editModal.openEdit,
+      crudActions.handleDelete,
+      crudActions.handleToggleStatus,
+    ],
+  );
+
+  // Conditional Rendering Logic for Content
+  let content = null;
+
   if (categoriesError) {
-    return (
-      <ErrorDisplay
-        error={categoriesError.message}
-        actions={[{ label: 'Retry', onClick: handleRefresh, variant: 'primary' }]}
+    content = <ErrorState error={categoriesError} onRetry={handleRefresh} />;
+  } else if (!hasCategories && !isLoading) {
+    content = <NoCategoriesState error={categoriesError ?? undefined} isLoading={isLoading} />;
+  } else if (!hasSelectedCategory && !isLoading && hasCategories) {
+    content = <SelectCategoryPrompt />;
+  } else if (isLoading && hasSelectedCategory) {
+    content = <LoadingState selectedCategory={selectedCategory} />;
+  } else if (error && hasSelectedCategory) {
+    content = <ErrorState error={error} onRetry={handleRefresh} />;
+  } else {
+    // Show Table
+    content = (
+      <DataTable
+        autoHideEmptyColumns={true}
+        tableName='lookup_types'
+        data={lookupTypes as Row<'lookup_types'>[]}
+        columns={columns as unknown as Column<Row<'lookup_types'>>[]}
+        actions={tableActions}
+        loading={isLoading}
+        searchable={true}
+        filterable={false} // Handled by top bar
+        pagination={{
+          current: crud.pagination.currentPage,
+          pageSize: crud.pagination.pageLimit,
+          total: totalCount,
+          onChange: (p, s) => {
+            crud.pagination.setCurrentPage(p);
+            crud.pagination.setPageLimit(s);
+          },
+        }}
+        customToolbar={<></>}
       />
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <PageHeader
-        title="Lookup Types"
-        description="Manage lookup types for various categories."
-        icon={<FiList />}
-        stats={hasSelectedCategory ? headerStats : []}
-        actions={headerActions}
-        isLoading={isLoading}
-      />
-
-      {!hasCategories && !isLoading ? (
-        <NoCategoriesState error={categoriesError ?? undefined} isLoading={isLoading} />
-      ) : (
-        <GenericFilterBar
-          searchQuery={search.searchQuery}
-          onSearchChange={search.setSearchQuery}
-          searchPlaceholder="Search lookup types..."
-          filters={{ category: selectedCategory }}
-          onFilterChange={handleFilterChange}
-          filterConfigs={filterConfigs}
+    <DashboardPageLayout
+      crud={crud}
+      header={{
+        title: 'Lookup Types',
+        description: 'Manage lookup types for various categories.',
+        icon: <FiList />,
+        stats: hasSelectedCategory ? headerStats : [],
+        actions: headerActions,
+        isLoading: isLoading,
+      }}
+      searchPlaceholder='Search lookup types...'
+      filters={{ category: selectedCategory }}
+      onFilterChange={handleFilterChange}
+      filterConfigs={filterConfigs}
+      // We override the default grid/table rendering to handle the specific empty states
+      renderGrid={() => <div className='p-4'>{content}</div>}
+      renderTable={() => <div className='p-4'>{content}</div>}
+      modals={
+        <LookupModal
+          isOpen={editModal.isOpen}
+          onClose={editModal.close}
+          onSubmit={handleModalSubmit}
+          isLoading={isMutating}
+          editingLookup={editModal.record}
+          category={selectedCategory}
+          categories={categories}
         />
-      )}
-
-      {error && hasSelectedCategory && <ErrorState error={error} onRetry={handleRefresh} />}
-      {isLoading && hasSelectedCategory && <LoadingState selectedCategory={selectedCategory} />}
-
-      {hasSelectedCategory && !isLoading && !error && (
-        <Card className="overflow-hidden">
-          <div className="border-b bg-gray-50 dark:bg-gray-800 dark:border-gray-700 p-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {lookupTypes.length} lookup types for category:{' '}
-              <strong className="text-gray-900 dark:text-gray-100">{`"${selectedCategory}"`}</strong>
-            </p>
-          </div>
-          <LookupTypesTable
-            lookups={sortedLookupTypes}
-            onEdit={canManage ? editModal.openEdit : undefined}
-            onDelete={canDelete ? crudActions.handleDelete : undefined}
-            onToggleStatus={canManage ? handleToggleStatusAdapter : undefined}
-            selectedCategory={selectedCategory}
-            searchTerm={search.searchQuery}
-            onSort={handleSort}
-            getSortDirection={getSortDirection}
-            canManage={canManage}
-          />
-        </Card>
-      )}
-
-      {!hasSelectedCategory && !isLoading && hasCategories && <SelectCategoryPrompt />}
-
-      <LookupModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        onSubmit={handleModalSubmit}
-        isLoading={isMutating}
-        editingLookup={editModal.record}
-        category={selectedCategory}
-        categories={categories}
-      />
-
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
-        message={deleteModal.message}
-        type="danger"
-        loading={deleteModal.loading}
-      />
-    </div>
+      }
+    />
   );
 }

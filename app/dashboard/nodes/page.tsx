@@ -23,10 +23,11 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 
 const NodeFormModal = dynamic(
   () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
-  { loading: () => <PageSpinner text="Loading Node Form..." /> }
+  { loading: () => <PageSpinner text='Loading Node Form...' /> },
 );
 
 export default function NodesPage() {
@@ -63,7 +64,7 @@ export default function NodesPage() {
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
     nodes,
     'name',
-    'Nodes'
+    'Nodes',
   );
 
   const canEdit =
@@ -95,7 +96,6 @@ export default function NodesPage() {
         label: 'Node Type',
         options: nodeTypeOptions,
         isLoading: loadingNodeTypes,
-        // THE FIX: Disable client-side sorting to respect sort_order from DB
         sortOptions: false,
       },
       {
@@ -105,14 +105,14 @@ export default function NodesPage() {
         isLoading: loadingAreas,
       },
     ],
-    [nodeTypeOptions, areaOptions, loadingNodeTypes, loadingAreas]
+    [nodeTypeOptions, areaOptions, loadingNodeTypes, loadingAreas],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const isInitialLoad = isLoading && nodes.length === 0;
@@ -140,75 +140,97 @@ export default function NodesPage() {
     hideTextOnMobile: true,
   });
 
-  const renderGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {nodes.map((node) => {
-        // Icon rendering logic for the card
-        const iconRaw = getNodeIcon(null, node.node_type_name, false);
-        const iconHtml = (iconRaw.options as L.DivIconOptions).html as string | undefined;
+  // THE FIX: Extracted renderItem logic
+  const renderItem = useCallback(
+    (node: V_nodes_completeRowSchema) => {
+      // Icon rendering logic for the card
+      const iconRaw = getNodeIcon(null, node.node_type_name, false);
+      const iconHtml = (iconRaw.options as L.DivIconOptions).html as string | undefined;
 
-        const iconElement: React.ReactNode = iconHtml ? (
-          <div
-            dangerouslySetInnerHTML={{
-              __html: iconHtml,
-            }}
-            className="scale-90 origin-center"
-          />
-        ) : (
-          <FiMapPin className="w-7 h-7 text-gray-900 dark:text-gray-100" />
-        );
+      const iconElement: React.ReactNode = iconHtml ? (
+        <div
+          dangerouslySetInnerHTML={{
+            __html: iconHtml,
+          }}
+          className='scale-90 origin-center'
+        />
+      ) : (
+        <FiMapPin className='w-7 h-7 text-gray-900 dark:text-gray-100' />
+      );
 
-        const coords =
-          node.latitude && node.longitude
-            ? `${node.latitude.toFixed(5)}, ${node.longitude.toFixed(5)}`
-            : 'No Coordinates';
-        const hasCoordinates = !!(node.latitude && node.longitude);
+      const coords =
+        node.latitude && node.longitude
+          ? `${node.latitude.toFixed(5)}, ${node.longitude.toFixed(5)}`
+          : 'No Coordinates';
+      const hasCoordinates = !!(node.latitude && node.longitude);
 
-        return (
-          <GenericEntityCard
-            key={node.id}
-            entity={node}
-            title={node.name || 'Unnamed Node'}
-            status={node.status}
-            headerIcon={iconElement}
-            subBadge={
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 text-white shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                {node.node_type_name || node.node_type_code || 'Unknown Type'}
-              </span>
-            }
-            dataItems={[
-              {
-                icon: FiMapPin,
-                label: 'Maintenance Area',
-                value: node.maintenance_area_name || 'Unassigned',
-              },
-              {
-                icon: FiNavigation,
-                label: 'Coordinates',
-                value: (
-                  <span
-                    className={`font-mono text-xs ${
-                      hasCoordinates
-                        ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {coords}
-                  </span>
-                ),
-              },
-            ]}
-            customFooter={<GenericRemarks remark={node.remark || ''} />}
-            onView={viewModal.open}
-            onEdit={editModal.openEdit}
-            onDelete={crudActions.handleDelete}
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-        );
-      })}
-    </div>
+      return (
+        <GenericEntityCard
+          key={node.id}
+          entity={node}
+          title={node.name || 'Unnamed Node'}
+          status={node.status}
+          headerIcon={iconElement}
+          subBadge={
+            <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 text-white shadow-sm'>
+              <span className='w-1.5 h-1.5 rounded-full bg-white animate-pulse' />
+              {node.node_type_name || node.node_type_code || 'Unknown Type'}
+            </span>
+          }
+          dataItems={[
+            {
+              icon: FiMapPin,
+              label: 'Maintenance Area',
+              value: node.maintenance_area_name || 'Unassigned',
+            },
+            {
+              icon: FiNavigation,
+              label: 'Coordinates',
+              value: (
+                <span
+                  className={`font-mono text-xs ${
+                    hasCoordinates
+                      ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  {coords}
+                </span>
+              ),
+            },
+          ]}
+          customFooter={<GenericRemarks remark={node.remark || ''} />}
+          onView={viewModal.open}
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      );
+    },
+    [viewModal.open, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
+  );
+
+  // THE FIX: Simplified renderGrid
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={nodes}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={nodes.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          onChange: (page, pageSize) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(pageSize);
+          },
+        }}
+      />
+    ),
+    [nodes, renderItem, isLoading, totalCount, pagination],
   );
 
   if (error)
@@ -231,7 +253,7 @@ export default function NodesPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search node name, remark..."
+      searchPlaceholder='Search node name, remark...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -262,7 +284,7 @@ export default function NodesPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is V_nodes_completeRowSchema & { id: string } => !!row.id
+            (row): row is V_nodes_completeRowSchema & { id: string } => !!row.id,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -280,12 +302,6 @@ export default function NodesPage() {
         customToolbar: <></>,
       }}
       isEmpty={nodes.length === 0 && !isLoading}
-      emptyState={
-        <div className="col-span-full py-16 text-center text-gray-500">
-          <FiCpu className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No nodes found matching your criteria.</p>
-        </div>
-      }
       modals={
         <>
           {editModal.isOpen && (
@@ -308,10 +324,10 @@ export default function NodesPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
             loading={deleteModal.loading}
-            type="danger"
+            type='danger'
           />
         </>
       }
