@@ -4,7 +4,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { Modal, PageSpinner } from '@/components/common/ui';
 import { DataTable } from '@/components/table';
-import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database'; // CHANGED: Re-imported usePagedData
+import { useRpcRecord, useTableUpdate, usePagedData } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -29,10 +29,10 @@ interface SystemConnectionDetailsModalProps {
 }
 
 const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
-  <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0">
-    <div className="flex items-center gap-3">
-      <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+  <div className='flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0'>
+    <div className='flex items-center gap-3'>
+      <div className='w-1 h-6 bg-blue-600 rounded-full'></div>
+      <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{title}</h3>
     </div>
     {action}
   </div>
@@ -49,15 +49,13 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const [connectionToAllocate, setConnectionToAllocate] =
     useState<V_system_connections_completeRowSchema | null>(null);
 
+  // 1. Fetch Connection Details
   const {
     data: connection,
-    isLoading,
-    refetch,
+    isLoading: isConnectionLoading,
+    isFetching: isConnectionFetching,
+    refetch: refetchConnection,
   } = useRpcRecord(supabase, 'v_system_connections_complete', connectionId);
-
-
-  console.log("connectionId: ", connectionId);
-  
 
   const allocatedFiberIds = useMemo(() => {
     if (!connection) return [];
@@ -69,31 +67,32 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  // THE FIX: Use usePagedData (RPC) instead of useTableQuery.
-  // Construct a safe SQL 'OR' clause for the ID list to avoid UUID type mismatch error.
   const fiberIdFilter = useMemo(() => {
     if (allocatedFiberIds.length === 0) return undefined;
-    // Construct SQL: id::text IN ('uuid1', 'uuid2')
     return `id::text IN ('${allocatedFiberIds.join("','")}')`;
   }, [allocatedFiberIds]);
 
-  const { data: ofcData } = usePagedData<V_ofc_connections_completeRowSchema>(
+  // 2. Fetch Fiber Segments
+  const {
+    data: ofcData,
+    isFetching: isOfcFetching,
+    refetch: refetchOfc,
+  } = usePagedData<V_ofc_connections_completeRowSchema>(
     supabase,
     'v_ofc_connections_complete',
     {
       filters: {
-        or: fiberIdFilter, // Pass the raw SQL condition to the 'or' parameter
+        or: fiberIdFilter,
       },
       limit: 100,
     },
-    { enabled: allocatedFiberIds.length > 0 }
+    { enabled: allocatedFiberIds.length > 0 },
   );
-  
 
   const { mutate: updateConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
       toast.success('Field updated successfully');
-      refetch();
+      refetchConnection();
     },
     onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
@@ -106,12 +105,17 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   }, [connection]);
 
   const handleAllocationSave = useCallback(() => {
-    refetch();
+    refetchConnection();
+    refetchOfc();
     setIsAllocationModalOpen(false);
     toast.success('Allocation updated successfully');
-  }, [refetch]);
+  }, [refetchConnection, refetchOfc]);
 
-  // ... (Columns definitions and helper functions remain unchanged) ...
+  const handleRefreshData = useCallback(async () => {
+    await Promise.all([refetchConnection(), refetchOfc()]);
+    toast.success('Connection data refreshed');
+  }, [refetchConnection, refetchOfc]);
+
   const circuitColumns = useMemo(
     (): Column<Row<'v_system_connections_complete'>>[] => [
       {
@@ -121,7 +125,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 200,
         render: (val, record) => {
           return (
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className='font-medium text-gray-900 dark:text-white'>
               {(val as string) ||
                 (record as V_system_connections_completeRowSchema).connected_system_name ||
                 'N/A'}
@@ -142,9 +146,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 150,
         render: (val) =>
           val ? (
-            <span className="font-medium text-gray-700 dark:text-gray-300">{val as string}</span>
+            <span className='font-medium text-gray-700 dark:text-gray-300'>{val as string}</span>
           ) : (
-            <span className="text-gray-400 italic text-xs">-</span>
+            <span className='text-gray-400 italic text-xs'>-</span>
           ),
       },
       {
@@ -154,11 +158,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 130,
         render: (val) =>
           val ? (
-            <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+            <span className='font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded'>
               {formatIP(val)}
             </span>
           ) : (
-            <span className="text-gray-400 italic text-xs">-</span>
+            <span className='text-gray-400 italic text-xs'>-</span>
           ),
       },
       {
@@ -168,9 +172,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 120,
         render: (val) =>
           val ? (
-            <span className="font-mono text-sm">{val as string}</span>
+            <span className='font-mono text-sm'>{val as string}</span>
           ) : (
-            <span className="text-gray-400 italic text-xs">-</span>
+            <span className='text-gray-400 italic text-xs'>-</span>
           ),
       },
       { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', width: 100 },
@@ -184,7 +188,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       { key: 'unique_id', title: 'Unique ID', dataIndex: 'unique_id', width: 150 },
       { key: 'vlan', title: 'VLAN', dataIndex: 'vlan', width: 80 },
     ],
-    []
+    [],
   );
 
   const endPointData = useMemo(() => {
@@ -239,7 +243,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       title: 'End Info',
       dataIndex: 'end',
       width: 80,
-      render: (val) => <span className="font-bold text-blue-600">{val as string}</span>,
+      render: (val) => <span className='font-bold text-blue-600'>{val as string}</span>,
     },
     {
       key: 'node_ip',
@@ -267,7 +271,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       dataIndex: 'protection_interface',
       width: 150,
       render: (val: unknown) =>
-        val ? <>{String(val)}</> : <span className="text-gray-400 italic text-xs">-</span>,
+        val ? <>{String(val)}</> : <span className='text-gray-400 italic text-xs'>-</span>,
     },
   ];
 
@@ -291,15 +295,15 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const renderCircuitMobile = useCallback((record: any, _actions: React.ReactNode) => {
     return (
-      <div className="flex flex-col gap-4">
+      <div className='flex flex-col gap-4'>
         <div>
-          <div className="text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wide">
+          <div className='text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wide'>
             Service Name / Customer
           </div>
-          <div className="font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight">
+          <div className='font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight'>
             {record.service_name || record.customer_name || 'N/A'}
           </div>
-          <div className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+          <div className='inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'>
             {record.connected_link_type_name || 'Link'}
           </div>
         </div>
@@ -310,24 +314,24 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderEndpointMobile = useCallback((record: any) => {
     return (
-      <div className="flex items-center justify-between">
+      <div className='flex items-center justify-between'>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-bold text-blue-600 text-xs uppercase tracking-wide">
+          <div className='flex items-center gap-2 mb-1'>
+            <span className='font-bold text-blue-600 text-xs uppercase tracking-wide'>
               {record.end}
             </span>
-            <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300">
+            <span className='text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300'>
               {record.node_ip || 'No IP'}
             </span>
           </div>
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <FiServer className="w-3.5 h-3.5 text-gray-400" />
+          <div className='text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2'>
+            <FiServer className='w-3.5 h-3.5 text-gray-400' />
             {record.system_name}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] text-gray-400 uppercase mb-0.5">Interface</div>
-          <div className="font-mono text-sm font-bold text-gray-800 dark:text-gray-200">
+        <div className='text-right'>
+          <div className='text-[10px] text-gray-400 uppercase mb-0.5'>Interface</div>
+          <div className='font-mono text-sm font-bold text-gray-800 dark:text-gray-200'>
             {record.interface || '-'}
           </div>
         </div>
@@ -337,26 +341,26 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
   const renderFiberMobile = useCallback((record: Row<'v_ofc_connections_complete'>) => {
     return (
-      <div className="flex flex-col gap-1.5">
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[70%]">
+      <div className='flex flex-col gap-1.5'>
+        <div className='flex justify-between items-center'>
+          <span className='text-sm font-medium text-gray-900 dark:text-white truncate max-w-[70%]'>
             {record.ofc_route_name}
           </span>
-          <div className="flex items-center gap-1 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+          <div className='flex items-center gap-1 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded'>
             <span>F{record.fiber_no_sn}</span>
-            <span className="text-gray-400">→</span>
+            <span className='text-gray-400'>→</span>
             <span>F{record.fiber_no_en}</span>
           </div>
         </div>
-        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
+        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
           <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
           <span>End A Rx: {record.sn_power_dbm || '-'} dBm</span>
         </div>
-        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
+        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
           <span>{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</span>
           <span>End B Rx: {record.en_power_dbm || '-'} dBm</span>
         </div>
-        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5">
+        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
           <span>Route Loss: {record.route_loss_db || '-'} dB</span>
         </div>
       </div>
@@ -365,24 +369,27 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
 
   if (!isOpen) return null;
 
+  // Determine busy state for spinner
+  const isBusy = isConnectionFetching || isOfcFetching;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={connection?.service_name || connection?.system_name || 'Connection Details'}
-      size="full"
-      className="bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]"
+      size='full'
+      className='bg-gray-50 dark:bg-gray-900 w-[95vw] h-[90vh] max-w-[1600px]'
     >
-      {isLoading ? (
-        <PageSpinner text="Loading Circuit Details..." />
+      {isConnectionLoading ? (
+        <PageSpinner text='Loading Circuit Details...' />
       ) : connection ? (
-        <div className="space-y-8 pb-10">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader title="Circuit Information" />
-            <div className="p-0">
+        <div className='space-y-8 pb-10'>
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden'>
+            <SectionHeader title='Circuit Information' />
+            <div className='p-0'>
               <DataTable
                 autoHideEmptyColumns={true}
-                tableName="v_system_connections_complete"
+                tableName='v_system_connections_complete'
                 data={[connection]}
                 columns={circuitColumns}
                 searchable={false}
@@ -393,14 +400,14 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 renderMobileItem={renderCircuitMobile}
                 pagination={{ current: 1, pageSize: 1, total: 1, onChange: () => {} }}
                 bordered={false}
-                density="compact"
+                density='compact'
               />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <SectionHeader title="End A & End B Details" />
-            <div className="p-0">
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden'>
+            <SectionHeader title='End A & End B Details' />
+            <div className='p-0'>
               <DataTable
                 autoHideEmptyColumns={true}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -416,52 +423,53 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 onCellEdit={handleCellEdit}
                 pagination={{ current: 1, pageSize: 2, total: 2, onChange: () => {} }}
                 bordered={false}
-                density="compact"
+                density='compact'
               />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden'>
             <SectionHeader
-              title="Optical Fiber Path"
+              title='Optical Fiber Path'
               action={
-                <div className="flex gap-2">
+                <div className='flex gap-2'>
                   <button
-                    onClick={() => refetch()}
-                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                    title="Refresh Connection Data"
+                    onClick={handleRefreshData}
+                    className='p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50'
+                    title='Refresh Connection Data'
+                    disabled={isBusy}
                   >
-                    <FiRefreshCw className={isLoading ? 'animate-spin' : ''} size={16} />
+                    <FiRefreshCw className={isBusy ? 'animate-spin' : ''} size={16} />
                   </button>
                   <button
                     onClick={handleOpenAllocationModal}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm"
+                    className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm'
                   >
                     {allocatedFiberIds.length > 0 ? 'Modify Allocation' : 'Map OFC'}
                   </button>
                 </div>
               }
             />
-            <div className="p-4 space-y-6">
-              <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
+            <div className='p-4 space-y-6'>
+              <div className='p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700'>
+                <h4 className='text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide'>
                   Logical Route
                 </h4>
                 <PathDisplay systemConnectionId={connection.id} />
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide">
+                <h4 className='text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide'>
                   Physical Fiber Segments
                 </h4>
                 {!ofcData?.data || ofcData.data.length === 0 ? (
-                  <div className="p-6 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                    <p className="text-gray-500 dark:text-gray-400">No fibers allocated yet.</p>
+                  <div className='p-6 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg'>
+                    <p className='text-gray-500 dark:text-gray-400'>No fibers allocated yet.</p>
                   </div>
                 ) : (
                   <DataTable
                     autoHideEmptyColumns={true}
-                    tableName="v_ofc_connections_complete"
+                    tableName='v_ofc_connections_complete'
                     data={ofcData.data}
                     columns={ofcColumns}
                     searchable={false}
@@ -475,7 +483,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                       total: ofcData.data.length,
                       onChange: () => {},
                     }}
-                    density="compact"
+                    density='compact'
                   />
                 )}
               </div>
@@ -493,7 +501,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full text-red-500">
+        <div className='flex items-center justify-center h-full text-red-500'>
           Connection not found
         </div>
       )}
