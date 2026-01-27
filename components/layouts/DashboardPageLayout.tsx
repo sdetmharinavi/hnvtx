@@ -5,7 +5,8 @@ import { GenericFilterBar, FilterConfig } from '@/components/common/filters/Gene
 import { BulkActions } from '@/components/common/BulkActions';
 import { DataTable, DataTableProps } from '@/components/table';
 import { PublicTableOrViewName, Filters } from '@/hooks/database';
-import { UseCrudManagerReturn } from '@/hooks/useCrudManager';
+// THE FIX: Corrected the import path from '@/hooks/useCrudManager' to the new centralized types file.
+import { UseCrudManagerReturn } from '@/hooks/crud/types';
 import { ConfirmModal } from '@/components/common/ui';
 
 interface DashboardPageLayoutProps<T extends PublicTableOrViewName> {
