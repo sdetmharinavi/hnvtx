@@ -94,7 +94,7 @@ export default function OfcPage() {
     () => [
       {
         key: 'sortBy',
-        label: 'Sort',
+        // label: 'Sort',
         type: 'native-select' as const,
         placeholder: 'Sort By',
         options: [
@@ -104,14 +104,14 @@ export default function OfcPage() {
       },
       { 
         key: 'ofc_type_id', 
-        label: 'Cable Type', // FIXED: Added label
+        // label: 'Cable Type', // FIXED
         type: 'multi-select' as const, 
         options: ofcTypeOptions, 
         isLoading: loadingTypes 
       },
       { 
         key: 'ofc_owner_id', 
-        label: 'Owner', // FIXED: Added label
+        // label: 'Owner', // FIXED
         type: 'multi-select' as const, 
         options: ofcOwnerOptions, 
         isLoading: loadingOwners 

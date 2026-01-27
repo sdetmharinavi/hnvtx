@@ -94,14 +94,14 @@ export default function ServicesPage() {
     () => [
       {
         key: 'link_type_id',
-        label: 'Link Type', // Uncommented label
+        // label: 'Link Type',
         type: 'multi-select' as const,
         options: linkTypeOptions,
         isLoading: loadingLinks,
       },
       {
         key: 'allocation_status',
-        label: 'Allocation', // Uncommented label
+        // label: 'Allocation',
         type: 'native-select' as const,
         options: [
           { value: 'allocated', label: 'Allocated' },
@@ -110,7 +110,7 @@ export default function ServicesPage() {
       },
       {
         key: 'status',
-        label: 'Status', // Uncommented label
+        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },

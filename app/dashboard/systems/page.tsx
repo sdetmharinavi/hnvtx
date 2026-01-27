@@ -135,21 +135,21 @@ export default function SystemsPage() {
     () => [
       {
         key: 'system_type_id',
-        label: 'System Type', // Uncommented label
+        // label: 'System Type',
         type: 'multi-select' as const,
         options: systemTypeOptions,
         isLoading: loadingTypes,
       },
       {
         key: 'system_capacity_id',
-        label: 'Capacity', // Uncommented label
+        // label: 'Capacity',
         type: 'multi-select' as const,
         options: capacityOptions,
         isLoading: loadingCaps,
       },
       {
         key: 'status',
-        label: 'Status', // Uncommented label
+        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -158,7 +158,7 @@ export default function SystemsPage() {
       },
       {
         key: 'sortBy',
-        label: 'Sort', // Uncommented label
+        // label: 'Sort',
         type: 'native-select' as const,
         options: [
           { value: 'name', label: 'Name (A-Z)' },

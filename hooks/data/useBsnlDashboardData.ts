@@ -40,7 +40,7 @@ export function useBsnlDashboardData(
   filters: BsnlSearchFilters,
   mapBounds: LatLngBounds | null
 ) {
-  const { sync, isSyncing } = useDataSync();
+  const { sync } = useDataSync();
   const isOnline = useOnlineStatus();
 
   // Ref to prevent double-triggering sync in strict mode
@@ -65,7 +65,6 @@ export function useBsnlDashboardData(
 
   // --- AUTO-HYDRATION LOGIC ---
   useEffect(() => {
-    // Only run if we are online, not currently loading local data, and haven't tried yet
     if (isOnline && !isLocalLoading && !hasAttemptedAutoSync.current) {
       hasAttemptedAutoSync.current = true;
 
@@ -249,7 +248,7 @@ export function useBsnlDashboardData(
 
   return {
     data,
-    globalOptions, // EXPORTED HERE
+    globalOptions,
     isLoading:
       isLocalLoading || (isSyncing && hasAttemptedAutoSync.current && !allNodes?.length),
     isError: false,

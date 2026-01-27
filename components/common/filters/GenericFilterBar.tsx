@@ -10,7 +10,7 @@ import { Filters } from '@/hooks/database';
 
 export type FilterConfig = {
   key: string;
-  label: string;
+  label?: string;
   options: Option[];
   placeholder?: string;
   isLoading?: boolean;

@@ -49,16 +49,18 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
 
     const onlineQueryFn = useCallback(async (): Promise<Row<T>[]> => {
       const searchString = buildServerSearchString(searchQuery, actualServerSearchFields);
-      const rpcFilters = buildRpcFilters({
-        ...filters,
-        or: searchString,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }) as Record<string, any>;
-
-      if (rpcFilters) {
-        if ('coordinates_status' in rpcFilters) delete rpcFilters.coordinates_status;
-        if ('sortBy' in rpcFilters) delete rpcFilters.sortBy;
+      // Explicitly cast filters to Record<string, any> to allow 'or' property injection
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const queryFilters: Record<string, any> = { ...filters };
+      if (searchString) {
+        queryFilters.or = searchString;
       }
+
+      // Remove client-side only filters if they exist (though buildRpcFilters handles most)
+      if ('coordinates_status' in queryFilters) delete queryFilters.coordinates_status;
+      if ('sortBy' in queryFilters) delete queryFilters.sortBy;
+
+      const rpcFilters = buildRpcFilters(queryFilters);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase.rpc(rpcName as any, {
@@ -93,16 +95,22 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         .filter((item) => {
           let matches = true;
 
-          // A. Search
+          // A. Search Logic
           if (searchQuery && searchQuery.trim() !== '') {
             const lowerQuery = searchQuery.toLowerCase().trim();
             const matchesSearch = searchFields.some((field) => {
               const value = item[field];
               if (value === null || value === undefined) return false;
+              // Safe string conversion and check
               return String(value).toLowerCase().includes(lowerQuery);
             });
-            if (!matchesSearch) return false;
+            
+            if (!matchesSearch) {
+              matches = false;
+            }
           }
+
+          if (!matches) return false;
 
           // B. Structured Filtering
           if (filterFn) {
@@ -114,7 +122,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemVal = (item as any)[key];
 
-                // --- THE FIX: Support Array Filtering in Offline Mode ---
+                // Support Array Filtering in Offline Mode
                 if (Array.isArray(value)) {
                   // If filter value is array, check if item value is IN that array
                   // We convert both to strings for safe comparison
@@ -163,6 +171,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       localQueryFn,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       dexieTable: (localDb as any)[tableName],
+      // Important: Ensure searchQuery is a dependency so useLiveQuery updates
       localQueryDeps: [searchQuery, filters],
     });
 

@@ -21,7 +21,7 @@ const normalizeToStringArray = (value: Filters[string]): string[] => {
 };
 
 interface MultiSelectFilterProps {
-  label: string;
+  label?: string;
   filterKey: string;
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
@@ -137,26 +137,23 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="fixed mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top"
+      className='fixed mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top'
       // Stop clicks inside the dropdown from propagating to document
       onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between">
+      onClick={(e) => e.stopPropagation()}>
+      <div className='p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between'>
         <button
           onClick={handleSelectAll}
-          className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-        >
+          className='text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium'>
           Select All
         </button>
         <button
           onClick={handleClear}
-          className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400"
-        >
+          className='text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400'>
           Clear
         </button>
       </div>
-      <div className="max-h-60 overflow-auto p-1 custom-scrollbar">
+      <div className='max-h-60 overflow-auto p-1 custom-scrollbar'>
         {options.map((option) => {
           const isSelected = selectedValues.includes(option.value);
           return (
@@ -167,32 +164,35 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                 isSelected
                   ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
                   : 'text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
+              }`}>
               {isSelected && (
-                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                  <FiCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
+                  <FiCheck className='h-4 w-4 text-blue-600 dark:text-blue-400' />
                 </span>
               )}
-              <span className="block truncate font-medium">{option.label}</span>
+              {option.label && (
+                <>
+                  <span className='block truncate font-medium'> {option.label} </span>
+                </>
+              )}
             </div>
           );
         })}
         {options.length === 0 && (
-          <div className="py-2 px-2 text-xs text-gray-500 text-center">No options available</div>
+          <div className='py-2 px-2 text-xs text-gray-500 text-center'>No options available</div>
         )}
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-2 relative" ref={containerRef}>
+    <div className='space-y-2 relative' ref={containerRef}>
       {label && (
-        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+        <Label className='text-sm font-medium text-gray-700 dark:text-gray-300'>{label}</Label>
       )}
       <button
         ref={triggerRef}
-        type="button"
+        type='button'
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -202,20 +202,18 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
           selectedValues.length > 0
             ? 'border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400'
             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-        }`}
-      >
+        }`}>
         <span
           className={`block truncate ${
             selectedValues.length === 0
               ? 'text-gray-500 dark:text-gray-400'
               : 'text-gray-900 dark:text-white'
-          }`}
-        >
+          }`}>
           {selectedValues.length === 0
             ? `Select ${label || 'Options'}...`
             : selectedValues.length === options.length
-            ? `All ${label} (${selectedValues.length})`
-            : `${label} (${selectedValues.length})`}
+              ? `All ${label} (${selectedValues.length})`
+              : `${label} (${selectedValues.length})`}
         </span>
         <FiChevronDown
           className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${

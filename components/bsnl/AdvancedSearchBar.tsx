@@ -65,8 +65,8 @@ export function AdvancedSearchBar({
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 border rounded-md transition-colors ${
-              showFilters
-                ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300'
+              showFilters 
+                ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300' 
                 : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
             }`}
           >

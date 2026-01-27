@@ -82,14 +82,14 @@ export default function EmployeesPage() {
     () => [
       {
         key: 'employee_designation_id',
-        label: 'Designation', // Uncommented label
+        // label: 'Designation',
         type: 'multi-select' as const,
         options: desOptions,
         isLoading: loadingDes,
       },
       {
         key: 'maintenance_terminal_id',
-        label: 'Area', // Uncommented label
+        // label: 'Area',
         type: 'multi-select' as const,
         options: areaOptions,
         isLoading: loadingAreas,
