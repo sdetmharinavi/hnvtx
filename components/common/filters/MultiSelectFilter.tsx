@@ -6,7 +6,6 @@ import { FiChevronDown, FiCheck } from 'react-icons/fi';
 import { Filters } from '@/hooks/database';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { Label } from '@/components/common/ui/label/Label';
-// IMPORT FIX
 import useIsomorphicLayoutEffect from '@/hooks/useIsomorphicLayoutEffect';
 
 interface MultiSelectFilterProps {
@@ -31,22 +30,32 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
 
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
-  const selectedValues = (filters[filterKey] as string[]) || [];
+  // FIX 1: Robustly normalize the current value to an array
+  const rawValue = filters[filterKey];
+  const selectedValues: string[] = Array.isArray(rawValue)
+    ? rawValue
+    : typeof rawValue === 'string' && rawValue
+    ? [rawValue]
+    : [];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      // If the dropdown is not open, do nothing
+      if (!isOpen) return;
+
+      // Check if click is inside trigger or dropdown content
+      const target = event.target as Node;
+      const isInsideTrigger = triggerRef.current && triggerRef.current.contains(target);
+      const isInsideDropdown = dropdownRef.current && dropdownRef.current.contains(target);
+
+      if (!isInsideTrigger && !isInsideDropdown) {
         setIsOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const updatePosition = () => {
     if (isOpen && triggerRef.current) {
@@ -61,7 +70,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     }
   };
 
-  // FIXED: useIsomorphicLayoutEffect
   useIsomorphicLayoutEffect(() => {
     updatePosition();
     window.addEventListener('resize', updatePosition);
@@ -72,9 +80,20 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     };
   }, [isOpen]);
 
-  const handleToggleOption = (value: string) => {
+  // FIX 2: Stop propagation to prevent immediate closing and handle array logic safely
+  const handleToggleOption = (e: React.MouseEvent, value: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Critical: Stop event bubbling to document listener
+
     setFilters((prev) => {
-      const current = (prev[filterKey] as string[]) || [];
+      const raw = prev[filterKey];
+      // Normalize previous value to array safely
+      const current: string[] = Array.isArray(raw)
+        ? raw
+        : typeof raw === 'string' && raw
+        ? [raw]
+        : [];
+
       let newValues;
 
       if (current.includes(value)) {
@@ -93,12 +112,16 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     });
   };
 
-  const handleSelectAll = () => {
+  const handleSelectAll = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const allValues = options.map((o) => o.value);
     setFilters((prev) => ({ ...prev, [filterKey]: allValues }));
   };
 
-  const handleClear = () => {
+  const handleClear = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setFilters((prev) => {
       const newFilters = { ...prev };
       delete newFilters[filterKey];
@@ -110,7 +133,10 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="absolute mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top"
+      className="fixed mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top"
+      // Stop clicks inside the dropdown from propagating to document
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between">
         <button
@@ -132,7 +158,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
           return (
             <div
               key={option.value}
-              onClick={() => handleToggleOption(option.value)}
+              onClick={(e) => handleToggleOption(e, option.value)}
               className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors ${
                 isSelected
                   ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
@@ -157,11 +183,17 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
 
   return (
     <div className="space-y-2 relative" ref={containerRef}>
-      <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+      {label && (
+        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+      )}
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
         className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 ${
           selectedValues.length > 0
             ? 'border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400'
@@ -176,10 +208,10 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
           }`}
         >
           {selectedValues.length === 0
-            ? `Select ${label}...`
+            ? `Select ${label || 'Options'}...`
             : selectedValues.length === options.length
-              ? `All ${label} (${selectedValues.length})`
-              : `${selectedValues.length} selected`}
+            ? `All ${label} (${selectedValues.length})`
+            : `${label} (${selectedValues.length})`}
         </span>
         <FiChevronDown
           className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${

@@ -21,11 +21,14 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-// REMOVED: useDashboardOverview import (Data passed from main hook now)
+import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 import { formatIP } from '@/utils/formatters';
 
 const OptimizedNetworkMap = dynamic(
-  () => import('@/components/bsnl/OptimizedNetworkMap').then((mod) => mod.OptimizedNetworkMap),
+  () =>
+    import('@/components/bsnl/OptimizedNetworkMap').then(
+      (mod) => mod.OptimizedNetworkMap
+    ),
   {
     ssr: false,
     loading: () => (
@@ -33,7 +36,7 @@ const OptimizedNetworkMap = dynamic(
         <PageSpinner text="Loading Map..." />
       </div>
     ),
-  },
+  }
 );
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'routes';
@@ -58,7 +61,13 @@ export default function ScalableFiberNetworkDashboard() {
 
   const debouncedMapBounds = useDebounce(mapBounds, 500);
 
-  const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds[0]);
+  // Destructure globalOptions from the hook
+  const { data, globalOptions, isLoading, isError, error } = useBsnlDashboardData(
+    filters,
+    debouncedMapBounds[0]
+  );
+
+  const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
@@ -86,25 +95,6 @@ export default function ScalableFiberNetworkDashboard() {
 
   // Generate a stable key for filters to control auto-zoom behavior
   const filterKey = useMemo(() => JSON.stringify(filters), [filters]);
-
-  const { typeOptions, regionOptions, nodeTypeOptions } = useMemo(() => {
-    const allSystemTypes = [
-      ...new Set(data.systems.map((s) => s.system_type_name).filter(Boolean)),
-    ];
-    const allCableTypes = [...new Set(data.ofcCables.map((c) => c.ofc_type_name).filter(Boolean))];
-    const uniqueTypes = [...new Set([...allSystemTypes, ...allCableTypes])].sort();
-    const allRegions = [
-      ...new Set(data.nodes.map((n) => n.maintenance_area_name).filter(Boolean)),
-    ].sort();
-    const allNodeTypes = [
-      ...new Set(data.nodes.map((n) => n.node_type_name).filter(Boolean)),
-    ].sort();
-    return {
-      typeOptions: uniqueTypes as string[],
-      regionOptions: allRegions as string[],
-      nodeTypeOptions: allNodeTypes as string[],
-    };
-  }, [data]);
 
   const systemColumns = useMemo(
     (): Column<Row<'v_systems_complete'>>[] => [
@@ -134,7 +124,7 @@ export default function ScalableFiberNetworkDashboard() {
         render: (val) => <StatusBadge status={val as boolean} />,
       },
     ],
-    [],
+    []
   );
 
   const cableColumns = useMemo(
@@ -171,7 +161,7 @@ export default function ScalableFiberNetworkDashboard() {
         render: (val) => <StatusBadge status={val as boolean} />,
       },
     ],
-    [],
+    []
   );
 
   const systemTableActions = useMemo(
@@ -186,7 +176,7 @@ export default function ScalableFiberNetworkDashboard() {
         },
       },
     ],
-    [],
+    []
   );
 
   const cableTableActions = useMemo(
@@ -201,14 +191,19 @@ export default function ScalableFiberNetworkDashboard() {
         },
       },
     ],
-    [],
+    []
   );
 
-  if (isLoading) return <PageSpinner text="Loading Network Dashboard Data..." />;
-  if (isError) return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
+  const isInitialLoad = isLoading || isOverviewLoading;
 
-  const totalSystems = data.systems.length;
-  const totalCables = data.ofcCables.length;
+  if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
+  if (isError)
+    return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
+
+  const totalSystems =
+    (overviewData?.system_status_counts?.Active ?? 0) +
+    (overviewData?.system_status_counts?.Inactive ?? 0);
+  const totalCables = overviewData?.cable_utilization_summary?.total_cables ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -222,8 +217,19 @@ export default function ScalableFiberNetworkDashboard() {
                   Harinavi Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {totalSystems.toLocaleString()} Systems | {totalCables.toLocaleString()} Cables
-                  {/* Sync status removed from here as it's in the global header */}
+                  {isOverviewLoading ? (
+                    <span className="animate-pulse">... Systems | ... Cables</span>
+                  ) : (
+                    <>
+                      {totalSystems.toLocaleString()} Systems |{' '}
+                      {totalCables.toLocaleString()} Cables
+                    </>
+                  )}
+                  {isLoading && (
+                    <span className="ml-2 inline-flex items-center">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -235,9 +241,10 @@ export default function ScalableFiberNetworkDashboard() {
           filters={filters}
           onFiltersChange={setFilters}
           onClear={clearFilters}
-          typeOptions={typeOptions}
-          regionOptions={regionOptions}
-          nodeTypeOptions={nodeTypeOptions}
+          // THE FIX: Use globalOptions here
+          typeOptions={globalOptions.typeOptions}
+          regionOptions={globalOptions.regionOptions}
+          nodeTypeOptions={globalOptions.nodeTypeOptions}
         />
         <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
           <nav className="flex space-x-8 -mb-px">
@@ -257,9 +264,18 @@ export default function ScalableFiberNetworkDashboard() {
           </nav>
         </div>
         <div className="relative">
+          {isLoading && !isInitialLoad && (
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+              <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Updating results...
+                </span>
+              </div>
+            </div>
+          )}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* Pass the ALREADY FILTERED data to the grid */}
               <DashboardStatsGrid data={data} />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 <OptimizedNetworkMap

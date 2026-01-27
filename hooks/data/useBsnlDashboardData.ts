@@ -1,4 +1,4 @@
-// path: hooks/data/useBsnlDashboardData.ts
+// hooks/data/useBsnlDashboardData.ts
 'use client';
 
 import { useMemo, useEffect, useRef } from 'react';
@@ -16,8 +16,17 @@ interface BsnlDashboardData {
   systems: BsnlSystem[];
 }
 
+interface FilterOptions {
+  typeOptions: string[];
+  regionOptions: string[];
+  nodeTypeOptions: string[];
+}
+
 // Helper to check if a value matches a filter (string or array of strings)
-const matchesFilter = (value: string | null | undefined, filter: string | string[] | undefined) => {
+const matchesFilter = (
+  value: string | null | undefined,
+  filter: string | string[] | undefined
+) => {
   if (!filter || filter.length === 0) return true; // No filter applied
   if (!value) return false; // Filter exists but value is missing
 
@@ -27,7 +36,10 @@ const matchesFilter = (value: string | null | undefined, filter: string | string
   return value === filter;
 };
 
-export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatLngBounds | null) {
+export function useBsnlDashboardData(
+  filters: BsnlSearchFilters,
+  mapBounds: LatLngBounds | null
+) {
   const { sync, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus();
 
@@ -36,8 +48,16 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
 
   // Fetch data from local Dexie DB
   const allNodes = useLiveQuery(() => localDb.v_nodes_complete.toArray(), [], undefined);
-  const allCables = useLiveQuery(() => localDb.v_ofc_cables_complete.toArray(), [], undefined);
-  const allSystems = useLiveQuery(() => localDb.v_systems_complete.toArray(), [], undefined);
+  const allCables = useLiveQuery(
+    () => localDb.v_ofc_cables_complete.toArray(),
+    [],
+    undefined
+  );
+  const allSystems = useLiveQuery(
+    () => localDb.v_systems_complete.toArray(),
+    [],
+    undefined
+  );
 
   // Determine actual loading state (Dexie initial load)
   const isLocalLoading =
@@ -76,6 +96,41 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     }
   }, [isOnline, isLocalLoading, allNodes, allCables, allSystems, sync]);
 
+  // --- DERIVE FILTER OPTIONS (UNFILTERED) ---
+  // This ensures dropdowns show all possibilities, regardless of current selection
+  const globalOptions = useMemo((): FilterOptions => {
+    if (isLocalLoading)
+      return { typeOptions: [], regionOptions: [], nodeTypeOptions: [] };
+
+    const nodes = allNodes || [];
+    const cables = allCables || [];
+    const systems = allSystems || [];
+
+    const systemTypes = new Set(
+      systems.map((s) => s.system_type_name).filter(Boolean) as string[]
+    );
+    const cableTypes = new Set(
+      cables.map((c) => c.ofc_type_name).filter(Boolean) as string[]
+    );
+    const uniqueTypes = Array.from(new Set([...systemTypes, ...cableTypes])).sort();
+
+    const uniqueRegions = Array.from(
+      new Set(
+        nodes.map((n) => n.maintenance_area_name).filter(Boolean) as string[]
+      )
+    ).sort();
+
+    const uniqueNodeTypes = Array.from(
+      new Set(nodes.map((n) => n.node_type_name).filter(Boolean) as string[])
+    ).sort();
+
+    return {
+      typeOptions: uniqueTypes,
+      regionOptions: uniqueRegions,
+      nodeTypeOptions: uniqueNodeTypes,
+    };
+  }, [allNodes, allCables, allSystems, isLocalLoading]);
+
   const data = useMemo((): BsnlDashboardData => {
     if (isLocalLoading) return { nodes: [], ofcCables: [], systems: [] };
 
@@ -107,7 +162,10 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleSystems.forEach((s) => {
         if (
           s.system_name?.toLowerCase().includes(lowerQuery) ||
-          (s.ip_address && s.ip_address.split('/')[0].toString().toLowerCase().includes(lowerQuery))
+          (
+            s.ip_address &&
+            s.ip_address.split('/')[0].toString().toLowerCase().includes(lowerQuery)
+          )
         )
           if (s.id) systemIds.add(s.id);
       });
@@ -125,7 +183,7 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       visibleSystems = visibleSystems.filter((s) => s.status === isActive);
     }
 
-    // --- 3. ATTRIBUTE FILTERS (UPDATED FOR MULTI-SELECT) ---
+    // --- 3. ATTRIBUTE FILTERS ---
     // Region
     if (filters.region && filters.region.length > 0) {
       visibleNodes = visibleNodes.filter((n) =>
@@ -154,7 +212,10 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
     if (mapBounds) {
       const bufferedBounds = mapBounds.pad(0.5);
       visibleNodes = visibleNodes.filter(
-        (n) => n.latitude && n.longitude && bufferedBounds.contains([n.latitude, n.longitude])
+        (n) =>
+          n.latitude &&
+          n.longitude &&
+          bufferedBounds.contains([n.latitude, n.longitude])
       );
     }
 
@@ -169,10 +230,14 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
       const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
 
       visibleCables = visibleCables.filter(
-        (c) => (c.sn_id && visibleNodeIds.has(c.sn_id)) || (c.en_id && visibleNodeIds.has(c.en_id))
+        (c) =>
+          (c.sn_id && visibleNodeIds.has(c.sn_id)) ||
+          (c.en_id && visibleNodeIds.has(c.en_id))
       );
 
-      visibleSystems = visibleSystems.filter((s) => s.node_id && visibleNodeIds.has(s.node_id));
+      visibleSystems = visibleSystems.filter(
+        (s) => s.node_id && visibleNodeIds.has(s.node_id)
+      );
     }
 
     return {
@@ -184,7 +249,9 @@ export function useBsnlDashboardData(filters: BsnlSearchFilters, mapBounds: LatL
 
   return {
     data,
-    isLoading: isLocalLoading || (isSyncing && hasAttemptedAutoSync.current && !allNodes?.length),
+    globalOptions, // EXPORTED HERE
+    isLoading:
+      isLocalLoading || (isSyncing && hasAttemptedAutoSync.current && !allNodes?.length),
     isError: false,
     error: null,
   };
