@@ -7,10 +7,14 @@ import { employee_designationsRowSchema } from '@/schemas/zod-schemas';
 // --- TYPE DEFINITIONS (DERIVED FROM ZOD) ---
 export type Designation = z.infer<typeof employee_designationsRowSchema>;
 
-export interface DesignationWithRelations extends Designation {
+// THE FIX: Changed to a type intersection (&) and added an index signature ([key: string]: any)
+// to make it compatible with the BaseRecord type required by useCrudManager.
+export type DesignationWithRelations = Designation & {
   parent_designation: DesignationWithRelations | null;
   child_designations: DesignationWithRelations[];
-}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+};
 
 // --- CONFIGURATION (Unchanged) ---
 export const designationConfig: EntityConfig<DesignationWithRelations> = {

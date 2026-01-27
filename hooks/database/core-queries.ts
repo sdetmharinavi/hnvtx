@@ -7,7 +7,7 @@ import {
   TableName,
   Row,
   RowWithCount,
-  DeduplicationOptions,
+  DeduplicationOptions, // Still imported for backward compat in other files if needed, but unused here
   InfiniteQueryPage,
   UseTableQueryOptions,
   UseTableInfiniteQueryOptions,
@@ -18,11 +18,10 @@ import {
 import {
   applyFilters,
   applyOrdering,
-  buildDeduplicationQuery,
   createQueryKey,
 } from './utility-functions';
-import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb
-import { useOnlineStatus } from '@/hooks/useOnlineStatus'; // THE FIX: Import online status
+import { localDb } from '@/hooks/data/localDb';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 // Generic table query hook with enhanced features
 export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResult<Row<T>>>(
@@ -38,8 +37,6 @@ export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResul
     orderBy,
     limit,
     offset,
-    deduplication,
-    aggregation,
     performance,
     includeCount = false,
     ...queryOptions
@@ -51,40 +48,11 @@ export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResul
       filters,
       columns,
       orderBy,
-      deduplication,
-      aggregation,
       undefined,
       limit,
       offset
     ),
     queryFn: async (): Promise<PagedQueryResult<Row<T>>> => {
-      // Deduplication and aggregation logic remains the same (Server-side only for now)
-      if (deduplication) {
-        const sql = buildDeduplicationQuery(tableName as string, deduplication, filters, orderBy);
-        const { data: rpcData, error: rpcError } = await supabase.rpc('execute_sql', {
-          sql_query: sql,
-        });
-        if (rpcError) throw rpcError;
-        if (rpcData && (rpcData as any).error)
-          throw new Error(`Database RPC Error: ${(rpcData as any).error}`);
-        return {
-          data: (rpcData as any)?.result || [],
-          count: ((rpcData as any)?.result || []).length,
-        };
-      }
-
-      if (aggregation) {
-        const { data, error } = await supabase.rpc('aggregate_query', {
-          table_name: tableName,
-          aggregation_options: aggregation as unknown as Json,
-          filters: (filters || {}) as unknown as Json,
-          order_by: (orderBy || []) as unknown as Json,
-        });
-        if (error) throw error;
-        const resultData = (data as any)?.result || [];
-        return { data: resultData, count: resultData.length };
-      }
-
       // Main query logic
       let query = supabase
         .from(tableName as any)
@@ -133,8 +101,6 @@ export function useTableInfiniteQuery<
       columns,
       orderBy,
       undefined,
-      undefined,
-      undefined,
       pageSize
     ),
     queryFn: async ({ pageParam = 0 }) => {
@@ -166,7 +132,7 @@ export function useTableInfiniteQuery<
 }
 
 /**
- * NEW: Generic single record query hook using RPC (Bypasses Table RLS for View logic)
+ * Generic single record query hook using RPC (Bypasses Table RLS for View logic)
  * Use this for Views where the user might not have direct table access.
  */
 export function useRpcRecord<T extends TableOrViewName, TData = Row<T> | null>(
@@ -240,9 +206,6 @@ export function useTableRecord<T extends TableOrViewName, TData = Row<T> | null>
         const table = localDb.table(tableName);
         if (table) {
           const localData = await table.get(id);
-          // If found locally, return it immediately.
-          // Note: This relies on the table being synced. If it's not in the sync list,
-          // this might return undefined, triggering the online fallback.
           if (localData) {
             return localData as Row<T>;
           }
@@ -274,13 +237,12 @@ export function useTableRecord<T extends TableOrViewName, TData = Row<T> | null>
       return null;
     },
     enabled: !!id && (queryOptions?.enabled ?? true),
-    // Increase stale time so we don't hammer the DB for the same record
     staleTime: Infinity,
     ...queryOptions,
   });
 }
 
-// Get unique values for a specific column (Server-side mainly, could optimize for local)
+// Get unique values for a specific column
 export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
   supabase: SupabaseClient<Database>,
   tableName: T,
@@ -322,7 +284,8 @@ export function useDeduplicated<T extends TableName>(
 ) {
   return useTableQuery(supabase, tableName, {
     ...options,
-    deduplication: deduplicationOptions,
+    // deduplication is removed from implementation, this hook acts as standard table query now.
+    // If deduplication is needed, it should be handled by a specific RPC or view.
   });
 }
 

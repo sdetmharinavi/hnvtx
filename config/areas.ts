@@ -8,12 +8,14 @@ import {
   Maintenance_areasInsertSchema,
 } from '@/schemas/zod-schemas';
 
-// THE FIX: Change from 'interface' to a 'type' alias using a type intersection (&).
-// This correctly merges the index signature from the Zod type with the new properties.
+// THE FIX: Changed from 'interface' to a 'type' alias and added an index signature (& Record<string, any>)
+// to make it compatible with the BaseRecord constraint in useCrudManager.
 export type MaintenanceAreaWithRelations = Maintenance_areasRowSchema & {
   area_type: Lookup_typesRowSchema | null;
   parent_area: MaintenanceAreaWithRelations | null;
   child_areas: MaintenanceAreaWithRelations[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
 };
 
 export interface AreaFormModalProps {

@@ -2,8 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryKey } from '@tanstack/react-query';
 import {
-  AggregationOptions,
-  DeduplicationOptions,
   EnhancedOrderBy,
   FilterOperator,
   Filters,
@@ -17,9 +15,6 @@ export function buildRpcFilters(filters: Filters): Json {
   for (const key in filters) {
     const filterValue = filters[key];
 
-    // FIX: Correctly handle 'or' filter.
-    // If it's an object (Record<string, string>), pass it as a JSON object.
-    // If it's a string, pass it as a string.
     if (key === 'or') {
       if (typeof filterValue === 'object' && filterValue !== null && !Array.isArray(filterValue)) {
         rpcFilters.or = filterValue as unknown as Json;
@@ -42,8 +37,6 @@ export const createQueryKey = (
   filters?: Filters,
   columns?: string,
   orderBy?: OrderBy[],
-  deduplication?: DeduplicationOptions,
-  aggregation?: AggregationOptions,
   enhancedOrderBy?: EnhancedOrderBy[],
   limit?: number,
   offset?: number
@@ -53,8 +46,6 @@ export const createQueryKey = (
     filters,
     columns,
     orderBy,
-    deduplication,
-    aggregation,
     enhancedOrderBy,
     limit,
     offset,
@@ -143,64 +134,6 @@ export function applyOrdering(query: any, orderBy: OrderBy[]): any {
     }
   });
   return modifiedQuery;
-}
-
-export function buildDeduplicationQuery(
-  tableName: string,
-  deduplication: DeduplicationOptions,
-  filters?: Filters,
-  orderBy?: OrderBy[]
-): string {
-  const { columns, orderBy: dedupOrderBy } = deduplication;
-  const partitionBy = columns.join(', ');
-  const rowNumberOrder = dedupOrderBy?.length
-    ? dedupOrderBy.map((o) => `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}`).join(', ')
-    : 'id ASC';
-
-  let finalOrderClause = '';
-  if (orderBy && orderBy.length > 0) {
-    const orderParts = orderBy.map(
-      (o) =>
-        `${o.column} ${o.ascending !== false ? 'ASC' : 'DESC'}${
-          o.nullsFirst !== undefined ? (o.nullsFirst ? ' NULLS FIRST' : ' NULLS LAST') : ''
-        }`
-    );
-    finalOrderClause = `ORDER BY ${orderParts.join(', ')}`;
-  }
-
-  let whereClause = '';
-  if (filters && Object.keys(filters).length > 0) {
-    const conditions = Object.entries(filters)
-      .filter(([, value]) => value !== undefined && value !== null)
-      .map(([key, value]) => {
-        if (value && typeof value === 'object' && !Array.isArray(value) && 'operator' in value) {
-          const filterValue =
-            typeof value.value === 'string'
-              ? `'${value.value.toString().replace(/'/g, "''")}'`
-              : value.value;
-          return `${key} = ${filterValue}`;
-        }
-        if (Array.isArray(value)) {
-          const arrayValues = value
-            .map((v) => (typeof v === 'string' ? `'${v.replace(/'/g, "''")}'` : v))
-            .join(',');
-          return `${key} IN (${arrayValues})`;
-        }
-        const filterValue = typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : value;
-        return `${key} = ${filterValue}`;
-      });
-
-    if (conditions.length > 0) whereClause = `WHERE ${conditions.join(' AND ')}`;
-  }
-
-  return `
-    WITH deduplicated AS (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY ${partitionBy} ORDER BY ${rowNumberOrder}) as rn
-      FROM ${tableName}
-      ${whereClause}
-    )
-    SELECT * FROM deduplicated WHERE rn = 1 ${finalOrderClause}
-  `;
 }
 
 export function convertRichFiltersToSimpleJson(filters: Filters): Json {
