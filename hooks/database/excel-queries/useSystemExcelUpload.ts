@@ -9,10 +9,8 @@ import {
   RpcFunctionArgs,
   UploadColumnMapping,
   UseExcelUploadOptions,
-  ValidationError,
 } from '@/hooks/database/queries-type-helpers';
-import { logRowProcessing, validateValue } from './excel-helpers';
-import { parseExcelFile } from '@/utils/excel-parser';
+import { processExcelData } from './excel-helpers';
 
 export interface SystemUploadOptions {
   file: File;
@@ -32,85 +30,42 @@ export function useSystemExcelUpload(
     mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
       const { file, columns } = uploadOptions;
 
-      const processingLogs: ReturnType<typeof logRowProcessing>[] = [];
-      const allValidationErrors: ValidationError[] = [];
+      toast.info('Processing Excel file...');
+
+      // 1. Process Data using Generic Helper
+      const { validRecords, validationErrors, processingLogs, skippedRows, errorCount } =
+        await processExcelData(file, columns);
+
       const uploadResult: EnhancedUploadResult = {
         successCount: 0,
-        errorCount: 0,
-        totalRows: 0,
+        errorCount: errorCount,
+        totalRows: validRecords.length + errorCount, // Total non-skipped rows
         errors: [],
         processingLogs,
-        validationErrors: allValidationErrors,
-        skippedRows: 0,
+        validationErrors,
+        skippedRows,
       };
 
-      toast.info('Reading and parsing Excel file...');
-      const jsonData = await parseExcelFile(file);
-
-      if (!jsonData || jsonData.length < 2) {
-        toast.warning('No data found in the Excel file.');
-        return uploadResult;
-      }
-
-      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
-      const headerMap: Record<string, number> = {};
-      excelHeaders.forEach((header, index) => {
-        headerMap[header.toLowerCase()] = index;
-      });
-
-      const getHeaderIndex = (name: string): number | undefined =>
-        headerMap[String(name).trim().toLowerCase()];
-
-      const dataRows = jsonData.slice(1);
-      const recordsToProcess: RpcPayload[] = [];
-
-      toast.info(`Found ${dataRows.length} rows. Validating...`);
-
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i] as unknown[];
-        const excelRowNumber = i + 2;
-        const originalData: Record<string, unknown> = {};
-        excelHeaders.forEach((header, idx) => {
-          originalData[header] = row[idx];
+      if (validationErrors.length > 0) {
+        // Map validation errors to uploadResult.errors
+        validationErrors.forEach((err) => {
+          uploadResult.errors.push({
+            rowIndex: err.rowIndex,
+            data: err.data,
+            error: err.error,
+          });
         });
 
-        if (row.every((cell) => cell === null || String(cell).trim() === '')) {
-          uploadResult.skippedRows++;
-          continue;
+        if (validRecords.length === 0) {
+          toast.error(`${validationErrors.length} validation errors found. Check report.`);
+          return uploadResult;
         }
+      }
 
-        const rowValidationErrors: ValidationError[] = [];
-        const processedData: Record<string, unknown> = {};
+      // 2. Prepare RPC Payload
+      const recordsToProcess: RpcPayload[] = [];
 
-        for (const mapping of columns) {
-          const colIndex = getHeaderIndex(mapping.excelHeader);
-          const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
-
-          let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
-          if (typeof finalValue === 'string') finalValue = finalValue.trim();
-
-          const validationError = validateValue(
-            finalValue,
-            mapping.dbKey,
-            mapping.required || false
-          );
-          if (validationError) {
-            rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
-          }
-          processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
-        }
-
-        if (rowValidationErrors.length > 0) {
-          allValidationErrors.push(...rowValidationErrors);
-          uploadResult.errorCount++;
-          uploadResult.errors.push({
-            rowIndex: excelRowNumber,
-            data: originalData,
-            error: rowValidationErrors.map((e) => e.error).join('; '),
-          });
-          continue;
-        }
-
+      for (const processedData of validRecords) {
         // Handle JSON for rings
         let ringAssociationsJson: Json | null = null;
         if (
@@ -119,10 +74,14 @@ export function useSystemExcelUpload(
         ) {
           try {
             ringAssociationsJson = JSON.parse(processedData.ring_associations);
-          } catch (e) {
-            console.error(e);
-            // Log error but maybe continue? No, validation fail.
+          } catch {
+            // If JSON fails, skip this row or log error
             uploadResult.errorCount++;
+            uploadResult.errors.push({
+              rowIndex: -1,
+              data: processedData,
+              error: 'Invalid JSON for ring_associations',
+            });
             continue;
           }
         }
@@ -142,7 +101,7 @@ export function useSystemExcelUpload(
             (processedData.maintenance_terminal_id as string | null) || undefined,
           p_commissioned_on: (processedData.commissioned_on as string | null) || undefined,
           p_s_no: (processedData.s_no as string | null) || undefined,
-          p_asset_no: (processedData.asset_no as string | null) || undefined, // Added
+          p_asset_no: (processedData.asset_no as string | null) || undefined,
           p_remark: (processedData.remark as string | null) || undefined,
           p_make: (processedData.make as string | null) || undefined,
           p_ring_associations: ringAssociationsJson,
@@ -151,32 +110,28 @@ export function useSystemExcelUpload(
 
         if (!rpcPayload.p_system_type_id || !rpcPayload.p_node_id) {
           uploadResult.errorCount++;
+          uploadResult.errors.push({
+            rowIndex: -1,
+            data: processedData,
+            error: 'Missing required system_type_id or node_id after mapping',
+          });
           continue;
         }
 
         recordsToProcess.push(rpcPayload);
       }
 
-      uploadResult.totalRows = recordsToProcess.length;
-
       if (recordsToProcess.length === 0) {
-        if (allValidationErrors.length > 0) {
-          toast.error(`${allValidationErrors.length} rows had validation errors. See console.`);
-          console.error('System Upload Validation Errors:', allValidationErrors);
-        } else {
-          toast.warning('No valid records to upload.');
-        }
+        toast.warning('No valid records to upload.');
         return uploadResult;
       }
 
-      // Process with concurrency limit
+      // 3. Upload Concurrently
       const CONCURRENCY_LIMIT = 5;
-      toast.info(`Uploading ${recordsToProcess.length} systems in parallel...`);
+      toast.info(`Uploading ${recordsToProcess.length} systems...`);
 
-      // Chunk the array
       for (let i = 0; i < recordsToProcess.length; i += CONCURRENCY_LIMIT) {
         const chunk = recordsToProcess.slice(i, i + CONCURRENCY_LIMIT);
-
         await Promise.all(
           chunk.map(async (record) => {
             try {
@@ -193,15 +148,12 @@ export function useSystemExcelUpload(
             }
           })
         );
-
-        // Optional: Update progress
-        // const progress = Math.round(((i + chunk.length) / recordsToProcess.length) * 100);
       }
 
       if (showToasts) {
         if (uploadResult.errorCount > 0) {
           toast.warning(
-            `${uploadResult.successCount} systems saved, ${uploadResult.errorCount} failed.`
+            `${uploadResult.successCount} saved, ${uploadResult.errorCount} failed.`
           );
         } else {
           toast.success(`Successfully saved ${uploadResult.successCount} systems.`);
@@ -212,7 +164,6 @@ export function useSystemExcelUpload(
     },
     onSuccess: (result, variables) => {
       if (result.successCount > 0) {
-        // Invalidate relevant queries
         queryClient.invalidateQueries({ queryKey: ['table', 'systems'] });
         queryClient.invalidateQueries({ queryKey: ['table', 'v_systems_complete'] });
         queryClient.invalidateQueries({ queryKey: ['paged-data', 'v_systems_complete'] });

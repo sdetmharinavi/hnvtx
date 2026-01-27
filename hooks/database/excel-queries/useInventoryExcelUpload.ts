@@ -8,7 +8,7 @@ import {
   UseExcelUploadOptions,
   ValidationError,
 } from '@/hooks/database/queries-type-helpers';
-import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
+import { parseExcelFile } from '@/utils/excel-parser';
 
 interface InventoryUploadOptions {
   file: File;
@@ -17,7 +17,7 @@ interface InventoryUploadOptions {
 export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inventory_items'>) {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { showToasts = true, ...mutationOptions } = options || {}; // Destructure
+  const { showToasts = true, ...mutationOptions } = options || {};
 
   return useMutation<EnhancedUploadResult, Error, InventoryUploadOptions>({
     mutationFn: async ({ file }) => {
@@ -34,8 +34,6 @@ export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inven
       };
 
       toast.info('Parsing Excel file...');
-
-      // THE FIX: Use off-thread parser
       const jsonData = await parseExcelFile(file);
 
       if (jsonData.length < 2) {
@@ -46,35 +44,27 @@ export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inven
       const headers = (jsonData[0] as string[]).map((h) => String(h).trim().toLowerCase());
       const dataRows = jsonData.slice(1);
 
-      // Enhanced Column Mapping
+      // Flexible Column Mapping for Inventory
       const columnMap: Record<string, string> = {
-        'asset no': 'asset_no',
-        'asset number': 'asset_no',
-        name: 'name',
-        'item name': 'name',
-        description: 'description',
-        category: 'category',
-        status: 'status',
-        location: 'location',
-        'store location': 'location',
+        'asset no': 'asset_no', 'asset number': 'asset_no', 'asset_no': 'asset_no',
+        'name': 'name', 'item name': 'name', 'item_name': 'name',
+        'description': 'description',
+        'category': 'category',
+        'status': 'status',
+        'location': 'location', 'store location': 'location',
         'functional location': 'functional_location',
-        quantity: 'quantity',
-        qty: 'quantity',
-        vendor: 'vendor',
-        cost: 'cost',
-        'unit cost': 'cost',
+        'quantity': 'quantity', 'qty': 'quantity',
+        'vendor': 'vendor',
+        'cost': 'cost', 'unit cost': 'cost',
         'purchase date': 'purchase_date',
-        action: 'transaction_type',
-        'transaction type': 'transaction_type',
-        type: 'transaction_type',
-        'issued to': 'issued_to',
-        party: 'issued_to',
-        reason: 'issue_reason',
-        remarks: 'issue_reason',
+        'action': 'transaction_type', 'transaction type': 'transaction_type', 'type': 'transaction_type',
+        'issued to': 'issued_to', 'party': 'issued_to',
+        'reason': 'issue_reason', 'remarks': 'issue_reason',
         'transaction date': 'transaction_date',
       };
 
-      const validPayloads = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const validPayloads: any[] = [];
 
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i] as unknown[];
@@ -83,7 +73,7 @@ export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inven
         let isEmpty = true;
 
         headers.forEach((header, idx) => {
-          if (row[idx]) isEmpty = false;
+          if (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') isEmpty = false;
           const cleanHeader = header.replace(/\(read only history\)/g, '').trim();
           const key = columnMap[cleanHeader] || columnMap[header];
 
@@ -103,22 +93,12 @@ export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inven
 
         const rowErrors: ValidationError[] = [];
         if (!rowData.name)
-          rowErrors.push({
-            rowIndex: i,
-            column: 'name',
-            value: '',
-            error: 'Item Name is required',
-          });
+          rowErrors.push({ rowIndex: i, column: 'name', value: '', error: 'Item Name is required' });
 
         const action = (rowData.transaction_type || 'ADD').toUpperCase();
         if (action === 'ISSUE') {
           if (!rowData.issued_to)
-            rowErrors.push({
-              rowIndex: i,
-              column: 'issued_to',
-              value: '',
-              error: 'Issued To is required for ISSUE action',
-            });
+            rowErrors.push({ rowIndex: i, column: 'issued_to', value: '', error: 'Issued To is required for ISSUE action' });
         }
 
         if (rowErrors.length > 0) {
@@ -165,28 +145,26 @@ export function useInventoryExcelUpload(options?: UseExcelUploadOptions<'v_inven
         }
       }
 
-      if (uploadResult.errorCount > 0) {
-        toast.warning(`${uploadResult.successCount} processed, ${uploadResult.errorCount} failed.`);
-      } else {
-        toast.success(`Successfully processed ${uploadResult.successCount} items.`);
+      if (showToasts) {
+        if (uploadResult.errorCount > 0) {
+          toast.warning(`${uploadResult.successCount} processed, ${uploadResult.errorCount} failed.`);
+        } else {
+          toast.success(`Successfully processed ${uploadResult.successCount} items.`);
+        }
       }
 
       return uploadResult;
     },
     onSuccess: (result, variables) => {
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['inventory_items-data'] });
       queryClient.invalidateQueries({ queryKey: ['v_inventory_items'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-history'] });
-
-      // Trigger custom onSuccess if provided (to open modal)
       if (mutationOptions.onSuccess) {
-        mutationOptions.onSuccess(result, { ...variables, columns: [] }); // Dummy columns to satisfy type
+        mutationOptions.onSuccess(result, { ...variables, columns: [] });
       }
     },
     onError: (err, variables) => {
       if (showToasts) toast.error(`Import failed: ${err.message}`);
-      // Trigger custom onError
       if (mutationOptions.onError) {
         mutationOptions.onError(err, { ...variables, columns: [] });
       }

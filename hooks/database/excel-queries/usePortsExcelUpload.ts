@@ -7,11 +7,9 @@ import {
   EnhancedUploadResult,
   UploadColumnMapping,
   UseExcelUploadOptions,
-  ValidationError,
 } from '@/hooks/database/queries-type-helpers';
-import { generateUUID, validateValue } from './excel-helpers';
+import { generateUUID, processExcelData } from './excel-helpers';
 import { Ports_managementInsertSchema } from '@/schemas/zod-schemas';
-import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 
 export interface PortsUploadOptions {
   file: File;
@@ -39,104 +37,62 @@ export function usePortsExcelUpload(
     mutationFn: async (uploadOptions): Promise<EnhancedUploadResult> => {
       const { file, columns, systemId } = uploadOptions;
 
+      toast.info('Processing Excel file...');
+
+      // 1. Process Data
+      const { validRecords, validationErrors, processingLogs, skippedRows, errorCount } =
+        await processExcelData(file, columns, { system_id: systemId });
+
       const uploadResult: EnhancedUploadResult = {
         successCount: 0,
-        errorCount: 0,
-        totalRows: 0,
+        errorCount: errorCount,
+        totalRows: validRecords.length + errorCount,
         errors: [],
-        processingLogs: [],
-        validationErrors: [],
-        skippedRows: 0,
+        processingLogs,
+        validationErrors,
+        skippedRows,
       };
 
-      toast.info('Reading and parsing Excel file...');
-
-      // THE FIX: Use off-thread parser
-      const jsonData = await parseExcelFile(file);
-
-      if (jsonData.length < 2) {
-        toast.warning('No data found in the Excel file.');
-        return uploadResult;
-      }
-
-      const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
-      const headerMap: Record<string, number> = {};
-      excelHeaders.forEach((header, index) => {
-        headerMap[header.toLowerCase()] = index;
-      });
-
-      const dataRows = jsonData.slice(1);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const recordsToUpsert: any[] = [];
-      const allValidationErrors: ValidationError[] = [];
-
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i] as unknown[];
-        const originalData: Record<string, unknown> = {};
-        excelHeaders.forEach((header, idx) => {
-          originalData[header] = row[idx];
+      if (validationErrors.length > 0) {
+        validationErrors.forEach((err) => {
+          uploadResult.errors.push({
+            rowIndex: err.rowIndex,
+            data: err.data,
+            error: err.error,
+          });
         });
-
-        if (row.every((cell) => cell === null || String(cell).trim() === '')) {
-          uploadResult.skippedRows++;
-          continue;
+        if (validRecords.length === 0) {
+           toast.error('Validation errors found. Check report.');
+           return uploadResult;
         }
-
-        const rowValidationErrors: ValidationError[] = [];
-        const processedData: Record<string, unknown> = {};
-
-        for (const mapping of columns) {
-          if (mapping.dbKey === 'system_id') continue;
-
-          const colIndex = headerMap[mapping.excelHeader.toLowerCase()];
-          const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
-          let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
-          if (typeof finalValue === 'string') finalValue = finalValue.trim();
-
-          const validationError = validateValue(
-            finalValue,
-            mapping.dbKey,
-            mapping.required || false
-          );
-          if (validationError) {
-            rowValidationErrors.push({ ...validationError, rowIndex: i, data: originalData });
-          }
-          processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
-        }
-
-        if (rowValidationErrors.length > 0) {
-          allValidationErrors.push(...rowValidationErrors);
-          uploadResult.errorCount++;
-          continue;
-        }
-
-        const recordToUpsert = {
-          id:
-            processedData.id &&
-            typeof processedData.id === 'string' &&
-            processedData.id.trim() !== ''
-              ? processedData.id
-              : generateUUID(),
-          system_id: systemId,
-          port: processedData.port as string | null,
-          port_type_id: processedData.port_type_id as string | null,
-          port_capacity: processedData.port_capacity as string | null,
-          sfp_serial_no: processedData.sfp_serial_no as string | null,
-          port_utilization:
-            processedData.port_utilization !== undefined
-              ? Boolean(processedData.port_utilization)
-              : false,
-          port_admin_status:
-            processedData.port_admin_status !== undefined
-              ? Boolean(processedData.port_admin_status)
-              : false,
-          services_count: parseNumber(processedData.services_count),
-        };
-
-        recordsToUpsert.push(recordToUpsert);
       }
 
-      uploadResult.totalRows = recordsToUpsert.length;
+      // 2. Prepare Payload
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recordsToUpsert = validRecords.map((processedData: any) => ({
+        id:
+          processedData.id &&
+          typeof processedData.id === 'string' &&
+          processedData.id.trim() !== ''
+            ? processedData.id
+            : generateUUID(),
+        system_id: systemId,
+        port: processedData.port as string | null,
+        port_type_id: processedData.port_type_id as string | null,
+        port_capacity: processedData.port_capacity as string | null,
+        sfp_serial_no: processedData.sfp_serial_no as string | null,
+        port_utilization:
+          processedData.port_utilization !== undefined
+            ? Boolean(processedData.port_utilization)
+            : false,
+        port_admin_status:
+          processedData.port_admin_status !== undefined
+            ? Boolean(processedData.port_admin_status)
+            : false,
+        services_count: parseNumber(processedData.services_count),
+      }));
+
+      // 3. Upsert
       if (recordsToUpsert.length > 0) {
         toast.info(`Upserting ${recordsToUpsert.length} port records...`);
         const { error } = await supabase
@@ -147,6 +103,7 @@ export function usePortsExcelUpload(
 
         if (error) {
           uploadResult.errorCount = recordsToUpsert.length;
+          uploadResult.errors.push({ rowIndex: -1, data: 'Batch Error', error: error.message });
           toast.error(`Import failed: ${error.message}`);
           throw error;
         }
@@ -161,8 +118,6 @@ export function usePortsExcelUpload(
           );
         } else if (uploadResult.successCount > 0) {
           toast.success(`Successfully upserted ${uploadResult.successCount} ports.`);
-        } else {
-          toast.info('No new valid ports were uploaded.');
         }
       }
 

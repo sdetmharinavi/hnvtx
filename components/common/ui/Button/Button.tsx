@@ -20,10 +20,12 @@ const variants = {
   primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300',
   secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-300',
   success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-300',
-  warning: 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500 disabled:bg-yellow-300',
+  warning:
+    'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500 disabled:bg-yellow-300',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300',
   ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500 disabled:text-gray-400',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 disabled:text-gray-400 disabled:border-gray-200',
+  outline:
+    'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 disabled:text-gray-400 disabled:border-gray-200',
 };
 
 const sizes = {
@@ -59,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
     const isDisabled = disabled || loading;
 
@@ -81,38 +83,28 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // Disabled cursor
           isDisabled && 'cursor-not-allowed',
           // Custom className
-          className
+          className,
         )}
         {...props}
       >
         {/* Loading spinner */}
-        {loading && (
-          <ButtonSpinner
-            size={size === 'xs' ? 'xs' : size === 'sm' ? 'sm' : 'sm'}
-          />
-        )}
+        {loading && <ButtonSpinner size={size === 'xs' ? 'xs' : size === 'sm' ? 'sm' : 'sm'} />}
 
         {/* Left icon */}
-        {!loading && leftIcon && (
-          <span className="mr-2 flex items-center">
-            {leftIcon}
-          </span>
-        )}
+        {!loading && leftIcon && <span className='mr-2 flex items-center'>{leftIcon}</span>}
 
         {/* Button content */}
-        <span>
-          {loading && loadingText ? loadingText : children}
-        </span>
+        <span>{loading && loadingText ? loadingText : children}</span>
 
         {/* Right icon or dropdown indicator */}
         {!loading && (rightIcon || isdropdown) && (
-          <span className="ml-2 flex items-center">
-            {rightIcon || <FiChevronDown className="h-4 w-4" />}
+          <span className='ml-2 flex items-center'>
+            {rightIcon || <FiChevronDown className='h-4 w-4' />}
           </span>
         )}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = 'Button';
@@ -137,19 +129,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <Button
         ref={ref}
         size={size}
-        className={cn(
-          'aspect-square p-0!',
-          className
-        )}
+        className={cn('aspect-square p-0!', className)}
         aria-label={label}
         {...props}
       >
-        <span className={iconSizes[size]}>
-          {icon}
-        </span>
+        <span className={iconSizes[size]}>{icon}</span>
       </Button>
     );
-  }
+  },
 );
 
 IconButton.displayName = 'IconButton';
@@ -173,11 +160,15 @@ export const ButtonGroup: React.FC<ButtonGroupProps> = ({
       className={cn(
         'inline-flex',
         orientation === 'horizontal' ? 'flex-row' : 'flex-col',
-        attached && orientation === 'horizontal' && '[&>*:not(:first-child)]:ml-0 [&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none *:border-r-0 [&>*:last-child]:border-r',
-        attached && orientation === 'vertical' && '[&>*:not(:first-child)]:mt-0 [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none *:border-b-0 [&>*:last-child]:border-b',
+        attached &&
+          orientation === 'horizontal' &&
+          '[&>*:not(:first-child)]:ml-0 [&>*:not(:first-child)]:rounded-l-none [&>*:not(:last-child)]:rounded-r-none *:border-r-0 [&>*:last-child]:border-r',
+        attached &&
+          orientation === 'vertical' &&
+          '[&>*:not(:first-child)]:mt-0 [&>*:not(:first-child)]:rounded-t-none [&>*:not(:last-child)]:rounded-b-none *:border-b-0 [&>*:last-child]:border-b',
         !attached && orientation === 'horizontal' && 'space-x-2',
         !attached && orientation === 'vertical' && 'space-y-2',
-        className
+        className,
       )}
     >
       {children}
@@ -214,13 +205,13 @@ export const FloatingActionButton: React.FC<FABProps> = ({
 
   return (
     <Button
-      variant="primary"
-      rounded="full"
+      variant='primary'
+      rounded='full'
       className={cn(
         positions[position],
         fabSizes[size],
         'shadow-lg hover:shadow-xl z-50 p-0!',
-        className
+        className,
       )}
       {...props}
     >
@@ -228,40 +219,3 @@ export const FloatingActionButton: React.FC<FABProps> = ({
     </Button>
   );
 };
-
-// Specialized exam buttons
-export const SubmitButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button variant="success" {...props} />
-);
-
-export const CancelButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button variant="outline" {...props} />
-);
-
-export const DeleteButton: React.FC<Omit<ButtonProps, 'variant'>> = (props) => (
-  <Button variant="danger" {...props} />
-);
-
-export const NextButton: React.FC<Omit<ButtonProps, 'variant' | 'rightIcon'>> = (props) => (
-  <Button
-    variant="primary"
-    rightIcon={
-      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    }
-    {...props}
-  />
-);
-
-export const PreviousButton: React.FC<Omit<ButtonProps, 'variant' | 'leftIcon'>> = (props) => (
-  <Button
-    variant="secondary"
-    leftIcon={
-      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-      </svg>
-    }
-    {...props}
-  />
-);

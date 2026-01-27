@@ -1,20 +1,6 @@
 // path: app/api/ors-distance/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-
-// Helper: Calculate straight-line distance
-function calculateHaversine(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return (R * c).toFixed(2); // Returns string "12.34"
-}
+import { haversineDistance } from '@/utils/distance';
 
 export async function POST(req: NextRequest) {
   const controller = new AbortController();
@@ -47,7 +33,7 @@ export async function POST(req: NextRequest) {
     // If no key, fallback immediately to Haversine
     if (!ORS_API_KEY) {
       console.warn('ORS API key missing. Using fallback distance.');
-      const dist = calculateHaversine(a.lat, a.long, b.lat, b.long);
+      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
@@ -73,7 +59,7 @@ export async function POST(req: NextRequest) {
       const errorText = await res.text();
       console.warn(`ORS API Error (${res.status}):`, errorText);
       // On API error (e.g. quota exceeded), fallback to Haversine
-      const dist = calculateHaversine(a.lat, a.long, b.lat, b.long);
+      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
@@ -88,23 +74,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     clearTimeout(timeoutId); // Ensure timeout is cleared
 
-    // Parse coordinates again from request if possible for fallback
-    try {
-      // We can't re-read the stream, but we can try to parse if we stored it or just log error
-      // Since stream is consumed, we can't easily fallback if JSON.parse inside try block succeeded
-      // but fetch failed.
+    console.error('ORS Fetch failed completely:', error);
 
-      // However, we parsed body into variables `a` and `b` before the fetch.
-      // We can access them here via closure scope if they were defined.
-      // But `a` and `b` are block scoped inside try.
-      // Let's just return the error for now, but the code above handles most "soft" failures.
-
-      console.error('ORS Fetch failed completely:', error);
-
-      // Return a generic fallback response if we can't calculate
-      return NextResponse.json({ error: 'Routing service unavailable' }, { status: 500 });
-    } catch {
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
+    // Return a generic fallback response if we can't calculate
+    return NextResponse.json({ error: 'Routing service unavailable' }, { status: 500 });
   }
 }

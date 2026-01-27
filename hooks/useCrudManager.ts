@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// hooks/useCrudManager.ts
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -29,15 +27,18 @@ import { FiWifiOff } from 'react-icons/fi';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
-export type RecordWithId = {
+// Stricter BaseRecord Type
+export type BaseRecord = {
   id: string | number | null;
-  system_id?: string | number | null;
-  system_connection_id?: string | number | null;
+  [key: string]: unknown; // Still allows index access but safer than 'any'
+};
+
+// For Display Utils
+export type RecordWithId = BaseRecord & {
   name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   employee_name?: string | null;
-  [key: string]: unknown;
 };
 
 export interface DataQueryHookParams {
@@ -61,9 +62,6 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
-
-type BaseRecord = { id: string | number | null; [key: string]: any };
-
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
   localTableName?: PublicTableOrViewName;
@@ -76,8 +74,7 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   syncTables?: PublicTableOrViewName[];
 }
 
-// THE FIX: Export the return interface
-export interface UseCrudManagerReturn<V> {
+export interface UseCrudManagerReturn<V extends BaseRecord> {
   data: V[];
   totalCount: number;
   activeCount: number;
@@ -116,19 +113,20 @@ export interface UseCrudManagerReturn<V> {
     close: () => void;
   };
   actions: {
-    handleSave: (formData: any) => Promise<void>;
-    handleDelete: (record: any) => Promise<void>;
-    handleToggleStatus: (record: any) => Promise<void>;
+    // Typed Handlers
+    handleSave: (formData: TableInsertWithDates<PublicTableName>) => Promise<void>;
+    handleDelete: (record: V) => Promise<void>;
+    handleToggleStatus: (record: V) => Promise<void>;
     handleCellEdit: (record: V, column: Column<V>, newValue: string) => Promise<void>;
   };
   bulkActions: {
     selectedRowIds: string[];
     selectedCount: number;
     handleBulkDelete: () => Promise<void>;
-    handleBulkDeleteByFilter: (column: string, value: any, displayName: string) => void;
+    handleBulkDeleteByFilter: (column: string, value: unknown, displayName: string) => void;
     handleBulkUpdateStatus: (status: 'active' | 'inactive') => Promise<void>;
     handleClearSelection: () => void;
-    handleRowSelect: (rows: any[]) => void;
+    handleRowSelect: (rows: V[]) => void;
   };
   deleteModal: {
     isOpen: boolean;
@@ -138,7 +136,7 @@ export interface UseCrudManagerReturn<V> {
     loading: boolean;
   };
   utils: {
-    getDisplayName: (record: RecordWithId) => string;
+    getDisplayName: (record: V) => string;
   };
   [key: string]: unknown;
 }
@@ -162,12 +160,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
   const [currentPage, _setCurrentPage] = useState(1);
   const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
-
-  // This state is now populated by DebouncedInput components, so it's ready to use immediately
   const [searchQuery, _setSearchQuery] = useState('');
-
   const [filters, _setFilters] = useState<Filters>(initialFilters);
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedRowIds, _setSelectedRowIds] = useState<string[]>([]);
@@ -213,14 +207,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   } = dataQueryHook({
     currentPage,
     pageLimit,
-    searchQuery, // Use raw query here as it is pre-debounced by UI
+    searchQuery,
     filters: combinedFilters,
   });
 
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
       await syncData(syncTables);
-      // Note: syncData invalidates queries, so refetch happens automatically via React Query
     } else {
       refetch();
     }
@@ -229,19 +222,16 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const syncSingleRecord = useCallback(
     async (id: string | number) => {
       const targetTable = localTableName || tableName;
-      const viewName = localTableName || tableName;
-
       try {
         const { data: result, error } = await supabase.rpc('get_paged_data', {
-          p_view_name: viewName,
+          p_view_name: targetTable,
           p_limit: 1,
           p_offset: 0,
           p_filters: { id: String(id) },
         });
 
         if (error) throw error;
-
-        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = (result as any)?.data || [];
         if (records.length > 0) {
           const record = records[0];
@@ -258,49 +248,49 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
     optimisticUpdate: false,
-    onSuccess: async (data) => {
+    onSuccess: async (resData) => {
       toast.success('Record created successfully.');
       closeModal();
-      if (data && data.length > 0) {
-        
-        const newId = (data[0] as any).id;
+      if (resData && resData.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newId = (resData[0] as any).id;
         await syncSingleRecord(newId);
       } else {
         refetch();
       }
     },
-    onError: (error) => toast.error(`Failed to create record: ${error.message}`),
+    onError: (err) => toast.error(`Failed to create record: ${err.message}`),
   });
 
   const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(supabase, tableName, {
     optimisticUpdate: false,
-    onSuccess: async (data) => {
+    onSuccess: async (resData) => {
       toast.success('Record updated successfully.');
       closeModal();
-      if (data && data.length > 0) {
-        
-        const updatedId = (data[0] as any).id;
+      if (resData && resData.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updatedId = (resData[0] as any).id;
         await syncSingleRecord(updatedId);
       } else {
         refetch();
       }
     },
-    onError: (error) => toast.error(`Failed to update record: ${error.message}`),
+    onError: (err) => toast.error(`Failed to update record: ${err.message}`),
   });
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
     optimisticUpdate: false,
-    onSuccess: async (data) => {
+    onSuccess: async (resData) => {
       toast.success('Status updated successfully.');
-      if (data) {
-        
-        const id = (data as any).id;
+      if (resData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const id = (resData as any).id;
         await syncSingleRecord(id);
       } else {
         refetch();
       }
     },
-    onError: (error) => toast.error(`Failed to update status: ${error.message}`),
+    onError: (err) => toast.error(`Failed to update status: ${err.message}`),
   });
 
   const handleLocalCleanup = useCallback(
@@ -311,10 +301,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         const table = getTable(targetTable);
         const idsToDelete =
           idType === 'number' ? deletedIds.map(Number).filter((n) => !isNaN(n)) : deletedIds;
-        
-        await table.bulkDelete(idsToDelete as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await table.bulkDelete(idsToDelete as any[]);
       } catch (e) {
-        console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
+        console.error(`[useCrudManager] Cleanup failed for ${targetTable}:`, e);
       }
     },
     [tableName, localTableName, idType]
@@ -354,7 +344,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   }, []);
 
   const getDisplayName = useCallback(
-    (record: RecordWithId): string => {
+    (record: V): string => {
       if (displayNameField) {
         const fields = Array.isArray(displayNameField) ? displayNameField : [displayNameField];
         for (const field of fields) {
@@ -362,6 +352,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           if (name) return String(name);
         }
       }
+      // Fallbacks
       if (record.name) return String(record.name);
       if (record.employee_name) return String(record.employee_name);
       if (record.first_name && record.last_name) return `${record.first_name} ${record.last_name}`;
@@ -372,14 +363,18 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const handleSave = useCallback(
-    async (formData: TableInsertWithDates<T>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async (formData: any) => {
       const processedData = processDataForSave
         ? processDataForSave(formData)
         : (formData as TableInsert<T>);
 
       if (isOnline) {
-        if (editingRecord && 'id' in editingRecord && editingRecord.id) {
-          updateItem({ id: String(editingRecord.id), data: processedData as TableUpdate<T> });
+        if (editingRecord && editingRecord.id) {
+          updateItem({
+            id: String(editingRecord.id),
+            data: processedData as TableUpdate<T>,
+          });
         } else {
           insertItem(processedData as TableInsert<T>);
         }
@@ -387,14 +382,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         try {
           const targetTable = getTable(localTableName || tableName);
 
-          if (editingRecord && 'id' in editingRecord && editingRecord.id) {
+          if (editingRecord && editingRecord.id) {
             const idToUpdate = String(editingRecord.id);
-            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (targetTable.update as any)(
               idType === 'number' ? Number(idToUpdate) : idToUpdate,
               processedData
             );
-
             await addMutationToQueue({
               tableName,
               type: 'update',
@@ -406,14 +400,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           } else {
             const tempId = uuidv4();
             const newRecord = { ...processedData, id: tempId };
-
-            if (idType === 'number') {
-              console.warn('Offline creation for integer ID tables is risky.');
-            }
-
-            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await targetTable.add(newRecord as any);
-
             await addMutationToQueue({
               tableName,
               type: 'insert',
@@ -445,7 +433,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const handleDelete = useCallback(
-    async (record: RecordWithId) => {
+    async (record: V) => {
       if (!record.id) {
         toast.error('Cannot delete record: Invalid ID');
         return;
@@ -460,16 +448,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         deleteManager.deleteSingle(itemToDelete, async (ids) => {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(ids[0]) : ids[0];
-
-          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await targetTable.delete(idKey as any);
-
           await addMutationToQueue({
             tableName,
             type: 'delete',
             payload: { ids: [ids[0]] },
           });
-
           toast.warning('Deleted offline. Sync pending.', { icon: React.createElement(FiWifiOff) });
           refetch();
         });
@@ -508,8 +493,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           await targetTable
             .where('id')
             .anyOf(idsKey)
-            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .modify({ status: newStatus } as any);
+
           for (const id of selectedRowIds) {
             await addMutationToQueue({
               tableName,
@@ -550,7 +536,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       .filter((record) => selectedRowIds.includes(String(record.id)))
       .map((record) => ({
         id: String(record.id),
-        name: getDisplayName(record as RecordWithId),
+        name: getDisplayName(record),
       }));
 
     if (isOnline) {
@@ -559,16 +545,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       deleteManager.deleteMultiple(selectedRecords, async (ids) => {
         const targetTable = getTable(localTableName || tableName);
         const idsKey = idType === 'number' ? ids.map(Number) : ids;
-
-        
-        await targetTable.bulkDelete(idsKey as any);
-
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await targetTable.bulkDelete(idsKey as any[]);
         await addMutationToQueue({
           tableName,
           type: 'delete',
           payload: { ids: ids },
         });
-
         toast.warning(`Deleted ${ids.length} items locally. Sync pending.`, {
           icon: React.createElement(FiWifiOff),
         });
@@ -590,13 +573,14 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   ]);
 
   const handleToggleStatus = useCallback(
-    async (record: RecordWithId & { status?: boolean | null }) => {
+    async (record: V) => {
       if (!record.id) {
         toast.error('Cannot update status: Invalid ID');
         return;
       }
       const idToUpdate = String(record.id);
-      const newStatus = !(record.status ?? false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newStatus = !((record as any).status ?? false);
 
       if (isOnline) {
         toggleStatus({ id: idToUpdate, status: newStatus });
@@ -604,9 +588,8 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         try {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
-          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (targetTable.update as any)(idKey, { status: newStatus });
-
           await addMutationToQueue({
             tableName,
             type: 'update',
@@ -629,7 +612,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (!record.id) return;
       const id = String(record.id);
       const key = column.dataIndex;
-      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData = { [key]: newValue } as any;
 
       if (isOnline) {
@@ -638,7 +621,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         try {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(id) : id;
-          
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (targetTable.update as any)(idKey, updateData);
           await addMutationToQueue({
             tableName,
@@ -658,7 +641,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const handleRowSelect = useCallback(
-    (rows: Array<V & { id?: string | number }>) => {
+    (rows: V[]) => {
       const validIds = rows
         .map((r) => r.id)
         .filter((id): id is NonNullable<typeof id> => id != null)
@@ -669,8 +652,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   );
 
   const handleBulkDeleteByFilter = useCallback(
-    (column: string, value: string | number | boolean | null, displayName: string) => {
-      deleteManager.deleteBulk({ column, value, displayName });
+    (column: string, value: unknown, displayName: string) => {
+      // Convert value to string/number/boolean/null for the bulk filter interface
+      // Casting is safe here as useDeleteManager handles type conversion internally for display
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      deleteManager.deleteBulk({ column, value: value as any, displayName });
     },
     [deleteManager]
   );

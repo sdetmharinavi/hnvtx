@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import {
@@ -10,13 +9,15 @@ import {
   UseFormRegister,
   Path,
   FieldValues,
+  PathValue,
 } from 'react-hook-form';
 import { SearchableSelect, Option } from '@/components/common/ui/select/SearchableSelect';
 import { Input } from '@/components/common/ui/Input';
 import { Textarea } from '@/components/common/ui/textarea/Textarea';
 import { Label, Switch } from '@/components/common/ui';
 import { forwardRef } from 'react';
-import DatePicker, { type DatePickerProps } from 'react-datepicker';
+import type { ComponentType } from 'react';
+import DatePickerLib, { DatePickerProps } from 'react-datepicker';
 import {
   Select,
   SelectContent,
@@ -27,23 +28,39 @@ import {
 import IPAddressInput from '@/components/common/form/IPAddressInput';
 import { RichTextEditor } from '@/components/common/form/RichTextEditor';
 
+const DatePicker = DatePickerLib as unknown as ComponentType<Record<string, unknown>>;
+
 // --- TYPE DEFINITIONS for Generic Components ---
 
 type BaseProps<T extends FieldValues> = {
   name: Path<T>;
   label: string;
-  error?: FieldError | Merge<FieldError, FieldErrorsImpl<any>>;
+  error?: FieldError | Merge<FieldError, FieldErrorsImpl> | undefined;
   required?: boolean;
   className?: string;
   labelClassName?: string;
 };
+
+type SingleDatePickerProps = Omit<
+  DatePickerProps,
+  | 'selected'
+  | 'onChange'
+  | 'customInput'
+  | 'onBlur'
+  | 'onSelect'
+  | 'selectsRange'
+  | 'selectsMultiple'
+  | 'startDate'
+  | 'endDate'
+  | 'value'
+>;
 
 // --- FORM INPUT COMPONENT ---
 
 interface FormInputProps<T extends FieldValues>
   extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
   register: UseFormRegister<T>;
-  treatAsNumber?: boolean; // NEW PROP
+  treatAsNumber?: boolean;
 }
 
 export function FormInput<T extends FieldValues>({
@@ -54,7 +71,7 @@ export function FormInput<T extends FieldValues>({
   type = 'text',
   className,
   labelClassName,
-  treatAsNumber = false, // Default false
+  treatAsNumber = false,
   ...props
 }: FormInputProps<T>) {
   const isNumber = type === 'number' || treatAsNumber;
@@ -70,21 +87,19 @@ export function FormInput<T extends FieldValues>({
         error={typeof error?.message === 'string' ? error.message : undefined}
         {...props}
         {...register(name, {
-          // FIX: Return undefined for empty strings so Zod .optional() works.
-          // Return valid number if parsed, or original string if NaN (to let Zod validator fail it).
-          ...(isNumber && {
-            setValueAs: (v) => {
-              if (v === '' || v === null || typeof v === 'undefined') {
-                return undefined;
-              }
+          setValueAs: (v) => {
+            if (v === '' || v === null || v === undefined) {
+              return undefined;
+            }
+            if (isNumber) {
               const n = Number(v);
               return isNaN(n) ? v : n;
-            },
-          }),
-          // For date inputs, map empty to null and non-empty to Date object
-          ...(type === 'date' && {
-            setValueAs: (v) => (v ? new Date(v) : null),
-          }),
+            }
+            if (type === 'date') {
+              return v ? new Date(v) : null;
+            }
+            return v;
+          },
         })}
       />
     </div>
@@ -98,7 +113,7 @@ interface FormTextareaProps<T extends FieldValues>
     BaseProps<T>,
     Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'name' | 'value' | 'onChange'> {
   register?: UseFormRegister<T>;
-  control?: Control<T, any, any>;
+  control?: Control<T>;
 }
 
 export function FormTextarea<T extends FieldValues>({
@@ -146,7 +161,7 @@ export function FormTextarea<T extends FieldValues>({
 // --- FORM SEARCHABLE SELECT COMPONENT ---
 
 interface FormSearchableSelectProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T, any, any>;
+  control: Control<T>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -186,7 +201,7 @@ export function FormSearchableSelect<T extends FieldValues>({
         )}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-500">
+        <p className='mt-1 text-sm text-red-500'>
           {typeof error?.message === 'string' ? error.message : null}
         </p>
       )}
@@ -197,7 +212,7 @@ export function FormSearchableSelect<T extends FieldValues>({
 // --- FORM SELECT COMPONENT ---
 
 interface FormSelectProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T, any, any>;
+  control: Control<T>;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -229,7 +244,7 @@ export function FormSelect<T extends FieldValues>({
             value={(field.value as string) ?? ''}
             onValueChange={(value) => field.onChange(value)}
           >
-            <SelectTrigger className="w-full" aria-invalid={!!error}>
+            <SelectTrigger className='w-full' aria-invalid={!!error}>
               <SelectValue placeholder={props.placeholder ?? 'Select'} />
             </SelectTrigger>
             <SelectContent>
@@ -243,7 +258,7 @@ export function FormSelect<T extends FieldValues>({
         )}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-500">
+        <p className='mt-1 text-sm text-red-500'>
           {typeof error?.message === 'string' ? error.message : null}
         </p>
       )}
@@ -257,21 +272,8 @@ export interface FormDateInputProps<T extends FieldValues>
   extends
     BaseProps<T>,
     Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
-  control: Control<T, any, any>;
-  pickerProps?: Partial<
-    Omit<
-      DatePickerProps,
-      | 'selected'
-      | 'onChange'
-      | 'customInput'
-      | 'onBlur'
-      | 'onSelect'
-      | 'selectsRange'
-      | 'selectsMultiple'
-      | 'startDate'
-      | 'endDate'
-    >
-  >;
+  control: Control<T>;
+  pickerProps?: Partial<SingleDatePickerProps>;
 }
 
 const DateTextInput = forwardRef<
@@ -279,7 +281,7 @@ const DateTextInput = forwardRef<
   React.InputHTMLAttributes<HTMLInputElement> & { errorText?: string }
 >(({ className, errorText, ...rest }, ref) => {
   return (
-    <div className="relative">
+    <div className='relative'>
       <input
         ref={ref}
         {...rest}
@@ -294,21 +296,21 @@ const DateTextInput = forwardRef<
         readOnly
       />
       <svg
-        className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-300"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
+        className='pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-300'
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        aria-hidden='true'
       >
-        <rect x="3" y="4" width="18" height="18" rx="2" />
-        <line x1="16" y1="2" x2="16" y2="6" />
-        <line x1="8" y1="2" x2="8" y2="6" />
-        <line x1="3" y1="10" x2="21" y2="10" />
+        <rect x='3' y='4' width='18' height='18' rx='2' />
+        <line x1='16' y1='2' x2='16' y2='6' />
+        <line x1='8' y1='2' x2='8' y2='6' />
+        <line x1='3' y1='10' x2='21' y2='10' />
       </svg>
-      {errorText ? <p className="mt-1 text-sm text-red-600">{errorText}</p> : null}
+      {errorText ? <p className='mt-1 text-sm text-red-600'>{errorText}</p> : null}
     </div>
   );
 });
@@ -330,7 +332,7 @@ export function FormDateInput<T extends FieldValues>({
       {label ? (
         <Label htmlFor={name} className={labelClassName}>
           {label}
-          {required ? <span className="ml-0.5 text-red-600">*</span> : null}
+          {required ? <span className='ml-0.5 text-red-600'>*</span> : null}
         </Label>
       ) : null}
 
@@ -339,42 +341,49 @@ export function FormDateInput<T extends FieldValues>({
         control={control}
         render={({ field }) => {
           const raw = field.value as unknown;
-          const selected: Date | null =
-            raw == null || (raw as any) === ''
-              ? null
-              : typeof raw === 'object' && raw !== null && 'getTime' in (raw as object)
-                ? (raw as Date)
-                : new Date(raw as any);
+          let selected: Date | null = null;
 
-          return (
-            // @ts-expect-error - React Datepicker typing mismatch with strict generic
-            <DatePicker
-              id={name}
-              selected={selected}
-              onChange={(d: Date | null) => {
-                if (!d) return field.onChange(null);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                field.onChange(`${y}-${m}-${day}`);
-              }}
-              onBlur={field.onBlur}
-              dateFormat={(pickerProps as any)?.dateFormat ?? 'yyyy-MM-dd'}
-              isClearable
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              yearDropdownItemNumber={15}
-              portalId="__next"
-              customInput={
-                <DateTextInput
-                  errorText={typeof error?.message === 'string' ? error.message : undefined}
-                  placeholder={inputProps.placeholder ?? 'Select date'}
-                />
+          if (raw instanceof Date) {
+            selected = raw;
+          } else if (typeof raw === 'string' && raw) {
+            selected = new Date(raw);
+          }
+
+          const datePickerProps = {
+            id: name,
+            selected,
+            onChange: (d: Date | Date[] | null) => {
+              const value = Array.isArray(d) ? (d[0] ?? null) : d;
+              if (!value) {
+                field.onChange(null);
+                return;
               }
-              {...pickerProps}
-            />
-          );
+              const y = value.getFullYear();
+              const m = String(value.getMonth() + 1).padStart(2, '0');
+              const day = String(value.getDate()).padStart(2, '0');
+              const isoDate = `${y}-${m}-${day}`;
+              // Use PathValue casting for strict type compliance
+              field.onChange(isoDate as PathValue<T, Path<T>>);
+            },
+            onBlur: field.onBlur,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            dateFormat: (pickerProps as any)?.dateFormat ?? 'yyyy-MM-dd',
+            isClearable: true,
+            showMonthDropdown: true,
+            showYearDropdown: true,
+            dropdownMode: 'select' as const,
+            yearDropdownItemNumber: 15,
+            portalId: '__next',
+            customInput: (
+              <DateTextInput
+                errorText={typeof error?.message === 'string' ? error.message : undefined}
+                placeholder={inputProps.placeholder ?? 'Select date'}
+              />
+            ),
+            ...(pickerProps ?? {}),
+          };
+
+          return <DatePicker {...datePickerProps} />;
         }}
       />
     </div>
@@ -384,7 +393,7 @@ export function FormDateInput<T extends FieldValues>({
 // --- FORM SWITCH COMPONENT ---
 
 interface FormSwitchProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T, any, any>;
+  control: Control<T>;
   description?: string;
 }
 
@@ -402,7 +411,7 @@ export function FormSwitch<T extends FieldValues>({
         name={name}
         control={control}
         render={({ field }) => (
-          <div className="flex items-center space-x-2">
+          <div className='flex items-center space-x-2'>
             <Switch
               id={name}
               checked={!!field.value}
@@ -410,13 +419,13 @@ export function FormSwitch<T extends FieldValues>({
             />
             <div>
               <Label htmlFor={name}>{label}</Label>
-              {description && <p className="text-xs text-gray-500">{description}</p>}
+              {description && <p className='text-xs text-gray-500'>{description}</p>}
             </div>
           </div>
         )}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-500">
+        <p className='mt-1 text-sm text-red-500'>
           {typeof error?.message === 'string' ? error.message : null}
         </p>
       )}
@@ -427,7 +436,7 @@ export function FormSwitch<T extends FieldValues>({
 // --- FORM IP ADDRESS COMPONENT ---
 
 interface FormIPAddressInputProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T, any, any>;
+  control: Control<T>;
   placeholder?: string;
   allowIPv4?: boolean;
   allowIPv6?: boolean;
@@ -455,7 +464,7 @@ export function FormIPAddressInput<T extends FieldValues>({
         )}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-500">
+        <p className='mt-1 text-sm text-red-500'>
           {typeof error?.message === 'string' ? error.message : 'Invalid input'}
         </p>
       )}
@@ -466,7 +475,7 @@ export function FormIPAddressInput<T extends FieldValues>({
 // --- FORM RICH TEXT EDITOR COMPONENT ---
 
 interface FormRichTextEditorProps<T extends FieldValues> extends BaseProps<T> {
-  control: Control<T, any, any>;
+  control: Control<T>;
   placeholder?: string;
   disabled?: boolean;
 }

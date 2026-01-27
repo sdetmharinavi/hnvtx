@@ -1,7 +1,14 @@
 {
     "cSpell.words": [
       "ADMINPRO",
-      "uuidv"
+      "isdistinct",
+      "isdropdown",
+      "phfts",
+      "plfts",
+      "upserted",
+      "Upserting",
+      "uuidv",
+      "wfts"
     ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative",

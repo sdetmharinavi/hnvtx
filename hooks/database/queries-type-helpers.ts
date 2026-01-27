@@ -244,14 +244,12 @@ export interface UploadResult {
   errors: { rowIndex: number; data: unknown; error: string }[];
 }
 
-// MOVED HERE: The enhanced type that includes detailed logs
 export interface EnhancedUploadResult extends UploadResult {
   processingLogs: ProcessingLog[];
   validationErrors: ValidationError[];
   skippedRows: number;
 }
 
-// UPDATED: Now uses EnhancedUploadResult in the success callback
 export interface UseExcelUploadOptions<T extends TableOrViewName> {
   onSuccess?: (data: EnhancedUploadResult, variables: UploadOptions<T>) => void;
   onError?: (error: Error, variables: UploadOptions<T>) => void;

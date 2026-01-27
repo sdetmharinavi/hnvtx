@@ -1,7 +1,10 @@
 // path: hooks/database/excel-queries/excel-helpers.ts
 import * as ExcelJS from 'exceljs';
 import { Filters, ProcessingLog, ValidationError } from '@/hooks/database';
-import { TableOrViewName, Row } from '@/hooks/database';
+import { TableOrViewName, Row, UploadColumnMapping } from '@/hooks/database';
+import { parseExcelFile } from '@/utils/excel-parser';
+
+// --- Interfaces ---
 
 export interface Column<T> {
   key: string;
@@ -21,9 +24,7 @@ export interface Column<T> {
   excludeFromExport?: boolean;
   naturalSort?: boolean;
   excelHeader?: string;
-  // NEW: Forces the column to stay visible even if autoHideEmptyColumns is true and data is empty
   alwaysVisible?: boolean;
-  // NEW: Options for dropdown editing
   editOptions?: { label: string; value: string | number | boolean }[];
 }
 
@@ -32,6 +33,7 @@ export interface RPCConfig<TParams = Record<string, unknown>> {
   parameters?: TParams;
   selectFields?: string;
 }
+
 export interface DownloadOptions<T extends TableOrViewName = TableOrViewName> {
   fileName?: string;
   filters?: Filters;
@@ -41,6 +43,7 @@ export interface DownloadOptions<T extends TableOrViewName = TableOrViewName> {
   customStyles?: ExcelStyles;
   rpcConfig?: RPCConfig;
 }
+
 export interface ExcelStyles {
   headerFont?: Partial<ExcelJS.Font>;
   headerFill?: ExcelJS.FillPattern;
@@ -48,11 +51,13 @@ export interface ExcelStyles {
   alternateRowFill?: ExcelJS.FillPattern;
   borderStyle?: Partial<ExcelJS.Borders>;
 }
+
 export interface ExcelDownloadResult {
   fileName: string;
   rowCount: number;
   columnCount: number;
 }
+
 export interface UseExcelDownloadOptions<T extends TableOrViewName = TableOrViewName> {
   onSuccess?: (data: ExcelDownloadResult, variables: DownloadOptions<T>) => void;
   onError?: (error: Error, variables: DownloadOptions<T>) => void;
@@ -60,27 +65,18 @@ export interface UseExcelDownloadOptions<T extends TableOrViewName = TableOrView
   batchSize?: number;
   defaultRPCConfig?: RPCConfig;
 }
-// export interface ValidationError {
-//   rowIndex: number;
-//   column: string;
-//   value: unknown;
-//   error: string;
-//   data?: Record<string, unknown>;
-// }
-// export interface ProcessingLog {
-//   rowIndex: number;
-//   excelRowNumber: number;
-//   originalData: Record<string, unknown>;
-//   processedData: Record<string, unknown>;
-//   validationErrors: ValidationError[];
-//   isSkipped: boolean;
-//   skipReason?: string;
-// }
-// export interface EnhancedUploadResult extends UploadResult {
-//   processingLogs: ProcessingLog[];
-//   validationErrors: ValidationError[];
-//   skippedRows: number;
-// }
+
+export interface ProcessedExcelResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  validRecords: Record<string, any>[];
+  validationErrors: ValidationError[];
+  processingLogs: ProcessingLog[];
+  totalRows: number;
+  skippedRows: number;
+  errorCount: number;
+}
+
+// --- Formatting & Styles ---
 
 export const createFillPattern = (color: string): ExcelJS.FillPattern => ({
   type: 'pattern',
@@ -175,8 +171,10 @@ export const getDefaultStyles = (): ExcelStyles => ({
     right: { style: 'thin' },
   },
 });
+
 export const sanitizeFileName = (fileName: string): string =>
   fileName.replace(/[^a-z0-9.-]/gi, '_').replace(/_{2,}/g, '_');
+
 export const convertFiltersToRPCParams = (filters?: Filters): Record<string, unknown> => {
   if (!filters) return {};
   const rpcParams: Record<string, unknown> = {};
@@ -185,6 +183,7 @@ export const convertFiltersToRPCParams = (filters?: Filters): Record<string, unk
   });
   return rpcParams;
 };
+
 export const generateUUID = (): string => {
   const g = globalThis as { crypto?: { randomUUID?: () => string } };
   if (g && g.crypto && typeof g.crypto.randomUUID === 'function') return g.crypto.randomUUID();
@@ -194,6 +193,7 @@ export const generateUUID = (): string => {
     return v.toString(16);
   });
 };
+
 export const logRowProcessing = (
   rowIndex: number,
   excelRowNumber: number,
@@ -214,6 +214,7 @@ export const logRowProcessing = (
   };
   return log;
 };
+
 export const logColumnTransformation = (
   rowIndex: number,
   column: string,
@@ -223,6 +224,7 @@ export const logColumnTransformation = (
 ): void => {
   if (error) console.error(`   ❌ Error: ${error}`);
 };
+
 export const validateValue = (
   value: unknown,
   columnName: string,
@@ -270,8 +272,9 @@ export const validateValue = (
     const isIPField =
       columnName === 'ip_address' || columnName.endsWith('_ip') || columnName.includes('ipaddr');
     if (isIPField) {
+      // Basic IP check (allows CIDR)
       const ipRegex =
-        /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
       const strValue = String(value).trim();
       if (strValue && !ipRegex.test(strValue))
         return {
@@ -284,3 +287,124 @@ export const validateValue = (
   }
   return null;
 };
+
+// --- NEW GENERIC PROCESSOR ---
+
+/**
+ * Standardized function to parse an Excel file, map columns, validate fields, and return clean data.
+ * Used by all specific upload hooks to reduce duplication.
+ */
+export async function processExcelData<T extends TableOrViewName>(
+  file: File,
+  columns: UploadColumnMapping<T>[],
+  // Optional: Provide static data to inject into every row (e.g. { system_id: '123' })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  staticData?: Record<string, any>
+): Promise<ProcessedExcelResult> {
+  const processingLogs: ProcessingLog[] = [];
+  const allValidationErrors: ValidationError[] = [];
+  const validRecords: Record<string, unknown>[] = [];
+  let skippedRows = 0;
+  let errorCount = 0;
+
+  // 1. Parse File
+  const jsonData = await parseExcelFile(file);
+
+  if (!jsonData || jsonData.length < 2) {
+    return {
+      validRecords: [],
+      validationErrors: [],
+      processingLogs: [],
+      totalRows: 0,
+      skippedRows: 0,
+      errorCount: 0,
+    };
+  }
+
+  // 2. Map Headers
+  const excelHeaders: string[] = (jsonData[0] as string[]).map((h) => String(h || '').trim());
+  const headerMap: Record<string, number> = {};
+  excelHeaders.forEach((header, index) => {
+    headerMap[header.toLowerCase()] = index;
+  });
+
+  const getHeaderIndex = (name: string): number | undefined =>
+    headerMap[String(name).trim().toLowerCase()];
+
+  const dataRows = jsonData.slice(1);
+  // const totalRows = dataRows.length;
+
+  // 3. Iterate Rows
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i] as unknown[];
+    const excelRowNumber = i + 2;
+    const originalData: Record<string, unknown> = {};
+
+    // Capture original data for logging/debugging
+    excelHeaders.forEach((header, idx) => {
+      originalData[header] = row[idx];
+    });
+
+    // Check for empty row
+    if (row.every((cell) => cell === null || cell === undefined || String(cell).trim() === '')) {
+      skippedRows++;
+      continue;
+    }
+
+    const rowValidationErrors: ValidationError[] = [];
+    const processedData: Record<string, unknown> = { ...staticData };
+
+    // 4. Map Columns & Validate
+    for (const mapping of columns) {
+      const colIndex = getHeaderIndex(mapping.excelHeader);
+      const rawValue = colIndex !== undefined ? row[colIndex] : undefined;
+
+      let finalValue = mapping.transform ? mapping.transform(rawValue) : rawValue;
+
+      if (typeof finalValue === 'string') {
+        finalValue = finalValue.trim();
+      }
+
+      // Check Required
+      if (mapping.required) {
+        const error = validateValue(finalValue, mapping.dbKey, true);
+        if (error) {
+          rowValidationErrors.push({ ...error, rowIndex: excelRowNumber, data: originalData });
+        }
+      } else {
+        // Optional validation (e.g. IP/UUID format if value exists)
+        const error = validateValue(finalValue, mapping.dbKey, false);
+        if (error) {
+          rowValidationErrors.push({ ...error, rowIndex: excelRowNumber, data: originalData });
+        }
+      }
+
+      processedData[mapping.dbKey] = finalValue === '' ? null : finalValue;
+    }
+
+    if (rowValidationErrors.length > 0) {
+      allValidationErrors.push(...rowValidationErrors);
+      errorCount++;
+      // Log the error but DO NOT add to validRecords
+      processingLogs.push(
+        logRowProcessing(i, excelRowNumber, originalData, processedData, rowValidationErrors, true)
+      );
+      continue;
+    }
+
+    // Success for this row
+    validRecords.push(processedData);
+    processingLogs.push(
+      logRowProcessing(i, excelRowNumber, originalData, processedData, [], false)
+    );
+  }
+
+  return {
+    validRecords,
+    validationErrors: allValidationErrors,
+    processingLogs,
+    totalRows: validRecords.length, // Valid count
+    skippedRows,
+    errorCount,
+  };
+}
