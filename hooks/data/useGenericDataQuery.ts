@@ -42,6 +42,9 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
     const { currentPage, pageLimit, filters, searchQuery } = params;
     const supabase = createClient();
 
+    // Determine if we are in "Search Mode"
+    const isSearching = !!(searchQuery && searchQuery.trim().length > 0);
+
     const actualServerSearchFields = useMemo(
       () => serverSearchFields || searchFields,
       [serverSearchFields, searchFields]
@@ -56,7 +59,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         queryFilters.or = searchString;
       }
 
-      // Remove client-side only filters if they exist (though buildRpcFilters handles most)
+      // Remove client-side only filters
       if ('coordinates_status' in queryFilters) delete queryFilters.coordinates_status;
       if ('sortBy' in queryFilters) delete queryFilters.sortBy;
 
@@ -95,19 +98,15 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         .filter((item) => {
           let matches = true;
 
-          // A. Search Logic
+          // A. Search Logic (Offline fallback)
           if (searchQuery && searchQuery.trim() !== '') {
             const lowerQuery = searchQuery.toLowerCase().trim();
             const matchesSearch = searchFields.some((field) => {
               const value = item[field];
               if (value === null || value === undefined) return false;
-              // Safe string conversion and check
               return String(value).toLowerCase().includes(lowerQuery);
             });
-            
-            if (!matchesSearch) {
-              matches = false;
-            }
+            if (!matchesSearch) matches = false;
           }
 
           if (!matches) return false;
@@ -116,30 +115,16 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
           if (filterFn) {
             if (!filterFn(item, filters)) matches = false;
           } else {
-            // Default generic filter logic
             for (const [key, value] of Object.entries(filters)) {
               if (value && key !== 'or' && key !== 'sortBy') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemVal = (item as any)[key];
-
-                // Support Array Filtering in Offline Mode
                 if (Array.isArray(value)) {
-                  // If filter value is array, check if item value is IN that array
-                  // We convert both to strings for safe comparison
                   if (!value.map(String).includes(String(itemVal))) {
                     matches = false;
                     break;
                   }
                 } else {
-                  // Standard single value check
-                  if (value === 'true' && itemVal !== true) {
-                    matches = false;
-                    break;
-                  }
-                  if (value === 'false' && itemVal !== false) {
-                    matches = false;
-                    break;
-                  }
                   if (
                     value !== 'true' &&
                     value !== 'false' &&
@@ -148,11 +133,18 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
                     matches = false;
                     break;
                   }
+                  if (value === 'true' && itemVal !== true) {
+                    matches = false;
+                    break;
+                  }
+                  if (value === 'false' && itemVal !== false) {
+                    matches = false;
+                    break;
+                  }
                 }
               }
             }
           }
-
           return matches;
         })
         .toArray();
@@ -171,8 +163,11 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       localQueryFn,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       dexieTable: (localDb as any)[tableName],
-      // Important: Ensure searchQuery is a dependency so useLiveQuery updates
       localQueryDeps: [searchQuery, filters],
+      // OPTIMIZATION: If we are searching, prefer network data and skip DB sync to avoid lag
+      preferNetwork: isSearching,
+      skipSync: isSearching,
+      autoSync: true, // Allow standard sync when not searching
     });
 
     const processedData = useMemo(() => {

@@ -6,7 +6,6 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { PublicTableOrViewName, Row } from '@/hooks/database';
 import { Table, PromiseExtended } from 'dexie';
 import { localDb } from '@/hooks/data/localDb';
-// IMPORT LODASH FOR DEEP COMPARISON
 import isEqual from 'lodash.isequal';
 
 interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow> {
@@ -20,7 +19,17 @@ interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<
   staleTime?: number;
   autoSync?: boolean;
   refetchOnMount?: boolean | 'always';
-  tableName?: string; // Explicit table name for conflict checking
+  tableName?: string;
+  /**
+   * If true, returns network data directly when online, bypassing the "Write to DB -> Read from DB" loop.
+   * Useful for search results or ephemeral data.
+   */
+  preferNetwork?: boolean;
+  /**
+   * If true, prevents writing network results to the local database.
+   * Useful when fetching partial search results to avoid polluting the local cache.
+   */
+  skipSync?: boolean;
 }
 
 // Helper to map View Names to Table Names for conflict checking
@@ -49,6 +58,8 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   autoSync = false,
   refetchOnMount = false,
   tableName,
+  preferNetwork = false,
+  skipSync = false,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
   const isSyncingRef = useRef(false);
@@ -58,16 +69,14 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   // 'loading' is the default value while Dexie fetches
   const localData = useLiveQuery(
     () => {
-      // Wrap in a promise to track completion
       return Promise.resolve(localQueryFn()).finally(() => {
         // Mark as loaded once the promise resolves/rejects
       });
     },
     localQueryDeps,
-    'loading',
+    'loading'
   );
 
-  // Track when local data has finished its first fetch
   useEffect(() => {
     if (localData !== 'loading') {
       setHasInitialLocalLoad(true);
@@ -80,7 +89,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
   const {
     data: networkData,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     isLoading: isNetworkLoading,
     isFetching: isNetworkFetching,
     isError: isNetworkError,
@@ -105,9 +113,10 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
   // 3. Safe Sync Network Data to Local DB (Upsert + Prune)
   useEffect(() => {
-    // Only proceed if we have network data and aren't already working
-    if (networkData && !isSyncingRef.current && localData !== 'loading') {
+    // SKIP SYNC if explicitly requested (e.g. during search)
+    if (skipSync) return;
 
+    if (networkData && !isSyncingRef.current && localData !== 'loading') {
       const syncToLocal = async () => {
         try {
           isSyncingRef.current = true;
@@ -122,15 +131,12 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
             .toArray();
 
           const dirtyIds = new Set<string>();
-          // const pendingInsertIds = new Set<string>(); // Not used currently in this specialized fetch
 
           pendingMutations.forEach((task) => {
             if (task.type === 'update' && task.payload?.id) {
               dirtyIds.add(String(task.payload.id));
             } else if (task.type === 'delete' && task.payload?.ids) {
               task.payload.ids.forEach((id: string | number) => dirtyIds.add(String(id)));
-            } else if (task.type === 'insert' && task.payload?.id) {
-              // pendingInsertIds.add(String(task.payload.id));
             }
           });
 
@@ -141,24 +147,15 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const pkValue = (item as any)[primaryKey];
             if (pkValue === null || pkValue === undefined) return false;
-
             const pkStr = String(pkValue);
-
-            // Conflict Check: Don't overwrite if we have pending local updates/deletes for this ID
             return !dirtyIds.has(pkStr);
           });
 
           if (dataToSave.length > 0) {
-            // PERFORMANCE FIX: Deep compare with current local data to avoid unnecessary writes
-            // We use Lodash isEqual to check if the payload matches what we already have
-            // This prevents the infinite loop of Fetch -> Write -> LiveQuery Update -> Re-render
+            // Optimization: Deep compare to avoid unnecessary writes
             const shouldWrite = !isEqual(dataToSave, localData);
-
             if (shouldWrite) {
-               // console.log(`[useLocalFirstQuery] Writing ${dataToSave.length} records to ${dexieTable.name}`);
-               await dexieTable.bulkPut(dataToSave);
-            } else {
-               // console.log(`[useLocalFirstQuery] Data identical for ${dexieTable.name}, skipping write.`);
+              await dexieTable.bulkPut(dataToSave);
             }
           }
         } catch (e) {
@@ -170,22 +167,26 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
       syncToLocal();
     }
-  }, [networkData, dexieTable, tableName, localData]); // Added localData to deps for comparison
+  }, [networkData, dexieTable, tableName, localData, skipSync]);
 
-  // 4. Enhanced Loading Logic
-  // - If local data is loading, we are loading (hard load).
-  // - If local data is ready, we show it immediately.
-  // - Background network fetch is indicated by isFetching.
+  // 4. Return Data Logic
+  // If preferNetwork is true and we have network data, use it directly (Fastest for Search)
+  // Otherwise fall back to local data (Offline / Initial Load)
+  const resolvedData =
+    preferNetwork && networkData
+      ? networkData
+      : Array.isArray(localData)
+      ? localData
+      : [];
 
-  const isHardLoading = localData === 'loading' && !hasInitialLocalLoad;
+  const isHardLoading = localData === 'loading' && !hasInitialLocalLoad && !networkData;
 
   const isError = isNetworkError && !hasInitialLocalLoad;
   const error = isError ? networkError : null;
 
-  const safeData = Array.isArray(localData) ? localData : [];
-
   return {
-    data: safeData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: resolvedData as any[],
     isLoading: isHardLoading,
     isFetching: isNetworkFetching,
     isError,
