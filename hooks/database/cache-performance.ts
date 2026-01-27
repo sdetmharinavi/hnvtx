@@ -107,11 +107,9 @@ export const tableQueryUtils = {
         options?.filters,
         options?.columns,
         options?.orderBy,
-        options?.deduplication, // 5th argument
-        options?.aggregation, // 6th argument
-        undefined, // 7th argument (enhancedOrderBy is not used in prefetch)
-        options?.limit, // 8th argument
-        options?.offset // 9th argument
+        undefined, // enhancedOrderBy is not used in prefetch
+        options?.limit,
+        options?.offset
       ),
       queryFn: async (): Promise<TableRow<T>[]> => {
         let query = supabase.from(tableName).select(options?.columns || '*');
