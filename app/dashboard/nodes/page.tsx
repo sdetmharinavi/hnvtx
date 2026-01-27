@@ -83,7 +83,7 @@ export default function NodesPage() {
     () => [
       {
         key: 'coordinates_status',
-        // label: 'Coords',
+        label: 'Coords',
         type: 'native-select' as const,
         options: [
           { value: 'with_coords', label: 'With Coordinates' },
@@ -93,7 +93,7 @@ export default function NodesPage() {
       },
       {
         key: 'node_type_id',
-        // label: 'Node Type',
+        label: 'Node Type',
         type: 'multi-select' as const,
         options: nodeTypeOptions,
         isLoading: loadingNodeTypes,
@@ -101,7 +101,7 @@ export default function NodesPage() {
       },
       {
         key: 'maintenance_terminal_id',
-        // label: 'Maintenance Area',
+        label: 'Maintenance Area',
         type: 'multi-select' as const,
         options: areaOptions,
         isLoading: loadingAreas,
