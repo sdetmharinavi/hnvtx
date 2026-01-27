@@ -24,6 +24,7 @@ import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -89,11 +90,11 @@ export default function OfcPage() {
   );
   const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
 
-  const filterConfigs = useMemo(
+  const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
         key: 'sortBy',
-        // label: 'Sort',
+        label: 'Sort',
         type: 'native-select' as const,
         placeholder: 'Sort By',
         options: [
@@ -103,14 +104,14 @@ export default function OfcPage() {
       },
       { 
         key: 'ofc_type_id', 
-        // label: 'Cable Type', 
+        label: 'Cable Type', // FIXED: Added label
         type: 'multi-select' as const, 
         options: ofcTypeOptions, 
         isLoading: loadingTypes 
       },
       { 
         key: 'ofc_owner_id', 
-        // label: 'Owner', 
+        label: 'Owner', // FIXED: Added label
         type: 'multi-select' as const, 
         options: ofcOwnerOptions, 
         isLoading: loadingOwners 
@@ -136,7 +137,7 @@ export default function OfcPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
   });
 
@@ -230,13 +231,13 @@ export default function OfcPage() {
         ],
         actions: headerActions,
         isLoading: isInitialLoad,
+        isFetching: isFetching,
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
       searchPlaceholder="Search route name, asset no..."
       filters={filters.filters}
       onFilterChange={handleFilterChange}
-      // THE FIX: Pass setFilters
       setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}

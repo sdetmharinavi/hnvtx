@@ -99,8 +99,8 @@ export const CableSchematicPlot: React.FC<CableSchematicPlotProps> = ({ routeDet
           </defs>
 
           {/* LAYER 1: CABLE SEGMENTS (Horizontal Lines) */}
-          {points.slice(0, -1).map((point, i) => {
-            const nextPoint = points[i + 1];
+          {points.slice(0, -1).map((_point, i) => {
+            // const nextPoint = points[i + 1];
             const seg = segments[i]; 
             const fiberCount = seg ? `${seg.fiber_count}F` : '??F';
             

@@ -94,14 +94,14 @@ export default function ServicesPage() {
     () => [
       {
         key: 'link_type_id',
-        // label: 'Link Type',
-        type: 'multi-select' as const, // CHANGED
+        label: 'Link Type', // Uncommented label
+        type: 'multi-select' as const,
         options: linkTypeOptions,
         isLoading: loadingLinks,
       },
       {
         key: 'allocation_status',
-        // label: 'Allocation',
+        label: 'Allocation', // Uncommented label
         type: 'native-select' as const,
         options: [
           { value: 'allocated', label: 'Allocated' },
@@ -110,7 +110,7 @@ export default function ServicesPage() {
       },
       {
         key: 'status',
-        // label: 'Status',
+        label: 'Status', // Uncommented label
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -262,7 +262,7 @@ export default function ServicesPage() {
                     ))}
                     {allocatedSystems.length > 2 && (
                       <span className='text-[10px] text-blue-500'>
-                        +{allocatedSystems.length - 2}
+                        +{allocatedSystems.length - 2} more systems
                       </span>
                     )}
                   </div>
@@ -329,7 +329,6 @@ export default function ServicesPage() {
       searchPlaceholder='Search name, node, description...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
-      // THE FIX: Pass setFilters
       setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}

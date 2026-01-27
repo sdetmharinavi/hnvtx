@@ -13,7 +13,7 @@ interface DebouncedInputProps extends Omit<InputProps, 'onChange' | 'value'> {
 export const DebouncedInput = ({
   value: initialValue,
   onChange,
-  debounce = 600,
+  debounce = 450,
   onClear,
   ...props
 }: DebouncedInputProps) => {

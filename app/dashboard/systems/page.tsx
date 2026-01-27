@@ -135,21 +135,21 @@ export default function SystemsPage() {
     () => [
       {
         key: 'system_type_id',
-        // label: 'System Type',
+        label: 'System Type', // Uncommented label
         type: 'multi-select' as const,
         options: systemTypeOptions,
         isLoading: loadingTypes,
       },
       {
         key: 'system_capacity_id',
-        // label: 'Capacity',
+        label: 'Capacity', // Uncommented label
         type: 'multi-select' as const,
         options: capacityOptions,
         isLoading: loadingCaps,
       },
       {
         key: 'status',
-        // label: 'Status',
+        label: 'Status', // Uncommented label
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -158,7 +158,7 @@ export default function SystemsPage() {
       },
       {
         key: 'sortBy',
-        // label: 'Sort',
+        label: 'Sort', // Uncommented label
         type: 'native-select' as const,
         options: [
           { value: 'name', label: 'Name (A-Z)' },
@@ -454,7 +454,6 @@ export default function SystemsPage() {
       searchPlaceholder='Search system, node, IP...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
-      // THE FIX: Pass setFilters
       setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
