@@ -139,7 +139,6 @@ export const fiberTraceSegmentSchema = z.object({
   step_order: z.number(),
   element_type: z.string(),
   element_id: z.uuid(),
-  // THE FIX: Made nullable to handle cases where names/details are missing in DB joins
   element_name: z.string().nullable(),
   details: z.string().nullable(),
   fiber_in: z.number().nullable(),
@@ -149,7 +148,7 @@ export const fiberTraceSegmentSchema = z.object({
   original_cable_id: z.uuid().nullable(),
   start_node_id: z.uuid().nullable(),
   end_node_id: z.uuid().nullable(),
-  capacity: z.number().nullable().optional(), // NEW FIELD
+  capacity: z.number().nullable().optional(),
 });
 export type FiberTraceSegment = z.infer<typeof fiberTraceSegmentSchema>;
 
@@ -163,12 +162,13 @@ export const pathToUpdateSchema = z.object({
 export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 // --- BSNL Dashboard Search Filters ---
+// MODIFIED: type, region, and nodeType can now be string OR array of strings
 export const bsnlSearchFiltersSchema = z.object({
   query: z.string().optional(),
   status: z.string().optional(),
-  type: z.string().optional(),
-  region: z.string().optional(),
-  nodeType: z.string().optional(),
+  type: z.union([z.string(), z.array(z.string())]).optional(),
+  region: z.union([z.string(), z.array(z.string())]).optional(),
+  nodeType: z.union([z.string(), z.array(z.string())]).optional(),
   priority: z.string().optional(),
 });
 export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;

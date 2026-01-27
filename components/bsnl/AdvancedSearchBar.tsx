@@ -1,7 +1,12 @@
+// components/bsnl/AdvancedSearchBar.tsx
 'use client';
 import { useState } from 'react';
-import { ChevronDown, Filter, Search, ChevronUp } from 'lucide-react';
+import { ChevronDown, Filter, Search, ChevronUp, X } from 'lucide-react';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
+import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
+import { Option } from '@/components/common/ui/select/SearchableSelect';
+import { Filters } from '@/hooks/database';
+
 interface AdvancedSearchBarProps {
   filters: BsnlSearchFilters;
   onFiltersChange: (filters: BsnlSearchFilters) => void;
@@ -10,6 +15,7 @@ interface AdvancedSearchBarProps {
   regionOptions?: string[];
   nodeTypeOptions?: string[];
 }
+
 export function AdvancedSearchBar({
   filters,
   onFiltersChange,
@@ -19,18 +25,43 @@ export function AdvancedSearchBar({
   nodeTypeOptions = [],
 }: AdvancedSearchBarProps) {
   const [showFilters, setShowFilters] = useState(false);
-  // Simplified handler for single-select dropdowns
-  const handleFilterChange = (filterKey: keyof BsnlSearchFilters, value: string) => {
-    onFiltersChange({ ...filters, [filterKey]: value || undefined });
+
+  // Helper: Convert string array to Option array
+  const toOptions = (items: string[]): Option[] =>
+    items.map((item) => ({ value: item, label: item }));
+
+  // Helper: Adapt the setFilters function signature expected by MultiSelectFilter
+  // MultiSelectFilter expects: React.Dispatch<React.SetStateAction<Filters>>
+  // We need to proxy this to our onFiltersChange which expects BsnlSearchFilters
+  const setFiltersProxy = (update: Filters | ((prev: Filters) => Filters)) => {
+    // 1. Get current filters cast as generic Filters
+    const currentGeneric = filters as unknown as Filters;
+    
+    // 2. Resolve the update
+    let nextGeneric: Filters;
+    if (typeof update === 'function') {
+      nextGeneric = update(currentGeneric);
+    } else {
+      nextGeneric = update;
+    }
+
+    // 3. Cast back to specific type and call parent handler
+    onFiltersChange(nextGeneric as BsnlSearchFilters);
   };
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onFiltersChange({ ...filters, status: e.target.value || undefined });
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 shadow-sm">
+      {/* Top Row: Search & Toggles */}
       <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
             type="text"
-            placeholder="Search by name, asset no, etc..."
+            placeholder="Search systems, cables, nodes..."
             value={filters.query || ''}
             onChange={(e) => onFiltersChange({ ...filters, query: e.target.value })}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -39,7 +70,11 @@ export function AdvancedSearchBar({
         <div className="flex items-center space-x-2 w-full sm:w-auto">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 border rounded-md transition-colors ${
+              showFilters 
+                ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:border-blue-500 dark:text-blue-300' 
+                : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+            }`}
           >
             <Filter className="h-4 w-4 mr-2" />
             Filters
@@ -51,79 +86,67 @@ export function AdvancedSearchBar({
           </button>
           <button
             onClick={onClear}
-            className="flex-1 sm:flex-none px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            title="Clear all filters"
           >
+            <X className="h-4 w-4 mr-1" />
             Clear
           </button>
         </div>
       </div>
 
+      {/* Filter Panel */}
       {showFilters && (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Status (Single Select) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Status
             </label>
             <select
               value={filters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
+              onChange={handleStatusChange}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All</option>
+              <option value="">All Statuses</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              System/Cable Type
-            </label>
-            <select
-              value={filters.type || ''}
-              onChange={(e) => handleFilterChange('type', e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">All Types</option>
-              {typeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+
+          {/* Type (Multi Select) */}
+          <div className="relative">
+             {/* Note: MultiSelectFilter contains its own label */}
+             <MultiSelectFilter
+               label="System/Cable Type"
+               filterKey="type"
+               filters={filters as unknown as Filters}
+               setFilters={setFiltersProxy}
+               options={toOptions(typeOptions)}
+             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Region
-            </label>
-            <select
-              value={filters.region || ''}
-              onChange={(e) => handleFilterChange('region', e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">All Regions</option>
-              {regionOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+
+          {/* Region (Multi Select) */}
+          <div className="relative">
+             <MultiSelectFilter
+               label="Region / Area"
+               filterKey="region"
+               filters={filters as unknown as Filters}
+               setFilters={setFiltersProxy}
+               options={toOptions(regionOptions)}
+             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Node Type
-            </label>
-            <select
-              value={filters.nodeType || ''}
-              onChange={(e) => handleFilterChange('nodeType', e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">All Node Types</option>
-              {nodeTypeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+
+          {/* Node Type (Multi Select) */}
+          <div className="relative">
+             <MultiSelectFilter
+               label="Node Type"
+               filterKey="nodeType"
+               filters={filters as unknown as Filters}
+               setFilters={setFiltersProxy}
+               options={toOptions(nodeTypeOptions)}
+             />
           </div>
         </div>
       )}

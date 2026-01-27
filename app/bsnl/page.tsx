@@ -21,7 +21,7 @@ import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useDebounce } from 'use-debounce';
-import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
+// REMOVED: useDashboardOverview import (Data passed from main hook now)
 import { formatIP } from '@/utils/formatters';
 
 const OptimizedNetworkMap = dynamic(
@@ -59,8 +59,6 @@ export default function ScalableFiberNetworkDashboard() {
   const debouncedMapBounds = useDebounce(mapBounds, 500);
 
   const { data, isLoading, isError, error } = useBsnlDashboardData(filters, debouncedMapBounds[0]);
-
-  const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
   const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
@@ -206,15 +204,11 @@ export default function ScalableFiberNetworkDashboard() {
     [],
   );
 
-  const isInitialLoad = isLoading || isOverviewLoading;
-
-  if (isInitialLoad) return <PageSpinner text="Loading Network Dashboard Data..." />;
+  if (isLoading) return <PageSpinner text="Loading Network Dashboard Data..." />;
   if (isError) return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
 
-  const totalSystems =
-    (overviewData?.system_status_counts?.Active ?? 0) +
-    (overviewData?.system_status_counts?.Inactive ?? 0);
-  const totalCables = overviewData?.cable_utilization_summary?.total_cables ?? 0;
+  const totalSystems = data.systems.length;
+  const totalCables = data.ofcCables.length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -228,19 +222,8 @@ export default function ScalableFiberNetworkDashboard() {
                   Harinavi Network Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {isOverviewLoading ? (
-                    <span className="animate-pulse">... Systems | ... Cables</span>
-                  ) : (
-                    <>
-                      {totalSystems.toLocaleString()} Systems | {totalCables.toLocaleString()}{' '}
-                      Cables
-                    </>
-                  )}
-                  {isLoading && (
-                    <span className="ml-2 inline-flex items-center">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    </span>
-                  )}
+                  {totalSystems.toLocaleString()} Systems | {totalCables.toLocaleString()} Cables
+                  {/* Sync status removed from here as it's in the global header */}
                 </p>
               </div>
             </div>
@@ -274,21 +257,11 @@ export default function ScalableFiberNetworkDashboard() {
           </nav>
         </div>
         <div className="relative">
-          {isLoading && !isInitialLoad && (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
-              <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Updating results...
-                </span>
-              </div>
-            </div>
-          )}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <DashboardStatsGrid filters={filters} />
+              {/* Pass the ALREADY FILTERED data to the grid */}
+              <DashboardStatsGrid data={data} />
               <div className="h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-                {/* THE FIX: Added filterKey to control auto-zoom */}
                 <OptimizedNetworkMap
                   nodes={data.nodes}
                   cables={data.ofcCables}

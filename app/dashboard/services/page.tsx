@@ -31,7 +31,7 @@ import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import GenericRemarks from '@/components/common/GenericRemarks';
-import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { DataGrid } from '@/components/common/DataGrid';
 
 interface AllocatedSystem {
   id: string;
@@ -94,13 +94,14 @@ export default function ServicesPage() {
     () => [
       {
         key: 'link_type_id',
-        label: 'Link Type',
+        // label: 'Link Type',
+        type: 'multi-select' as const, // CHANGED
         options: linkTypeOptions,
         isLoading: loadingLinks,
       },
       {
         key: 'allocation_status',
-        label: 'Allocation',
+        // label: 'Allocation',
         type: 'native-select' as const,
         options: [
           { value: 'allocated', label: 'Allocated' },
@@ -109,7 +110,7 @@ export default function ServicesPage() {
       },
       {
         key: 'status',
-        label: 'Status',
+        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -183,7 +184,6 @@ export default function ServicesPage() {
     }
   }
 
-  // THE FIX: Abstracted the card rendering logic into a memoized function
   const renderItem = useCallback(
     (service: V_servicesRowSchema) => {
       const isDup = duplicateSet.has(
@@ -280,7 +280,6 @@ export default function ServicesPage() {
     [duplicateSet, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
   );
 
-  // THE FIX: Simplified renderGrid to use the new DataGrid component
   const renderGrid = useCallback(
     () => (
       <DataGrid
@@ -330,6 +329,8 @@ export default function ServicesPage() {
       searchPlaceholder='Search name, node, description...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
+      // THE FIX: Pass setFilters
+      setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

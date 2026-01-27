@@ -1,4 +1,4 @@
-// path: hooks/data/useGenericDataQuery.ts
+// hooks/data/useGenericDataQuery.ts
 import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
@@ -20,12 +20,11 @@ interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   rpcName?: string;
   rpcLimit?: number;
   orderBy?: 'asc' | 'desc';
-  // THE FIX: Add a field to specify the status column
   activeStatusField?: keyof Row<T> & string;
 }
 
 export function createGenericDataQuery<T extends PublicTableOrViewName>(
-  options: GenericDataQueryOptions<T>,
+  options: GenericDataQueryOptions<T>
 ) {
   const {
     tableName,
@@ -36,7 +35,6 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
     rpcName = 'get_paged_data',
     rpcLimit = 6000,
     orderBy = 'asc',
-    // THE FIX: Default to 'status' for backward compatibility
     activeStatusField = 'status' as keyof Row<T> & string,
   } = options;
 
@@ -46,8 +44,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
 
     const actualServerSearchFields = useMemo(
       () => serverSearchFields || searchFields,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [serverSearchFields, searchFields],
+      [serverSearchFields, searchFields]
     );
 
     const onlineQueryFn = useCallback(async (): Promise<Row<T>[]> => {
@@ -71,7 +68,6 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         p_filters: rpcFilters,
         p_order_by: String(defaultSortField),
         p_order_dir: orderBy,
-        // THE FIX: Pass the status column name to the RPC
         p_status_column_name: activeStatusField,
       });
 
@@ -97,6 +93,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         .filter((item) => {
           let matches = true;
 
+          // A. Search
           if (searchQuery && searchQuery.trim() !== '') {
             const lowerQuery = searchQuery.toLowerCase().trim();
             const matchesSearch = searchFields.some((field) => {
@@ -107,21 +104,42 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
             if (!matchesSearch) return false;
           }
 
+          // B. Structured Filtering
           if (filterFn) {
             if (!filterFn(item, filters)) matches = false;
           } else {
+            // Default generic filter logic
             for (const [key, value] of Object.entries(filters)) {
               if (value && key !== 'or' && key !== 'sortBy') {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemVal = (item as any)[key];
-                if (key === 'status') {
-                  if (String(itemVal) !== String(value)) {
+
+                // --- THE FIX: Support Array Filtering in Offline Mode ---
+                if (Array.isArray(value)) {
+                  // If filter value is array, check if item value is IN that array
+                  // We convert both to strings for safe comparison
+                  if (!value.map(String).includes(String(itemVal))) {
                     matches = false;
                     break;
                   }
-                } else if (String(itemVal) !== String(value)) {
-                  matches = false;
-                  break;
+                } else {
+                  // Standard single value check
+                  if (value === 'true' && itemVal !== true) {
+                    matches = false;
+                    break;
+                  }
+                  if (value === 'false' && itemVal !== false) {
+                    matches = false;
+                    break;
+                  }
+                  if (
+                    value !== 'true' &&
+                    value !== 'false' &&
+                    String(itemVal) !== String(value)
+                  ) {
+                    matches = false;
+                    break;
+                  }
                 }
               }
             }
@@ -168,7 +186,6 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       const totalCount = finalData.length;
       let activeCount = totalCount;
       if (finalData.length > 0 && activeStatusField in (finalData[0] as object)) {
-        // THE FIX: Use the dynamic activeStatusField for client-side counting
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         activeCount = finalData.filter((i) => (i as any)[activeStatusField] === true).length;
       }
@@ -182,7 +199,6 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         activeCount,
         inactiveCount,
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filteredData, filters, currentPage, pageLimit, activeStatusField]);
 
     return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };

@@ -1,21 +1,30 @@
+// hooks/data/useNodesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
 import { DEFAULTS } from '@/constants/constants';
+
+// Helper for array/single value matching
+const matchFilter = (itemValue: unknown, filterValue: unknown) => {
+  if (Array.isArray(filterValue)) {
+    return filterValue.includes(itemValue);
+  }
+  return itemValue === filterValue;
+};
 
 export const useNodesData = createGenericDataQuery<'v_nodes_complete'>({
   tableName: 'v_nodes_complete',
   searchFields: ['name', 'node_type_code', 'remark', 'latitude', 'longitude'],
-  // Server search needs text casting for numbers
   serverSearchFields: ['name', 'node_type_code', 'remark', 'latitude::text', 'longitude::text'],
   defaultSortField: 'name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (node, filters) => {
-    // 1. Standard Filters
-    if (filters.node_type_id && node.node_type_id !== filters.node_type_id) return false;
+    // 1. Standard Filters (Multi-select enabled)
+    if (filters.node_type_id && !matchFilter(node.node_type_id, filters.node_type_id)) return false;
     if (
       filters.maintenance_terminal_id &&
-      node.maintenance_terminal_id !== filters.maintenance_terminal_id
+      !matchFilter(node.maintenance_terminal_id, filters.maintenance_terminal_id)
     )
       return false;
+
     if (filters.status) {
       const statusBool = filters.status === 'true';
       if (node.status !== statusBool) return false;

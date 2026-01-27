@@ -48,7 +48,7 @@ import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
-import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { DataGrid } from '@/components/common/DataGrid';
 
 import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
@@ -131,24 +131,25 @@ export default function SystemsPage() {
   const { options: capacityOptions, isLoading: loadingCaps } =
     useLookupTypeOptions('SYSTEM_CAPACITY');
 
-  // --- Filter Config ---
   const filterConfigs = useMemo(
     () => [
       {
         key: 'system_type_id',
-        label: 'System Type',
+        // label: 'System Type',
+        type: 'multi-select' as const,
         options: systemTypeOptions,
         isLoading: loadingTypes,
       },
       {
         key: 'system_capacity_id',
-        label: 'Capacity',
+        // label: 'Capacity',
+        type: 'multi-select' as const,
         options: capacityOptions,
         isLoading: loadingCaps,
       },
       {
         key: 'status',
-        label: 'Status',
+        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -157,7 +158,7 @@ export default function SystemsPage() {
       },
       {
         key: 'sortBy',
-        label: 'Sort',
+        // label: 'Sort',
         type: 'native-select' as const,
         options: [
           { value: 'name', label: 'Name (A-Z)' },
@@ -173,10 +174,9 @@ export default function SystemsPage() {
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters],
+    [filters]
   );
 
-  // --- Upload / Export ---
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
     showToasts: false,
     onSuccess: (result) => {
@@ -351,7 +351,6 @@ export default function SystemsPage() {
     [editModal.record, upsertSystemMutation],
   );
 
-  // THE FIX: Created memoized renderItem function
   const renderItem = useCallback(
     (sys: V_systems_completeRowSchema) => (
       <GenericEntityCard
@@ -411,7 +410,6 @@ export default function SystemsPage() {
     ],
   );
 
-  // THE FIX: Created memoized renderGrid function
   const renderGrid = useCallback(
     () => (
       <DataGrid
@@ -456,6 +454,8 @@ export default function SystemsPage() {
       searchPlaceholder='Search system, node, IP...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
+      // THE FIX: Pass setFilters
+      setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

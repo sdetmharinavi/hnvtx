@@ -1,5 +1,13 @@
+// hooks/data/useServicesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
 import { DEFAULTS } from '@/constants/constants';
+
+const matchFilter = (itemValue: unknown, filterValue: unknown) => {
+  if (Array.isArray(filterValue)) {
+    return filterValue.includes(itemValue);
+  }
+  return itemValue === filterValue;
+};
 
 export const useServicesData = createGenericDataQuery<'v_services'>({
   tableName: 'v_services',
@@ -15,14 +23,13 @@ export const useServicesData = createGenericDataQuery<'v_services'>({
   defaultSortField: 'name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (s, filters) => {
-    if (filters.link_type_id && s.link_type_id !== filters.link_type_id) return false;
+    if (filters.link_type_id && !matchFilter(s.link_type_id, filters.link_type_id)) return false;
 
     if (filters.status) {
       const statusBool = filters.status === 'true';
       if (s.status !== statusBool) return false;
     }
 
-    // Custom Allocation Status Logic
     if (filters.allocation_status) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const systems = s.allocated_systems as any[];

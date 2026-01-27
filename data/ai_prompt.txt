@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we will fix the issue in notes page, where its showing published in page header counts even if its draft, also check wheter view table of notes is being used with rpc or not? Then we will refactor the front-end of the project without breaking any existing features to implement DRY principle.
+Let's begin! First of all we multiselect filter in dashboard page also. Check is multiselect filter implementation in other pages are ok or not. Also, check why app is being very slow?

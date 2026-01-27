@@ -82,13 +82,15 @@ export default function EmployeesPage() {
     () => [
       {
         key: 'employee_designation_id',
-        label: 'Designation',
+        // label: 'Designation',
+        type: 'multi-select' as const, // CHANGED
         options: desOptions,
         isLoading: loadingDes,
       },
       {
         key: 'maintenance_terminal_id',
-        label: 'Area',
+        // label: 'Area',
+        type: 'multi-select' as const, // CHANGED
         options: areaOptions,
         isLoading: loadingAreas,
       },
@@ -214,6 +216,8 @@ export default function EmployeesPage() {
       searchPlaceholder='Search employees...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
+      // THE FIX: Pass setFilters
+      setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
