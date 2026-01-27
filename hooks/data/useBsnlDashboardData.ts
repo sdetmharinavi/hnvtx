@@ -40,7 +40,7 @@ export function useBsnlDashboardData(
   filters: BsnlSearchFilters,
   mapBounds: LatLngBounds | null
 ) {
-  const { sync } = useDataSync();
+  const { sync, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus();
 
   // Ref to prevent double-triggering sync in strict mode

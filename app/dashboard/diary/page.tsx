@@ -79,7 +79,7 @@ export default function DiaryPage() {
       notes = notes.filter(
         (note) =>
           (note.content?.toLowerCase() || '').includes(query) ||
-          (note.tags && note.tags.some((tag) => tag.toLowerCase().includes(query)))
+          (note.tags && note.tags.some((tag: string) => tag.toLowerCase().includes(query)))
       );
     }
 
