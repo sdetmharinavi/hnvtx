@@ -1,23 +1,14 @@
 // path: components/bsnl/DashboardStatsGrid.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   Network,
   Activity,
   AlertTriangle,
-  CheckCircle,
-  GitBranch,
   Cable,
-  Server,
-  Zap,
-  Filter,
 } from 'lucide-react';
 import { Card } from '@/components/common/ui';
-// REMOVED: useDashboardOverview import
-import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
-import { Filters } from '@/hooks/database';
-import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
 
 // Updated interface to accept data directly
@@ -57,11 +48,6 @@ const StatCard: React.FC<{
 export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ data }) => {
   const { nodes, ofcCables, systems } = data;
 
-  // Local state for the Port Type MultiSelect (Filtering stats view only)
-  const [portFilters, setPortFilters] = useState<Filters>({
-    type_code: ['GE(O)', 'GE(E)'], // Default interesting ports
-  });
-
   // Calculate stats based on the PASSED data (which is already filtered by the parent Page)
   const stats = useMemo(() => {
     const sysActive = systems.filter(s => s.status).length;
@@ -83,11 +69,6 @@ export const DashboardStatsGrid: React.FC<DashboardStatsGridProps> = ({ data }) 
       avgCapacity
     };
   }, [systems, nodes, ofcCables]);
-
-  // Port stats would ideally need port data. Since `useBsnlDashboardData` doesn't fetch ports by default (for perf),
-  // we might show placeholders or remove port-specific stats from this top-level grid to save performance.
-  // Alternatively, we fetch ports only if the user expands a detailed stats view.
-  // For this fix, I'll simplify the grid to rely on the passed data.
 
   return (
     <div className="space-y-4">

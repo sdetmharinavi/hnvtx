@@ -8,6 +8,18 @@ import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { Label } from '@/components/common/ui/label/Label';
 import useIsomorphicLayoutEffect from '@/hooks/useIsomorphicLayoutEffect';
 
+const normalizeToStringArray = (value: Filters[string]): string[] => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item));
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value ? [String(value)] : [];
+  }
+
+  return [];
+};
+
 interface MultiSelectFilterProps {
   label: string;
   filterKey: string;
@@ -32,11 +44,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
 
   // FIX 1: Robustly normalize the current value to an array
   const rawValue = filters[filterKey];
-  const selectedValues: string[] = Array.isArray(rawValue)
-    ? rawValue
-    : typeof rawValue === 'string' && rawValue
-    ? [rawValue]
-    : [];
+  const selectedValues = normalizeToStringArray(rawValue);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,11 +96,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     setFilters((prev) => {
       const raw = prev[filterKey];
       // Normalize previous value to array safely
-      const current: string[] = Array.isArray(raw)
-        ? raw
-        : typeof raw === 'string' && raw
-        ? [raw]
-        : [];
+      const current = normalizeToStringArray(raw);
 
       let newValues;
 
