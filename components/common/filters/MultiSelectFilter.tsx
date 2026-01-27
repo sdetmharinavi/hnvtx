@@ -12,11 +12,9 @@ const normalizeToStringArray = (value: Filters[string]): string[] => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item));
   }
-
   if (typeof value === 'string' || typeof value === 'number') {
     return value ? [String(value)] : [];
   }
-
   return [];
 };
 
@@ -26,6 +24,7 @@ interface MultiSelectFilterProps {
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
   options: Option[];
+  placeholder?: string; // ADDED: Placeholder prop
 }
 
 export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
@@ -34,6 +33,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   filters,
   setFilters,
   options,
+  placeholder,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,25 +42,19 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
 
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
-  // FIX 1: Robustly normalize the current value to an array
   const rawValue = filters[filterKey];
   const selectedValues = normalizeToStringArray(rawValue);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // If the dropdown is not open, do nothing
       if (!isOpen) return;
-
-      // Check if click is inside trigger or dropdown content
       const target = event.target as Node;
       const isInsideTrigger = triggerRef.current && triggerRef.current.contains(target);
       const isInsideDropdown = dropdownRef.current && dropdownRef.current.contains(target);
-
       if (!isInsideTrigger && !isInsideDropdown) {
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
@@ -88,24 +82,18 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     };
   }, [isOpen]);
 
-  // FIX 2: Stop propagation to prevent immediate closing and handle array logic safely
   const handleToggleOption = (e: React.MouseEvent, value: string) => {
     e.preventDefault();
-    e.stopPropagation(); // Critical: Stop event bubbling to document listener
-
+    e.stopPropagation();
     setFilters((prev) => {
       const raw = prev[filterKey];
-      // Normalize previous value to array safely
       const current = normalizeToStringArray(raw);
-
       let newValues;
-
       if (current.includes(value)) {
         newValues = current.filter((v) => v !== value);
       } else {
         newValues = [...current, value];
       }
-
       const newFilters = { ...prev };
       if (newValues.length > 0) {
         newFilters[filterKey] = newValues;
@@ -138,7 +126,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
       ref={dropdownRef}
       style={dropdownStyle}
       className='fixed mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top'
-      // Stop clicks inside the dropdown from propagating to document
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}>
       <div className='p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between'>
@@ -170,11 +157,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                   <FiCheck className='h-4 w-4 text-blue-600 dark:text-blue-400' />
                 </span>
               )}
-              {option.label && (
-                <>
-                  <span className='block truncate font-medium'> {option.label} </span>
-                </>
-              )}
+              {option.label && <span className='block truncate font-medium'> {option.label} </span>}
             </div>
           );
         })}
@@ -185,11 +168,27 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     </div>
   );
 
+  // LOGIC FIX: Determine Button Text
+  let buttonText = placeholder || label || 'Options';
+  if (selectedValues.length > 0) {
+    if (selectedValues.length === options.length) {
+      // If label exists: "All Types", else "All Selected"
+      buttonText = label ? `All ${label}` : 'All Selected';
+    } else {
+      // If label exists: "Type (2)", else "2 Selected"
+      buttonText = label
+        ? `${label} (${selectedValues.length})`
+        : `${selectedValues.length} Selected`;
+    }
+  }
+
   return (
     <div className='space-y-2 relative' ref={containerRef}>
+      {/* Optional Top Label: Only show if provided */}
       {label && (
         <Label className='text-sm font-medium text-gray-700 dark:text-gray-300'>{label}</Label>
       )}
+      
       <button
         ref={triggerRef}
         type='button'
@@ -209,11 +208,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
               ? 'text-gray-500 dark:text-gray-400'
               : 'text-gray-900 dark:text-white'
           }`}>
-          {selectedValues.length === 0
-            ? `Select ${label || 'Options'}...`
-            : selectedValues.length === options.length
-              ? `All ${label} (${selectedValues.length})`
-              : `${label} (${selectedValues.length})`}
+          {buttonText}
         </span>
         <FiChevronDown
           className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${

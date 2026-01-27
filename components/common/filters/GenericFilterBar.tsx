@@ -15,7 +15,6 @@ export type FilterConfig = {
   placeholder?: string;
   isLoading?: boolean;
   type?: 'select' | 'native-select' | 'multi-select';
-  // THE FIX: Added sortOptions prop
   sortOptions?: boolean;
 };
 
@@ -83,6 +82,8 @@ export const GenericFilterBar = memo(
                     filters={filters}
                     setFilters={setFilters}
                     options={config.options}
+                    // THE FIX: Pass the placeholder prop here
+                    placeholder={config.placeholder}
                   />
                 </div>
               );
@@ -116,7 +117,6 @@ export const GenericFilterBar = memo(
                   onChange={(v) => onFilterChange(config.key, v)}
                   isLoading={config.isLoading}
                   clearable
-                  // THE FIX: Pass sortOptions down
                   sortOptions={config.sortOptions}
                 />
               </div>
