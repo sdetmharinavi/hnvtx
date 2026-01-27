@@ -10,7 +10,7 @@ import ThemeToggle from "../common/ui/theme/ThemeToggle";
 import { useMutationQueue } from "@/hooks/data/useMutationQueue";
 import { Cloud, CloudOff, AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { useDataSync } from "@/hooks/data/useDataSync";
+import { useDataSync } from "@/hooks/data/useDataSync"; // This now uses the optimized store
 import { useCallback, useState, useRef, useEffect } from "react";
 import useIsMobile from "@/hooks/useIsMobile";
 import { BiUser } from "react-icons/bi";
@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SyncStatusModal } from "./SyncStatusModal";
 import { FontSizeToggle } from "../common/ui/FontSizeToggle";
 import { useAppSettingsStore } from "@/stores/appSettingsStore";
-import { cn } from "@/lib/utils"; // THE FIX: Import cn utility
+import { cn } from "@/lib/utils";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -70,7 +70,10 @@ export default function DashboardHeader({
   onMenuClick,
 }: DashboardHeaderProps) {
   const user = useAuthStore((state) => state.user);
-  const { isSyncing, sync } = useDataSync();
+  
+  // OPTIMIZED: This now subscribes to the Zustand store boolean, not the Dexie table
+  const { isSyncing, sync } = useDataSync(); 
+  
   const isMobile = useIsMobile();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -136,7 +139,6 @@ export default function DashboardHeader({
                 className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh all data"
               >
-                {/* THE FIX: Use cn for class merging */}
                 <RefreshCw className={cn("h-5 w-5", isSyncing && "animate-spin")} />
               </button>
 

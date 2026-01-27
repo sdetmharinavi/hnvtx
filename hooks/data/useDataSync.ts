@@ -1,13 +1,14 @@
 // hooks/data/useDataSync.ts
-import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { localDb, HNVTMDatabase, getTable, MutationTask } from '@/hooks/data/localDb';
 import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useSyncStore } from '@/stores/syncStore'; // NEW IMPORT
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const BATCH_SIZE = 2500;
 
@@ -15,14 +16,13 @@ type SyncStrategy = 'full' | 'incremental';
 
 interface EntitySyncConfig {
   strategy: SyncStrategy;
-  timestampColumn?: string; // e.g., 'created_at' or 'updated_at'
-  relatedTable?: PublicTableName; // Used to check mutation queue for views
+  timestampColumn?: string;
+  relatedTable?: PublicTableName;
 }
 
 // Configuration Map for Sync Strategies
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  // ... (Keep existing config same as before) ...
-  // --- Incremental Sync Tables (True Append-Only / History) ---
+  // --- Incremental Sync Tables ---
   v_audit_logs: {
     strategy: 'incremental',
     timestampColumn: 'created_at',
@@ -42,7 +42,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   },
   file_movements: { strategy: 'incremental', timestampColumn: 'created_at' },
 
-  // --- FULL SYNC TABLES (Operational Data) ---
+  // --- FULL SYNC TABLES ---
   systems: { strategy: 'full' },
   system_connections: { strategy: 'full' },
   ports_management: { strategy: 'full' },
@@ -71,14 +71,14 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   sdh_connections: { strategy: 'full' },
   technical_notes: { strategy: 'full' },
 
-  // Views mapped to their underlying tables for mutation checking
+  // Views
   v_systems_complete: { strategy: 'full', relatedTable: 'systems' },
   v_system_connections_complete: { strategy: 'full', relatedTable: 'system_connections' },
   v_ports_management_complete: { strategy: 'full', relatedTable: 'ports_management' },
   v_ofc_connections_complete: { strategy: 'full', relatedTable: 'ofc_connections' },
   v_services: { strategy: 'full', relatedTable: 'services' },
   v_nodes_complete: { strategy: 'full', relatedTable: 'nodes' },
-  v_ring_nodes: { strategy: 'full', relatedTable: 'systems' }, 
+  v_ring_nodes: { strategy: 'full', relatedTable: 'systems' },
   v_rings: { strategy: 'full', relatedTable: 'rings' },
   v_ofc_cables_complete: { strategy: 'full', relatedTable: 'ofc_cables' },
   v_cable_utilization: { strategy: 'full', relatedTable: 'ofc_cables' },
@@ -95,11 +95,9 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
-// Helper: Merges local pending changes into the server dataset
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// ... (mergePendingMutations helper remains unchanged) ...
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
-  // Map for O(1) lookup
   const serverIdMap = new Map(merged.map((item, index) => [String(item.id), index]));
 
   pendingTasks.forEach((task) => {
@@ -126,7 +124,7 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
   return merged;
 }
 
-// ** STREAMING SYNC IMPLEMENTATION **
+// ... (performFullSync remains unchanged) ...
 async function performFullSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -139,7 +137,6 @@ async function performFullSync(
   let totalSynced = 0;
   let fetchSuccessful = true;
 
-  // 1. Fetch pending local mutations from the Queue
   let pendingTasks: MutationTask[] = [];
   const targetTableForMutations = config.relatedTable || entityName;
 
@@ -158,11 +155,8 @@ async function performFullSync(
       .map((t) => String((t.payload as any).id)),
   );
 
-  // Track all IDs seen from the server to identify what needs deletion (Pruning)
   const serverIdsSeen = new Set<string>();
 
-  // 2. Clear table before full sync? No, we upsert. But we need to prune later.
-  
   while (hasMore) {
     try {
       const { data: rpcResponse, error: rpcError } = await supabase.rpc('get_paged_data', {
@@ -179,27 +173,22 @@ async function performFullSync(
       const validDataCount = batchData.length;
 
       if (validDataCount > 0) {
-        // A. Track IDs from server
         batchData.forEach((item) => {
           if (item.id !== undefined && item.id !== null) {
             serverIdsSeen.add(String(item.id));
           }
-          // Special case for composite keys (like ring_based_systems)
           if (entityName === 'ring_based_systems' && item.system_id && item.ring_id) {
              serverIdsSeen.add(`${item.system_id}+${item.ring_id}`);
           }
-           // Special case for composite keys (like v_ring_nodes uses compound key in dexie)
            if (entityName === 'v_ring_nodes' && item.id && item.ring_id) {
-             serverIdsSeen.add(`${item.id}+${item.ring_id}`); // Match Dexie key format
+             serverIdsSeen.add(`${item.id}+${item.ring_id}`);
            }
         });
 
-        // B. Merge local edits onto server data
         if (pendingTasks.length > 0) {
           batchData = mergePendingMutations(batchData, pendingTasks);
         }
 
-        // C. UPSERT to Local DB
         await db.transaction('rw', table, async () => {
           await table.bulkPut(batchData);
         });
@@ -220,7 +209,6 @@ async function performFullSync(
     }
   }
 
-  // 3. Handle Local Creations (Pending Inserts)
   if (pendingTasks.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inserts = pendingTasks.filter((t) => t.type === 'insert').map((t) => t.payload as any);
@@ -235,35 +223,27 @@ async function performFullSync(
     }
   }
 
-  // 4. Prune Stale Data (The "Sweep" Phase)
   if (fetchSuccessful) {
-    // Get all keys currently in local DB
     const allLocalKeys = await table.toCollection().primaryKeys();
-
     const keysToDelete = allLocalKeys.filter((key) => {
-      // Handle composite keys
       if (Array.isArray(key)) {
          const compositeKey = key.join('+');
          return !serverIdsSeen.has(compositeKey);
       }
-      
       const keyStr = String(key);
       return !serverIdsSeen.has(keyStr) && !pendingInsertIds.has(keyStr);
     });
 
     if (keysToDelete.length > 0) {
-      console.log(`[Sync] Pruning ${keysToDelete.length} stale records from ${entityName}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await table.bulkDelete(keysToDelete as any[]);
     }
-  } else if (!fetchSuccessful) {
-    console.warn(`[Sync] Skipping prune for ${entityName} due to fetch errors.`);
   }
 
   return totalSynced;
 }
 
-// Incremental sync logic (Unchanged)
+// ... (performIncrementalSync remains unchanged) ...
 async function performIncrementalSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -320,18 +300,27 @@ async function performIncrementalSync(
   return totalSynced;
 }
 
+// Optimized syncEntity that updates both Dexie logs and Zustand Store
 export async function syncEntity(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
   entityName: PublicTableOrViewName,
 ) {
-  try {
-    await db.sync_status.put({
-      tableName: entityName,
-      status: 'syncing',
-      lastSynced: new Date().toISOString(),
-    });
+  const { addActiveSync, removeActiveSync } = useSyncStore.getState();
+  
+  // 1. Update Zustand Store (FAST UI UPDATE)
+  addActiveSync(entityName);
 
+  // 2. Update Dexie Logs (SLOW, FOR HISTORY ONLY)
+  // We intentionally don't await this put to avoid blocking the sync start logic,
+  // but Dexie queues it anyway.
+  db.sync_status.put({
+    tableName: entityName,
+    status: 'syncing',
+    lastSynced: new Date().toISOString(),
+  }).catch(console.error);
+
+  try {
     let count = 0;
     const config = SYNC_CONFIG[entityName];
     const safeConfig = config || { strategy: 'full' };
@@ -342,6 +331,7 @@ export async function syncEntity(
       count = await performFullSync(supabase, db, entityName, safeConfig);
     }
 
+    // Success Update
     await db.sync_status.put({
       tableName: entityName,
       status: 'success',
@@ -360,17 +350,20 @@ export async function syncEntity(
       error: errorMessage,
     });
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
+  } finally {
+    // 3. Remove from Zustand Store (FAST UI UPDATE)
+    removeActiveSync(entityName);
   }
 }
 
 export function useDataSync() {
   const supabase = createClient();
-  const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
-
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<Error | null>(null);
+  
+  // OPTIMIZATION: Subscribe to Zustand store instead of Dexie for loading state
+  // This prevents re-renders on every DB write.
+  const isSyncing = useSyncStore((state) => state.isGlobalSyncing);
 
   const executeSync = useCallback(
     async (specificTables?: PublicTableOrViewName[]) => {
@@ -379,8 +372,6 @@ export function useDataSync() {
         return;
       }
 
-      setIsSyncing(true);
-      setSyncError(null);
       const startTime = Date.now();
 
       try {
@@ -396,6 +387,7 @@ export function useDataSync() {
           toast.info('Starting full sync...');
         }
 
+        // Execute sequentially to avoid saturating network/CPU
         for (const entity of entitiesToSync) {
           try {
             await syncEntity(supabase, localDb, entity);
@@ -434,9 +426,8 @@ export function useDataSync() {
           console.error('Sync Failures:', failures);
         }
 
-        return { lastSynced: new Date().toISOString() };
       } catch (err) {
-        setSyncError(err as Error);
+        console.error("Critical Sync Error", err);
         toast.error('Sync process failed.');
         throw err;
       } finally {
@@ -445,24 +436,22 @@ export function useDataSync() {
         if (elapsed < minDuration) {
           await new Promise((resolve) => setTimeout(resolve, minDuration - elapsed));
         }
-        setIsSyncing(false);
       }
     },
     [supabase, queryClient, isOnline],
   );
 
-  const { data: globalSyncState } = useQuery({
-    queryKey: ['data-sync-all'],
-    queryFn: () => ({ lastSynced: null }),
-    enabled: false,
-    staleTime: Infinity,
-  });
-
   return {
     isSyncing,
-    syncError,
-    syncStatus,
     sync: executeSync,
-    lastGlobalSync: globalSyncState?.lastSynced,
   };
+}
+
+/**
+ * A specialized hook for components that NEED detailed sync history (like Settings/Debug screens).
+ * Use this sparingly as it causes re-renders on DB writes.
+ */
+export function useSyncHistory() {
+  const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
+  return { syncStatus };
 }
