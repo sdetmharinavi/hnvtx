@@ -89,7 +89,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
   const {
     data: networkData,
-    isLoading: isNetworkLoading,
     isFetching: isNetworkFetching,
     isError: isNetworkError,
     error: networkError,

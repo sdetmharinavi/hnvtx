@@ -52,20 +52,20 @@ import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/us
 
 const RingModal = dynamic(
   () => import('@/components/rings/RingModal').then((mod) => mod.RingModal),
-  { loading: () => <PageSpinner text="Loading Ring Form..." /> }
+  { loading: () => <PageSpinner text='Loading Ring Form...' /> },
 );
 
 const SystemRingModal = dynamic(
   () => import('@/components/ring-manager/SystemRingModal').then((mod) => mod.SystemRingModal),
-  { loading: () => <PageSpinner text="Loading System-Ring Form..." /> }
+  { loading: () => <PageSpinner text='Loading System-Ring Form...' /> },
 );
 
 const EditSystemInRingModal = dynamic(
   () =>
     import('@/components/ring-manager/EditSystemInRingModal').then(
-      (mod) => mod.EditSystemInRingModal
+      (mod) => mod.EditSystemInRingModal,
     ),
-  { loading: () => <PageSpinner text="Loading Edit System Form..." /> }
+  { loading: () => <PageSpinner text='Loading Edit System Form...' /> },
 );
 
 // --- Types ---
@@ -179,19 +179,19 @@ const RingAssociatedSystemsView = ({
     'SYSTEM_TYPES',
     'asc',
     '',
-    'code'
+    'code',
   );
 
   const systems = systemsData?.data || [];
 
   if (isLoading || isLoadingTypes)
     return (
-      <div className="py-4 text-center text-sm text-gray-500">Loading associated systems...</div>
+      <div className='py-4 text-center text-sm text-gray-500'>Loading associated systems...</div>
     );
 
   if (systems.length === 0) {
     return (
-      <div className="text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700">
+      <div className='text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700'>
         No systems associated with this ring yet.
       </div>
     );
@@ -205,7 +205,7 @@ const RingAssociatedSystemsView = ({
   });
 
   return (
-    <div className="space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
+    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2'>
       {systems.map((system) => {
         const isSpur = !system.is_hub && system.order_in_ring !== null;
         const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
@@ -218,36 +218,36 @@ const RingAssociatedSystemsView = ({
         return (
           <div
             key={system.id}
-            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors"
+            className='flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors'
           >
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+              <div className='flex items-center gap-2'>
+                <span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
                   {system.system_name}
                 </span>
                 {system_ip && (
-                  <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                  <span className='font-mono text-xs text-gray-500 dark:text-gray-400'>
                     / {system_ip}
                   </span>
                 )}
-                <span className="text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800">
+                <span className='text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800'>
                   {typeName}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
+              <div className='flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5'>
+                <span className='font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold'>
                   #{system.order_in_ring ?? '?'}
                 </span>
                 {system.is_hub ? (
-                  <span className="text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
-                    <FiArrowRightCircle className="w-3 h-3" /> Hub
+                  <span className='text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
+                    <FiArrowRightCircle className='w-3 h-3' /> Hub
                   </span>
                 ) : (
-                  <span className="text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
-                    <FiGitMerge className="w-3 h-3" /> Spur
+                  <span className='text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
+                    <FiGitMerge className='w-3 h-3' /> Spur
                     {parentName && (
-                      <span className="text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal">
+                      <span className='text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal'>
                         via {parentName}
                       </span>
                     )}
@@ -255,27 +255,27 @@ const RingAssociatedSystemsView = ({
                 )}
               </div>
             </div>
-            <div className="flex gap-1">
+            <div className='flex gap-1'>
               {canEdit && (
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                  variant='ghost'
+                  size='sm'
+                  className='h-8 w-8 p-0 text-gray-500 hover:text-blue-600'
                   onClick={() => onEdit(system)}
-                  title="Edit Order / Hub Status"
+                  title='Edit Order / Hub Status'
                 >
-                  <FiEdit className="w-4 h-4" />
+                  <FiEdit className='w-4 h-4' />
                 </Button>
               )}
               {canDelete && (
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                  variant='ghost'
+                  size='sm'
+                  className='h-8 w-8 p-0 text-gray-500 hover:text-red-600'
                   onClick={() => onDelete(system)}
-                  title="Remove System from Ring"
+                  title='Remove System from Ring'
                 >
-                  <FiTrash2 className="w-4 h-4" />
+                  <FiTrash2 className='w-4 h-4' />
                 </Button>
               )}
             </div>
@@ -297,7 +297,7 @@ export default function RingManagerPage() {
   const [isEditSystemModalOpen, setIsEditSystemModalOpen] = useState(false);
   const [systemToEdit, setSystemToEdit] = useState<V_systems_completeRowSchema | null>(null);
   const [systemToDisassociate, setSystemToDisassociate] = useState<SystemToDisassociate | null>(
-    null
+    null,
   );
 
   const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
@@ -445,7 +445,7 @@ export default function RingManagerPage() {
           order_in_ring:
             formData.order_in_ring != null
               ? Number(formData.order_in_ring)
-              : systemToEdit.order_in_ring ?? null,
+              : (systemToEdit.order_in_ring ?? null),
         },
       ],
       p_ip_address: systemToEdit.ip_address ? systemToEdit.ip_address.split('/')[0] : undefined,
@@ -476,11 +476,11 @@ export default function RingManagerPage() {
 
   const ringTypesData = useMemo(
     () => (ringTypesRaw || []) as Lookup_typesRowSchema[],
-    [ringTypesRaw]
+    [ringTypesRaw],
   );
   const maintenanceAreasData = useMemo(
     () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
-    [maintenanceAreasRaw]
+    [maintenanceAreasRaw],
   );
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
@@ -507,7 +507,7 @@ export default function RingManagerPage() {
     (record: V_ringsRowSchema) => {
       if (record.id) router.push(`/dashboard/rings/${record.id}`);
     },
-    [router]
+    [router],
   );
 
   const handleUploadClick = useCallback(() => {
@@ -661,9 +661,9 @@ export default function RingManagerPage() {
           type: 'custom',
           render: (_value, entity) => (
             <Button
-              size="sm"
-              variant="primary"
-              className="w-full mb-4"
+              size='sm'
+              variant='primary'
+              className='w-full mb-4'
               leftIcon={<FaRoute />}
               onClick={() => router.push(`/dashboard/ring-paths/${entity.id}`)}
             >
@@ -742,7 +742,7 @@ export default function RingManagerPage() {
         return opt;
       }),
     }),
-    [ringTypesData, maintenanceAreasData, router, canEdit, canDelete]
+    [ringTypesData, maintenanceAreasData, router, canEdit, canDelete],
   );
 
   const uiFilters = useMemo<Record<string, string>>(() => {
@@ -765,32 +765,42 @@ export default function RingManagerPage() {
     });
   }, [systemToDisassociate, disassociateSystemMutation]);
 
+  // THE FIX: Create a wrapper function to adapt the signature
+  const toggleStatusWrapper = (variables: { id: string; status: boolean }) => {
+    const recordToToggle = rings.find((r) => r.id === variables.id);
+    if (recordToToggle) {
+      crudActions.handleToggleStatus(recordToToggle);
+    }
+  };
+
   if (error)
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col">
+    <div className='p-4 md:p-6 h-full flex flex-col'>
       <input
-        type="file"
+        type='file'
         ref={fileInputRef}
         onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls"
+        className='hidden'
+        accept='.xlsx, .xls'
       />
       <PageHeader
-        title="Ring Manager"
-        description="Manage network rings, status, and topology."
+        title='Ring Manager'
+        description='Manage network rings, status, and topology.'
         icon={<GiLinkedRings />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}
       />
-      <div className="grow mt-6">
+      <div className='grow mt-6'>
         <EntityManagementComponent
           config={dynamicFilterConfig}
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
-          toggleStatusMutation={{ mutate: crudActions.handleToggleStatus, isPending: isMutating }}
+          isFetching={isFetching}
+          // THE FIX: Pass the adapted wrapper function here
+          toggleStatusMutation={{ mutate: toggleStatusWrapper, isPending: isMutating }}
           onEdit={
             canEdit
               ? (e) => {
@@ -799,7 +809,14 @@ export default function RingManagerPage() {
                 }
               : undefined
           }
-          onDelete={canDelete ? crudActions.handleDelete : undefined}
+          onDelete={
+            canDelete
+              ? ({ id }) => {
+                  const orig = rings.find((r) => r.id === id);
+                  if (orig) void crudActions.handleDelete(orig);
+                }
+              : undefined
+          }
           onCreateNew={canEdit ? editModal.openAdd : undefined}
           selectedEntityId={viewModal.record?.id ?? null}
           onSelect={(id) => {
@@ -816,7 +833,6 @@ export default function RingManagerPage() {
           filters={uiFilters}
           onFilterChange={(f) => filters.setFilters(f as Filters)}
           onClearFilters={() => filters.setFilters({})}
-          isFetching={isFetching}
         />
       </div>
 
@@ -850,20 +866,20 @@ export default function RingManagerPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteModal.message}
         loading={deleteModal.loading}
-        type="danger"
+        type='danger'
       />
 
       <ConfirmModal
         isOpen={!!systemToDisassociate}
         onConfirm={handleConfirmDisassociation}
         onCancel={() => setSystemToDisassociate(null)}
-        title="Confirm Disassociation"
+        title='Confirm Disassociation'
         message={`Are you sure you want to remove the system "${systemToDisassociate?.systemName}" from the ring "${systemToDisassociate?.ringName}"?`}
         loading={disassociateSystemMutation.isPending}
-        type="danger"
+        type='danger'
       />
     </div>
   );

@@ -3,7 +3,7 @@ import { PublicTableName, PublicTableOrViewName, TableInsert, TableInsertWithDat
 import { UseQueryResult } from '@tanstack/react-query';
 
 export type BaseRecord = {
-  id: string | number | null;
+  id?: string | number | null;
   [key: string]: unknown; // Index signature to allow for other properties
 };
 

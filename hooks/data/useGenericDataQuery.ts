@@ -47,6 +47,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
 
     const actualServerSearchFields = useMemo(
       () => serverSearchFields || searchFields,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       [serverSearchFields, searchFields]
     );
 
@@ -203,6 +204,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         activeCount,
         inactiveCount,
       };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filteredData, filters, currentPage, pageLimit, activeStatusField]);
 
     return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };

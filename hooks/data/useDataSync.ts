@@ -95,7 +95,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
-// ... (mergePendingMutations helper remains unchanged) ...
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
   const serverIdMap = new Map(merged.map((item, index) => [String(item.id), index]));
