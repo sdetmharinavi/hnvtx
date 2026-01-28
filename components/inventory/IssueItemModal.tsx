@@ -94,6 +94,7 @@ export const IssueItemModal: React.FC<IssueItemModalProps> = ({
               name="quantity"
               label="Quantity to Issue"
               type="number"
+              step={0.01}
               register={register}
               error={errors.quantity}
               required
