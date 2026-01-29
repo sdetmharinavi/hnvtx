@@ -20,15 +20,7 @@ interface UseLocalFirstQueryOptions<T extends PublicTableOrViewName, TRow = Row<
   autoSync?: boolean;
   refetchOnMount?: boolean | 'always';
   tableName?: string;
-  /**
-   * If true, returns network data directly when online, bypassing the "Write to DB -> Read from DB" loop.
-   * Useful for search results or ephemeral data.
-   */
   preferNetwork?: boolean;
-  /**
-   * If true, prevents writing network results to the local database.
-   * Useful when fetching partial search results to avoid polluting the local cache.
-   */
   skipSync?: boolean;
 }
 
@@ -45,6 +37,10 @@ const VIEW_TO_TABLE_MAP: Record<string, string> = {
   v_system_connections_complete: 'system_connections',
   v_ofc_connections_complete: 'ofc_connections',
   v_user_profiles_extended: 'user_profiles',
+  
+  // NEW ENTRIES FOR EXPENSES
+  v_advances_complete: 'advances',
+  v_expenses_complete: 'expenses',
 };
 
 export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T>, TLocal = TRow>({
@@ -66,7 +62,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   const [hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
 
   // 1. Fetch Local Data
-  // 'loading' is the default value while Dexie fetches
   const localData = useLiveQuery(
     () => {
       return Promise.resolve(localQueryFn()).finally(() => {
@@ -84,7 +79,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   }, [localData]);
 
   // 2. Network Query Configuration
-  // Only auto-fetch if enabled, online, and autoSync is true
   const shouldFetchOnMount = enabled && isOnline && autoSync;
 
   const {
@@ -112,7 +106,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
 
   // 3. Safe Sync Network Data to Local DB (Upsert + Prune)
   useEffect(() => {
-    // SKIP SYNC if explicitly requested (e.g. during search)
     if (skipSync) return;
 
     if (networkData && !isSyncingRef.current && localData !== 'loading') {
@@ -168,9 +161,6 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     }
   }, [networkData, dexieTable, tableName, localData, skipSync]);
 
-  // 4. Return Data Logic
-  // If preferNetwork is true and we have network data, use it directly (Fastest for Search)
-  // Otherwise fall back to local data (Offline / Initial Load)
   const resolvedData =
     preferNetwork && networkData
       ? networkData

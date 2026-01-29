@@ -30,7 +30,7 @@ import { useDataSync } from '@/hooks/data/useDataSync';
 
 const DiaryFormModal = dynamic(
   () => import('@/components/diary/DiaryFormModal').then((mod) => mod.DiaryFormModal),
-  { loading: () => <PageSpinner text="Loading Form..." /> }
+  { loading: () => <PageSpinner text='Loading Form...' /> },
 );
 
 type ViewMode = 'day' | 'feed';
@@ -79,13 +79,13 @@ export default function DiaryPage() {
       notes = notes.filter(
         (note) =>
           (note.content?.toLowerCase() || '').includes(query) ||
-          (note.tags && note.tags.some((tag: string) => tag.toLowerCase().includes(query)))
+          (note.tags && note.tags.some((tag: string) => tag.toLowerCase().includes(query))),
       );
     }
 
     if (viewMode === 'day' && !debouncedSearch) {
       const selectedDateString = `${selectedDate.getFullYear()}-${String(
-        selectedDate.getMonth() + 1
+        selectedDate.getMonth() + 1,
       ).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       notes = notes.filter((note) => note.note_date === selectedDateString);
     }
@@ -233,7 +233,7 @@ export default function DiaryPage() {
         await syncData(['diary_notes']);
       }
       refetch();
-      toast.success('Notes refreshed!');
+      toast.success('Diary refreshed!');
     },
     onAddNew: canEdit ? openAddModal : undefined,
     isLoading,
@@ -278,20 +278,20 @@ export default function DiaryPage() {
   const genericViewMode = viewMode === 'day' ? 'grid' : 'table';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className='min-h-screen bg-gray-50 dark:bg-gray-900 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
+      <div className='mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
         <input
-          type="file"
+          type='file'
           ref={fileInputRef}
           onChange={handleFileChange}
-          className="hidden"
-          accept=".xlsx, .xls, .csv"
+          className='hidden'
+          accept='.xlsx, .xls, .csv'
         />
 
-        <div className="mb-6">
+        <div className='mb-6'>
           <PageHeader
-            title="Log Book"
-            description="Daily maintenance logs and event tracking."
+            title='Log Book'
+            description='Daily maintenance logs and event tracking.'
             icon={<FiBookOpen />}
             stats={[{ value: allNotesForMonth.length, label: 'Total This Month' }]}
             actions={headerActions}
@@ -300,11 +300,11 @@ export default function DiaryPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className='grid grid-cols-1 xl:grid-cols-12 gap-6'>
           {/* Calendar Sidebar */}
-          <div className="xl:col-span-4 space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative">
-              <div className="p-4">
+          <div className='xl:col-span-4 space-y-6'>
+            <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative'>
+              <div className='p-4'>
                 <DiaryCalendar
                   selectedDate={selectedDate}
                   onDateChange={handleDateChange}
@@ -312,18 +312,18 @@ export default function DiaryPage() {
                   highlightedDates={highlightedDates}
                 />
               </div>
-              <div className="absolute top-4 right-4 z-20">
-                <Button size="xs" variant="ghost" onClick={jumpToToday} title="Jump to Today">
+              <div className='absolute top-4 right-4 z-20'>
+                <Button size='xs' variant='ghost' onClick={jumpToToday} title='Jump to Today'>
                   Today
                 </Button>
               </div>
             </div>
 
-            <div className="hidden xl:block bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
-              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+            <div className='hidden xl:block bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800'>
+              <h4 className='font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2'>
                 <FiCalendar /> Usage Tips
               </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className='text-sm text-gray-600 dark:text-gray-400'>
                 Use the calendar to filter entries by specific dates. Switch to &quot;Feed&quot;
                 view to see all activities for the current month in chronological order.
               </p>
@@ -331,12 +331,12 @@ export default function DiaryPage() {
           </div>
 
           {/* Main Content Area */}
-          <div className="xl:col-span-8 space-y-6">
+          <div className='xl:col-span-8 space-y-6'>
             {/* REUSABLE FILTER BAR */}
             <GenericFilterBar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              searchPlaceholder="Search logs or tags..."
+              searchPlaceholder='Search logs or tags...'
               filters={{}} // No dropdowns
               onFilterChange={() => {}}
               filterConfigs={[]} // No configs
@@ -345,10 +345,10 @@ export default function DiaryPage() {
               extraActions={
                 viewMode === 'feed' ? (
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size='sm'
+                    variant='outline'
                     onClick={handlePrintFeed}
-                    leftIcon={<FiPrinter className="w-4 h-4" />}
+                    leftIcon={<FiPrinter className='w-4 h-4' />}
                     title="Print this month's feed"
                   >
                     Print
@@ -359,8 +359,8 @@ export default function DiaryPage() {
 
             {/* List Header */}
             <div className={viewMode === 'feed' ? 'printable-content' : ''}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <div className='flex items-center justify-between mb-4'>
+                <h2 className='text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2'>
                   {debouncedSearch ? (
                     <>Search Results ({filteredNotes.length})</>
                   ) : viewMode === 'day' ? (
@@ -373,7 +373,7 @@ export default function DiaryPage() {
                   )}
                 </h2>
                 {!debouncedSearch && viewMode === 'day' && (
-                  <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                  <span className='text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full'>
                     {filteredNotes.length} entries
                   </span>
                 )}
@@ -381,15 +381,15 @@ export default function DiaryPage() {
 
               {/* Entries List */}
               {filteredNotes.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                  <div className="text-center py-12 px-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
-                      <FiBookOpen className="h-8 w-8 text-blue-400" />
+                <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
+                  <div className='text-center py-12 px-4'>
+                    <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4'>
+                      <FiBookOpen className='h-8 w-8 text-blue-400' />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
                       {debouncedSearch ? 'No matching notes found' : 'No entries found'}
                     </h3>
-                    <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">
+                    <p className='text-sm text-gray-500 max-w-sm mx-auto mb-6'>
                       {debouncedSearch
                         ? 'Try different keywords or tags.'
                         : 'No logs recorded for this selection. Create a new entry to get started.'}
@@ -397,7 +397,7 @@ export default function DiaryPage() {
                     {canEdit && !debouncedSearch && viewMode === 'day' && (
                       <button
                         onClick={openAddModal}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
+                        className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30'
                       >
                         Create Entry
                       </button>
@@ -405,7 +405,7 @@ export default function DiaryPage() {
                   </div>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className='grid gap-4'>
                   {filteredNotes.map((note) => (
                     <DiaryEntryCard
                       key={note.id}
@@ -438,10 +438,10 @@ export default function DiaryPage() {
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteManager.confirmationMessage}
         loading={deleteManager.isPending}
-        type="danger"
+        type='danger'
       />
     </div>
   );

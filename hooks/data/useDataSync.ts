@@ -7,7 +7,7 @@ import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { useCallback } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { useSyncStore } from '@/stores/syncStore'; // NEW IMPORT
+import { useSyncStore } from '@/stores/syncStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 const BATCH_SIZE = 2500;
@@ -70,6 +70,8 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   logical_path_segments: { strategy: 'full' },
   sdh_connections: { strategy: 'full' },
   technical_notes: { strategy: 'full' },
+  
+  // NEWLY ADDED FOR EXPENSES
   advances: { strategy: 'full' },
   expenses: { strategy: 'full' },
   
@@ -95,6 +97,8 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_user_profiles_extended: { strategy: 'full', relatedTable: 'user_profiles' },
   v_employees: { strategy: 'full', relatedTable: 'employees' },
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
+  
+  // NEWLY ADDED VIEWS
   v_advances_complete: { strategy: 'full', relatedTable: 'advances' },
   v_expenses_complete: { strategy: 'full', relatedTable: 'expenses' },
 };
@@ -128,7 +132,6 @@ function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) 
   return merged;
 }
 
-// ... (performFullSync remains unchanged) ...
 async function performFullSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -247,7 +250,6 @@ async function performFullSync(
   return totalSynced;
 }
 
-// ... (performIncrementalSync remains unchanged) ...
 async function performIncrementalSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -304,7 +306,6 @@ async function performIncrementalSync(
   return totalSynced;
 }
 
-// Optimized syncEntity that updates both Dexie logs and Zustand Store
 export async function syncEntity(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
@@ -312,12 +313,8 @@ export async function syncEntity(
 ) {
   const { addActiveSync, removeActiveSync } = useSyncStore.getState();
   
-  // 1. Update Zustand Store (FAST UI UPDATE)
   addActiveSync(entityName);
 
-  // 2. Update Dexie Logs (SLOW, FOR HISTORY ONLY)
-  // We intentionally don't await this put to avoid blocking the sync start logic,
-  // but Dexie queues it anyway.
   db.sync_status.put({
     tableName: entityName,
     status: 'syncing',
@@ -335,7 +332,6 @@ export async function syncEntity(
       count = await performFullSync(supabase, db, entityName, safeConfig);
     }
 
-    // Success Update
     await db.sync_status.put({
       tableName: entityName,
       status: 'success',
@@ -355,7 +351,6 @@ export async function syncEntity(
     });
     throw new Error(`Failed to sync ${entityName}: ${errorMessage}`);
   } finally {
-    // 3. Remove from Zustand Store (FAST UI UPDATE)
     removeActiveSync(entityName);
   }
 }
@@ -365,8 +360,6 @@ export function useDataSync() {
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
   
-  // OPTIMIZATION: Subscribe to Zustand store instead of Dexie for loading state
-  // This prevents re-renders on every DB write.
   const isSyncing = useSyncStore((state) => state.isGlobalSyncing);
 
   const executeSync = useCallback(
@@ -391,7 +384,6 @@ export function useDataSync() {
           toast.info('Starting full sync...');
         }
 
-        // Execute sequentially to avoid saturating network/CPU
         for (const entity of entitiesToSync) {
           try {
             await syncEntity(supabase, localDb, entity);
@@ -451,10 +443,6 @@ export function useDataSync() {
   };
 }
 
-/**
- * A specialized hook for components that NEED detailed sync history (like Settings/Debug screens).
- * Use this sparingly as it causes re-renders on DB writes.
- */
 export function useSyncHistory() {
   const syncStatus = useLiveQuery(() => localDb.sync_status.toArray(), []);
   return { syncStatus };
