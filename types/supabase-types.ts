@@ -924,6 +924,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          created_at: string | null
+          description: string | null
+          employee_id: string | null
+          id: string
+          req_no: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          advance_date: string
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          req_no: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          employee_id?: string | null
+          id?: string
+          req_no?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cable_segments: {
         Row: {
           created_at: string | null
@@ -1225,6 +1276,63 @@ export type Database = {
             columns: ["maintenance_terminal_id"]
             isOneToOne: false
             referencedRelation: "v_maintenance_areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          advance_id: string | null
+          amount: number
+          category: string | null
+          created_at: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          invoice_no: string | null
+          terminal_location: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          advance_id?: string | null
+          amount: number
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          expense_date: string
+          id?: string
+          invoice_no?: string | null
+          terminal_location?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          advance_id?: string | null
+          amount?: number
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          invoice_no?: string | null
+          terminal_location?: string | null
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "v_advances_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -3704,6 +3812,39 @@ export type Database = {
       }
     }
     Views: {
+      v_advances_complete: {
+        Row: {
+          advance_date: string | null
+          created_at: string | null
+          description: string | null
+          employee_id: string | null
+          employee_name: string | null
+          employee_pers_no: string | null
+          id: string | null
+          remaining_balance: number | null
+          req_no: string | null
+          spent_amount: number | null
+          status: string | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_audit_logs: {
         Row: {
           action_type: string | null
@@ -4016,6 +4157,39 @@ export type Database = {
             columns: ["source_system_id"]
             isOneToOne: false
             referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_expenses_complete: {
+        Row: {
+          advance_holder_name: string | null
+          advance_id: string | null
+          advance_req_no: string | null
+          amount: number | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          expense_date: string | null
+          id: string | null
+          invoice_no: string | null
+          terminal_location: string | null
+          updated_at: string | null
+          vendor: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "v_advances_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -5876,6 +6050,7 @@ export type Database = {
           p_offset: number
           p_order_by?: string
           p_order_dir?: string
+          p_status_column_name?: string
           p_view_name: string
           row_limit?: number
         }
@@ -6096,6 +6271,19 @@ export type Database = {
       update_ring_system_associations: {
         Args: { p_ring_id: string; p_system_ids: string[] }
         Returns: undefined
+      }
+      upsert_expense_record: {
+        Args: {
+          p_advance_req_no: string
+          p_amount: number
+          p_category: string
+          p_expense_date: string
+          p_id?: string
+          p_invoice_no: string
+          p_terminal: string
+          p_vendor: string
+        }
+        Returns: string
       }
       upsert_ring_associations_from_json: {
         Args: { p_associations: Json; p_ring_id: string }

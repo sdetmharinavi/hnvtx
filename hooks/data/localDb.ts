@@ -53,6 +53,10 @@ import {
   V_cable_segments_at_jcRowSchema,
   V_technical_notesRowSchema,
   Technical_notesRowSchema,
+  AdvancesInsertSchema,
+  ExpensesInsertSchema,
+  V_advances_completeRowSchema,
+  V_expenses_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
@@ -180,10 +184,15 @@ export class HNVTMDatabase extends Dexie {
 
   files!: Table<FilesRowSchema, string>;
   folders!: Table<FoldersRowSchema, string>;
-
+  advances!: Table<AdvancesInsertSchema, string>;
+  expenses!: Table<ExpensesInsertSchema, string>;
+  
+  
   // Added technical notes
   technical_notes!: Table<Technical_notesRowSchema, string>;
   v_technical_notes!: Table<V_technical_notesRowSchema, string>;
+  v_advances_complete!: Table<V_advances_completeRowSchema, string>;
+  v_expenses_complete!: Table<V_expenses_completeRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
   v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
@@ -223,7 +232,7 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
     // Bumped version number to force schema update
-    this.version(39).stores({
+    this.version(40).stores({
       // ... previous stores ...
       lookup_types: '&id, category, name, sort_order, status',
       v_lookup_types: '&id, category, name',
@@ -306,6 +315,12 @@ export class HNVTMDatabase extends Dexie {
 
       user_activity_logs: '&id, action_type, table_name, created_at',
       v_audit_logs: '&id, action_type, table_name, created_at',
+
+      advances: '&id, req_no, employee_id, status, advance_date',
+      expenses: '&id, advance_id, expense_date, category, vendor',
+      
+      v_advances_complete: '&id, req_no, employee_id, status, advance_date',
+      v_expenses_complete: '&id, advance_id, expense_date, category',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status, tableName',

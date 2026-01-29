@@ -70,7 +70,9 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   logical_path_segments: { strategy: 'full' },
   sdh_connections: { strategy: 'full' },
   technical_notes: { strategy: 'full' },
-
+  advances: { strategy: 'full' },
+  expenses: { strategy: 'full' },
+  
   // Views
   v_systems_complete: { strategy: 'full', relatedTable: 'systems' },
   v_system_connections_complete: { strategy: 'full', relatedTable: 'system_connections' },
@@ -93,6 +95,8 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_user_profiles_extended: { strategy: 'full', relatedTable: 'user_profiles' },
   v_employees: { strategy: 'full', relatedTable: 'employees' },
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
+  v_advances_complete: { strategy: 'full', relatedTable: 'advances' },
+  v_expenses_complete: { strategy: 'full', relatedTable: 'expenses' },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

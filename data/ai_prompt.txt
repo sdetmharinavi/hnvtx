@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we will fix errors in hooks/useFormModal.ts, hooks/crud/useCrudState.ts and update hooks/useCrudManager.ts. Then we will do refactoring without affecting any existing features to remove unused functions/pages/components.
+Let's begin! First of all I want to fix errors/lint errors I am gettong in pages/forms related to expense management. Also why I am not getting anything in global connections section.

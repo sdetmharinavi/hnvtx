@@ -686,6 +686,32 @@ const TABLE_COLUMN_OBJECTS = {
     created_at: 'created_at',
   },
 
+  advances: {
+    id: 'id',
+    req_no: 'req_no',
+    employee_id: 'employee_id',
+    advance_date: 'advance_date',
+    amount: 'amount',
+    status: 'status',
+    description: 'description',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  },
+
+  expenses: {
+    advance_id: "advance_id",
+    amount: "amount",
+    category: "category",
+    created_at: "created_at",
+    description: "description",
+    expense_date: "expense_date",
+    id: "id",
+    invoice_no: "invoice_no",
+    terminal_location: "terminal_location",
+    updated_at: "updated_at",
+    vendor: "vendor",
+  },
+
   // ==================== Views ====================
   v_inventory_transactions_extended: {
     asset_no: 'asset_no',
@@ -1179,6 +1205,36 @@ const TABLE_COLUMN_OBJECTS = {
     title: 'title',
     updated_at: 'updated_at',
   },
+  v_expenses_complete: {
+    advance_holder_name: "advance_holder_name",
+    advance_id: "advance_id",
+    advance_req_no: "advance_req_no",
+    amount: "amount",
+    category: "category",
+    created_at: "created_at",
+    description: "description",
+    expense_date: "expense_date",
+    id: "id",
+    invoice_no: "invoice_no",
+    terminal_location: "terminal_location",
+    updated_at: "updated_at",
+    vendor: "vendor",
+  },
+  v_advances_complete: {
+    id: 'id',
+    req_no: 'req_no',
+    employee_id: 'employee_id',
+    employee_name: 'employee_name',
+    employee_pers_no: 'employee_pers_no',
+    advance_date: 'advance_date',
+    total_amount: 'total_amount',
+    spent_amount: 'spent_amount',
+    remaining_balance: 'remaining_balance',
+    status: 'status',
+    description: 'description',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  }
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.
@@ -1251,6 +1307,8 @@ export const VIEWS = {
   v_e_files_extended: 'v_e_files_extended',
   v_file_movements_extended: 'v_file_movements_extended',
   v_technical_notes: 'v_technical_notes',
+  v_expenses_complete: 'v_expenses_complete',
+  v_advances_complete: 'v_advances_complete',
 } as const;
 
 export const TABLE_NAMES = {

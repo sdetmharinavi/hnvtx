@@ -18,6 +18,7 @@ import {
   FiDatabase,
   FiActivity,
   FiBook,
+  FiDollarSign,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -81,6 +82,13 @@ function NavItems() {
         icon: <FiArchive className='h-5 w-5' />,
         href: '/dashboard/inventory',
         roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageInventory
+      },
+      {
+        id: 'expenses',
+        label: 'Expenses Manager',
+        icon: <FiDollarSign className='h-5 w-5' />,
+        href: '/dashboard/expenses',
+        roles: ROLES.VIEWERS, // Or specific role if needed
       },
       {
         id: 'efiles',
