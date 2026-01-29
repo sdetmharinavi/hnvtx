@@ -1,52 +1,70 @@
--- path: data/migrations/12_expenses/04_final_rls_fix.sql
--- Description: Final RLS and Grant fix for the Expenses module, mirroring the working diary_notes pattern.
+-- path: data/migrations/12_expenses/05_force_permissions_fix.sql
 
 -- =================================================================
--- Section 1: Advances Table
+-- 1. FIX THE ROOT CAUSE: Audit Log Permissions
+-- The trigger on 'advances' writes to 'user_activity_logs'.
+-- If the user can't write to logs, they can't write to advances.
 -- =================================================================
 
--- 1. Enable RLS
+-- Allow authenticated users to INSERT into the log table (needed for triggers)
+GRANT INSERT ON TABLE public.user_activity_logs TO authenticated;
+
+-- Ensure there is a policy allowing this INSERT
+DROP POLICY IF EXISTS "Allow insert for all authenticated" ON public.user_activity_logs;
+CREATE POLICY "Allow insert for all authenticated"
+ON public.user_activity_logs
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+
+-- =================================================================
+-- 2. RESET ADVANCES PERMISSIONS
+-- =================================================================
+
 ALTER TABLE public.advances ENABLE ROW LEVEL SECURITY;
 
--- 2. Grant full permissions at the table level to the 'authenticated' role.
--- This is the crucial step. It allows authenticated users to attempt actions.
--- RLS policies will then handle the fine-grained row-level access.
+-- Ensure privileges exist
 GRANT ALL ON TABLE public.advances TO authenticated;
-GRANT ALL ON TABLE public.advances TO admin, admin_pro; -- Also ensure admins have it explicitly
+GRANT ALL ON TABLE public.advances TO service_role;
 
--- 3. Drop any previous policies to ensure a clean state
+-- Drop ALL potential conflicting policies to ensure a clean slate
 DROP POLICY IF EXISTS "Allow full access to authenticated users on advances" ON public.advances;
 DROP POLICY IF EXISTS "policy_allow_all_advances" ON public.advances;
+DROP POLICY IF EXISTS "Enable All" ON public.advances;
+DROP POLICY IF EXISTS "Users can manage advances" ON public.advances;
+DROP POLICY IF EXISTS "advances_policy" ON public.advances;
 
--- 4. Create a single, permissive policy for all authenticated users.
--- Because the GRANT is in place, this simple policy will now work as intended.
-CREATE POLICY "policy_allow_all_advances"
+-- Create ONE simple, permissive policy
+CREATE POLICY "policy_advances_universal_access"
 ON public.advances
 FOR ALL
-TO authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 
 
 -- =================================================================
--- Section 2: Expenses Table
+-- 3. RESET EXPENSES PERMISSIONS
 -- =================================================================
 
--- 1. Enable RLS
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
--- 2. Grant full permissions at the table level
+-- Ensure privileges exist
 GRANT ALL ON TABLE public.expenses TO authenticated;
-GRANT ALL ON TABLE public.expenses TO admin, admin_pro;
+GRANT ALL ON TABLE public.expenses TO service_role;
 
--- 3. Drop any previous policies
+-- Drop ALL potential conflicting policies
 DROP POLICY IF EXISTS "Allow full access to authenticated users on expenses" ON public.expenses;
 DROP POLICY IF EXISTS "policy_allow_all_expenses" ON public.expenses;
+DROP POLICY IF EXISTS "Enable All" ON public.expenses;
+DROP POLICY IF EXISTS "Users can manage expenses" ON public.expenses;
+DROP POLICY IF EXISTS "expenses_policy" ON public.expenses;
 
--- 4. Create a single, permissive policy
-CREATE POLICY "policy_allow_all_expenses"
+-- Create ONE simple, permissive policy
+CREATE POLICY "policy_expenses_universal_access"
 ON public.expenses
 FOR ALL
-TO authenticated
+TO public
 USING (true)
 WITH CHECK (true);
