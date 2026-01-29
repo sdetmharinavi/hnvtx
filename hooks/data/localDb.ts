@@ -186,8 +186,8 @@ export class HNVTMDatabase extends Dexie {
   folders!: Table<FoldersRowSchema, string>;
   advances!: Table<AdvancesInsertSchema, string>;
   expenses!: Table<ExpensesInsertSchema, string>;
-  
-  
+
+
   // Added technical notes
   technical_notes!: Table<Technical_notesRowSchema, string>;
   v_technical_notes!: Table<V_technical_notesRowSchema, string>;
@@ -232,7 +232,7 @@ export class HNVTMDatabase extends Dexie {
   constructor() {
     super('HNVTMDatabase');
     // Bumped version number to force schema update
-    this.version(40).stores({
+    this.version(42).stores({
       // ... previous stores ...
       lookup_types: '&id, category, name, sort_order, status',
       v_lookup_types: '&id, category, name',
@@ -318,9 +318,10 @@ export class HNVTMDatabase extends Dexie {
 
       advances: '&id, req_no, employee_id, status, advance_date',
       expenses: '&id, advance_id, expense_date, category, vendor',
-      
-      v_advances_complete: '&id, req_no, employee_id, status, advance_date',
-      v_expenses_complete: '&id, advance_id, expense_date, category',
+
+      // FIXED: Added missing indexes for filtering/sorting
+      v_advances_complete: '&id, req_no, employee_name, status, advance_date, created_at',
+      v_expenses_complete: '&id, advance_id, expense_date, category, vendor, invoice_no, advance_req_no, created_at',
 
       sync_status: 'tableName',
       mutation_queue: '++id, timestamp, status, tableName',

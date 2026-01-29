@@ -1,7 +1,7 @@
 // app/dashboard/expenses/page.tsx
 'use client';
 
-import { useState, useRef, type ChangeEvent, useCallback } from 'react';
+import { useState, useRef, type ChangeEvent, useCallback, useMemo } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { useAdvancesData, useExpensesData } from '@/hooks/data/useExpensesData';
@@ -13,7 +13,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { ProgressBar } from '@/components/common/ui/ProgressBar';
 import { createClient } from '@/utils/supabase/client';
 import dynamic from 'next/dynamic';
-import { PageSpinner } from '@/components/common/ui';
+import { PageSpinner, StatusBadge } from '@/components/common/ui';
 import { Tabs, TabsList, TabsTrigger } from '@/components/common/ui/tabs';
 import { useExpenseExcelUpload } from '@/hooks/database/excel-queries/useExpenseExcelUpload';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
@@ -22,8 +22,8 @@ import { DataTable } from '@/components/table';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { V_advances_completeRowSchema, V_expenses_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
-// CHANGED: Import useDataSync
 import { useDataSync } from '@/hooks/data/useDataSync';
+import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
@@ -38,9 +38,12 @@ export default function ExpensesPage() {
   const { isSuperAdmin } = useUser();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('advances');
+
+  // ADDED: View mode state for Advances tab
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // CHANGED: Use the robust sync hook
   const { sync, isSyncing } = useDataSync();
 
   // --- Advances CRUD ---
@@ -75,7 +78,6 @@ export default function ExpensesPage() {
           onSuccess: (res) => {
             setUploadResult(res);
             setIsResultOpen(true);
-            // After upload, trigger a robust sync to ensure all views are updated
             sync(['expenses', 'v_expenses_complete', 'advances', 'v_advances_complete']);
           },
         },
@@ -84,24 +86,100 @@ export default function ExpensesPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // CHANGED: Handle Refresh using Sync Engine
   const handleRefresh = useCallback(async () => {
     try {
       if (activeTab === 'advances') {
-        // Sync advances and related expenses
         await sync(['advances', 'v_advances_complete', 'expenses']);
+        advanceCrud.refetch();
       } else {
-        // Sync expenses and related advances
         await sync(['expenses', 'v_expenses_complete', 'advances']);
+        expenseCrud.refetch();
       }
-      // No need to call crud.refetch() explicitly, as useLocalFirstQuery watches the DB
-      // but we can call it to be safe if the UI doesn't react instantly
-      advanceCrud.refetch();
-      expenseCrud.refetch();
     } catch (error) {
       console.error('Refresh failed', error);
     }
   }, [activeTab, sync, advanceCrud, expenseCrud]);
+
+  // --- Columns for Advances Table ---
+  const advanceColumns: Column<Row<'v_advances_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'req_no',
+        title: 'Request No',
+        dataIndex: 'req_no',
+        sortable: true,
+        width: 140,
+        render: (v) => <span className='font-mono font-medium'>{v as string}</span>,
+      },
+      {
+        key: 'employee_name',
+        title: 'Employee',
+        dataIndex: 'employee_name',
+        sortable: true,
+        width: 180,
+        render: (v, rec) => (
+          <div className='flex flex-col'>
+            <span className='font-medium text-gray-900 dark:text-gray-100'>{v as string}</span>
+            <span className='text-xs text-gray-500'>{rec.employee_pers_no}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'advance_date',
+        title: 'Date Issued',
+        dataIndex: 'advance_date',
+        sortable: true,
+        width: 120,
+        render: (v) => formatDate(v as string, { format: 'dd-mm-yyyy' }),
+      },
+      {
+        key: 'total_amount',
+        title: 'Amount',
+        dataIndex: 'total_amount',
+        sortable: true,
+        width: 120,
+        render: (v) => <span className='font-bold'>{formatCurrency(Number(v))}</span>,
+      },
+      {
+        key: 'spent_amount',
+        title: 'Spent',
+        dataIndex: 'spent_amount',
+        width: 120,
+        render: (v) => (
+          <span className='text-gray-600 dark:text-gray-400'>{formatCurrency(Number(v))}</span>
+        ),
+      },
+      {
+        key: 'remaining_balance',
+        title: 'Balance',
+        dataIndex: 'remaining_balance',
+        width: 120,
+        render: (v) => {
+          const val = Number(v);
+          return (
+            <span className={val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+              {formatCurrency(val)}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        width: 100,
+        render: (v) => <StatusBadge status={v as string} />,
+      },
+      {
+        key: 'description',
+        title: 'Purpose',
+        dataIndex: 'description',
+        width: 200,
+        render: (v) => <TruncateTooltip text={v as string} />,
+      },
+    ],
+    [],
+  );
 
   const renderAdvanceItem = useCallback(
     (item: V_advances_completeRowSchema) => {
@@ -154,27 +232,29 @@ export default function ExpensesPage() {
     [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, isSuperAdmin],
   );
 
-  const expenseColumns: Column<Row<'v_expenses_complete'>>[] = [
-    {
-      key: 'expense_date',
-      title: 'Date',
-      dataIndex: 'expense_date',
-      render: (v) => formatDate(v as string),
-      sortable: true,
-    },
-    { key: 'category', title: 'Category', dataIndex: 'category', sortable: true },
-    { key: 'vendor', title: 'Vendor', dataIndex: 'vendor' },
-    { key: 'invoice_no', title: 'Invoice', dataIndex: 'invoice_no' },
-    {
-      key: 'amount',
-      title: 'Amount',
-      dataIndex: 'amount',
-      render: (v) => formatCurrency(Number(v)),
-    },
-    { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
-  ];
+  const expenseColumns: Column<Row<'v_expenses_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'expense_date',
+        title: 'Date',
+        dataIndex: 'expense_date',
+        render: (v) => formatDate(v as string),
+        sortable: true,
+      },
+      { key: 'category', title: 'Category', dataIndex: 'category', sortable: true },
+      { key: 'vendor', title: 'Vendor', dataIndex: 'vendor' },
+      { key: 'invoice_no', title: 'Invoice', dataIndex: 'invoice_no' },
+      {
+        key: 'amount',
+        title: 'Amount',
+        dataIndex: 'amount',
+        render: (v) => formatCurrency(Number(v)),
+      },
+      { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
+    ],
+    [],
+  );
 
-  // CHANGED: Use isSyncing for the loading state of the refresh button
   const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
 
   return (
@@ -212,7 +292,6 @@ export default function ExpensesPage() {
                 label: 'Refresh',
                 onClick: handleRefresh,
                 variant: 'outline',
-                // CHANGED: Show spinner when Global Sync is running
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
               },
@@ -225,6 +304,9 @@ export default function ExpensesPage() {
             ],
           }}
           crud={advanceCrud as UseCrudManagerReturn<V_advances_completeRowSchema>}
+          // ADDED: Pass view mode controls
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           renderGrid={() => (
             <DataGrid
               data={advanceCrud.data}
@@ -235,8 +317,13 @@ export default function ExpensesPage() {
           tableProps={{
             tableName: 'v_advances_complete',
             data: advanceCrud.data,
-            columns: [],
+            // ADDED: Pass columns so table view works
+            columns: advanceColumns,
             loading: advanceCrud.isLoading,
+            actions: createStandardActions({
+              onEdit: advanceCrud.editModal.openEdit,
+              onDelete: advanceCrud.actions.handleDelete,
+            }),
           }}
           modals={
             <>
@@ -253,7 +340,7 @@ export default function ExpensesPage() {
           }
         />
       ) : (
-        <DashboardPageLayout<'expenses'>
+        <DashboardPageLayout<'v_expenses_complete'>
           header={{
             title: 'Expense Log',
             description: 'Detailed log of all operational expenses and vendor payments.',
@@ -263,7 +350,6 @@ export default function ExpensesPage() {
                 label: 'Refresh',
                 onClick: handleRefresh,
                 variant: 'outline',
-                // CHANGED: Show spinner when Global Sync is running
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
               },

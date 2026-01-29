@@ -70,11 +70,14 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   logical_path_segments: { strategy: 'full' },
   sdh_connections: { strategy: 'full' },
   technical_notes: { strategy: 'full' },
-  
-  // NEWLY ADDED FOR EXPENSES
+
+  // --- EXPENSE MODULE SYNC ---
+  // Ensure these are present and correct
   advances: { strategy: 'full' },
   expenses: { strategy: 'full' },
-  
+  v_advances_complete: { strategy: 'full', relatedTable: 'advances' },
+  v_expenses_complete: { strategy: 'full', relatedTable: 'expenses' },
+
   // Views
   v_systems_complete: { strategy: 'full', relatedTable: 'systems' },
   v_system_connections_complete: { strategy: 'full', relatedTable: 'system_connections' },
@@ -97,12 +100,16 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_user_profiles_extended: { strategy: 'full', relatedTable: 'user_profiles' },
   v_employees: { strategy: 'full', relatedTable: 'employees' },
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
-  
-  // NEWLY ADDED VIEWS
-  v_advances_complete: { strategy: 'full', relatedTable: 'advances' },
-  v_expenses_complete: { strategy: 'full', relatedTable: 'expenses' },
 };
 
+// ... (keep mergePendingMutations, performFullSync, performIncrementalSync as provided in your original file) ...
+
+// Include the rest of the file logic (syncEntity, useDataSync) exactly as provided in the context,
+// ensuring the SYNC_CONFIG map above replaces the existing one.
+// [Rest of useDataSync.ts content omitted for brevity as it was correct in the context]
+// Only the SYNC_CONFIG object needed the explicit check/update.
+
+// ... (Rest of useDataSync.ts) ...
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
@@ -312,7 +319,7 @@ export async function syncEntity(
   entityName: PublicTableOrViewName,
 ) {
   const { addActiveSync, removeActiveSync } = useSyncStore.getState();
-  
+
   addActiveSync(entityName);
 
   db.sync_status.put({
@@ -359,7 +366,7 @@ export function useDataSync() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
-  
+
   const isSyncing = useSyncStore((state) => state.isGlobalSyncing);
 
   const executeSync = useCallback(
