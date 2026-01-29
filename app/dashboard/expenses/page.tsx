@@ -6,7 +6,15 @@ import { useUser } from '@/providers/UserProvider';
 import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { useAdvancesData, useExpensesData } from '@/hooks/data/useExpensesData';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { FiDollarSign, FiPlus, FiUpload, FiList, FiPieChart, FiRefreshCw } from 'react-icons/fi';
+import {
+  FiDollarSign,
+  FiPlus,
+  FiUpload,
+  FiList,
+  FiPieChart,
+  FiRefreshCw,
+  FiDownload, // Added Import
+} from 'react-icons/fi';
 import { DataGrid } from '@/components/common/DataGrid';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -24,6 +32,8 @@ import { V_advances_completeRowSchema, V_expenses_completeRowSchema } from '@/sc
 import { Row } from '@/hooks/database';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
+import { useTableExcelDownload } from '@/hooks/database/excel-queries'; // Added Import
+import { buildColumnConfig } from '@/constants/table-column-keys'; // Added Import
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
@@ -38,13 +48,21 @@ export default function ExpensesPage() {
   const { isSuperAdmin } = useUser();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('advances');
-
-  // ADDED: View mode state for Advances tab
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { sync, isSyncing } = useDataSync();
+
+  // --- EXPORT HOOKS ---
+  const { mutate: exportAdvances, isPending: isExportingAdvances } = useTableExcelDownload(
+    supabase,
+    'v_advances_complete',
+  );
+
+  const { mutate: exportExpenses, isPending: isExportingExpenses } = useTableExcelDownload(
+    supabase,
+    'v_expenses_complete',
+  );
 
   // --- Advances CRUD ---
   const advanceCrud = useCrudManager<'advances', V_advances_completeRowSchema>({
@@ -100,7 +118,26 @@ export default function ExpensesPage() {
     }
   }, [activeTab, sync, advanceCrud, expenseCrud]);
 
-  // --- Columns for Advances Table ---
+  // --- EXPORT HANDLERS ---
+  const handleExportAdvances = useCallback(() => {
+    exportAdvances({
+      fileName: `Advances_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Advances',
+      filters: advanceCrud.filters.filters,
+      columns: buildColumnConfig('v_advances_complete'), // Auto-generate col config
+    });
+  }, [exportAdvances, advanceCrud.filters.filters]);
+
+  const handleExportExpenses = useCallback(() => {
+    exportExpenses({
+      fileName: `Expenses_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'Expenses',
+      filters: expenseCrud.filters.filters,
+      columns: buildColumnConfig('v_expenses_complete'), // Auto-generate col config
+    });
+  }, [exportExpenses, expenseCrud.filters.filters]);
+
+  // --- Columns ---
   const advanceColumns: Column<Row<'v_advances_complete'>>[] = useMemo(
     () => [
       {
@@ -295,6 +332,15 @@ export default function ExpensesPage() {
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
               },
+              // ADDED: Export button for Advances
+              {
+                label: 'Export',
+                onClick: handleExportAdvances,
+                variant: 'outline',
+                leftIcon: <FiDownload />,
+                disabled: isExportingAdvances || isLoading,
+                hideTextOnMobile: true,
+              },
               {
                 label: 'New Advance',
                 onClick: advanceCrud.editModal.openAdd,
@@ -304,7 +350,6 @@ export default function ExpensesPage() {
             ],
           }}
           crud={advanceCrud as UseCrudManagerReturn<V_advances_completeRowSchema>}
-          // ADDED: Pass view mode controls
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           renderGrid={() => (
@@ -317,7 +362,6 @@ export default function ExpensesPage() {
           tableProps={{
             tableName: 'v_advances_complete',
             data: advanceCrud.data,
-            // ADDED: Pass columns so table view works
             columns: advanceColumns,
             loading: advanceCrud.isLoading,
             actions: createStandardActions({
@@ -352,6 +396,15 @@ export default function ExpensesPage() {
                 variant: 'outline',
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
+              },
+              // ADDED: Export button for Expenses
+              {
+                label: 'Export',
+                onClick: handleExportExpenses,
+                variant: 'outline',
+                leftIcon: <FiDownload />,
+                disabled: isExportingExpenses || isLoading,
+                hideTextOnMobile: true,
               },
               {
                 label: 'Upload Excel',
