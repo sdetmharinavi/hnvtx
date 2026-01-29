@@ -3,10 +3,10 @@
 
 import { useState, useRef, type ChangeEvent, useCallback } from 'react';
 import { useUser } from '@/providers/UserProvider';
-import { useCrudManager } from '@/hooks/useCrudManager';
+import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { useAdvancesData, useExpensesData } from '@/hooks/data/useExpensesData';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { FiDollarSign, FiPlus, FiUpload, FiList, FiPieChart } from 'react-icons/fi';
+import { FiDollarSign, FiPlus, FiUpload, FiList, FiPieChart, FiRefreshCw } from 'react-icons/fi';
 import { DataGrid } from '@/components/common/DataGrid';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -41,35 +41,37 @@ export default function ExpensesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // --- Advances CRUD ---
-  // FIX: T is 'advances' (Table), V is V_advances_completeRowSchema (View Data)
-  const advanceCrud = useCrudManager<'advances', V_advances_completeRowSchema>({
-    tableName: 'advances', 
+  const advanceCrud = useCrudManager<'v_advances_complete', V_advances_completeRowSchema>({
+    tableName: 'v_advances_complete',
     dataQueryHook: useAdvancesData,
     displayNameField: 'req_no',
     syncTables: ['advances', 'expenses', 'v_advances_complete']
   });
 
   // --- Expenses CRUD ---
-  // FIX: T is 'expenses' (Table), V is V_expenses_completeRowSchema (View Data)
-  const expenseCrud = useCrudManager<'expenses', V_expenses_completeRowSchema>({
-    tableName: 'expenses',
+  const expenseCrud = useCrudManager<'v_expenses_complete', V_expenses_completeRowSchema>({
+    tableName: 'v_expenses_complete',
     dataQueryHook: useExpensesData,
     displayNameField: 'invoice_no',
     syncTables: ['expenses', 'v_expenses_complete']
   });
 
-  // --- Mutations ---
-  const { mutate: insertAdvance, isPending: creatingAdvance } = useTableInsert(supabase, 'advances', {
+  // --- Mutations (Explicit Table Targets) ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { mutate: insertAdvance, isPending: creatingAdvance } = useTableInsert(supabase, 'advances' as any, {
       onSuccess: () => { toast.success("Advance Created"); advanceCrud.refetch(); advanceCrud.editModal.close(); }
   });
-  const { mutate: updateAdvance, isPending: updatingAdvance } = useTableUpdate(supabase, 'advances', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { mutate: updateAdvance, isPending: updatingAdvance } = useTableUpdate(supabase, 'advances' as any, {
       onSuccess: () => { toast.success("Advance Updated"); advanceCrud.refetch(); advanceCrud.editModal.close(); }
   });
   
-   const { mutate: insertExpense, isPending: creatingExpense } = useTableInsert(supabase, 'expenses', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { mutate: insertExpense, isPending: creatingExpense } = useTableInsert(supabase, 'expenses' as any, {
       onSuccess: () => { toast.success("Expense Added"); expenseCrud.refetch(); advanceCrud.refetch(); expenseCrud.editModal.close(); }
   });
-  const { mutate: updateExpense, isPending: updatingExpense } = useTableUpdate(supabase, 'expenses', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { mutate: updateExpense, isPending: updatingExpense } = useTableUpdate(supabase, 'expenses' as any, {
       onSuccess: () => { toast.success("Expense Updated"); expenseCrud.refetch(); advanceCrud.refetch(); expenseCrud.editModal.close(); }
   });
 
@@ -79,12 +81,14 @@ export default function ExpensesPage() {
   const [isResultOpen, setIsResultOpen] = useState(false);
 
   const handleAdvanceSave = (data: AdvancesInsertSchema) => {
-      if (advanceCrud.editModal.record?.id) updateAdvance({ id: advanceCrud.editModal.record.id, data });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (advanceCrud.editModal.record?.id) updateAdvance({ id: advanceCrud.editModal.record.id, data: data as any });
       else insertAdvance(data);
   };
   
   const handleExpenseSave = (data: ExpensesInsertSchema) => {
-       if (expenseCrud.editModal.record?.id) updateExpense({ id: expenseCrud.editModal.record.id, data });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       if (expenseCrud.editModal.record?.id) updateExpense({ id: expenseCrud.editModal.record.id, data: data as any });
       else insertExpense(data);
   };
 
@@ -102,6 +106,15 @@ export default function ExpensesPage() {
       }
       e.target.value = '';
   };
+
+  const handleRefresh = useCallback(() => {
+    if (activeTab === 'advances') {
+        advanceCrud.refetch();
+    } else {
+        expenseCrud.refetch();
+    }
+    toast.success("Refreshed!");
+  }, [activeTab, advanceCrud, expenseCrud]);
 
   const renderAdvanceItem = useCallback((item: V_advances_completeRowSchema) => {
     const total = item.total_amount ?? 0;
@@ -151,6 +164,9 @@ export default function ExpensesPage() {
     { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
   ];
 
+  const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
+  const isFetching = activeTab === 'advances' ? advanceCrud.isFetching : expenseCrud.isFetching;
+
   return (
     <div className="p-4 md:p-6 space-y-6">
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx" />
@@ -168,12 +184,19 @@ export default function ExpensesPage() {
 
         {/* CONDITIONALLY RENDER LAYOUT BASED ON TAB */}
         {activeTab === 'advances' ? (
-             <DashboardPageLayout 
+             <DashboardPageLayout<'v_advances_complete'>
                 header={{
                     title: "Advance Requests",
                     description: "Manage temporary cash advances given to employees.",
                     icon: <FiDollarSign />,
                     actions: [
+                        {
+                            label: "Refresh",
+                            onClick: handleRefresh,
+                            variant: 'outline',
+                            leftIcon: <FiRefreshCw className={isFetching ? "animate-spin" : ""} />,
+                            disabled: isLoading || isFetching
+                        },
                         {
                             label: "New Advance",
                             onClick: advanceCrud.editModal.openAdd,
@@ -182,7 +205,8 @@ export default function ExpensesPage() {
                         }
                     ]
                 }}
-                crud={advanceCrud}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                crud={advanceCrud as unknown as UseCrudManagerReturn<any>} 
                 renderGrid={() => (
                      <DataGrid 
                          data={advanceCrud.data} 
@@ -212,12 +236,19 @@ export default function ExpensesPage() {
                 }
              />
         ) : (
-            <DashboardPageLayout 
+            <DashboardPageLayout<'v_expenses_complete'>
                 header={{
                     title: "Expense Log",
                     description: "Detailed log of all operational expenses and vendor payments.",
                     icon: <FiList />,
                     actions: [
+                        {
+                            label: "Refresh",
+                            onClick: handleRefresh,
+                            variant: 'outline',
+                            leftIcon: <FiRefreshCw className={isFetching ? "animate-spin" : ""} />,
+                            disabled: isLoading || isFetching
+                        },
                         {
                             label: "Upload Excel",
                             onClick: () => fileInputRef.current?.click(),
@@ -233,7 +264,8 @@ export default function ExpensesPage() {
                         }
                     ]
                 }}
-                crud={expenseCrud as any} // Forced cast because crud manager generic expects table but layout is flexible
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                crud={expenseCrud as unknown as UseCrudManagerReturn<any>}
                 viewMode="table" // Force table view for expenses
                 renderTable={() => (
                     <DataTable 

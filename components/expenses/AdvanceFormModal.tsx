@@ -1,3 +1,4 @@
+// components/expenses/AdvanceFormModal.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -7,6 +8,7 @@ import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 import { FormInput, FormDateInput, FormSelect, FormSearchableSelect, FormTextarea } from '@/components/common/form/FormControls';
 import { useEmployeeOptions } from '@/hooks/data/useDropdownOptions';
 import { advancesInsertSchema, AdvancesInsertSchema, V_advances_completeRowSchema } from '@/schemas/zod-schemas';
+import { z } from 'zod';
 
 interface AdvanceFormModalProps {
   isOpen: boolean;
@@ -15,6 +17,12 @@ interface AdvanceFormModalProps {
   onSubmit: (data: AdvancesInsertSchema) => void;
   isLoading: boolean;
 }
+
+// FIX: Override the strict datetime validation for the form input
+// We allow a simple string for the date input, which returns "YYYY-MM-DD"
+const formSchema = advancesInsertSchema.extend({
+  advance_date: z.string().min(1, "Date is required"),
+});
 
 export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
   isOpen,
@@ -27,7 +35,7 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
   const { options: employeeOptions, isLoading: loadingEmployees } = useEmployeeOptions();
 
   const form = useForm<AdvancesInsertSchema>({
-    resolver: zodResolver(advancesInsertSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       req_no: '',
       amount: 0,
@@ -43,17 +51,19 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (record) {
+        // Safe null handling for edit mode
         reset({
           id: record.id || undefined,
           req_no: record.req_no || '',
-          // Map total_amount from view to amount for the insert/update schema
           amount: record.total_amount || 0,
-          advance_date: record.advance_date || new Date().toISOString().split('T')[0],
+          // Extract just the date part if it's an ISO string
+          advance_date: record.advance_date ? record.advance_date.split('T')[0] : new Date().toISOString().split('T')[0],
           status: (record.status as 'active' | 'settled' | 'pending') || 'active',
           employee_id: record.employee_id || null,
           description: record.description || ''
         });
       } else {
+        // Reset defaults for create mode
         reset({
             req_no: '',
             amount: 0,
@@ -70,7 +80,7 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Temporary Advance"
+      title={isEditMode ? "Edit Advance" : "Add Temporary Advance"}
       isEditMode={isEditMode}
       isLoading={isLoading}
       form={form}
