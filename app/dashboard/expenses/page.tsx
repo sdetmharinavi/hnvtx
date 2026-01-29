@@ -12,7 +12,6 @@ import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { ProgressBar } from '@/components/common/ui/ProgressBar';
 import { createClient } from '@/utils/supabase/client';
-import { useTableInsert, useTableUpdate } from '@/hooks/database';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
@@ -22,7 +21,7 @@ import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import { AdvancesInsertSchema, ExpensesInsertSchema, V_advances_completeRowSchema, V_expenses_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_advances_completeRowSchema, V_expenses_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 
 const AdvanceFormModal = dynamic(
@@ -41,56 +40,27 @@ export default function ExpensesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // --- Advances CRUD ---
-  const advanceCrud = useCrudManager<'v_advances_complete', V_advances_completeRowSchema>({
-    tableName: 'v_advances_complete',
+  const advanceCrud = useCrudManager<'advances', V_advances_completeRowSchema>({
+    tableName: 'advances',
+    localTableName: 'v_advances_complete',
     dataQueryHook: useAdvancesData,
     displayNameField: 'req_no',
     syncTables: ['advances', 'expenses', 'v_advances_complete']
   });
 
   // --- Expenses CRUD ---
-  const expenseCrud = useCrudManager<'v_expenses_complete', V_expenses_completeRowSchema>({
-    tableName: 'v_expenses_complete',
+  const expenseCrud = useCrudManager<'expenses', V_expenses_completeRowSchema>({
+    tableName: 'expenses',
+    localTableName: 'v_expenses_complete',
     dataQueryHook: useExpensesData,
     displayNameField: 'invoice_no',
-    syncTables: ['expenses', 'v_expenses_complete']
-  });
-
-  // --- Mutations ---
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { mutate: insertAdvance, isPending: creatingAdvance } = useTableInsert(supabase, 'advances' as any, {
-      onSuccess: () => { toast.success("Advance Created"); advanceCrud.refetch(); advanceCrud.editModal.close(); }
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { mutate: updateAdvance, isPending: updatingAdvance } = useTableUpdate(supabase, 'advances' as any, {
-      onSuccess: () => { toast.success("Advance Updated"); advanceCrud.refetch(); advanceCrud.editModal.close(); }
+    syncTables: ['expenses', 'v_expenses_complete', 'advances', 'v_advances_complete']
   });
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { mutate: insertExpense, isPending: creatingExpense } = useTableInsert(supabase, 'expenses' as any, {
-      onSuccess: () => { toast.success("Expense Added"); expenseCrud.refetch(); advanceCrud.refetch(); expenseCrud.editModal.close(); }
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { mutate: updateExpense, isPending: updatingExpense } = useTableUpdate(supabase, 'expenses' as any, {
-      onSuccess: () => { toast.success("Expense Updated"); expenseCrud.refetch(); advanceCrud.refetch(); expenseCrud.editModal.close(); }
-  });
-
   const { mutate: uploadExpenses, isPending: isUploading } = useExpenseExcelUpload(supabase);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [uploadResult, setUploadResult] = useState<any>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
-
-  const handleAdvanceSave = (data: AdvancesInsertSchema) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (advanceCrud.editModal.record?.id) updateAdvance({ id: advanceCrud.editModal.record.id, data: data as any });
-      else insertAdvance(data);
-  };
-  
-  const handleExpenseSave = (data: ExpensesInsertSchema) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-       if (expenseCrud.editModal.record?.id) updateExpense({ id: expenseCrud.editModal.record.id, data: data as any });
-      else insertExpense(data);
-  };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -104,7 +74,7 @@ export default function ExpensesPage() {
               }
           });
       }
-      e.target.value = '';
+      if(fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleRefresh = useCallback(() => {
@@ -172,7 +142,6 @@ export default function ExpensesPage() {
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx" />
         <UploadResultModal isOpen={isResultOpen} onClose={() => setIsResultOpen(false)} result={uploadResult} />
         
-        {/* TAB CONTROLS */}
         <div className="bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-fit">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
@@ -182,7 +151,6 @@ export default function ExpensesPage() {
             </Tabs>
         </div>
 
-        {/* CONDITIONALLY RENDER LAYOUT BASED ON TAB */}
         {activeTab === 'advances' ? (
              <DashboardPageLayout<'v_advances_complete'>
                 header={{
@@ -190,7 +158,6 @@ export default function ExpensesPage() {
                     description: "Manage temporary cash advances given to employees.",
                     icon: <FiDollarSign />,
                     actions: [
-                        // ADDED: Refresh button for Advances tab
                         {
                             label: "Refresh",
                             onClick: handleRefresh,
@@ -206,8 +173,7 @@ export default function ExpensesPage() {
                         }
                     ]
                 }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                crud={advanceCrud as unknown as UseCrudManagerReturn<any>} 
+                crud={advanceCrud as UseCrudManagerReturn<V_advances_completeRowSchema>} 
                 renderGrid={() => (
                      <DataGrid 
                          data={advanceCrud.data} 
@@ -215,11 +181,10 @@ export default function ExpensesPage() {
                          isLoading={advanceCrud.isLoading}
                      />
                 )}
-                // We use renderGrid, so tableProps logic inside layout is skipped unless we switch viewMode
                 tableProps={{
                     tableName: 'v_advances_complete',
                     data: advanceCrud.data,
-                    columns: [], // Add columns if you want table view for advances
+                    columns: [],
                     loading: advanceCrud.isLoading
                 }}
                 modals={
@@ -229,15 +194,15 @@ export default function ExpensesPage() {
                                 isOpen={advanceCrud.editModal.isOpen}
                                 onClose={advanceCrud.editModal.close}
                                 record={advanceCrud.editModal.record}
-                                onSubmit={handleAdvanceSave}
-                                isLoading={creatingAdvance || updatingAdvance}
+                                onSubmit={advanceCrud.actions.handleSave}
+                                isLoading={advanceCrud.isMutating}
                             />
                         )}
                     </>
                 }
              />
         ) : (
-            <DashboardPageLayout<'v_expenses_complete'>
+            <DashboardPageLayout<'expenses'>
                 header={{
                     title: "Expense Log",
                     description: "Detailed log of all operational expenses and vendor payments.",
@@ -265,9 +230,8 @@ export default function ExpensesPage() {
                         }
                     ]
                 }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                crud={expenseCrud as unknown as UseCrudManagerReturn<any>}
-                viewMode="table" // Force table view for expenses
+                crud={expenseCrud as UseCrudManagerReturn<V_expenses_completeRowSchema>}
+                viewMode="table"
                 renderTable={() => (
                     <DataTable 
                         data={expenseCrud.data} 
@@ -296,8 +260,8 @@ export default function ExpensesPage() {
                                 isOpen={expenseCrud.editModal.isOpen}
                                 onClose={expenseCrud.editModal.close}
                                 record={expenseCrud.editModal.record}
-                                onSubmit={handleExpenseSave}
-                                isLoading={creatingExpense || updatingExpense}
+                                onSubmit={expenseCrud.actions.handleSave}
+                                isLoading={expenseCrud.isMutating}
                             />
                         )}
                     </>

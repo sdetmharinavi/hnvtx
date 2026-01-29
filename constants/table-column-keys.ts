@@ -82,6 +82,7 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: 'id',
     isUploadEnabled: true,
   },
+  
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
