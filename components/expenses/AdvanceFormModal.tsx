@@ -18,8 +18,7 @@ interface AdvanceFormModalProps {
   isLoading: boolean;
 }
 
-// FIX: Override the strict datetime validation for the form input
-// We allow a simple string for the date input, which returns "YYYY-MM-DD"
+// FIX: Override strict datetime validation for the form input to accept "YYYY-MM-DD"
 const formSchema = advancesInsertSchema.extend({
   advance_date: z.string().min(1, "Date is required"),
 });
@@ -51,19 +50,16 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (record) {
-        // Safe null handling for edit mode
         reset({
           id: record.id || undefined,
           req_no: record.req_no || '',
           amount: record.total_amount || 0,
-          // Extract just the date part if it's an ISO string
           advance_date: record.advance_date ? record.advance_date.split('T')[0] : new Date().toISOString().split('T')[0],
           status: (record.status as 'active' | 'settled' | 'pending') || 'active',
           employee_id: record.employee_id || null,
           description: record.description || ''
         });
       } else {
-        // Reset defaults for create mode
         reset({
             req_no: '',
             amount: 0,
@@ -80,7 +76,8 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditMode ? "Edit Advance" : "Add Temporary Advance"}
+      // FIX: Removed "Add" prefix because BaseFormModal adds it automatically
+      title={isEditMode ? "Advance" : "Temporary Advance"}
       isEditMode={isEditMode}
       isLoading={isLoading}
       form={form}
@@ -95,7 +92,7 @@ export const AdvanceFormModal: React.FC<AdvanceFormModalProps> = ({
             error={errors.req_no}
             required
             placeholder="e.g. T00001277390"
-            disabled={isEditMode} // Usually ID shouldn't change
+            disabled={isEditMode}
           />
           
           <FormInput

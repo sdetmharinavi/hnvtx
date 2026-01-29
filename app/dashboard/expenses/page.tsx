@@ -56,7 +56,7 @@ export default function ExpensesPage() {
     syncTables: ['expenses', 'v_expenses_complete']
   });
 
-  // --- Mutations (Explicit Table Targets) ---
+  // --- Mutations ---
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { mutate: insertAdvance, isPending: creatingAdvance } = useTableInsert(supabase, 'advances' as any, {
       onSuccess: () => { toast.success("Advance Created"); advanceCrud.refetch(); advanceCrud.editModal.close(); }
@@ -190,6 +190,7 @@ export default function ExpensesPage() {
                     description: "Manage temporary cash advances given to employees.",
                     icon: <FiDollarSign />,
                     actions: [
+                        // ADDED: Refresh button for Advances tab
                         {
                             label: "Refresh",
                             onClick: handleRefresh,
