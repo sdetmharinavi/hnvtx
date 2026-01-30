@@ -1,7 +1,13 @@
 // components/common/ui/badges/StatusBadge.tsx
 import { getStatusConfig } from '@/utils/status-styles';
 
-export const StatusBadge = ({ status }: { status: string | boolean | null | undefined }) => {
+export const StatusBadge = ({
+  status,
+  showStatusLabel,
+}: {
+  status: string | boolean | null | undefined;
+  showStatusLabel?: boolean;
+}) => {
   const config = getStatusConfig(status);
 
   // Format label to Title Case if it matches the raw status string
@@ -40,7 +46,7 @@ export const StatusBadge = ({ status }: { status: string | boolean | null | unde
           />
         )}
       </span>
-      <span className='font-medium'>{displayLabel}</span>
+      {showStatusLabel && <span className='font-medium'>{displayLabel}</span>}
     </span>
   );
 };

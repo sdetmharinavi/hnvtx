@@ -18,7 +18,6 @@ import {
   FiDatabase,
   FiActivity,
   FiBook,
-  FiDollarSign,
   FiBriefcase,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
@@ -27,7 +26,7 @@ import { ImUserTie } from 'react-icons/im';
 import { GiElectric, GiLinkedRings, GiPathDistance } from 'react-icons/gi';
 import { TfiLayoutMediaOverlayAlt } from 'react-icons/tfi';
 import { AiFillMerge } from 'react-icons/ai';
-import { FaRoute } from 'react-icons/fa';
+import { FaRoute, FaRupeeSign } from 'react-icons/fa';
 import { BiSitemap } from 'react-icons/bi';
 import { FileText, GitBranch } from 'lucide-react';
 import { PERMISSIONS, ROLES } from '@/config/permissions';
@@ -85,8 +84,8 @@ function NavItems() {
           },
           {
             id: 'expenses',
-            label: 'Expenses Manager',
-            icon: <FiDollarSign className='h-5 w-5' />,
+            label: 'Expenses',
+            icon: <FaRupeeSign className='h-5 w-5' />,
             href: '/dashboard/expenses',
             roles: ROLES.VIEWERS,
           },

@@ -454,6 +454,34 @@ export const formatIP = (ip: unknown): string => {
 // =============================================================================
 // =============================================================================
 
+interface PercentageResult {
+  value: number;
+  isOverBudget: boolean;
+  decimals?: number;
+  displayValue: number; // Capped at 100 for UI
+}
+
+export const calculatePercentage = (
+  spent: number, 
+  total: number, 
+  decimals: number = 2
+): PercentageResult => {
+  if (!Number.isFinite(spent) || !Number.isFinite(total) || total <= 0 || spent < 0) {
+    return { value: 0, isOverBudget: false, displayValue: 0, decimals };
+  }
+
+  const percentage = (spent / total) * 100;
+  const multiplier = Math.pow(10, decimals);
+  const value = Math.round(percentage * multiplier) / multiplier;
+  
+  return {
+    value,                           // 125.67
+    isOverBudget: value > 100,      
+    displayValue: Math.min(100, value), // 100 (keeps decimals OR use Math.round if you want integer)
+    decimals                         // ✅ Now returned!
+  };
+};
+
 const formatters = {
   formatNumber,
   formatCurrency,
@@ -472,6 +500,8 @@ const formatters = {
   highlightSearchTerms,
   sanitizeSheetFileName,
   formatIP,
+
+  calculatePercentage,
 };
 
 export default formatters;

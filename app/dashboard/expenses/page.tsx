@@ -6,18 +6,10 @@ import { useUser } from '@/providers/UserProvider';
 import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { useAdvancesData, useExpensesData } from '@/hooks/data/useExpensesData';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import {
-  FiDollarSign,
-  FiPlus,
-  FiUpload,
-  FiList,
-  FiPieChart,
-  FiRefreshCw,
-  FiDownload,
-} from 'react-icons/fi';
+import { FiPlus, FiUpload, FiList, FiPieChart, FiRefreshCw, FiDownload } from 'react-icons/fi';
 import { DataGrid } from '@/components/common/DataGrid';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { calculatePercentage, formatCurrency, formatDate } from '@/utils/formatters';
 import { ProgressBar } from '@/components/common/ui/ProgressBar';
 import { createClient } from '@/utils/supabase/client';
 import dynamic from 'next/dynamic';
@@ -28,23 +20,21 @@ import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DataTable } from '@/components/table';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
-import {
-  V_advances_completeRowSchema,
-  V_expenses_completeRowSchema,
-} from '@/schemas/zod-schemas';
+import { V_advances_completeRowSchema, V_expenses_completeRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildColumnConfig } from '@/constants/table-column-keys';
+import { FaRupeeSign } from 'react-icons/fa';
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
-  { loading: () => <PageSpinner /> }
+  { loading: () => <PageSpinner /> },
 );
 const ExpenseFormModal = dynamic(
   () => import('@/components/expenses/ExpenseFormModal').then((mod) => mod.ExpenseFormModal),
-  { loading: () => <PageSpinner /> }
+  { loading: () => <PageSpinner /> },
 );
 
 export default function ExpensesPage() {
@@ -59,12 +49,12 @@ export default function ExpensesPage() {
   // --- EXPORT HOOKS ---
   const { mutate: exportAdvances, isPending: isExportingAdvances } = useTableExcelDownload(
     supabase,
-    'v_advances_complete'
+    'v_advances_complete',
   );
 
   const { mutate: exportExpenses, isPending: isExportingExpenses } = useTableExcelDownload(
     supabase,
-    'v_expenses_complete'
+    'v_expenses_complete',
   );
 
   const advanceCrud = useCrudManager<'advances', V_advances_completeRowSchema>({
@@ -99,7 +89,7 @@ export default function ExpensesPage() {
             setIsResultOpen(true);
             sync(['expenses', 'v_expenses_complete', 'advances', 'v_advances_complete']);
           },
-        }
+        },
       );
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -136,7 +126,7 @@ export default function ExpensesPage() {
     // Manually define columns to ensure order, width, and labels are exact
     const columns: Column<Row<'v_expenses_complete'>>[] = [
       { key: 'expense_date', title: 'Date', dataIndex: 'expense_date', excelFormat: 'date' },
-      { key: 'used_by', title: 'Used By', dataIndex: 'used_by' }, 
+      { key: 'used_by', title: 'Used By', dataIndex: 'used_by' },
       { key: 'category', title: 'Category', dataIndex: 'category' },
       { key: 'vendor', title: 'Vendor', dataIndex: 'vendor' },
       { key: 'invoice_no', title: 'Invoice No', dataIndex: 'invoice_no' },
@@ -156,44 +146,133 @@ export default function ExpensesPage() {
       autoFitColumns: true,
     });
   }, [exportExpenses, expenseCrud.filters.filters]);
-  
 
-  const advanceColumns: Column<Row<'v_advances_complete'>>[] = useMemo(() => [
-      { key: 'req_no', title: 'Request No', dataIndex: 'req_no', sortable: true, width: 140, render: (v) => <span className="font-mono font-medium">{v as string}</span> },
-      { key: 'employee_name', title: 'Employee', dataIndex: 'employee_name', sortable: true, width: 180, render: (v, rec) => (<div className="flex flex-col"><span className="font-medium text-gray-900 dark:text-gray-100">{v as string}</span><span className="text-xs text-gray-500">{rec.employee_pers_no}</span></div>) },
-      { key: 'advance_date', title: 'Date Issued', dataIndex: 'advance_date', sortable: true, width: 120, render: (v) => formatDate(v as string, { format: 'dd-mm-yyyy' }) },
-      { key: 'total_amount', title: 'Amount', dataIndex: 'total_amount', sortable: true, width: 120, render: (v) => <span className="font-bold">{formatCurrency(Number(v))}</span> },
-      { key: 'spent_amount', title: 'Spent', dataIndex: 'spent_amount', width: 120, render: (v) => <span className="text-gray-600 dark:text-gray-400">{formatCurrency(Number(v))}</span> },
-      { key: 'remaining_balance', title: 'Balance', dataIndex: 'remaining_balance', width: 120, render: (v) => { const val = Number(v); return <span className={val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{formatCurrency(val)}</span> } },
-      { key: 'status', title: 'Status', dataIndex: 'status', width: 100, render: (v) => <StatusBadge status={v as string} /> },
-      { key: 'description', title: 'Purpose', dataIndex: 'description', width: 200, render: (v) => <TruncateTooltip text={v as string} /> }
-    ], []);
+  const advanceColumns: Column<Row<'v_advances_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'req_no',
+        title: 'Request No',
+        dataIndex: 'req_no',
+        sortable: true,
+        width: 140,
+        render: (v) => <span className='font-mono font-medium'>{v as string}</span>,
+      },
+      {
+        key: 'employee_name',
+        title: 'Employee',
+        dataIndex: 'employee_name',
+        sortable: true,
+        width: 180,
+        render: (v, rec) => (
+          <div className='flex flex-col'>
+            <span className='font-medium text-gray-900 dark:text-gray-100'>{v as string}</span>
+            <span className='text-xs text-gray-500'>{rec.employee_pers_no}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'advance_date',
+        title: 'Date Issued',
+        dataIndex: 'advance_date',
+        sortable: true,
+        width: 120,
+        render: (v) => formatDate(v as string, { format: 'dd-mm-yyyy' }),
+      },
+      {
+        key: 'total_amount',
+        title: 'Amount',
+        dataIndex: 'total_amount',
+        sortable: true,
+        width: 120,
+        render: (v) => <span className='font-bold'>{formatCurrency(Number(v))}</span>,
+      },
+      {
+        key: 'spent_amount',
+        title: 'Spent',
+        dataIndex: 'spent_amount',
+        width: 120,
+        render: (v) => (
+          <span className='text-gray-600 dark:text-gray-400'>{formatCurrency(Number(v))}</span>
+        ),
+      },
+      {
+        key: 'remaining_balance',
+        title: 'Balance',
+        dataIndex: 'remaining_balance',
+        width: 120,
+        render: (v) => {
+          const val = Number(v);
+          return (
+            <span className={val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+              {formatCurrency(val)}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        dataIndex: 'status',
+        width: 100,
+        render: (v) => <StatusBadge status={v as string} />,
+      },
+      {
+        key: 'description',
+        title: 'Purpose',
+        dataIndex: 'description',
+        width: 200,
+        render: (v) => <TruncateTooltip text={v as string} />,
+      },
+    ],
+    [],
+  );
 
   const renderAdvanceItem = useCallback(
     (item: V_advances_completeRowSchema) => {
       const total = item.total_amount ?? 0;
       const spent = item.spent_amount ?? 0;
       const remaining = item.remaining_balance ?? 0;
-      const percentage = total > 0 ? Math.min(100, Math.round((spent / total) * 100)) : 0;
+      const percentage = calculatePercentage(spent, total);
 
       return (
         <GenericEntityCard
           key={item.id}
           entity={item}
           title={item.req_no || 'Unknown'}
-          subtitle={item.employee_name || 'Unassigned'}
+          subtitle={`Taken By: ${item.employee_name}` || 'Unassigned'}
           status={item.status}
-          headerIcon={<FiDollarSign className="w-6 h-6 text-green-600" />}
+          showStatusLabel={false}
+          headerIcon={<FaRupeeSign className='w-6 h-6 text-green-600' />}
           dataItems={[
-            { label: 'Date', value: item.advance_date ? formatDate(item.advance_date) : 'N/A', icon: FiList },
+            {
+              label: 'Starting Date',
+              value: item.advance_date ? formatDate(item.advance_date) : 'N/A',
+              icon: FiList,
+            },
             { label: 'Amount', value: formatCurrency(total), icon: FiPieChart },
             { label: 'Spent', value: formatCurrency(spent), icon: FiPieChart },
           ]}
           customFooter={
-            <div className="w-full space-y-1">
-              <div className="flex justify-between text-xs"><span>Utilization</span><span>{percentage}%</span></div>
-              <ProgressBar value={spent} max={total || 100} size="sm" variant={percentage > 90 ? 'danger' : percentage > 70 ? 'warning' : 'success'} />
-              <div className="text-right text-xs font-bold text-gray-600 dark:text-gray-400">Bal: {formatCurrency(remaining)}</div>
+            <div className='w-full space-y-1'>
+              <div className='flex justify-between text-xs'>
+                <span>Utilization</span>
+                <span>{percentage.value}%</span>
+              </div>
+              <ProgressBar
+                value={spent}
+                max={total || 100}
+                size='sm'
+                variant={
+                  percentage.displayValue > 90
+                    ? 'danger'
+                    : percentage.displayValue > 70
+                      ? 'warning'
+                      : 'success'
+                }
+              />
+              <div className='text-right text-xs font-bold text-gray-600 dark:text-gray-400'>
+                Bal: {formatCurrency(remaining)}
+              </div>
             </div>
           }
           onEdit={advanceCrud.editModal.openEdit}
@@ -203,27 +282,59 @@ export default function ExpensesPage() {
         />
       );
     },
-    [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, isSuperAdmin]
+    [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, isSuperAdmin],
   );
 
-  const expenseColumns: Column<Row<'v_expenses_complete'>>[] = useMemo(() => [
-    { key: 'expense_date', title: 'Date', dataIndex: 'expense_date', render: (v) => formatDate(v as string), sortable: true, width: 120 },
-    // UI Column for Used By
-    { key: 'used_by', title: 'Used By', dataIndex: 'used_by', width: 150 }, 
-    { key: 'category', title: 'Category', dataIndex: 'category', sortable: true, width: 120 },
-    { key: 'vendor', title: 'Vendor', dataIndex: 'vendor', width: 150 },
-    { key: 'invoice_no', title: 'Invoice', dataIndex: 'invoice_no', width: 150 },
-    { key: 'amount', title: 'Amount', dataIndex: 'amount', render: (v) => formatCurrency(Number(v)), width: 120 },
-    { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no', width: 150 },
-    { key: 'description', title: 'Description', dataIndex: 'description', width: 300, render: (v) => <TruncateTooltip text={v as string} /> },
-  ], []);
+  const expenseColumns: Column<Row<'v_expenses_complete'>>[] = useMemo(
+    () => [
+      {
+        key: 'expense_date',
+        title: 'Date',
+        dataIndex: 'expense_date',
+        render: (v) => formatDate(v as string),
+        sortable: true,
+        width: 120,
+      },
+      // UI Column for Used By
+      { key: 'used_by', title: 'Used By', dataIndex: 'used_by', width: 150 },
+      { key: 'category', title: 'Category', dataIndex: 'category', sortable: true, width: 120 },
+      { key: 'vendor', title: 'Vendor', dataIndex: 'vendor', width: 150 },
+      { key: 'invoice_no', title: 'Invoice', dataIndex: 'invoice_no', width: 150 },
+      {
+        key: 'amount',
+        title: 'Amount',
+        dataIndex: 'amount',
+        render: (v) => formatCurrency(Number(v)),
+        width: 120,
+      },
+      { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no', width: 150 },
+      {
+        key: 'description',
+        title: 'Description',
+        dataIndex: 'description',
+        width: 300,
+        render: (v) => <TruncateTooltip text={v as string} />,
+      },
+    ],
+    [],
+  );
 
   const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
 
   return (
     <div className='p-4 md:p-6 space-y-6'>
-      <input type='file' ref={fileInputRef} onChange={handleFileUpload} className='hidden' accept='.xlsx' />
-      <UploadResultModal isOpen={isResultOpen} onClose={() => setIsResultOpen(false)} result={uploadResult} />
+      <input
+        type='file'
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        className='hidden'
+        accept='.xlsx'
+      />
+      <UploadResultModal
+        isOpen={isResultOpen}
+        onClose={() => setIsResultOpen(false)}
+        result={uploadResult}
+      />
 
       <div className='bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-fit'>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -239,23 +350,50 @@ export default function ExpensesPage() {
           header={{
             title: 'Advance Requests',
             description: 'Manage temporary cash advances given to employees.',
-            icon: <FiDollarSign />,
+            icon: <FaRupeeSign />,
             actions: [
-              { label: 'Refresh', onClick: handleRefresh, variant: 'outline', leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />, disabled: isLoading || isSyncing },
-              { label: 'Export', onClick: handleExportAdvances, variant: 'outline', leftIcon: <FiDownload />, disabled: isExportingAdvances || isLoading, hideTextOnMobile: true },
-              { label: 'New Advance', onClick: advanceCrud.editModal.openAdd, variant: 'primary', leftIcon: <FiPlus /> },
+              {
+                label: 'Refresh',
+                onClick: handleRefresh,
+                variant: 'outline',
+                leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
+                disabled: isLoading || isSyncing,
+              },
+              {
+                label: 'Export',
+                onClick: handleExportAdvances,
+                variant: 'outline',
+                leftIcon: <FiDownload />,
+                disabled: isExportingAdvances || isLoading,
+                hideTextOnMobile: true,
+              },
+              {
+                label: 'New Advance',
+                onClick: advanceCrud.editModal.openAdd,
+                variant: 'primary',
+                leftIcon: <FiPlus />,
+              },
             ],
           }}
           crud={advanceCrud as UseCrudManagerReturn<V_advances_completeRowSchema>}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          renderGrid={() => ( <DataGrid data={advanceCrud.data} renderItem={renderAdvanceItem} isLoading={advanceCrud.isLoading} /> )}
+          renderGrid={() => (
+            <DataGrid
+              data={advanceCrud.data}
+              renderItem={renderAdvanceItem}
+              isLoading={advanceCrud.isLoading}
+            />
+          )}
           tableProps={{
             tableName: 'v_advances_complete',
             data: advanceCrud.data,
             columns: advanceColumns,
             loading: advanceCrud.isLoading,
-            actions: createStandardActions({ onEdit: advanceCrud.editModal.openEdit, onDelete: advanceCrud.actions.handleDelete })
+            actions: createStandardActions({
+              onEdit: advanceCrud.editModal.openEdit,
+              onDelete: advanceCrud.actions.handleDelete,
+            }),
           }}
           modals={
             <>
@@ -278,10 +416,34 @@ export default function ExpensesPage() {
             description: 'Detailed log of all operational expenses and vendor payments.',
             icon: <FiList />,
             actions: [
-              { label: 'Refresh', onClick: handleRefresh, variant: 'outline', leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />, disabled: isLoading || isSyncing },
-              { label: 'Export', onClick: handleExportExpenses, variant: 'outline', leftIcon: <FiDownload />, disabled: isExportingExpenses || isLoading, hideTextOnMobile: true },
-              { label: 'Upload Excel', onClick: () => fileInputRef.current?.click(), variant: 'outline', leftIcon: <FiUpload />, disabled: isUploading },
-              { label: 'New Expense', onClick: expenseCrud.editModal.openAdd, variant: 'primary', leftIcon: <FiPlus /> },
+              {
+                label: 'Refresh',
+                onClick: handleRefresh,
+                variant: 'outline',
+                leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
+                disabled: isLoading || isSyncing,
+              },
+              {
+                label: 'Export',
+                onClick: handleExportExpenses,
+                variant: 'outline',
+                leftIcon: <FiDownload />,
+                disabled: isExportingExpenses || isLoading,
+                hideTextOnMobile: true,
+              },
+              {
+                label: 'Upload Excel',
+                onClick: () => fileInputRef.current?.click(),
+                variant: 'outline',
+                leftIcon: <FiUpload />,
+                disabled: isUploading,
+              },
+              {
+                label: 'New Expense',
+                onClick: expenseCrud.editModal.openAdd,
+                variant: 'primary',
+                leftIcon: <FiPlus />,
+              },
             ],
           }}
           crud={expenseCrud as UseCrudManagerReturn<V_expenses_completeRowSchema>}
@@ -301,7 +463,10 @@ export default function ExpensesPage() {
                   expenseCrud.pagination.setPageLimit(s);
                 },
               }}
-              actions={createStandardActions({ onEdit: expenseCrud.editModal.openEdit, onDelete: expenseCrud.actions.handleDelete })}
+              actions={createStandardActions({
+                onEdit: expenseCrud.editModal.openEdit,
+                onDelete: expenseCrud.actions.handleDelete,
+              })}
             />
           )}
           modals={

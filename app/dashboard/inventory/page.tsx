@@ -4,16 +4,8 @@
 import { useMemo, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import {
-  FiArchive,
-  FiMinusCircle,
-  FiClock,
-  FiUpload,
-  FiMapPin,
-  FiTag,
-  FiDollarSign,
-} from 'react-icons/fi';
-import { FaQrcode } from 'react-icons/fa';
+import { FiArchive, FiMinusCircle, FiClock, FiUpload, FiMapPin, FiTag } from 'react-icons/fi';
+import { FaQrcode, FaRupeeSign } from 'react-icons/fa';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
@@ -267,7 +259,7 @@ export default function InventoryPage() {
             { icon: FiMapPin, label: 'Location', value: item.store_location || 'Unknown' },
             { icon: FiTag, label: 'Category', value: item.category_name || 'Uncategorized' },
             {
-              icon: FiDollarSign,
+              icon: FaRupeeSign,
               label: 'Total Value',
               value: (
                 <span className='font-bold text-emerald-600 dark:text-emerald-400'>
