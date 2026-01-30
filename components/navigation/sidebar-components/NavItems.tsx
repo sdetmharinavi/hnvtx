@@ -19,6 +19,7 @@ import {
   FiActivity,
   FiBook,
   FiDollarSign,
+  FiBriefcase,
 } from 'react-icons/fi';
 import { GoServer } from 'react-icons/go';
 import { BsPeople } from 'react-icons/bs';
@@ -49,13 +50,6 @@ function NavItems() {
         roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
-        id: 'notes',
-        label: 'Tech Notes',
-        icon: <FiBook className='h-5 w-5' />,
-        href: '/dashboard/notes',
-        roles: ROLES.VIEWERS,
-      },
-      {
         id: 'user-management',
         label: 'User Management',
         icon: <FiUsers className='h-5 w-5' />,
@@ -77,25 +71,40 @@ function NavItems() {
         roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageEmployees
       },
       {
-        id: 'inventory',
-        label: 'Inventory',
-        icon: <FiArchive className='h-5 w-5' />,
-        href: '/dashboard/inventory',
-        roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageInventory
-      },
-      {
-        id: 'expenses',
-        label: 'Expenses Manager',
-        icon: <FiDollarSign className='h-5 w-5' />,
-        href: '/dashboard/expenses',
-        roles: ROLES.VIEWERS, // Or specific role if needed
-      },
-      {
-        id: 'efiles',
-        label: 'E-File Tracking',
-        icon: <FileText className='h-5 w-5' />,
-        href: '/dashboard/e-files',
-        roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
+        id: 'office-management-menu',
+        label: 'Office Management',
+        icon: <FiBriefcase className='h-5 w-5' />,
+        roles: ROLES.VIEWERS,
+        children: [
+          {
+            id: 'inventory',
+            label: 'Inventory',
+            icon: <FiArchive className='h-5 w-5' />,
+            href: '/dashboard/inventory',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'expenses',
+            label: 'Expenses Manager',
+            icon: <FiDollarSign className='h-5 w-5' />,
+            href: '/dashboard/expenses',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'efiles',
+            label: 'E-File Tracking',
+            icon: <FileText className='h-5 w-5' />,
+            href: '/dashboard/e-files',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'notes',
+            label: 'Tech Notes',
+            icon: <FiBook className='h-5 w-5' />,
+            href: '/dashboard/notes',
+            roles: ROLES.VIEWERS,
+          },
+        ],
       },
       {
         id: 'base-menu',
@@ -193,7 +202,7 @@ function NavItems() {
       },
       {
         id: 'systems-menu',
-        label: 'Systems & Rings Manager',
+        label: 'Systems & Rings',
         icon: <GoServer className='h-5 w-5' />,
         roles: ROLES.VIEWERS,
         children: [
