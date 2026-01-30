@@ -425,6 +425,7 @@ export default function EFilesPage() {
                 variant='primary'
                 onClick={() => setForwardModal({ isOpen: true, fileId: file.id! })}
                 title='Forward File'
+                className='cursor-pointer'
               >
                 <Send className='w-3.5 h-3.5' />
               </Button>

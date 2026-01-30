@@ -279,6 +279,9 @@ export default function ExpensesPage() {
           onDelete={advanceCrud.actions.handleDelete}
           canEdit={true}
           canDelete={!!isSuperAdmin}
+          onView={() => {
+            setActiveTab('expenses');
+          }}
         />
       );
     },
