@@ -16,6 +16,9 @@ export interface EntityCardItem {
   value: string | number | null | React.ReactNode;
   copyable?: boolean;
   optional?: boolean;
+  iconClassName?: string;
+  labelClassName?: string;
+  valueClassName?: string;
 }
 
 interface GenericEntityCardProps<T> {
@@ -37,6 +40,11 @@ interface GenericEntityCardProps<T> {
   avatarColor?: string;
   initials?: string;
   headerIcon?: React.ReactNode;
+  className?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
+  dataItemClassName?: string;
+  actionButtonClassName?: string;
 }
 
 export function GenericEntityCard<T>({
@@ -58,6 +66,11 @@ export function GenericEntityCard<T>({
   avatarColor,
   initials,
   headerIcon,
+  className = '',
+  titleClassName = '',
+  subtitleClassName = '',
+  dataItemClassName = '',
+  actionButtonClassName = '',
 }: GenericEntityCardProps<T>) {
   const isAvatarStyle = !!initials;
   const [isInteracting, setIsInteracting] = useState(false);
@@ -69,14 +82,10 @@ export function GenericEntityCard<T>({
     setIsInteracting(true);
 
     // Trigger the parent action
-    // We don't await strictly because router.push is often void in types but async in behavior
     onView(entity);
 
-    // Safety fallback: If the action opens a modal (instant) or fails,
-    // we remove the spinner after a short delay so the card becomes interactive again.
-    // If it navigates away, the component unmounts anyway.
+    // Safety fallback
     setTimeout(() => {
-      // Only reset if component is still mounted (React handles unmounted state updates gracefully in newer versions, but good practice)
       setIsInteracting(false);
     }, 5000);
   }, [onView, entity, isInteracting]);
@@ -89,12 +98,68 @@ export function GenericEntityCard<T>({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent triggering if clicking specific inner interactive elements
-    // (though stopPropagation in children usually handles this)
     e.stopPropagation();
     if (onView) {
       handleViewAction();
     }
+  };
+
+  // Helper function to render data item value
+  const renderValue = (item: EntityCardItem) => {
+    const value = item.value;
+
+    if (value === null || value === undefined || value === '') {
+      return <span className='text-gray-400 dark:text-gray-500 italic'>Not specified</span>;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      const stringValue = String(value);
+
+      // Handle coordinates specially
+      if (
+        item.label.toLowerCase().includes('coordinate') ||
+        item.label.toLowerCase() === 'lat/long'
+      ) {
+        const coords = stringValue.split(',');
+        if (coords.length === 2) {
+          const [lat, long] = coords;
+          return (
+            <div className='flex flex-col gap-0.5'>
+              <span className='text-xs text-gray-600 dark:text-gray-400'>Lat: {lat.trim()}</span>
+              <span className='text-xs text-gray-600 dark:text-gray-400'>Long: {long.trim()}</span>
+            </div>
+          );
+        }
+      }
+
+      // Handle addresses/long text
+      if (stringValue.length > 30) {
+        return (
+          <TruncateTooltip
+            text={stringValue}
+            copyOnDoubleClick={item.copyable}
+            className='text-gray-700 dark:text-gray-300'
+          />
+        );
+      }
+
+      return (
+        <span className='text-gray-700 dark:text-gray-300'>
+          {item.copyable ? (
+            <TruncateTooltip
+              text={stringValue}
+              copyOnDoubleClick={true}
+              className='text-gray-700 dark:text-gray-300'
+            />
+          ) : (
+            stringValue
+          )}
+        </span>
+      );
+    }
+
+    // If it's ReactNode, render as is
+    return <div className='text-gray-700 dark:text-gray-300'>{value}</div>;
   };
 
   return (
@@ -108,38 +173,27 @@ export function GenericEntityCard<T>({
         bg-white dark:bg-gray-800
         rounded-xl
         border border-gray-200 dark:border-gray-700
-        shadow-md
-        transition-all duration-300 ease-in-out
+        shadow-md dark:shadow-lg dark:shadow-gray-900/30
+        transition-all duration-200 ease-in-out
         flex flex-col h-full
         group
         relative
         overflow-hidden
         focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none
-        ${onView ? 'cursor-pointer hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-600 hover:-translate-y-1' : ''}
+        ${onView ? 'cursor-pointer hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 hover:-translate-y-0.5' : ''}
+        ${className}
       `}
-      style={{
-        // Fallback for browsers that don't support CSS transforms
-        WebkitTransform: 'translateZ(0)',
-        willChange: 'transform, box-shadow',
-      }}
     >
       {/* Loading Overlay */}
       {isInteracting && (
-        <div className='absolute inset-0 z-50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200'>
+        <div className='absolute inset-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200'>
           <LoadingSpinner size='md' color='primary' />
         </div>
       )}
 
       {/* Header Section */}
       {isAvatarStyle ? (
-        <div
-          className='relative h-20 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-blue-900/20 dark:to-purple-900/20'
-          style={{
-            // Fallback for old browsers
-            background:
-              'linear-gradient(135deg, rgb(239 246 255) 0%, rgb(238 242 255) 50%, rgb(250 245 255) 100%)',
-          }}
-        >
+        <div className='relative h-20 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-blue-900/20 dark:to-purple-900/20'>
           <div className='absolute top-2.5 right-2.5 z-10'>
             <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
@@ -151,50 +205,35 @@ export function GenericEntityCard<T>({
                   rounded-full
                   flex items-center justify-center
                   text-2xl font-bold text-white
-                  shadow-lg
+                  shadow-lg dark:shadow-gray-900/50
                   ring-4 ring-white dark:ring-gray-800
                   transition-transform duration-300
                   group-hover:scale-105
+                  bg-linear-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-800
                 `}
                 style={{
-                  background:
-                    avatarColor ||
-                    'linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)',
-                  // Fallback
-                  backgroundColor: '#3b82f6',
+                  background: avatarColor,
                 }}
               >
                 {initials}
               </div>
-              <div
-                className='absolute inset-0 rounded-full pointer-events-none opacity-20'
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%)',
-                }}
-              />
+              <div className='absolute inset-0 rounded-full pointer-events-none opacity-20 dark:opacity-30 bg-linear-to-br from-white/30 to-transparent' />
             </div>
           </div>
         </div>
       ) : (
-        <div
-          className='relative bg-linear-to-br from-blue-50 via-indigo-50 to-white dark:from-gray-800 dark:via-blue-900/10 dark:to-gray-800 p-4 border-b border-gray-200 dark:border-gray-700'
-          style={{
-            background:
-              'linear-gradient(135deg, rgb(239 246 255) 0%, rgb(238 242 255) 50%, white 100%)',
-          }}
-        >
+        <div className='relative p-4 border-b border-gray-200 dark:border-gray-700 bg-linear-to-br from-blue-50 via-indigo-50 to-white dark:from-gray-800 dark:via-blue-900/10 dark:to-gray-800'>
           {/* Status indicator bar */}
           <div
-            className='absolute left-0 top-0 bottom-0 w-1 transition-all duration-300'
-            style={{
-              background: status
-                ? 'linear-gradient(180deg, rgb(52 211 153) 0%, rgb(16 185 129) 50%, rgb(5 150 105) 100%)'
-                : 'linear-gradient(180deg, rgb(248 113 113) 0%, rgb(239 68 68) 50%, rgb(220 38 38) 100%)',
-              backgroundColor: status ? '#10b981' : '#ef4444', // Fallback
-              boxShadow: status
-                ? '0 4px 6px -1px rgba(16, 185, 129, 0.5), 0 2px 4px -1px rgba(16, 185, 129, 0.3)'
-                : '0 4px 6px -1px rgba(239, 68, 68, 0.5), 0 2px 4px -1px rgba(239, 68, 68, 0.3)',
-            }}
+            className={`
+            absolute left-0 top-0 bottom-0 w-1.5
+            ${
+              status
+                ? 'bg-linear-to-b from-green-500 to-green-600 shadow-green-500/30'
+                : 'bg-linear-to-b from-red-500 to-red-600 shadow-red-500/30'
+            }
+            shadow-lg
+          `}
             aria-hidden='true'
           />
 
@@ -207,36 +246,26 @@ export function GenericEntityCard<T>({
               <div className='relative shrink-0 group/icon'>
                 <div
                   className='
-                    w-12 h-12
-                    rounded-xl
-                    flex items-center justify-center
-                    shadow-md
-                    transition-all duration-300
-                    border border-blue-100 dark:border-blue-800
-                    group-hover:shadow-lg group-hover:scale-105
-                  '
-                  style={{
-                    background: 'linear-gradient(135deg, white 0%, rgb(239 246 255) 100%)',
-                    backgroundColor: 'white', // Fallback
-                    transform: 'translateZ(0)', // GPU acceleration fallback
-                  }}
+                  w-12 h-12
+                  rounded-xl
+                  flex items-center justify-center
+                  shadow-md dark:shadow-gray-900/30
+                  transition-all duration-300
+                  border border-blue-100 dark:border-blue-800/50
+                  bg-linear-to-br from-white to-blue-50 dark:from-gray-700 dark:to-gray-800
+                  group-hover:shadow-lg group-hover:scale-105
+                  text-gray-700 dark:text-gray-300
+                '
                 >
                   {headerIcon}
                 </div>
-                <div
-                  className='absolute inset-0 rounded-xl opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300 blur-sm -z-10'
-                  style={{
-                    background:
-                      'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%)',
-                  }}
-                  aria-hidden='true'
-                />
+                <div className='absolute inset-0 rounded-xl opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300 blur-sm -z-10 bg-linear-to-br from-blue-200/20 to-purple-200/20 dark:from-blue-400/10 dark:to-purple-400/10' />
               </div>
             )}
 
             <div className='min-w-0 flex-1 pt-0.5'>
               <h3
-                className='font-bold text-gray-900 dark:text-gray-100 text-base mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200'
+                className={`font-bold text-gray-900 dark:text-white text-base mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 ${titleClassName}`}
                 title={title}
               >
                 <TruncateTooltip text={title} />
@@ -248,7 +277,7 @@ export function GenericEntityCard<T>({
               )}
               {subtitle && !subBadge && (
                 <p
-                  className='text-xs text-gray-600 dark:text-gray-400 font-medium truncate'
+                  className={`text-xs text-gray-600 dark:text-gray-400 font-medium truncate ${subtitleClassName}`}
                   title={subtitle}
                 >
                   {subtitle}
@@ -264,13 +293,13 @@ export function GenericEntityCard<T>({
         {isAvatarStyle && (
           <div className='text-center mb-3.5'>
             <h3
-              className='font-bold text-gray-900 dark:text-white text-base mb-1 truncate'
+              className={`font-bold text-gray-900 dark:text-white text-base mb-1 truncate ${titleClassName}`}
               title={title}
             >
               {title}
             </h3>
             <p
-              className='text-sm text-gray-600 dark:text-gray-400 font-medium mb-2'
+              className={`text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 ${subtitleClassName}`}
               title={subtitle}
             >
               {subtitle || '—'}
@@ -282,69 +311,79 @@ export function GenericEntityCard<T>({
         {customHeader}
 
         <div className='space-y-2' role='list'>
-          {dataItems.map((item, idx) => {
-            const optional = item.optional ?? false;
-            if (optional && !item.value) return null;
+          {dataItems
+            .filter((item) => !item.optional || (item.optional && item.value))
+            .map((item, idx) => {
+              const isRemark = item.label === 'Remark';
+              const ItemIcon = item.icon;
 
-            const isRemark = item.label === 'Remark';
-            const ItemIcon = item.icon;
-
-            return (
-              <div
-                key={idx}
-                role='listitem'
-                className='
-                  flex items-center gap-2.5 p-2.5 rounded-lg
-                  transition-all duration-200
-                  border
-                '
-                style={{
-                  background: isRemark
-                    ? 'linear-gradient(135deg, rgb(254 252 232) 0%, rgb(254 243 199) 100%)'
-                    : 'linear-gradient(135deg, rgb(249 250 251) 0%, rgb(241 245 249) 100%)',
-                  backgroundColor: isRemark ? '#fef3c7' : '#f9fafb', // Fallback
-                  borderColor: isRemark ? '#fcd34d' : '#e5e7eb',
-                }}
-              >
+              return (
                 <div
-                  className='p-2 rounded-lg shadow-sm shrink-0 transition-all duration-200 border'
-                  style={{
-                    background: isRemark
-                      ? 'linear-gradient(135deg, rgb(254 243 199) 0%, rgb(253 224 71) 100%)'
-                      : 'linear-gradient(135deg, white 0%, rgb(239 246 255) 100%)',
-                    backgroundColor: isRemark ? '#fde68a' : 'white', // Fallback
-                    borderColor: isRemark ? '#fbbf24' : '#bfdbfe',
-                  }}
-                  aria-hidden='true'
+                  key={idx}
+                  role='listitem'
+                  className={`
+                    flex items-center gap-2.5 p-2.5 rounded-lg
+                    transition-all duration-200
+                    border
+                    ${
+                      isRemark
+                        ? 'bg-linear-to-br from-amber-50/50 to-amber-100/50 dark:from-amber-900/10 dark:to-amber-900/20 border-amber-200 dark:border-amber-800/30'
+                        : ''
+                    }
+                    ${dataItemClassName}
+                  `}
                 >
-                  <ItemIcon
-                    className='w-4 h-4'
-                    style={{ color: isRemark ? '#d97706' : '#2563eb' }}
+                  <div
+                    className={`
+                    p-2 rounded-lg shadow-sm shrink-0 transition-all duration-200 border
+                    ${
+                      isRemark
+                        ? 'bg-linear-to-br from-amber-100 to-amber-200 dark:from-amber-800/30 dark:to-amber-900/40 border-amber-300 dark:border-amber-700/50'
+                        : ''
+                    }
+                  `}
                     aria-hidden='true'
-                  />
-                </div>
-                <div className='min-w-0 flex-1'>
-                  <div
-                    className='text-[10px] font-bold uppercase tracking-wider leading-none mb-1'
-                    style={{ color: isRemark ? '#92400e' : '#6b7280' }}
                   >
-                    {item.label}
+                    <ItemIcon
+                      className={`w-4 h-4 ${
+                        isRemark
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                      } ${item.iconClassName || ''}`}
+                      aria-hidden='true'
+                    />
                   </div>
-                  <div
-                    className='text-sm font-semibold truncate'
-                    style={{ color: isRemark ? '#78350f' : '#111827' }}
-                    title={typeof item.value === 'string' ? item.value : undefined}
-                  >
-                    {typeof item.value === 'string' ? (
-                      <TruncateTooltip text={item.value} copyOnDoubleClick={item.copyable} />
-                    ) : (
-                      item.value || <span style={{ color: '#9ca3af' }}>—</span>
-                    )}
+                  <div className='min-w-0 flex-1'>
+                    <div
+                      className={`
+                      text-[10px] font-bold uppercase tracking-wider leading-none mb-1
+                      ${
+                        isRemark
+                          ? 'text-amber-700 dark:text-amber-300'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }
+                      ${item.labelClassName || ''}
+                    `}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      className={`
+                      ${
+                        isRemark
+                          ? 'text-amber-800 dark:text-amber-200'
+                          : 'text-gray-900 dark:text-gray-300'
+                      }
+                      ${item.valueClassName || ''}
+                    `}
+                      title={typeof item.value === 'string' ? item.value : undefined}
+                    >
+                      {renderValue(item)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
 
         {customFooter}
@@ -356,13 +395,9 @@ export function GenericEntityCard<T>({
           px-3.5 py-2.5
           border-t border-gray-200 dark:border-gray-700
           flex items-center justify-between gap-2 cursor-default
+          bg-linear-to-t from-gray-50/50 via-blue-50/20 to-transparent dark:from-gray-800/50 dark:via-blue-900/10 dark:to-transparent
         '
-        style={{
-          background:
-            'linear-gradient(180deg, rgb(249 250 251) 0%, rgba(239 246 255, 0.3) 50%, transparent 100%)',
-          backgroundColor: '#f9fafb', // Fallback
-        }}
-        onClick={(e) => e.stopPropagation()} // Important: stop click propagation for actions
+        onClick={(e) => e.stopPropagation()}
         role='toolbar'
         aria-label='Card actions'
       >
@@ -370,11 +405,7 @@ export function GenericEntityCard<T>({
           {extraActions}
         </div>
 
-        <div
-          className='flex items-center gap-1.5 cursor-pointer'
-          role='group'
-          aria-label='Primary actions'
-        >
+        <div className='flex items-center gap-1.5' role='group' aria-label='Primary actions'>
           {onView && (
             <Button
               size='xs'
@@ -386,7 +417,13 @@ export function GenericEntityCard<T>({
               disabled={isInteracting}
               title='View Details'
               aria-label={`View details for ${title}`}
-              className='font-medium hover:scale-105 transition-transform duration-200  cursor-pointer'
+              className={`
+                font-medium hover:scale-105 transition-transform duration-200 cursor-pointer
+                bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600
+                text-gray-700 dark:text-gray-300
+                border-gray-300 dark:border-gray-600
+                ${actionButtonClassName}
+              `}
             >
               <FiInfo className='w-4 h-4' aria-hidden='true' />
               {!isAvatarStyle && !extraActions && (
@@ -405,7 +442,12 @@ export function GenericEntityCard<T>({
               }}
               title='Edit'
               aria-label={`Edit ${title}`}
-              className='text-blue-600  cursor-pointer hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 hover:scale-105 transition-all duration-200'
+              className={`
+                text-blue-600 hover:text-blue-700 hover:bg-blue-50 
+                dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 
+                hover:scale-105 transition-all duration-200 cursor-pointer
+                ${actionButtonClassName}
+              `}
             >
               <FiEdit2 className='w-4 h-4' aria-hidden='true' />
             </Button>
@@ -415,7 +457,12 @@ export function GenericEntityCard<T>({
             <Button
               size='xs'
               variant='ghost'
-              className='text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 hover:scale-105 transition-all duration-200  cursor-pointer'
+              className={`
+                text-red-600 hover:text-red-700 hover:bg-red-50 
+                dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 
+                hover:scale-105 transition-all duration-200 cursor-pointer
+                ${actionButtonClassName}
+              `}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(entity);
