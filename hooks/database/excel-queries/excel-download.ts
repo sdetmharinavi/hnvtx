@@ -43,6 +43,7 @@ interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName>
   defaultOrderBy?: OrderByOption[];
   defaultWrapText?: boolean;
   defaultAutoFitColumns?: boolean;
+  maxRows?: number; // FIX: Added missing property
 }
 
 // --- HELPER FUNCTION ---
@@ -163,7 +164,6 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
     }
   });
 
-  // Freeze header
   worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   // --- DOWNLOAD ---
@@ -240,6 +240,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
   tableName: T,
   options?: EnhancedUseExcelDownloadOptions<T>
 ) {
+  // FIX: Added maxRows to destructuring, aliased as defaultMaxRows
   const { showToasts = true, maxRows: defaultMaxRows, defaultOrderBy, defaultWrapText = true, defaultAutoFitColumns = true, ...mutationOptions } = options || {};
 
   return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
@@ -260,6 +261,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
         orderBy.forEach(o => { query = query.order(o.column, { ascending: o.ascending !== false }); });
       }
       
+      // Use maxRows from call or defaultMaxRows from options
       if (maxRows || defaultMaxRows) query = query.limit(maxRows || defaultMaxRows || 50000);
       
       const { data, error } = await query;
