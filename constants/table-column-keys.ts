@@ -1214,6 +1214,7 @@ const TABLE_COLUMN_OBJECTS = {
     category: "category",
     amount: "amount",
     invoice_no: "invoice_no",
+    used_by: "used_by",
     description: "description",
     advance_id: "advance_id",
     advance_req_no: "advance_req_no",

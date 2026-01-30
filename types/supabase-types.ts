@@ -4175,6 +4175,7 @@ export type Database = {
           invoice_no: string | null
           terminal_location: string | null
           updated_at: string | null
+          used_by: string | null
           vendor: string | null
         }
         Relationships: [

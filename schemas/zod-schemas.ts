@@ -1680,6 +1680,7 @@ export const v_expenses_completeRowSchema = z.object({
   invoice_no: z.string().nullable(),
   terminal_location: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
+  used_by: z.string().nullable(),
   vendor: z.string().nullable(),
 });
 

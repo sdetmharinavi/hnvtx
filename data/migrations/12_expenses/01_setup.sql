@@ -67,10 +67,16 @@ SELECT
     e.created_at,
     e.updated_at,
     a.req_no as advance_req_no,
-    emp.employee_name as advance_holder_name
+    emp.employee_name as advance_holder_name,
+    -- ADDED: New 'used_by' column, which is the same as the advance holder.
+    emp.employee_name as used_by
 FROM public.expenses e
 LEFT JOIN public.advances a ON e.advance_id = a.id
 LEFT JOIN public.employees emp ON a.employee_id = emp.id;
+
+-- Re-grant permissions to be safe
+GRANT SELECT ON public.v_expenses_complete TO authenticated;
+GRANT SELECT ON public.v_expenses_complete TO admin, admin_pro, viewer;
 
 -- View: Advances with Calculated Totals
 CREATE OR REPLACE VIEW public.v_advances_complete WITH (security_invoker = true) AS
@@ -94,8 +100,8 @@ LEFT JOIN public.expenses e ON a.id = e.advance_id
 GROUP BY a.id, emp.id;
 
 -- Grants for Views
-GRANT SELECT ON public.v_expenses_complete TO authenticated;
 GRANT SELECT ON public.v_advances_complete TO authenticated;
+GRANT SELECT ON public.v_advances_complete TO admin, admin_pro, viewer;
 
 -- 9. RPC Upsert for Expenses (to handle Excel upload logic efficiently)
 CREATE OR REPLACE FUNCTION public.upsert_expense_record(

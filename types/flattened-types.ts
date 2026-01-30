@@ -1660,6 +1660,7 @@ export type V_expenses_completeRow = {
     invoice_no: string | null;
     terminal_location: string | null;
     updated_at: string | null;
+    used_by: string | null;
     vendor: string | null;
 };
 
