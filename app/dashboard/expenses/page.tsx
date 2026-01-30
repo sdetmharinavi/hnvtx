@@ -136,16 +136,15 @@ export default function ExpensesPage() {
     // Manually define columns to ensure order, width, and labels are exact
     const columns: Column<Row<'v_expenses_complete'>>[] = [
       { key: 'expense_date', title: 'Date', dataIndex: 'expense_date', excelFormat: 'date' },
-      // Used By Column (Mapped from advance_holder_name in view)
       { key: 'used_by', title: 'Used By', dataIndex: 'used_by' }, 
       { key: 'category', title: 'Category', dataIndex: 'category' },
       { key: 'vendor', title: 'Vendor', dataIndex: 'vendor' },
       { key: 'invoice_no', title: 'Invoice No', dataIndex: 'invoice_no' },
-      { key: 'amount', title: 'Amount', dataIndex: 'amount', excelFormat: 'currency' },
-      { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
+      { key: 'amount', title: 'Amount', dataIndex: 'amount', excelFormat: 'number' },
       { key: 'terminal_location', title: 'Location', dataIndex: 'terminal_location' },
       // Description with fixed width
       { key: 'description', title: 'Description', dataIndex: 'description', width: 300 },
+      { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
     ];
 
     exportExpenses({

@@ -707,6 +707,7 @@ const TABLE_COLUMN_OBJECTS = {
     amount: "amount",
     invoice_no: "invoice_no",
     description: "description",
+    spent_by_employee_id: "spent_by_employee_id",
     advance_id: "advance_id",
     created_at: "created_at",
     id: "id",
@@ -1220,6 +1221,7 @@ const TABLE_COLUMN_OBJECTS = {
     advance_req_no: "advance_req_no",
     created_at: "created_at",
     id: "id",
+    spent_by_employee_id: "spent_by_employee_id",
     updated_at: "updated_at",
   },
   v_advances_complete: {

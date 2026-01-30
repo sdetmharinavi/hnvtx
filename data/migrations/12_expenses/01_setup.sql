@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     advance_id UUID REFERENCES public.advances(id) ON DELETE CASCADE,
     expense_date DATE NOT NULL,
+    spent_by_employee_id UUID REFERENCES public.employees(id),
     category TEXT, -- e.g., PT-PT, RENTAL, FUEL
     vendor TEXT, -- e.g., OLA, INDRIVE
     invoice_no TEXT,
@@ -66,13 +67,16 @@ SELECT
     e.description,
     e.created_at,
     e.updated_at,
+    e.spent_by_employee_id,
     a.req_no as advance_req_no,
-    emp.employee_name as advance_holder_name,
-    -- ADDED: New 'used_by' column, which is the same as the advance holder.
-    emp.employee_name as used_by
+    holder.employee_name as advance_holder_name,
+    
+    -- LOGIC: If 'spent_by' is set, show that name. Otherwise, fallback to the advance holder's name.
+    COALESCE(spender.employee_name, holder.employee_name) as used_by
 FROM public.expenses e
 LEFT JOIN public.advances a ON e.advance_id = a.id
-LEFT JOIN public.employees emp ON a.employee_id = emp.id;
+LEFT JOIN public.employees holder ON a.employee_id = holder.id
+LEFT JOIN public.employees spender ON e.spent_by_employee_id = spender.id;
 
 -- Re-grant permissions to be safe
 GRANT SELECT ON public.v_expenses_complete TO authenticated;
@@ -105,14 +109,16 @@ GRANT SELECT ON public.v_advances_complete TO admin, admin_pro, viewer;
 
 -- 9. RPC Upsert for Expenses (to handle Excel upload logic efficiently)
 CREATE OR REPLACE FUNCTION public.upsert_expense_record(
-    p_advance_req_no TEXT, -- Look up ID by Req No
+    p_advance_req_no TEXT,
     p_expense_date DATE,
     p_category TEXT,
     p_vendor TEXT,
     p_invoice_no TEXT,
     p_amount DECIMAL,
     p_terminal TEXT,
-    p_id UUID DEFAULT NULL
+    p_id UUID DEFAULT NULL,
+    p_description TEXT DEFAULT NULL,
+    p_spent_by_employee_id UUID DEFAULT NULL -- New Parameter
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -124,13 +130,13 @@ DECLARE
 BEGIN
     -- Find Advance ID
     SELECT id INTO v_advance_id FROM public.advances WHERE req_no = p_advance_req_no;
-    
+
     IF v_advance_id IS NULL THEN
         RAISE EXCEPTION 'Advance Request No % not found', p_advance_req_no;
     END IF;
 
     INSERT INTO public.expenses (
-        id, advance_id, expense_date, category, vendor, invoice_no, amount, terminal_location, updated_at
+        id, advance_id, expense_date, category, vendor, invoice_no, amount, terminal_location, description, spent_by_employee_id, updated_at
     ) VALUES (
         COALESCE(p_id, gen_random_uuid()),
         v_advance_id,
@@ -140,6 +146,8 @@ BEGIN
         p_invoice_no,
         p_amount,
         p_terminal,
+        p_description,
+        p_spent_by_employee_id,
         NOW()
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -150,6 +158,8 @@ BEGIN
         invoice_no = EXCLUDED.invoice_no,
         amount = EXCLUDED.amount,
         terminal_location = EXCLUDED.terminal_location,
+        description = EXCLUDED.description,
+        spent_by_employee_id = EXCLUDED.spent_by_employee_id,
         updated_at = NOW()
     RETURNING id INTO v_expense_id;
 
@@ -157,4 +167,5 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.upsert_expense_record(TEXT, DATE, TEXT, TEXT, TEXT, DECIMAL, TEXT, UUID) TO authenticated;
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION public.upsert_expense_record(TEXT, DATE, TEXT, TEXT, TEXT, DECIMAL, TEXT, UUID, TEXT, UUID) TO authenticated;

@@ -358,6 +358,7 @@ export type ExpensesRow = {
     expense_date: string;
     id: string;
     invoice_no: string | null;
+    spent_by_employee_id: string | null;
     terminal_location: string | null;
     updated_at: string | null;
     vendor: string | null;
@@ -372,6 +373,7 @@ export type ExpensesInsert = {
     expense_date: string;
     id?: string;
     invoice_no?: string | null;
+    spent_by_employee_id?: string | null;
     terminal_location?: string | null;
     updated_at?: string | null;
     vendor?: string | null;
@@ -386,6 +388,7 @@ export type ExpensesUpdate = {
     expense_date?: string;
     id?: string;
     invoice_no?: string | null;
+    spent_by_employee_id?: string | null;
     terminal_location?: string | null;
     updated_at?: string | null;
     vendor?: string | null;
@@ -1658,6 +1661,7 @@ export type V_expenses_completeRow = {
     expense_date: string | null;
     id: string | null;
     invoice_no: string | null;
+    spent_by_employee_id: string | null;
     terminal_location: string | null;
     updated_at: string | null;
     used_by: string | null;

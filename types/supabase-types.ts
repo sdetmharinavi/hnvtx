@@ -1290,6 +1290,7 @@ export type Database = {
           expense_date: string
           id: string
           invoice_no: string | null
+          spent_by_employee_id: string | null
           terminal_location: string | null
           updated_at: string | null
           vendor: string | null
@@ -1303,6 +1304,7 @@ export type Database = {
           expense_date: string
           id?: string
           invoice_no?: string | null
+          spent_by_employee_id?: string | null
           terminal_location?: string | null
           updated_at?: string | null
           vendor?: string | null
@@ -1316,6 +1318,7 @@ export type Database = {
           expense_date?: string
           id?: string
           invoice_no?: string | null
+          spent_by_employee_id?: string | null
           terminal_location?: string | null
           updated_at?: string | null
           vendor?: string | null
@@ -1333,6 +1336,20 @@ export type Database = {
             columns: ["advance_id"]
             isOneToOne: false
             referencedRelation: "v_advances_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_spent_by_employee_id_fkey"
+            columns: ["spent_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_spent_by_employee_id_fkey"
+            columns: ["spent_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
             referencedColumns: ["id"]
           },
         ]
@@ -4173,6 +4190,7 @@ export type Database = {
           expense_date: string | null
           id: string | null
           invoice_no: string | null
+          spent_by_employee_id: string | null
           terminal_location: string | null
           updated_at: string | null
           used_by: string | null
@@ -4191,6 +4209,20 @@ export type Database = {
             columns: ["advance_id"]
             isOneToOne: false
             referencedRelation: "v_advances_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_spent_by_employee_id_fkey"
+            columns: ["spent_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_spent_by_employee_id_fkey"
+            columns: ["spent_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "v_employees"
             referencedColumns: ["id"]
           },
         ]
@@ -6278,9 +6310,11 @@ export type Database = {
           p_advance_req_no: string
           p_amount: number
           p_category: string
+          p_description?: string
           p_expense_date: string
           p_id?: string
           p_invoice_no: string
+          p_spent_by_employee_id?: string
           p_terminal: string
           p_vendor: string
         }
