@@ -248,7 +248,7 @@ export default function ServicesPage() {
                     <Server className='w-3 h-3' /> Allocations
                   </div>
                   <div className='flex flex-wrap gap-1'>
-                    {allocatedSystems.slice(0, 2).map((sys, idx) => (
+                    {allocatedSystems.slice(0, 9).map((sys, idx) => (
                       <a
                         key={`${sys.id}-${idx}`}
                         href={`/dashboard/systems/${sys.id}`}
@@ -261,9 +261,9 @@ export default function ServicesPage() {
                         <ExternalLink className='w-2 h-2' />
                       </a>
                     ))}
-                    {allocatedSystems.length > 2 && (
+                    {allocatedSystems.length > 9 && (
                       <span className='text-[10px] text-blue-500'>
-                        +{allocatedSystems.length - 2} more systems
+                        +{allocatedSystems.length - 9} more systems
                       </span>
                     )}
                   </div>

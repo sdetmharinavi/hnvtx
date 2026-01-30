@@ -317,7 +317,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
 
       {/* Footer Actions */}
       <div
-        className='px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2'
+        className='px-4 py-3 bg-linear-to-t from-gray-50 to-transparent dark:from-gray-900/30 border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-end gap-2 cursor-default'
         onClick={(e) => e.stopPropagation()}
       >
         {onGoToSystem && !isSystemContext && (
@@ -326,7 +326,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             variant='ghost'
             onClick={() => onGoToSystem(connection)}
             title='Go To Host System'
-            className='text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+            className='text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer'
           >
             <FiServer className='w-4 h-4' />
           </Button>
@@ -339,7 +339,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             onClick={handleViewDetailsAction}
             disabled={isInteracting}
             title='Full Details'
-            className='font-medium'
+            className='font-medium cursor-pointer'
           >
             <FiMonitor className='w-4 h-4' />
             <span className='ml-1.5'>Details</span>
@@ -352,7 +352,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             variant='outline'
             onClick={() => onViewPath(connection)}
             title='Trace Fiber Path'
-            className='text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium'
+            className='text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium cursor-pointer'
           >
             <FiEye className='w-4 h-4' />
             <span className='ml-1.5'>Path</span>
@@ -364,7 +364,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
             variant='ghost'
             onClick={() => onEdit(connection)}
             title='Edit Connection'
-            className='text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+            className='text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 cursor-pointer'
           >
             <FiEdit2 className='w-4 h-4' />
           </Button>
@@ -373,7 +373,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
           <Button
             size='xs'
             variant='ghost'
-            className='text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+            className='text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 cursor-pointer'
             onClick={() => onDelete(connection)}
             title='Delete Connection'
           >

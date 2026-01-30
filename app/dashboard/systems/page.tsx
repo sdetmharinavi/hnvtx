@@ -388,7 +388,7 @@ export default function SystemsPage() {
             variant='secondary'
             onClick={() => handleManagePorts(sys)}
             title='Manage Ports'
-            className='font-medium'
+            className='font-medium cursor-pointer'
           >
             <FiGrid className='w-4 h-4' />
             <span className='ml-1.5 hidden sm:inline'>Ports</span>
