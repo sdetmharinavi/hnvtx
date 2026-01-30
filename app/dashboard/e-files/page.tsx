@@ -387,6 +387,7 @@ export default function EFilesPage() {
           title={file.subject || 'Unnamed File'}
           subtitle={file.file_number || ''}
           status={file.status}
+          showStatusLabel={false}
           subBadge={
             <div className='flex items-center gap-2 mb-2'>
               <span

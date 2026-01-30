@@ -28,7 +28,7 @@ import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
-  { loading: () => <PageSpinner text="Loading OFC Form..." /> }
+  { loading: () => <PageSpinner text='Loading OFC Form...' /> },
 );
 
 const formatUpdatedAt = (timestamp: string | null | undefined) => {
@@ -86,7 +86,7 @@ export default function OfcPage() {
   const { options: ofcTypeOptions, isLoading: loadingTypes } = useLookupTypeOptions(
     'OFC_TYPES',
     'desc',
-    'name'
+    'name',
   );
   const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
 
@@ -102,29 +102,29 @@ export default function OfcPage() {
           { value: 'last_activity', label: 'Last Activity' },
         ],
       },
-      { 
-        key: 'ofc_type_id', 
+      {
+        key: 'ofc_type_id',
         // label: 'Cable Type', // FIXED
-        type: 'multi-select' as const, 
-        options: ofcTypeOptions, 
-        isLoading: loadingTypes 
+        type: 'multi-select' as const,
+        options: ofcTypeOptions,
+        isLoading: loadingTypes,
       },
-      { 
-        key: 'ofc_owner_id', 
+      {
+        key: 'ofc_owner_id',
         // label: 'Owner', // FIXED
-        type: 'multi-select' as const, 
-        options: ofcOwnerOptions, 
-        isLoading: loadingOwners 
+        type: 'multi-select' as const,
+        options: ofcOwnerOptions,
+        isLoading: loadingOwners,
       },
     ],
-    [ofcTypeOptions, ofcOwnerOptions, loadingTypes, loadingOwners]
+    [ofcTypeOptions, ofcOwnerOptions, loadingTypes, loadingOwners],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const columns = OfcTableColumns(ofcData);
@@ -153,13 +153,14 @@ export default function OfcPage() {
           entity={cable}
           title={cable.route_name || 'Unnamed Route'}
           status={cable.status}
+          showStatusLabel={false}
           subBadge={
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50">
+            <div className='flex items-center gap-2 mb-2 flex-wrap'>
+              <span className='inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200 dark:from-purple-900/40 dark:to-purple-900/20 dark:text-purple-300 dark:border-purple-800/50'>
                 {cable.ofc_type_name || 'Unknown Type'}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50">
-                <FiLayers className="w-3.5 h-3.5" />
+              <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50'>
+                <FiLayers className='w-3.5 h-3.5' />
                 {cable.capacity}F
               </span>
             </div>
@@ -172,12 +173,12 @@ export default function OfcPage() {
           customFooter={
             <>
               <GenericRemarks remark={cable.remark || ''} />
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full">
-                <div className="flex items-center gap-1.5">
-                  <FiClock className="w-3.5 h-3.5" />
+              <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full'>
+                <div className='flex items-center gap-1.5'>
+                  <FiClock className='w-3.5 h-3.5' />
                   <span>Activity {timeAgo}</span>
                 </div>
-                <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950">
+                <span className='font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950'>
                   {cable.current_rkm} km
                 </span>
               </div>
@@ -191,7 +192,7 @@ export default function OfcPage() {
         />
       );
     },
-    [router, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete]
+    [router, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
   );
 
   const renderGrid = useCallback(
@@ -212,7 +213,7 @@ export default function OfcPage() {
         }}
       />
     ),
-    [ofcData, renderItem, isLoading, totalCount, pagination]
+    [ofcData, renderItem, isLoading, totalCount, pagination],
   );
 
   if (error)
@@ -235,7 +236,7 @@ export default function OfcPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search route name, asset no..."
+      searchPlaceholder='Search route name, asset no...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       setFilters={filters.setFilters}
@@ -267,7 +268,7 @@ export default function OfcPage() {
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (row): row is Row<'v_ofc_cables_complete'> & { id: string } => !!row.id
+            (row): row is Row<'v_ofc_cables_complete'> & { id: string } => !!row.id,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -300,9 +301,9 @@ export default function OfcPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
-            type="danger"
+            type='danger'
             loading={deleteModal.loading}
           />
         </>

@@ -174,7 +174,7 @@ export default function SystemsPage() {
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
@@ -358,6 +358,7 @@ export default function SystemsPage() {
         entity={sys}
         title={sys.system_name || 'Unnamed System'}
         status={sys.status}
+        showStatusLabel={false}
         subBadge={
           <div className='flex items-center gap-2 mb-2 flex-wrap'>
             <span className='inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-md bg-linear-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200 dark:from-blue-900/40 dark:to-blue-900/20 dark:text-blue-300 dark:border-blue-800/50'>

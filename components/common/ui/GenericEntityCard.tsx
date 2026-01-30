@@ -42,7 +42,7 @@ export function GenericEntityCard<T>({
   subtitle,
   subBadge,
   status,
-  showStatusLabel,
+  showStatusLabel = true,
   dataItems,
   onView,
   onEdit,
@@ -166,7 +166,7 @@ export function GenericEntityCard<T>({
           />
 
           <div className='absolute top-3.5 right-3.5 z-10'>
-            <StatusBadge status={status ?? false} />
+            <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
 
           <div className='flex items-start gap-3 pr-14'>

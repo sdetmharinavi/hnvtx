@@ -216,6 +216,7 @@ export default function ServicesPage() {
           entity={service}
           title={service.name || 'Unnamed Service'}
           status={service.status}
+          showStatusLabel={false}
           subBadge={
             <div className='flex gap-2 flex-wrap mb-2'>
               {service.link_type_name && (

@@ -144,6 +144,7 @@ export default function NotesPage() {
         title={note.title || ''}
         subtitle={note.author_name || 'Unknown Author'}
         status={note.is_published ? 'Active' : 'Inactive'}
+        showStatusLabel={false}
         headerIcon={<FiBook className='w-6 h-6 text-indigo-500' />}
         dataItems={[
           { icon: FiUser, label: 'Author', value: note.author_name },

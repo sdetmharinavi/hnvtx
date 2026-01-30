@@ -35,7 +35,7 @@ export default function GlobalOfcConnectionsPage() {
     [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.ASSETADMIN].includes(role as UserRole);
 
   const [filters, setFilters] = useState<Filters>({});
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  // const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // -- UPDATED STATE FOR TRACING --
   // We now store the full segment list to allow the modal to handle direction switching
@@ -165,7 +165,7 @@ export default function GlobalOfcConnectionsPage() {
     {
       key: 'trace',
       label: 'Trace Path',
-      icon: <FiGitCommit className="w-4 h-4" />,
+      icon: <FiGitCommit className='w-4 h-4' />,
       onClick: handleTraceClick,
       variant: 'secondary' as const,
     },
@@ -216,34 +216,34 @@ export default function GlobalOfcConnectionsPage() {
     );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className='p-4 md:p-6 space-y-6'>
       {/* Overlay spinner when initializing trace */}
       {isTracing && (
-        <div className="fixed inset-0 bg-black/20 z-9999 flex items-center justify-center backdrop-blur-[1px]">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg flex items-center gap-3">
-            <PageSpinner text="Preparing Trace..." />
+        <div className='fixed inset-0 bg-black/20 z-9999 flex items-center justify-center backdrop-blur-[1px]'>
+          <div className='bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg flex items-center gap-3'>
+            <PageSpinner text='Preparing Trace...' />
           </div>
         </div>
       )}
 
       <input
-        type="file"
+        type='file'
         ref={fileInputRef}
         onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
+        className='hidden'
+        accept='.xlsx, .xls, .csv'
       />
 
       <UploadResultModal
         isOpen={isUploadResultOpen}
         onClose={() => setIsUploadResultOpen(false)}
         result={uploadResult}
-        title="Fiber Connections Upload Report"
+        title='Fiber Connections Upload Report'
       />
 
       <PageHeader
-        title="Physical Fiber Inventory"
-        description="Search, export, and manage physical fiber properties across all cables."
+        title='Physical Fiber Inventory'
+        description='Search, export, and manage physical fiber properties across all cables.'
         icon={<FiActivity />}
         stats={headerStats}
         actions={headerActions}
@@ -254,17 +254,16 @@ export default function GlobalOfcConnectionsPage() {
       <GenericFilterBar
         searchQuery={search.searchQuery}
         onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search route, system, node..."
+        searchPlaceholder='Search route, system, node...'
         filters={filters}
         onFilterChange={handleFilterChange}
         filterConfigs={filterConfigs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        viewMode='table'
       />
 
       <DataTable
         autoHideEmptyColumns={true}
-        tableName="v_ofc_connections_complete"
+        tableName='v_ofc_connections_complete'
         data={fibers}
         columns={orderedColumns}
         loading={isLoading}
