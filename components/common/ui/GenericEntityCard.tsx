@@ -1,11 +1,14 @@
 // components/common/ui/GenericEntityCard.tsx
-import React from 'react';
+'use client';
+
+import React, { useState, useCallback } from 'react';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { LucideIcon } from 'lucide-react';
 import { FiEdit2, FiTrash2, FiInfo } from 'react-icons/fi';
 import { IconType } from 'react-icons';
+import { LoadingSpinner } from '@/components/common/ui/LoadingSpinner';
 
 export interface EntityCardItem {
   icon: LucideIcon | IconType;
@@ -57,17 +60,40 @@ export function GenericEntityCard<T>({
   headerIcon,
 }: GenericEntityCardProps<T>) {
   const isAvatarStyle = !!initials;
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  // Wrapper to handle visual feedback during navigation/action
+  const handleViewAction = useCallback(async () => {
+    if (!onView || isInteracting) return;
+
+    setIsInteracting(true);
+
+    // Trigger the parent action
+    // We don't await strictly because router.push is often void in types but async in behavior
+    onView(entity);
+
+    // Safety fallback: If the action opens a modal (instant) or fails,
+    // we remove the spinner after a short delay so the card becomes interactive again.
+    // If it navigates away, the component unmounts anyway.
+    setTimeout(() => {
+      // Only reset if component is still mounted (React handles unmounted state updates gracefully in newer versions, but good practice)
+      setIsInteracting(false);
+    }, 5000);
+  }, [onView, entity, isInteracting]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onView && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
-      onView(entity);
+      handleViewAction();
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent triggering if clicking specific inner interactive elements
+    // (though stopPropagation in children usually handles this)
+    e.stopPropagation();
     if (onView) {
-      onView(entity);
+      handleViewAction();
     }
   };
 
@@ -79,15 +105,15 @@ export function GenericEntityCard<T>({
       onKeyDown={handleKeyDown}
       aria-label={onView ? `View details for ${title}` : undefined}
       className={`
-        bg-white dark:bg-gray-800 
-        rounded-xl 
-        border border-gray-200 dark:border-gray-700 
-        shadow-md 
+        bg-white dark:bg-gray-800
+        rounded-xl
+        border border-gray-200 dark:border-gray-700
+        shadow-md
         transition-all duration-300 ease-in-out
-        flex flex-col h-full 
-        group 
-        relative 
-        overflow-hidden 
+        flex flex-col h-full
+        group
+        relative
+        overflow-hidden
         focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none
         ${onView ? 'cursor-pointer hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-600 hover:-translate-y-1' : ''}
       `}
@@ -97,6 +123,13 @@ export function GenericEntityCard<T>({
         willChange: 'transform, box-shadow',
       }}
     >
+      {/* Loading Overlay */}
+      {isInteracting && (
+        <div className='absolute inset-0 z-50 bg-white/60 dark:bg-gray-900/60 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200'>
+          <LoadingSpinner size='md' color='primary' />
+        </div>
+      )}
+
       {/* Header Section */}
       {isAvatarStyle ? (
         <div
@@ -114,11 +147,11 @@ export function GenericEntityCard<T>({
             <div className='relative'>
               <div
                 className={`
-                  w-20 h-20 
-                  rounded-full 
-                  flex items-center justify-center 
-                  text-2xl font-bold text-white 
-                  shadow-lg 
+                  w-20 h-20
+                  rounded-full
+                  flex items-center justify-center
+                  text-2xl font-bold text-white
+                  shadow-lg
                   ring-4 ring-white dark:ring-gray-800
                   transition-transform duration-300
                   group-hover:scale-105
@@ -174,11 +207,11 @@ export function GenericEntityCard<T>({
               <div className='relative shrink-0 group/icon'>
                 <div
                   className='
-                    w-12 h-12 
-                    rounded-xl 
-                    flex items-center justify-center 
-                    shadow-md 
-                    transition-all duration-300 
+                    w-12 h-12
+                    rounded-xl
+                    flex items-center justify-center
+                    shadow-md
+                    transition-all duration-300
                     border border-blue-100 dark:border-blue-800
                     group-hover:shadow-lg group-hover:scale-105
                   '
@@ -261,8 +294,8 @@ export function GenericEntityCard<T>({
                 key={idx}
                 role='listitem'
                 className='
-                  flex items-center gap-2.5 p-2.5 rounded-lg 
-                  transition-all duration-200 
+                  flex items-center gap-2.5 p-2.5 rounded-lg
+                  transition-all duration-200
                   border
                 '
                 style={{
@@ -320,8 +353,8 @@ export function GenericEntityCard<T>({
       {/* Footer Actions */}
       <div
         className='
-          px-3.5 py-2.5 
-          border-t border-gray-200 dark:border-gray-700 
+          px-3.5 py-2.5
+          border-t border-gray-200 dark:border-gray-700
           flex items-center justify-between gap-2
         '
         style={{
@@ -329,7 +362,7 @@ export function GenericEntityCard<T>({
             'linear-gradient(180deg, rgb(249 250 251) 0%, rgba(239 246 255, 0.3) 50%, transparent 100%)',
           backgroundColor: '#f9fafb', // Fallback
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // Important: stop click propagation for actions
         role='toolbar'
         aria-label='Card actions'
       >
@@ -342,7 +375,11 @@ export function GenericEntityCard<T>({
             <Button
               size='xs'
               variant={extraActions ? 'ghost' : 'secondary'}
-              onClick={() => onView(entity)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewAction();
+              }}
+              disabled={isInteracting}
               title='View Details'
               aria-label={`View details for ${title}`}
               className='font-medium hover:scale-105 transition-transform duration-200'
@@ -358,7 +395,10 @@ export function GenericEntityCard<T>({
             <Button
               size='xs'
               variant='ghost'
-              onClick={() => onEdit(entity)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(entity);
+              }}
               title='Edit'
               aria-label={`Edit ${title}`}
               className='text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 hover:scale-105 transition-all duration-200'
@@ -372,7 +412,10 @@ export function GenericEntityCard<T>({
               size='xs'
               variant='ghost'
               className='text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 hover:scale-105 transition-all duration-200'
-              onClick={() => onDelete(entity)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(entity);
+              }}
               title='Delete'
               aria-label={`Delete ${title}`}
             >

@@ -28,34 +28,51 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } =
     useUserPermissionsExtended();
   const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { theme, setTheme } = useThemeStore();
   const queryClient = useQueryClient();
   const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
   const { sync: syncData } = useDataSync();
 
-  // THE FIX: Track the last synced user ID to prevent duplicate syncs on navigation
+  // Track if we have already synced the theme for the current user
+  const hasInitializedThemeRef = useRef<string | null>(null);
+
+  // Track the last synced user ID to prevent duplicate syncs on navigation
   const syncedUserIdRef = useRef<string | null>(null);
 
-  // Effect 1: Sync from DB Profile -> Zustand Store on profile load
+  // Effect 1: Sync from DB Profile -> Zustand Store (ONCE per user load)
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profileTheme = (profile?.preferences as any)?.theme;
+    // If no profile or no user, nothing to do
+    if (!profile || !user?.id) return;
 
-    if (profileTheme && typeof profileTheme === 'string' && profileTheme !== theme) {
-      setTheme(profileTheme as 'light' | 'dark' | 'system');
+    // If we haven't initialized theme for THIS user yet
+    if (hasInitializedThemeRef.current !== user.id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const profileTheme = (profile.preferences as any)?.theme;
+
+      if (profileTheme && typeof profileTheme === 'string') {
+        // Apply DB theme to local store
+        setTheme(profileTheme as Theme);
+      }
+
+      // Mark as initialized for this user
+      hasInitializedThemeRef.current = user.id;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, setTheme]);
+  }, [profile, user?.id, setTheme]);
 
   // Effect 2: Sync from Zustand Store -> DB Profile on theme change
   useEffect(() => {
     const unsubscribe = useThemeStore.subscribe(
       (state) => state.theme,
       (newTheme: Theme, oldTheme: Theme) => {
+        // Only update if theme actually changed and user is logged in
         if (newTheme !== oldTheme && user?.id && profile) {
           const currentPreferences = (profile.preferences as Record<string, unknown>) || {};
+
+          // Only update DB if DB value differs from new Local value
           if (currentPreferences.theme !== newTheme) {
             const newPreferences = { ...currentPreferences, theme: newTheme };
+
             updateProfile(
               {
                 id: user.id,
@@ -63,14 +80,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               },
               {
                 onSuccess: () => {
+                  // Invalidate to keep data consistent, but Effect 1 won't run again due to ref check
                   queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
                 },
                 onError: (err) => console.error('Failed to save theme preference:', err),
-              }
+              },
             );
           }
         }
-      }
+      },
     );
     return () => unsubscribe();
   }, [user?.id, profile, updateProfile, queryClient]);
@@ -82,6 +100,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // If user logs out, reset the ref so they sync again upon next login
     if (!currentUserId) {
       syncedUserIdRef.current = null;
+      hasInitializedThemeRef.current = null; // Also reset theme init
       return;
     }
 

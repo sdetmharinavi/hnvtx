@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to fix expense related pages. Expense page is not showing anything. Check its sync is working correctly or not.
+Let's begin! First of all I want to fix the issue that is on clicking cards for details, not getting any visual feedback/loading indicators.
