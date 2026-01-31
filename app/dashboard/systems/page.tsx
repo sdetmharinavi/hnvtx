@@ -153,6 +153,7 @@ export default function SystemsPage() {
       {
         key: 'status',
         type: 'native-select' as const,
+        placeholder: 'All Status',
         options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
