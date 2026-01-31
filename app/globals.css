@@ -83,8 +83,9 @@ body {
 }
 
 /* Ensure react-datepicker popper appears above modals/overlays */
+/* INCREASED Z-INDEX */
 .react-datepicker-popper {
-  z-index: 9999 !important;
+  z-index: 100000 !important;
 }
 
 /* Custom Scrollbar for visible areas (like tables) */
@@ -241,7 +242,7 @@ body {
   text-align: left;
 }
 
-/* --- PRINT STYLES --- */
+/* ... (Print styles remain same) */
 @media print {
     .no-print {
     display: none !important;
@@ -270,7 +271,7 @@ body {
   .dark .print-content svg {
     color: #000000 !important;
   }
-  /* 
+  /*
     CRITICAL: Reset document structure for printing.
     Override 'overflow: hidden' that might be set by modals or scroll locks.
     Ensure height allows content to flow.
@@ -304,7 +305,7 @@ body {
   }
 
   /* 1. MAP PRINTING */
-  .printable-map-container, 
+  .printable-map-container,
   .printable-map-container * {
     visibility: visible;
   }
@@ -336,18 +337,18 @@ body {
     width: 100% !important;
     margin: 0 !important;
     padding: 20px !important;
-    
+
     /* Allow content to expand indefinitely */
     height: auto !important;
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    
+
     /* Ensure visibility and layer */
     z-index: 99999 !important;
     background: white !important;
     color: black !important;
-    
+
     /* Remove UI artifacts */
     border: none !important;
     box-shadow: none !important;
@@ -418,15 +419,14 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
+
   .leaflet-tile {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
+
   .leaflet-overlay-pane svg {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 }
-

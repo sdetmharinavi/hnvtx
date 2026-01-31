@@ -1,3 +1,4 @@
+// components/common/form/FormControls.tsx
 'use client';
 
 import {
@@ -373,7 +374,7 @@ export function FormDateInput<T extends FieldValues>({
             showYearDropdown: true,
             dropdownMode: 'select' as const,
             yearDropdownItemNumber: 15,
-            portalId: '__next',
+            // REMOVED: portalId='__next' because App Router doesn't have a #__next element
             customInput: (
               <DateTextInput
                 errorText={typeof error?.message === 'string' ? error.message : undefined}
