@@ -1169,6 +1169,7 @@ const TABLE_COLUMN_OBJECTS = {
     initiator_employee_id: 'initiator_employee_id',
     initiator_name: 'initiator_name',
     priority: 'priority',
+    last_action_date: 'last_action_date',
     recorded_by_name: 'recorded_by_name',
     recorded_by_user_id: 'recorded_by_user_id',
     status: 'status',
