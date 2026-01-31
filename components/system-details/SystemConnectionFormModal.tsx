@@ -1,7 +1,7 @@
-// path: components/system-details/SystemConnectionFormModal.tsx
+// components/system-details/SystemConnectionFormModal.tsx
 'use client';
 
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState, useRef } from 'react';
 import {
   useForm,
   UseFormRegister,
@@ -155,13 +155,15 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState('general');
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
+  
+  // FIX: Ref to track initialization state
+  const hasInitialized = useRef(false);
 
   const derivedSystemId = parentSystem?.id ?? editingConnection?.system_id ?? null;
   const derivedSystemName = parentSystem?.system_name ?? editingConnection?.system_name ?? 'Unknown System';
-  const derivedSystemIp = parentSystem?.ip_address ??
-    (editingConnection?.sn_ip && typeof editingConnection.sn_ip === 'string'
-      ? editingConnection.sn_ip
-      : null);
+  
+  // Use derived ID for deps to ensure stability
+  const parentSystemId = parentSystem?.id;
 
   const { data: pristineRecord, isLoading: isLoadingPristine } = useRpcRecord(
     supabase,
@@ -336,104 +338,122 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
   const enProtectionPortType = getPortTypeDisplay(watchEnProtectionInterface, enPorts);
 
+  // FIX: Reset initialized state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasInitialized.current = false;
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
-      setActiveTab('general');
       if (isEditMode && pristineRecord) {
-        const extConnection = pristineRecord as ExtendedConnectionRow;
-        const safeValue = (val: string | null | undefined) => val ?? '';
-        const safeNull = (val: string | null | undefined) => val ?? null;
-        const targetSystemId = derivedSystemId ?? extConnection.system_id ?? null;
-        const isFlipped = targetSystemId ? extConnection.system_id !== targetSystemId : false;
+        if (!hasInitialized.current) {
+          const extConnection = pristineRecord as ExtendedConnectionRow;
+          const safeValue = (val: string | null | undefined) => val ?? '';
+          const safeNull = (val: string | null | undefined) => val ?? null;
+          const targetSystemId = derivedSystemId ?? extConnection.system_id ?? null;
+          const isFlipped = targetSystemId ? extConnection.system_id !== targetSystemId : false;
 
-        const startData = isFlipped
-          ? {
-              id: extConnection.en_id,
-              ip: extConnection.en_ip,
-              interface: extConnection.en_interface,
-            }
-          : {
-              id: extConnection.sn_id,
-              ip: extConnection.sn_ip,
-              interface: extConnection.sn_interface,
-            };
+          const startData = isFlipped
+            ? {
+                id: extConnection.en_id,
+                ip: extConnection.en_ip,
+                interface: extConnection.en_interface,
+              }
+            : {
+                id: extConnection.sn_id,
+                ip: extConnection.sn_ip,
+                interface: extConnection.sn_interface,
+              };
 
-        const endData = isFlipped
-          ? {
-              id: extConnection.system_id,
-              ip: extConnection.sn_ip || extConnection.services_ip,
-              interface: extConnection.system_working_interface,
-              protection_interface: extConnection.system_protection_interface,
-            }
-          : {
-              id: extConnection.en_id,
-              ip: extConnection.en_ip,
-              interface: extConnection.en_interface,
-              protection_interface: extConnection.en_protection_interface,
-            };
+          const endData = isFlipped
+            ? {
+                id: extConnection.system_id,
+                ip: extConnection.sn_ip || extConnection.services_ip,
+                interface: extConnection.system_working_interface,
+                protection_interface: extConnection.system_protection_interface,
+              }
+            : {
+                id: extConnection.en_id,
+                ip: extConnection.en_ip,
+                interface: extConnection.en_interface,
+                protection_interface: extConnection.en_protection_interface,
+              };
 
-        setServiceMode(extConnection.service_id ? 'existing' : 'manual');
+          setServiceMode(extConnection.service_id ? 'existing' : 'manual');
 
-        reset({
-          system_id: targetSystemId ?? '',
-          service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
-          link_type_id: safeValue(extConnection.connected_link_type_id),
-          vlan: safeValue(extConnection.vlan),
-          bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
-          lc_id: safeValue(extConnection.lc_id),
-          unique_id: safeValue(extConnection.unique_id),
-          existing_service_id: safeNull(extConnection.service_id),
-          status: extConnection.status ?? true,
-          media_type_id: safeValue(extConnection.media_type_id),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          services_ip: safeValue(String((extConnection as any).services_ip || '')),
-          services_interface: safeValue(extConnection.services_interface),
-          system_working_interface: safeValue(
-            isFlipped ? extConnection.en_interface : extConnection.system_working_interface
-          ),
-          system_protection_interface: safeNull(
-            isFlipped
-              ? extConnection.en_protection_interface
-              : extConnection.system_protection_interface
-          ),
-          sn_id: safeNull(startData.id),
-          sn_interface: safeNull(startData.interface),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          sn_ip: safeNull(formatIP(startData.ip as any)),
-          en_id: safeNull(endData.id),
-          en_interface: safeNull(endData.interface),
-          en_protection_interface: safeNull(endData.protection_interface),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          en_ip: safeNull(formatIP(endData.ip as any)),
-          commissioned_on: safeNull(extConnection.commissioned_on),
-          remark: safeNull(extConnection.remark),
-          bandwidth: safeNull(extConnection.bandwidth),
-          stm_no: safeNull(extConnection.sdh_stm_no),
-          carrier: safeNull(extConnection.sdh_carrier),
-          a_slot: safeNull(extConnection.sdh_a_slot),
-          a_customer: safeNull(extConnection.sdh_a_customer),
-          b_slot: safeNull(extConnection.sdh_b_slot),
-          b_customer: safeNull(extConnection.sdh_b_customer),
-        });
+          reset({
+            system_id: targetSystemId ?? '',
+            service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
+            link_type_id: safeValue(extConnection.connected_link_type_id),
+            vlan: safeValue(extConnection.vlan),
+            bandwidth_allocated: safeValue(extConnection.bandwidth_allocated),
+            lc_id: safeValue(extConnection.lc_id),
+            unique_id: safeValue(extConnection.unique_id),
+            existing_service_id: safeNull(extConnection.service_id),
+            status: extConnection.status ?? true,
+            media_type_id: safeValue(extConnection.media_type_id),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            services_ip: safeValue(String((extConnection as any).services_ip || '')),
+            services_interface: safeValue(extConnection.services_interface),
+            system_working_interface: safeValue(
+              isFlipped ? extConnection.en_interface : extConnection.system_working_interface
+            ),
+            system_protection_interface: safeNull(
+              isFlipped
+                ? extConnection.en_protection_interface
+                : extConnection.system_protection_interface
+            ),
+            sn_id: safeNull(startData.id),
+            sn_interface: safeNull(startData.interface),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            sn_ip: safeNull(formatIP(startData.ip as any)),
+            en_id: safeNull(endData.id),
+            en_interface: safeNull(endData.interface),
+            en_protection_interface: safeNull(endData.protection_interface),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            en_ip: safeNull(formatIP(endData.ip as any)),
+            commissioned_on: safeNull(extConnection.commissioned_on),
+            remark: safeNull(extConnection.remark),
+            bandwidth: safeNull(extConnection.bandwidth),
+            stm_no: safeNull(extConnection.sdh_stm_no),
+            carrier: safeNull(extConnection.sdh_carrier),
+            a_slot: safeNull(extConnection.sdh_a_slot),
+            a_customer: safeNull(extConnection.sdh_a_customer),
+            b_slot: safeNull(extConnection.sdh_b_slot),
+            b_customer: safeNull(extConnection.sdh_b_customer),
+          });
+          
+          hasInitialized.current = true;
+          setActiveTab('general');
+        }
       } else if (!isEditMode && parentSystem) {
-        reset({
-          system_id: parentSystem.id!,
-          status: true,
-          media_type_id: '',
-          service_name: '',
-          link_type_id: '',
-          sn_id: parentSystem.id,
-          sn_ip: formatIP(parentSystem.ip_address),
-          sn_interface: '',
-        });
-        setServiceMode('existing');
+        if (!hasInitialized.current) {
+          reset({
+            system_id: parentSystem.id!,
+            status: true,
+            media_type_id: '',
+            service_name: '',
+            link_type_id: '',
+            sn_id: parentSystem.id,
+            sn_ip: formatIP(parentSystem.ip_address),
+            sn_interface: '',
+          });
+          setServiceMode('existing');
+          
+          hasInitialized.current = true;
+          setActiveTab('general');
+        }
       }
     }
   }, [
     isOpen,
     isEditMode,
     pristineRecord,
-    parentSystem,
+    parentSystemId, // Use stable ID
+    // parentSystem is used in logic but won't trigger re-render if ID is stable and guarded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     reset,
     derivedSystemId,
   ]);
@@ -457,8 +477,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       p_status: formData.status,
       p_bandwidth: nullIfEmpty(formData.bandwidth) || undefined,
       p_commissioned_on: nullIfEmpty(formData.commissioned_on) || undefined,
-      // THE FIX: Explicitly send null if remark is empty/cleared
-      p_remark: nullIfEmpty(formData.remark) || null,
+      p_remark: nullIfEmpty(formData.remark) || undefined,
       p_sn_id: nullIfEmpty(formData.sn_id) || undefined,
       p_en_id: nullIfEmpty(formData.en_id) || undefined,
       p_sn_ip: nullIfEmpty(formData.sn_ip) || undefined,
@@ -491,7 +510,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditMode ? 'Edit Service Connection' : 'New Service Connection'}
+      // FIX: Remove "Edit"/"Add" prefix because BaseFormModal adds it automatically
+      title="Service Connection"
       size="full"
       isEditMode={isEditMode}
       isLoading={effectiveLoading}
