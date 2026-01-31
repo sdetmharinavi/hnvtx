@@ -11,9 +11,9 @@ export const v_e_files_extendedRowSchema = z.object({
   status: z.enum(['active', 'closed']),
   created_at: z.string(),
   updated_at: z.string(),
-  
-  // ADDED: Last Action Date from view
-  last_action_date: z.string().optional().nullable(),
+
+  // FIX: Added .default(null) to ensure it resolves to 'string | null' not 'undefined'
+  last_action_date: z.string().nullable().optional().default(null),
 
   // Employee fields
   initiator_employee_id: z.uuid().nullable(),

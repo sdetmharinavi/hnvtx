@@ -75,7 +75,7 @@ const syncFileToLocal = async (fileId: string) => {
 
 // List Hook
 export function useEFiles(filters?: { status?: string }) {
-  const onlineQueryFn = async () => {
+  const onlineQueryFn = async (): Promise<V_e_files_extendedRowSchema[]> => {
     const rpcFilters: Record<string, unknown> = {};
     if (filters?.status && filters.status !== '') rpcFilters.status = filters.status;
 
@@ -96,9 +96,11 @@ export function useEFiles(filters?: { status?: string }) {
     const safeParse = z.array(v_e_files_extendedRowSchema).safeParse(rows);
     if (!safeParse.success) {
       console.error('E-File schema mismatch', safeParse.error);
-      return rows as z.infer<typeof v_e_files_extendedRowSchema>[];
+      return rows as V_e_files_extendedRowSchema[];
     }
-    return safeParse.data;
+    
+    // Cast the Zod result to the expected Supabase Row type to satisfy the hook
+    return safeParse.data as unknown as V_e_files_extendedRowSchema[];
   };
 
   const localQueryFn = () => {
