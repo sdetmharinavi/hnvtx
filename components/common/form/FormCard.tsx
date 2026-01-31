@@ -37,7 +37,7 @@ export const FormCard: React.FC<FormCardProps> = ({
       className={cn(
         'w-full! h-full! overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-900 dark:border dark:border-gray-700 flex flex-col transform mx-auto',
         widthClass,
-        heightClass
+        heightClass,
       )}
       style={{
         animation: 'slideInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -47,14 +47,14 @@ export const FormCard: React.FC<FormCardProps> = ({
     >
       {/* Header */}
       <div
-        className="shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+        className='shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between'
         style={{
           animation: 'slideDown 0.5s ease-out 0.1s both',
         }}
       >
         <div>
           <h2
-            className="text-2xl font-bold text-gray-900 dark:text-white"
+            className='text-2xl font-bold text-gray-900 dark:text-white'
             style={{
               animation: 'fadeInUp 0.6s ease-out 0.2s both',
             }}
@@ -63,7 +63,7 @@ export const FormCard: React.FC<FormCardProps> = ({
           </h2>
           {subtitle && (
             <div
-              className="text-gray-600 dark:text-gray-400 text-sm mt-1"
+              className='text-gray-600 dark:text-gray-400 text-sm mt-1'
               style={{
                 animation: 'fadeInUp 0.6s ease-out 0.3s both',
               }}
@@ -75,67 +75,67 @@ export const FormCard: React.FC<FormCardProps> = ({
         <button
           onClick={onCancel}
           disabled={isLoading}
-          className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-2 transition-all duration-300 hover:scale-110 hover:rotate-90"
+          className='text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-2 transition-all duration-300 hover:scale-110 hover:rotate-90'
           style={{
             animation: 'fadeInRotate 0.5s ease-out 0.2s both',
           }}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
             <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap='round'
+              strokeLinejoin='round'
               strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
+              d='M6 18L18 6M6 6l12 12'
             />
           </svg>
         </button>
       </div>
 
       {/* Form Body + Footer */}
-      <form onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0">
+      <form onSubmit={onSubmit} className='flex flex-col flex-1 min-h-0'>
         {/* Body */}
         <div
-          className="flex-1 overflow-y-auto relative min-h-0"
+          className='flex-1 overflow-y-auto relative min-h-0'
           style={{
             animation: 'fadeInUp 0.6s ease-out 0.3s both',
           }}
         >
           {isLoading && (
             <div
-              className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10"
+              className='absolute inset-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-10'
               style={{
                 animation: 'fadeIn 0.3s ease-out',
               }}
             >
-              <div className="flex items-center space-x-2">
+              <div className='flex items-center space-x-2'>
                 <div
-                  className="w-4 h-4 bg-blue-600 rounded-full"
+                  className='w-4 h-4 bg-blue-600 rounded-full'
                   style={{
                     animation: 'bounce 1.4s ease-in-out infinite both',
                   }}
                 ></div>
                 <div
-                  className="w-4 h-4 bg-blue-600 rounded-full"
+                  className='w-4 h-4 bg-blue-600 rounded-full'
                   style={{
                     animation: 'bounce 1.4s ease-in-out 0.16s infinite both',
                   }}
                 ></div>
                 <div
-                  className="w-4 h-4 bg-blue-600 rounded-full"
+                  className='w-4 h-4 bg-blue-600 rounded-full'
                   style={{
                     animation: 'bounce 1.4s ease-in-out 0.32s infinite both',
                   }}
                 ></div>
-                <span className="text-gray-600 dark:text-gray-300 ml-3">Loading...</span>
+                <span className='text-gray-600 dark:text-gray-300 ml-3'>Loading...</span>
               </div>
             </div>
           )}
-          <div className="p-6">{children}</div>
+          <div className='p-6'>{children}</div>
         </div>
 
         {/* Footer */}
         <div
-          className="shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50"
+          className='shrink-0 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50'
           style={{
             animation: 'slideUp 0.5s ease-out 0.4s both',
           }}
@@ -143,12 +143,12 @@ export const FormCard: React.FC<FormCardProps> = ({
           {footerContent ? (
             footerContent
           ) : (
-            <div className="flex justify-end space-x-3 w-full">
+            <div className='flex justify-end space-x-3 w-full'>
               <button
-                type="button"
+                type='button'
                 onClick={onCancel}
                 disabled={isLoading}
-                className="px-6 py-2 border rounded-md dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-300 hover:scale-105 hover:shadow-lg transform"
+                className='px-6 py-2 border rounded-md dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-all duration-300 hover:scale-105 hover:shadow-lg transform'
                 style={{
                   animation: 'fadeInLeft 0.5s ease-out 0.5s both',
                 }}
@@ -157,9 +157,9 @@ export const FormCard: React.FC<FormCardProps> = ({
               </button>
               {onSubmit && (
                 <button
-                  type="submit"
+                  type='submit'
                   disabled={isLoading || disableSubmit}
-                  className="px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 rounded-md"
+                  className='px-8 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 rounded-md'
                   style={{
                     animation: 'fadeInRight 0.5s ease-out 0.6s both',
                     // FIX: Added solid background color fallback
@@ -274,7 +274,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   if (standalone) {
     return (
       <div
-        className="fixed inset-0 z-9999 flex items-center justify-center p-4"
+        className='fixed inset-0 z-9999 flex items-center justify-center p-4'
         style={{
           background: 'rgba(0, 0, 0, 0.6)',
           animation: 'fadeIn 0.3s ease-out',
@@ -290,5 +290,5 @@ export const FormCard: React.FC<FormCardProps> = ({
     );
   }
 
-  return <div className="flex items-center justify-center p-4 w-full">{modalContent}</div>;
+  return <div className='flex items-center justify-center p-4 w-full'>{modalContent}</div>;
 };
