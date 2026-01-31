@@ -94,7 +94,6 @@ export default function OfcPage() {
     () => [
       {
         key: 'sortBy',
-        // label: 'Sort',
         type: 'native-select' as const,
         placeholder: 'Sort By',
         options: [
@@ -104,17 +103,17 @@ export default function OfcPage() {
       },
       {
         key: 'ofc_type_id',
-        // label: 'Cable Type', // FIXED
         type: 'multi-select' as const,
         options: ofcTypeOptions,
         isLoading: loadingTypes,
+        placeholder: 'All Cable Types'
       },
       {
         key: 'ofc_owner_id',
-        // label: 'Owner', // FIXED
         type: 'multi-select' as const,
         options: ofcOwnerOptions,
         isLoading: loadingOwners,
+        placeholder: 'All Owners'
       },
     ],
     [ofcTypeOptions, ofcOwnerOptions, loadingTypes, loadingOwners],
@@ -178,7 +177,7 @@ export default function OfcPage() {
                   <FiClock className='w-3.5 h-3.5' />
                   <span>Activity {timeAgo}</span>
                 </div>
-                <span className='font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950 dark:text-blue-100'>
+                <span className='font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950'>
                   {cable.current_rkm} km
                 </span>
               </div>

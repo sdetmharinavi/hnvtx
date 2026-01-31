@@ -14,6 +14,7 @@ import {
   Row,
   usePagedData,
   UploadColumnMapping,
+  useTableBulkOperations, // ADDED
 } from '@/hooks/database';
 import {
   V_system_connections_completeRowSchema,
@@ -53,6 +54,7 @@ import { ConnectionCard } from '@/components/system-details/connections/Connecti
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import dynamic from 'next/dynamic';
+import { BulkActions } from '@/components/common/BulkActions'; // ADDED
 
 // DYNAMIC IMPORTS
 const SystemConnectionFormModal = dynamic(
@@ -127,6 +129,10 @@ export default function SystemConnectionsPage() {
     selectedCapacities: [],
     selectedTypes: [],
   });
+  
+  // ADDED: Local state for bulk selection
+  const [selectedRows, setSelectedRows] = useState<V_system_connections_completeRowSchema[]>([]);
+  const selectedRowIds = useMemo(() => selectedRows.map(r => String(r.id)), [selectedRows]);
 
   const tracePath = useTracePath(supabase);
 
@@ -150,6 +156,9 @@ export default function SystemConnectionsPage() {
     searchQuery,
     filters,
   });
+  
+  // ADDED: Bulk Update hook
+  const { bulkUpdate } = useTableBulkOperations(supabase, 'system_connections');
 
   const sortedConnections = useMemo(() => {
     if (!searchQuery && connections.length > 0) {
@@ -270,6 +279,7 @@ export default function SystemConnectionsPage() {
     tableName: 'system_connections',
     onSuccess: () => {
       refetch();
+      setSelectedRows([]); // Clear selection
       queryClient.invalidateQueries({
         queryKey: [
           'paged-data',
@@ -413,6 +423,17 @@ export default function SystemConnectionsPage() {
               name: record.service_name || record.connected_system_name || 'Connection',
             })
         : undefined,
+      onToggleStatus: (record) => { // ADDED toggle status
+        // Using upsert instead of bulkUpdate for single toggle since we have upsert RPC
+        if (canEdit) {
+           upsertMutation.mutate({
+             p_id: record.id!,
+             p_system_id: record.system_id!, // system_id is required
+             p_media_type_id: record.media_type_id!, // required
+             p_status: !record.status
+           })
+        }
+      }
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) =>
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
@@ -460,6 +481,7 @@ export default function SystemConnectionsPage() {
     handleViewDetails,
     canEdit,
     canDelete,
+    upsertMutation
   ]);
 
   const isBusy = isLoadingConnections || isSyncingData || isFetching;
@@ -570,6 +592,34 @@ export default function SystemConnectionsPage() {
       },
     });
   };
+  
+  // ADDED: Handlers for bulk actions
+  const handleBulkDelete = async () => {
+    if (selectedRowIds.length === 0) return;
+    const itemsToDelete = selectedRows.map(r => ({ id: r.id!, name: r.service_name || 'Connection' }));
+    deleteManager.deleteMultiple(itemsToDelete);
+  };
+  
+  const handleClearSelection = () => setSelectedRows([]);
+  
+  const handleBulkUpdateStatus = async (status: 'active' | 'inactive') => {
+      if (selectedRowIds.length === 0) return;
+      const newStatus = status === 'active';
+      const updates = selectedRowIds.map((id) => ({
+          id,
+          data: { status: newStatus }
+      }));
+      
+      // Cast to match expected type of bulkUpdate mutation
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      bulkUpdate.mutate({ updates: updates as any }, {
+          onSuccess: () => {
+              toast.success('Status updated for selected items');
+              refetch();
+              handleClearSelection();
+          }
+      });
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -672,6 +722,20 @@ export default function SystemConnectionsPage() {
           </div>
         </div>
       </div>
+      
+      {/* ADDED: Bulk Actions */}
+      {selectedRowIds.length > 0 && (
+          <BulkActions
+            selectedCount={selectedRowIds.length}
+            isOperationLoading={deleteManager.isPending || bulkUpdate.isPending}
+            onBulkDelete={handleBulkDelete}
+            onBulkUpdateStatus={handleBulkUpdateStatus}
+            onClearSelection={handleClearSelection}
+            entityName="connection"
+            showStatusUpdate={true}
+            canDelete={() => canDelete}
+          />
+      )}
 
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6">
@@ -716,6 +780,12 @@ export default function SystemConnectionsPage() {
           isFetching={isLoadingConnections}
           actions={tableActions}
           renderMobileItem={renderMobileItem}
+          // ADDED: Selection props
+          selectable={canDelete}
+          onRowSelect={(rows) => {
+              const validRows = rows.filter((r): r is V_system_connections_completeRowSchema => !!r.id);
+              setSelectedRows(validRows);
+          }}
           pagination={{
             current: currentPage,
             pageSize: pageLimit,

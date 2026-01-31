@@ -52,6 +52,7 @@ import { DataGrid } from '@/components/common/DataGrid';
 
 import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
@@ -131,25 +132,24 @@ export default function SystemsPage() {
   const { options: capacityOptions, isLoading: loadingCaps } =
     useLookupTypeOptions('SYSTEM_CAPACITY');
 
-  const filterConfigs = useMemo(
+  const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
         key: 'system_type_id',
-        // label: 'System Type',
         type: 'multi-select' as const,
         options: systemTypeOptions,
         isLoading: loadingTypes,
+        placeholder: 'All Types'
       },
       {
         key: 'system_capacity_id',
-        // label: 'Capacity',
         type: 'multi-select' as const,
         options: capacityOptions,
         isLoading: loadingCaps,
+        placeholder: 'All Capacities'
       },
       {
         key: 'status',
-        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -158,7 +158,6 @@ export default function SystemsPage() {
       },
       {
         key: 'sortBy',
-        // label: 'Sort',
         type: 'native-select' as const,
         options: [
           { value: 'name', label: 'Name (A-Z)' },
@@ -388,7 +387,7 @@ export default function SystemsPage() {
             variant='secondary'
             onClick={() => handleManagePorts(sys)}
             title='Manage Ports'
-            className='font-medium cursor-pointer'
+            className='font-medium'
           >
             <FiGrid className='w-4 h-4' />
             <span className='ml-1.5 hidden sm:inline'>Ports</span>

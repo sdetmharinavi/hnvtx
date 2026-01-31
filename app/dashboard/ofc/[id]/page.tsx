@@ -1,4 +1,4 @@
-// path: app/dashboard/ofc/[id]/page.tsx
+// app/dashboard/ofc/[id]/page.tsx
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
@@ -49,6 +49,7 @@ import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/useOfcConnectionsExcelUpload';
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { BulkActions } from '@/components/common/BulkActions'; // ADDED IMPORT
 
 type ExtendedUtilization = V_cable_utilizationRowSchema & {
   faulty_fibers?: number;
@@ -70,8 +71,6 @@ export default function OfcCableDetailsPage() {
     null,
   );
 
-  // -- UPDATED STATE FOR TRACING --
-  // We only need to store the record now; the modal calculates segments
   const [tracingFiber, setTracingFiber] = useState<{
     record: V_ofc_connections_completeRowSchema;
   } | null>(null);
@@ -89,6 +88,7 @@ export default function OfcCableDetailsPage() {
     filters,
     editModal,
     deleteModal,
+    bulkActions, // ADDED: Destructure bulkActions
     actions: crudActions,
     isMutating,
   } = useCrudManager<'ofc_connections', V_ofc_connections_completeRowSchema>({
@@ -189,7 +189,6 @@ export default function OfcCableDetailsPage() {
     [uploadConnections],
   );
 
-  // -- FETCH CABLE SEGMENTS FOR TRACING --
   const { data: cableSegmentsResult } = useTableQuery(supabase, 'cable_segments', {
     filters: { original_cable_id: cableId as string },
     orderBy: [{ column: 'segment_order', ascending: true }],
@@ -205,9 +204,7 @@ export default function OfcCableDetailsPage() {
     }
   }, [isLoading, cableConnectionsData.length, hasInitializedView]);
 
-  // -- UPDATED TRACE HANDLER --
   const handleTraceClick = useCallback((record: V_ofc_connections_completeRowSchema) => {
-    // Just set the record, the Modal handles the logic
     setTracingFiber({ record });
   }, []);
 
@@ -480,6 +477,20 @@ export default function OfcCableDetailsPage() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
+      
+      {/* ADDED: Bulk Actions */}
+      {bulkActions.selectedCount > 0 && (
+        <BulkActions
+          selectedCount={bulkActions.selectedCount}
+          isOperationLoading={isMutating}
+          onBulkDelete={bulkActions.handleBulkDelete}
+          onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
+          onClearSelection={bulkActions.handleClearSelection}
+          entityName="fiber connection"
+          showStatusUpdate={true}
+          canDelete={() => canDelete}
+        />
+      )}
 
       <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
         {viewMode === 'grid' ? (
@@ -504,7 +515,11 @@ export default function OfcCableDetailsPage() {
             columns={orderedColumns}
             loading={isLoading}
             actions={tableActions}
-            selectable={canDelete}
+            selectable={canDelete} // ADDED
+            onRowSelect={(rows) => { // ADDED
+              const validRows = rows.filter((row): row is Row<'v_ofc_connections_complete'> & { id: string } => !!row.id);
+              bulkActions.handleRowSelect(validRows);
+            }}
             onCellEdit={crudActions.handleCellEdit}
             searchable={false}
             customToolbar={<></>}
@@ -560,12 +575,10 @@ export default function OfcCableDetailsPage() {
         loading={deleteModal.loading}
       />
 
-      {/* UPDATED FIBER TRACE MODAL */}
       <FiberTraceModal
         refetch={refetch}
         isOpen={!!tracingFiber}
         onClose={() => setTracingFiber(null)}
-        // Pass necessary data for bidirectional logic
         segments={cableSegments}
         fiberNoSn={tracingFiber?.record.fiber_no_sn || null}
         fiberNoEn={tracingFiber?.record.fiber_no_en || null}
