@@ -123,7 +123,6 @@ export default function ExpensesPage() {
   }, [exportAdvances, advanceCrud.filters.filters]);
 
   const handleExportExpenses = useCallback(() => {
-    // Manually define columns to ensure order, width, and labels are exact
     const columns: Column<Row<'v_expenses_complete'>>[] = [
       { key: 'expense_date', title: 'Date', dataIndex: 'expense_date', excelFormat: 'date' },
       { key: 'used_by', title: 'Used By', dataIndex: 'used_by' },
@@ -132,7 +131,6 @@ export default function ExpensesPage() {
       { key: 'invoice_no', title: 'Invoice No', dataIndex: 'invoice_no' },
       { key: 'amount', title: 'Amount', dataIndex: 'amount', excelFormat: 'number' },
       { key: 'terminal_location', title: 'Location', dataIndex: 'terminal_location' },
-      // Description with fixed width
       { key: 'description', title: 'Description', dataIndex: 'description', width: 300 },
       { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
     ];
@@ -142,7 +140,7 @@ export default function ExpensesPage() {
       sheetName: 'Expenses',
       filters: expenseCrud.filters.filters,
       columns,
-      wrapText: true, // Enable wrapping
+      wrapText: true,
       autoFitColumns: true,
     });
   }, [exportExpenses, expenseCrud.filters.filters]);
@@ -155,7 +153,7 @@ export default function ExpensesPage() {
         dataIndex: 'req_no',
         sortable: true,
         width: 140,
-        render: (v) => <span className='font-mono font-medium'>{v as string}</span>,
+        render: (v) => <span className='font-mono font-medium text-sm'>{v as string}</span>,
       },
       {
         key: 'employee_name',
@@ -165,7 +163,7 @@ export default function ExpensesPage() {
         width: 180,
         render: (v, rec) => (
           <div className='flex flex-col'>
-            <span className='font-medium text-gray-900 dark:text-gray-100'>{v as string}</span>
+            <span className='font-medium text-gray-900 dark:text-gray-100 text-sm'>{v as string}</span>
             <span className='text-xs text-gray-500'>{rec.employee_pers_no}</span>
           </div>
         ),
@@ -176,7 +174,7 @@ export default function ExpensesPage() {
         dataIndex: 'advance_date',
         sortable: true,
         width: 120,
-        render: (v) => formatDate(v as string, { format: 'dd-mm-yyyy' }),
+        render: (v) => <span className='text-sm'>{formatDate(v as string, { format: 'dd-mm-yyyy' })}</span>,
       },
       {
         key: 'total_amount',
@@ -184,7 +182,7 @@ export default function ExpensesPage() {
         dataIndex: 'total_amount',
         sortable: true,
         width: 120,
-        render: (v) => <span className='font-bold'>{formatCurrency(Number(v))}</span>,
+        render: (v) => <span className='font-bold text-sm'>{formatCurrency(Number(v))}</span>,
       },
       {
         key: 'spent_amount',
@@ -192,7 +190,7 @@ export default function ExpensesPage() {
         dataIndex: 'spent_amount',
         width: 120,
         render: (v) => (
-          <span className='text-gray-600 dark:text-gray-400'>{formatCurrency(Number(v))}</span>
+          <span className='text-gray-600 dark:text-gray-400 text-sm'>{formatCurrency(Number(v))}</span>
         ),
       },
       {
@@ -203,7 +201,7 @@ export default function ExpensesPage() {
         render: (v) => {
           const val = Number(v);
           return (
-            <span className={val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+            <span className={`text-sm ${val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}`}>
               {formatCurrency(val)}
             </span>
           );
@@ -242,7 +240,7 @@ export default function ExpensesPage() {
           subtitle={`Taken By: ${item.employee_name}` || 'Unassigned'}
           status={item.status}
           showStatusLabel={false}
-          headerIcon={<FaRupeeSign className='w-6 h-6 text-green-600' />}
+          headerIcon={<FaRupeeSign className='w-5 h-5 sm:w-6 sm:h-6 text-green-600' />}
           dataItems={[
             {
               label: 'Starting Date',
@@ -294,23 +292,53 @@ export default function ExpensesPage() {
         key: 'expense_date',
         title: 'Date',
         dataIndex: 'expense_date',
-        render: (v) => formatDate(v as string),
+        render: (v) => <span className='text-sm'>{formatDate(v as string)}</span>,
         sortable: true,
         width: 120,
       },
-      // UI Column for Used By
-      { key: 'used_by', title: 'Used By', dataIndex: 'used_by', width: 150 },
-      { key: 'category', title: 'Category', dataIndex: 'category', sortable: true, width: 120 },
-      { key: 'vendor', title: 'Vendor', dataIndex: 'vendor', width: 150 },
-      { key: 'invoice_no', title: 'Invoice', dataIndex: 'invoice_no', width: 150 },
+      { 
+        key: 'used_by', 
+        title: 'Used By', 
+        dataIndex: 'used_by', 
+        width: 150,
+        render: (v) => <span className='text-sm'>{v as string}</span>,
+      },
+      { 
+        key: 'category', 
+        title: 'Category', 
+        dataIndex: 'category', 
+        sortable: true, 
+        width: 120,
+        render: (v) => <span className='text-sm'>{v as string}</span>,
+      },
+      { 
+        key: 'vendor', 
+        title: 'Vendor', 
+        dataIndex: 'vendor', 
+        width: 150,
+        render: (v) => <span className='text-sm'>{v as string}</span>,
+      },
+      { 
+        key: 'invoice_no', 
+        title: 'Invoice', 
+        dataIndex: 'invoice_no', 
+        width: 150,
+        render: (v) => <span className='text-sm font-mono'>{v as string}</span>,
+      },
       {
         key: 'amount',
         title: 'Amount',
         dataIndex: 'amount',
-        render: (v) => formatCurrency(Number(v)),
+        render: (v) => <span className='text-sm font-semibold'>{formatCurrency(Number(v))}</span>,
         width: 120,
       },
-      { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no', width: 150 },
+      { 
+        key: 'advance_req_no', 
+        title: 'Req No', 
+        dataIndex: 'advance_req_no', 
+        width: 150,
+        render: (v) => <span className='text-sm font-mono'>{v as string}</span>,
+      },
       {
         key: 'description',
         title: 'Description',
@@ -325,7 +353,7 @@ export default function ExpensesPage() {
   const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
 
   return (
-    <div className='p-4 md:p-6 space-y-6'>
+    <div className='p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6'>
       <input
         type='file'
         ref={fileInputRef}
@@ -339,11 +367,12 @@ export default function ExpensesPage() {
         result={uploadResult}
       />
 
-      <div className='bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-fit'>
+      {/* Tabs - Made responsive with full width on mobile */}
+      <div className='bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-full sm:w-fit'>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value='advances'>Advances</TabsTrigger>
-            <TabsTrigger value='expenses'>Expense Log</TabsTrigger>
+          <TabsList className='w-full sm:w-auto'>
+            <TabsTrigger value='advances' className='flex-1 sm:flex-initial'>Advances</TabsTrigger>
+            <TabsTrigger value='expenses' className='flex-1 sm:flex-initial'>Expense Log</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -361,6 +390,7 @@ export default function ExpensesPage() {
                 variant: 'outline',
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
+                hideTextOnMobile: true,
               },
               {
                 label: 'Export',
@@ -375,6 +405,7 @@ export default function ExpensesPage() {
                 onClick: advanceCrud.editModal.openAdd,
                 variant: 'primary',
                 leftIcon: <FiPlus />,
+                hideTextOnMobile: true,
               },
             ],
           }}
@@ -425,6 +456,7 @@ export default function ExpensesPage() {
                 variant: 'outline',
                 leftIcon: <FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />,
                 disabled: isLoading || isSyncing,
+                hideTextOnMobile: true,
               },
               {
                 label: 'Export',
@@ -440,12 +472,14 @@ export default function ExpensesPage() {
                 variant: 'outline',
                 leftIcon: <FiUpload />,
                 disabled: isUploading,
+                hideTextOnMobile: true,
               },
               {
                 label: 'New Expense',
                 onClick: expenseCrud.editModal.openAdd,
                 variant: 'primary',
                 leftIcon: <FiPlus />,
+                hideTextOnMobile: true,
               },
             ],
           }}
