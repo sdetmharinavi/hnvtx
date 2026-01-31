@@ -53,6 +53,7 @@ import { DataGrid } from '@/components/common/DataGrid';
 import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { CiCalendarDate } from 'react-icons/ci';
 
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
@@ -139,14 +140,14 @@ export default function SystemsPage() {
         type: 'multi-select' as const,
         options: systemTypeOptions,
         isLoading: loadingTypes,
-        placeholder: 'All Types'
+        placeholder: 'All Types',
       },
       {
         key: 'system_capacity_id',
         type: 'multi-select' as const,
         options: capacityOptions,
         isLoading: loadingCaps,
-        placeholder: 'All Capacities'
+        placeholder: 'All Capacities',
       },
       {
         key: 'status',
@@ -380,6 +381,12 @@ export default function SystemsPage() {
           },
           { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
           { icon: FiTag, label: 'Asset No', value: sys.asset_no, optional: true },
+          {
+            icon: CiCalendarDate,
+            label: 'Commissioning Date',
+            value: sys.commissioned_on,
+            optional: true,
+          },
         ]}
         extraActions={
           <Button
