@@ -347,7 +347,16 @@ export function FormDateInput<T extends FieldValues>({
           if (raw instanceof Date) {
             selected = raw;
           } else if (typeof raw === 'string' && raw) {
-            selected = new Date(raw);
+            // FIX: Robust date parsing for "YYYY-MM-DD" to avoid timezone offset issues
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+              const [y, m, d] = raw.split('-').map(Number);
+              // Construct Date using local time components to prevent UTC shift
+              selected = new Date(y, m - 1, d);
+            } else {
+              // Fallback for ISO strings or other formats
+              const d = new Date(raw);
+              if (!isNaN(d.getTime())) selected = d;
+            }
           }
 
           const datePickerProps = {
@@ -374,7 +383,6 @@ export function FormDateInput<T extends FieldValues>({
             showYearDropdown: true,
             dropdownMode: 'select' as const,
             yearDropdownItemNumber: 15,
-            // REMOVED: portalId='__next' because App Router doesn't have a #__next element
             customInput: (
               <DateTextInput
                 errorText={typeof error?.message === 'string' ? error.message : undefined}

@@ -29,6 +29,7 @@ export const useOfcFormData = (ofcCable?: Ofc_cablesRowSchema) => {
       maintenance_terminal_id: null,
       remark: null,
       status: true,
+      commissioned_on: null, // Ensure this key exists
     }),
     []
   );
@@ -56,6 +57,7 @@ export const useOfcFormData = (ofcCable?: Ofc_cablesRowSchema) => {
         maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
         remark: ofcCable.remark || '',
         status: ofcCable.status ?? true,
+        commissioned_on: ofcCable.commissioned_on || null,
       });
     } else if (!isEdit) {
       // Reset to default values when not in edit mode
@@ -80,6 +82,7 @@ export const useOfcFormData = (ofcCable?: Ofc_cablesRowSchema) => {
       maintenance_terminal_id: ofcCable.maintenance_terminal_id || '',
       remark: ofcCable.remark || '',
       status: ofcCable.status ?? true,
+      commissioned_on: ofcCable.commissioned_on || null,
     };
     return data;
   }, [isEdit, ofcCable]);
