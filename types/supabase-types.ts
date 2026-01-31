@@ -3984,6 +3984,7 @@ export type Database = {
           initiator_designation: string | null
           initiator_employee_id: string | null
           initiator_name: string | null
+          last_action_date: string | null
           priority: string | null
           recorded_by_name: string | null
           recorded_by_user_id: string | null

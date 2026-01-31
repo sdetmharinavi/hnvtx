@@ -1622,6 +1622,7 @@ export const v_e_files_extendedRowSchema = z.object({
   initiator_designation: z.string().nullable(),
   initiator_employee_id: z.uuid().nullable(),
   initiator_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  last_action_date: z.iso.datetime().nullable(),
   priority: z.string().nullable(),
   recorded_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   recorded_by_user_id: z.uuid().nullable(),

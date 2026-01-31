@@ -3,7 +3,7 @@
 
 -- View: Extended E-Files List
 CREATE OR REPLACE VIEW public.v_e_files_extended WITH (security_invoker = true) AS
-SELECT 
+SELECT
     f.id,
     f.file_number,
     f.subject,
@@ -13,22 +13,29 @@ SELECT
     f.status,
     f.created_at,
     f.updated_at,
-    
+
     -- Initiator (Employee) Details
     f.initiator_employee_id,
     e_init.employee_name as initiator_name,
     d_init.name as initiator_designation,
-    
+
     -- Current Holder (Employee) Details
     f.current_holder_employee_id,
     e_hold.employee_name as current_holder_name,
     d_hold.name as current_holder_designation,
     m_hold.name as current_holder_area,
-    
+
     -- Recorded By (App User) Details
     f.recorded_by_user_id,
-    p_rec.full_name as recorded_by_name
-    
+    p_rec.full_name as recorded_by_name,
+
+    -- NEW: Last Action Date (Derived from movements for accuracy)
+    COALESCE(
+        (SELECT MAX(action_date) FROM public.file_movements fm WHERE fm.file_id = f.id),
+        f.updated_at,
+        f.created_at
+    ) as last_action_date
+
 FROM public.e_files f
 LEFT JOIN public.employees e_init ON f.initiator_employee_id = e_init.id
 LEFT JOIN public.employee_designations d_init ON e_init.employee_designation_id = d_init.id

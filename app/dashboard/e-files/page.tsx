@@ -31,6 +31,7 @@ import GenericRemarks from '@/components/common/GenericRemarks';
 import { toast } from 'sonner';
 import { Row } from '@/hooks/database';
 import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { EFileRow } from '@/schemas/efile-schemas';
 
 const InitiateFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.InitiateFileModal),
@@ -363,12 +364,19 @@ export default function EFilesPage() {
       title: 'Last Action',
       dataIndex: 'updated_at',
       width: 120,
-      render: (val) => {
-        const canFormat = typeof val === 'string' || typeof val === 'number' || val instanceof Date;
+      render: (val, rec) => {
+        // Use last_action_date if available (from view update), otherwise fallback to updated_at
+        const dateToUse = (rec as EFileRow).last_action_date || val;
+        const canFormat = typeof dateToUse === 'string' || typeof dateToUse === 'number' || dateToUse instanceof Date;
         return (
           <span className='text-xs text-gray-600 dark:text-gray-400 font-mono'>
-            {canFormat && val
-              ? formatDate(val as string | number | Date, { format: 'dd-mm-yyyy' })
+            {canFormat && dateToUse
+              ? formatDate(dateToUse as string | number | Date, { 
+                  format: 'dd-mm-yyyy',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                })
               : 'N/A'}
           </span>
         );
@@ -380,6 +388,10 @@ export default function EFilesPage() {
   const renderItem = useCallback(
     (file: Row<'v_e_files_extended'>) => {
       const isClosed = file.status === 'closed';
+      // Type casting to access new field until codegen runs
+      const fullFile = file as EFileRow;
+      const lastActionDate = fullFile.last_action_date || fullFile.updated_at;
+
       return (
         <GenericEntityCard
           key={file.id}
@@ -410,7 +422,16 @@ export default function EFilesPage() {
           dataItems={[
             { icon: User, label: 'Started By', value: file.initiator_name },
             { icon: Folder, label: 'Current Holder', value: file.current_holder_name },
-            { icon: Clock, label: 'Last Action', value: formatDate(file.updated_at || '') },
+            { 
+              icon: Clock, 
+              label: 'Last Action', 
+              value: formatDate(lastActionDate || '', { 
+                format: 'dd-mm-yyyy',
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true
+              }) 
+            },
           ]}
           customFooter={
             <div className='w-full'>
@@ -425,7 +446,6 @@ export default function EFilesPage() {
                 variant='primary'
                 onClick={() => setForwardModal({ isOpen: true, fileId: file.id! })}
                 title='Forward File'
-                className='cursor-pointer'
               >
                 <Send className='w-3.5 h-3.5' />
               </Button>
