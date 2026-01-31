@@ -81,7 +81,7 @@ type UpsertPayload = RpcFunctionArgs<'upsert_system_connection_with_details'>;
 interface SystemConnectionFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  parentSystem: V_systems_completeRowSchema;
+  parentSystem?: V_systems_completeRowSchema | null;
   editingConnection: V_system_connections_completeRowSchema | null;
   onSubmit: (data: UpsertPayload) => void;
   isLoading: boolean;
@@ -146,7 +146,7 @@ const BandwidthInput = ({
 export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   isOpen,
   onClose,
-  parentSystem,
+  parentSystem = null,
   editingConnection,
   onSubmit,
   isLoading,
@@ -155,6 +155,13 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const isEditMode = !!editingConnection;
   const [activeTab, setActiveTab] = useState('general');
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
+
+  const derivedSystemId = parentSystem?.id ?? editingConnection?.system_id ?? null;
+  const derivedSystemName = parentSystem?.system_name ?? editingConnection?.system_name ?? 'Unknown System';
+  const derivedSystemIp = parentSystem?.ip_address ??
+    (editingConnection?.sn_ip && typeof editingConnection.sn_ip === 'string'
+      ? editingConnection.sn_ip
+      : null);
 
   const { data: pristineRecord, isLoading: isLoadingPristine } = useRpcRecord(
     supabase,
@@ -166,7 +173,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const form = useForm<SystemConnectionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      system_id: parentSystem.id ?? '',
+      system_id: derivedSystemId ?? '',
       status: true,
       media_type_id: '',
       service_name: '',
@@ -336,7 +343,8 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         const extConnection = pristineRecord as ExtendedConnectionRow;
         const safeValue = (val: string | null | undefined) => val ?? '';
         const safeNull = (val: string | null | undefined) => val ?? null;
-        const isFlipped = extConnection.system_id !== parentSystem.id;
+        const targetSystemId = derivedSystemId ?? extConnection.system_id ?? null;
+        const isFlipped = targetSystemId ? extConnection.system_id !== targetSystemId : false;
 
         const startData = isFlipped
           ? {
@@ -367,7 +375,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         setServiceMode(extConnection.service_id ? 'existing' : 'manual');
 
         reset({
-          system_id: parentSystem.id!,
+          system_id: targetSystemId ?? '',
           service_name: safeValue(extConnection.service_name ?? extConnection.customer_name),
           link_type_id: safeValue(extConnection.connected_link_type_id),
           vlan: safeValue(extConnection.vlan),
@@ -407,7 +415,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
           b_slot: safeNull(extConnection.sdh_b_slot),
           b_customer: safeNull(extConnection.sdh_b_customer),
         });
-      } else if (!isEditMode) {
+      } else if (!isEditMode && parentSystem) {
         reset({
           system_id: parentSystem.id!,
           status: true,
@@ -421,7 +429,14 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
         setServiceMode('existing');
       }
     }
-  }, [isOpen, isEditMode, pristineRecord, parentSystem, reset]);
+  }, [
+    isOpen,
+    isEditMode,
+    pristineRecord,
+    parentSystem,
+    reset,
+    derivedSystemId,
+  ]);
 
   const onValidSubmit = (formData: SystemConnectionFormValues) => {
     const payload: UpsertPayload & { p_en_protection_interface?: string | null } = {
@@ -479,7 +494,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
       form={form}
       onSubmit={onValidSubmit}
       subtitle={
-        isEditMode && pristineRecord && pristineRecord.system_id !== parentSystem.id ? (
+        isEditMode && pristineRecord && derivedSystemId && pristineRecord.system_id !== derivedSystemId ? (
           <span className="inline-flex items-center gap-1 text-red-50 bg-red-600 rounded-md px-2 py-1 text-xs font-medium border border-red-500 shadow-xs">
             <span className="shrink-0">⚠️ Editing Physical Source:</span>
             <Link
@@ -492,7 +507,7 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
             </Link>
           </span>
         ) : (
-          `System: ${parentSystem.system_name}`
+          `System: ${derivedSystemName}`
         )
       }
     >

@@ -10,7 +10,10 @@ import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { ErrorDisplay, ConfirmModal, PageSpinner } from '@/components/common/ui';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
-import { V_system_connections_completeRowSchema, V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import {
+  V_system_connections_completeRowSchema,
+  V_systems_completeRowSchema,
+} from '@/schemas/zod-schemas';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
@@ -18,7 +21,11 @@ import { useStandardHeaderActions } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
 import { createStandardActions } from '@/components/table/action-helpers';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS, buildUploadConfig, buildColumnConfig } from '@/constants/table-column-keys';
+import {
+  TABLE_COLUMN_KEYS,
+  buildUploadConfig,
+  buildColumnConfig,
+} from '@/constants/table-column-keys';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { createClient } from '@/utils/supabase/client';
@@ -35,18 +42,24 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 // Dynamic Imports
 const SystemConnectionFormModal = dynamic(
-  () => import('@/components/system-details/SystemConnectionFormModal').then((mod) => mod.SystemConnectionFormModal),
-  { loading: () => <PageSpinner text="Loading Form..." /> }
+  () =>
+    import('@/components/system-details/SystemConnectionFormModal').then(
+      (mod) => mod.SystemConnectionFormModal,
+    ),
+  { loading: () => <PageSpinner text='Loading Form...' /> },
 );
 
 const SystemFiberTraceModal = dynamic(
   () => import('@/components/system-details/SystemFiberTraceModal').then((mod) => mod.default),
-  { ssr: false }
+  { ssr: false },
 );
 
 const SystemConnectionDetailsModal = dynamic(
-  () => import('@/components/system-details/SystemConnectionDetailsModal').then((mod) => mod.SystemConnectionDetailsModal),
-  { ssr: false }
+  () =>
+    import('@/components/system-details/SystemConnectionDetailsModal').then(
+      (mod) => mod.SystemConnectionDetailsModal,
+    ),
+  { ssr: false },
 );
 
 export default function GlobalConnectionsPage() {
@@ -54,13 +67,13 @@ export default function GlobalConnectionsPage() {
   const supabase = createClient();
   const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // SYNC HOOKS
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  
+
   // Local state for modals/actions that aren't purely CRUD
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [traceModalData, setTraceModalData] = useState<any>(null); // eslint-disable-line
@@ -87,13 +100,18 @@ export default function GlobalConnectionsPage() {
     editModal,
     deleteModal,
     bulkActions,
-    actions: crudActions
+    actions: crudActions,
   } = useCrudManager<'system_connections', V_system_connections_completeRowSchema>({
     tableName: 'system_connections',
     localTableName: 'v_system_connections_complete',
     dataQueryHook: useAllSystemConnectionsData, // Uses the global hook
     displayNameField: 'service_name',
-    syncTables: ['system_connections', 'v_system_connections_complete', 'systems', 'v_systems_complete'], // Explicit sync list
+    syncTables: [
+      'system_connections',
+      'v_system_connections_complete',
+      'systems',
+      'v_systems_complete',
+    ], // Explicit sync list
   });
 
   const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO].includes(role as UserRole);
@@ -130,24 +148,29 @@ export default function GlobalConnectionsPage() {
         placeholder: 'All Status',
       },
     ],
-    [linkOptions, mediaOptions, loadingLink, loadingMedia]
+    [linkOptions, mediaOptions, loadingLink, loadingMedia],
   );
 
   // Columns
   const columns = SystemConnectionsTableColumns(connections);
-  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+  const orderedColumns = useOrderedColumns(columns, [
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
 
   // Excel Upload/Export
-  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(supabase, {
-    onSuccess: (result) => {
-      if (result.successCount > 0) refetch();
+  const { mutate: uploadConnections, isPending: isUploading } = useSystemConnectionExcelUpload(
+    supabase,
+    {
+      onSuccess: (result) => {
+        if (result.successCount > 0) refetch();
+      },
     },
-  });
+  );
 
   const { mutate: exportConnections, isPending: isExporting } = useRPCExcelDownload(supabase);
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
-  
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -182,6 +205,7 @@ export default function GlobalConnectionsPage() {
     try {
       const data = await tracePath(record);
       setTraceModalData(data);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err.message || 'Trace failed');
       setIsTraceModalOpen(false);
@@ -196,23 +220,26 @@ export default function GlobalConnectionsPage() {
   };
 
   const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
-    if(record.system_id) router.push(`/dashboard/systems/${record.system_id}`);
+    if (record.system_id) router.push(`/dashboard/systems/${record.system_id}`);
   };
 
   // Row Rendering
-  const renderItem = useCallback((conn: V_system_connections_completeRowSchema) => (
-    <ConnectionCard
-      key={conn.id}
-      connection={conn}
-      onViewDetails={handleViewDetails}
-      onViewPath={handleTrace}
-      onGoToSystem={handleGoToSystem}
-      onEdit={editModal.openEdit}
-      onDelete={crudActions.handleDelete}
-      canEdit={canEdit}
-      canDelete={canDelete}
-    />
-  ), [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router]);
+  const renderItem = useCallback(
+    (conn: V_system_connections_completeRowSchema) => (
+      <ConnectionCard
+        key={conn.id}
+        connection={conn}
+        onViewDetails={handleViewDetails}
+        onViewPath={handleTrace}
+        onGoToSystem={handleGoToSystem}
+        onEdit={editModal.openEdit}
+        onDelete={crudActions.handleDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
+      />
+    ),
+    [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router],
+  );
 
   const isBusy = isLoading || isFetching || isSyncingData;
 
@@ -220,13 +247,13 @@ export default function GlobalConnectionsPage() {
   const headerActions = useStandardHeaderActions({
     data: connections,
     onRefresh: async () => {
-        if (isOnline) {
-            // FIX: Explicitly sync tables to ensure local DB is populated
-            await syncData(['system_connections', 'v_system_connections_complete']);
-            toast.success("Connections synchronized");
-        } else {
-            refetch();
-        }
+      if (isOnline) {
+        // FIX: Explicitly sync tables to ensure local DB is populated
+        await syncData(['system_connections', 'v_system_connections_complete']);
+        toast.success('Connections synchronized');
+      } else {
+        refetch();
+      }
     },
     onAddNew: undefined, // Global view typically doesn't add without system context
     isLoading: isBusy,
@@ -235,28 +262,32 @@ export default function GlobalConnectionsPage() {
 
   if (canEdit) {
     headerActions.push({
-        label: isUploading ? 'Uploading...' : 'Upload List',
-        onClick: handleUploadClick,
-        variant: 'outline',
-        leftIcon: <FiUpload />,
-        disabled: isUploading || isBusy,
-        hideTextOnMobile: true
+      label: isUploading ? 'Uploading...' : 'Upload List',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isBusy,
+      hideTextOnMobile: true,
     });
     headerActions.push({
-        label: isExporting ? 'Exporting...' : 'Export',
-        onClick: handleExport,
-        variant: 'outline',
-        leftIcon: <FiDownload />,
-        disabled: isExporting || isBusy,
-        hideTextOnMobile: true
+      label: isExporting ? 'Exporting...' : 'Export',
+      onClick: handleExport,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isBusy,
+      hideTextOnMobile: true,
     });
   }
 
-  const handleFilterChange = useCallback((key: string, value: string | null) => {
-    filters.setFilters(prev => ({ ...prev, [key]: value }));
-  }, [filters]);
+  const handleFilterChange = useCallback(
+    (key: string, value: string | null) => {
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [filters],
+  );
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+  if (error)
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
     <DashboardPageLayout
@@ -265,17 +296,17 @@ export default function GlobalConnectionsPage() {
         description: 'View and search all service connections across the entire network.',
         icon: <FiDatabase />,
         stats: [
-            { value: totalCount, label: 'Total Connections' },
-            { value: activeCount, label: 'Active', color: 'success' },
-            { value: inactiveCount, label: 'Inactive', color: 'danger' }
+          { value: totalCount, label: 'Total Connections' },
+          { value: activeCount, label: 'Active', color: 'success' },
+          { value: inactiveCount, label: 'Inactive', color: 'danger' },
         ],
         actions: headerActions,
         isLoading: isLoading && connections.length === 0,
-        isFetching: isBusy
+        isFetching: isBusy,
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search service, system, or ID..."
+      searchPlaceholder='Search service, system, or ID...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -289,20 +320,23 @@ export default function GlobalConnectionsPage() {
         onClearSelection: bulkActions.handleClearSelection,
         entityName: 'connection',
         showStatusUpdate: true,
-        canDelete: () => canDelete
+        canDelete: () => canDelete,
       }}
       renderGrid={() => (
         <DataGrid
-            data={connections}
-            renderItem={renderItem}
-            isLoading={isLoading}
-            isEmpty={connections.length === 0 && !isLoading}
-            pagination={{
-                current: pagination.currentPage,
-                pageSize: pagination.pageLimit,
-                total: totalCount,
-                onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
-            }}
+          data={connections}
+          renderItem={renderItem}
+          isLoading={isLoading}
+          isEmpty={connections.length === 0 && !isLoading}
+          pagination={{
+            current: pagination.currentPage,
+            pageSize: pagination.pageLimit,
+            total: totalCount,
+            onChange: (p, s) => {
+              pagination.setCurrentPage(p);
+              pagination.setPageLimit(s);
+            },
+          }}
         />
       )}
       tableProps={{
@@ -312,57 +346,64 @@ export default function GlobalConnectionsPage() {
         loading: isLoading,
         isFetching: isFetching || isMutating,
         actions: createStandardActions({
-            onEdit: canEdit ? editModal.openEdit : undefined,
-            onView: handleViewDetails,
-            onDelete: canDelete ? crudActions.handleDelete : undefined,
+          onEdit: canEdit ? editModal.openEdit : undefined,
+          onView: handleViewDetails,
+          onDelete: canDelete ? crudActions.handleDelete : undefined,
         }),
         selectable: canDelete,
         onRowSelect: (rows) => {
-            const validRows = rows.filter((r): r is V_system_connections_completeRowSchema & {id: string} => !!r.id);
-            bulkActions.handleRowSelect(validRows);
+          const validRows = rows.filter(
+            (r): r is V_system_connections_completeRowSchema & { id: string } => !!r.id,
+          );
+          bulkActions.handleRowSelect(validRows);
         },
         pagination: {
-            current: pagination.currentPage,
-            pageSize: pagination.pageLimit,
-            total: totalCount,
-            showSizeChanger: true,
-            onChange: (p, s) => { pagination.setCurrentPage(p); pagination.setPageLimit(s); }
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
+            pagination.setPageLimit(s);
+          },
         },
-        customToolbar: <></>
+        customToolbar: <></>,
       }}
       isEmpty={connections.length === 0 && !isLoading}
       modals={
         <>
-           <input
-            type="file"
+          <input
+            type='file'
             ref={fileInputRef}
             onChange={handleFileChange}
-            className="hidden"
-            accept=".xlsx, .xls, .csv"
+            className='hidden'
+            accept='.xlsx, .xls, .csv'
           />
 
           {editModal.isOpen && editModal.record && (
-             <SystemConnectionFormModal
-                isOpen={editModal.isOpen}
-                onClose={editModal.close}
-                parentSystem={{
+            <SystemConnectionFormModal
+              isOpen={editModal.isOpen}
+              onClose={editModal.close}
+              parentSystem={
+                {
                   id: editModal.record.system_id,
                   system_name: editModal.record.system_name,
                   ip_address: editModal.record.sn_ip,
-                } as V_systems_completeRowSchema}
-                editingConnection={editModal.record}
-                onSubmit={crudActions.handleSave}
-                isLoading={isMutating}
-             />
+                } as V_systems_completeRowSchema
+              }
+              editingConnection={editModal.record}
+              onSubmit={crudActions.handleSave}
+              isLoading={isMutating}
+            />
           )}
 
           <ConfirmModal
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Confirm Deletion"
+            title='Confirm Deletion'
             message={deleteModal.message}
-            type="danger"
+            type='danger'
             loading={deleteModal.loading}
           />
 

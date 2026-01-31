@@ -25,6 +25,7 @@ import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { CiCalendarDate } from 'react-icons/ci';
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -168,6 +169,7 @@ export default function OfcPage() {
             { icon: FiMapPin, label: 'Area', value: cable.maintenance_area_name },
             { icon: FiActivity, label: 'Asset No', value: cable.asset_no, optional: true },
             { icon: FiDatabase, label: 'Transnet ID', value: cable.transnet_id, optional: true },
+            { icon: CiCalendarDate, label: 'Commissioning Date', value: cable.commissioned_on, optional: true },
           ]}
           customFooter={
             <>
