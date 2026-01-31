@@ -27,6 +27,7 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildColumnConfig } from '@/constants/table-column-keys';
 import { FaRupeeSign } from 'react-icons/fa';
+import { UserRole } from '@/types/user-roles';
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
@@ -38,11 +39,12 @@ const ExpenseFormModal = dynamic(
 );
 
 export default function ExpensesPage() {
-  const { isSuperAdmin } = useUser();
+  const { isSuperAdmin, role } = useUser();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('advances');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canDelete = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
   const { sync, isSyncing } = useDataSync();
 
@@ -163,7 +165,9 @@ export default function ExpensesPage() {
         width: 180,
         render: (v, rec) => (
           <div className='flex flex-col'>
-            <span className='font-medium text-gray-900 dark:text-gray-100 text-sm'>{v as string}</span>
+            <span className='font-medium text-gray-900 dark:text-gray-100 text-sm'>
+              {v as string}
+            </span>
             <span className='text-xs text-gray-500'>{rec.employee_pers_no}</span>
           </div>
         ),
@@ -174,7 +178,9 @@ export default function ExpensesPage() {
         dataIndex: 'advance_date',
         sortable: true,
         width: 120,
-        render: (v) => <span className='text-sm'>{formatDate(v as string, { format: 'dd-mm-yyyy' })}</span>,
+        render: (v) => (
+          <span className='text-sm'>{formatDate(v as string, { format: 'dd-mm-yyyy' })}</span>
+        ),
       },
       {
         key: 'total_amount',
@@ -190,7 +196,9 @@ export default function ExpensesPage() {
         dataIndex: 'spent_amount',
         width: 120,
         render: (v) => (
-          <span className='text-gray-600 dark:text-gray-400 text-sm'>{formatCurrency(Number(v))}</span>
+          <span className='text-gray-600 dark:text-gray-400 text-sm'>
+            {formatCurrency(Number(v))}
+          </span>
         ),
       },
       {
@@ -201,7 +209,9 @@ export default function ExpensesPage() {
         render: (v) => {
           const val = Number(v);
           return (
-            <span className={`text-sm ${val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}`}>
+            <span
+              className={`text-sm ${val < 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}`}
+            >
               {formatCurrency(val)}
             </span>
           );
@@ -276,14 +286,14 @@ export default function ExpensesPage() {
           onEdit={advanceCrud.editModal.openEdit}
           onDelete={advanceCrud.actions.handleDelete}
           canEdit={true}
-          canDelete={!!isSuperAdmin}
+          canDelete={canDelete}
           onView={() => {
             setActiveTab('expenses');
           }}
         />
       );
     },
-    [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, isSuperAdmin],
+    [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, canDelete],
   );
 
   const expenseColumns: Column<Row<'v_expenses_complete'>>[] = useMemo(
@@ -296,32 +306,32 @@ export default function ExpensesPage() {
         sortable: true,
         width: 120,
       },
-      { 
-        key: 'used_by', 
-        title: 'Used By', 
-        dataIndex: 'used_by', 
+      {
+        key: 'used_by',
+        title: 'Used By',
+        dataIndex: 'used_by',
         width: 150,
         render: (v) => <span className='text-sm'>{v as string}</span>,
       },
-      { 
-        key: 'category', 
-        title: 'Category', 
-        dataIndex: 'category', 
-        sortable: true, 
+      {
+        key: 'category',
+        title: 'Category',
+        dataIndex: 'category',
+        sortable: true,
         width: 120,
         render: (v) => <span className='text-sm'>{v as string}</span>,
       },
-      { 
-        key: 'vendor', 
-        title: 'Vendor', 
-        dataIndex: 'vendor', 
+      {
+        key: 'vendor',
+        title: 'Vendor',
+        dataIndex: 'vendor',
         width: 150,
         render: (v) => <span className='text-sm'>{v as string}</span>,
       },
-      { 
-        key: 'invoice_no', 
-        title: 'Invoice', 
-        dataIndex: 'invoice_no', 
+      {
+        key: 'invoice_no',
+        title: 'Invoice',
+        dataIndex: 'invoice_no',
         width: 150,
         render: (v) => <span className='text-sm font-mono'>{v as string}</span>,
       },
@@ -332,10 +342,10 @@ export default function ExpensesPage() {
         render: (v) => <span className='text-sm font-semibold'>{formatCurrency(Number(v))}</span>,
         width: 120,
       },
-      { 
-        key: 'advance_req_no', 
-        title: 'Req No', 
-        dataIndex: 'advance_req_no', 
+      {
+        key: 'advance_req_no',
+        title: 'Req No',
+        dataIndex: 'advance_req_no',
         width: 150,
         render: (v) => <span className='text-sm font-mono'>{v as string}</span>,
       },
@@ -371,8 +381,12 @@ export default function ExpensesPage() {
       <div className='bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-full sm:w-fit'>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className='w-full sm:w-auto'>
-            <TabsTrigger value='advances' className='flex-1 sm:flex-initial'>Advances</TabsTrigger>
-            <TabsTrigger value='expenses' className='flex-1 sm:flex-initial'>Expense Log</TabsTrigger>
+            <TabsTrigger value='advances' className='flex-1 sm:flex-initial'>
+              Advances
+            </TabsTrigger>
+            <TabsTrigger value='expenses' className='flex-1 sm:flex-initial'>
+              Expense Log
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

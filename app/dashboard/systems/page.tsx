@@ -54,6 +54,7 @@ import dynamic from 'next/dynamic';
 import { PageSpinner } from '@/components/common/ui';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
+import GenericRemarks from '@/components/common/GenericRemarks';
 
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
@@ -388,6 +389,11 @@ export default function SystemsPage() {
             optional: true,
           },
         ]}
+        customFooter={
+          <div className='w-full'>
+            <GenericRemarks remark={sys.remark || ''} />
+          </div>
+        }
         extraActions={
           <Button
             size='xs'
