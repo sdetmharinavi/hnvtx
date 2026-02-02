@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { ArrowUp, CheckCircle, CornerUpLeft, FilePlus, Edit3, ArrowDown } from 'lucide-react';
+import { CheckCircle, CornerUpLeft, FilePlus, Edit3, ArrowDown } from 'lucide-react';
 import { EFileMovementRow } from '@/schemas/efile-schemas';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
@@ -88,9 +88,11 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
                       title={`Created: ${formatDate(move.created_at)}`}
                     >
                       {formatDate(displayDate, {
-                        format: 'dd-mm-yyyy',
-                        hour: undefined,
-                        minute: undefined,
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </span>
                     {isLast && (
