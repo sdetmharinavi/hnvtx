@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all I want to fix the issue that on edit mode, ofc form is not showing the existing commisioned_on date. Also on editing global connections, unable to delete remarks or edit that through global connections.
+Let's begin! First of all I want to fix the issue i.e. it seems that in e-file movements, there is date is being used during creation or edit, there is no times options, due to this unable to get proper movement order on same date.

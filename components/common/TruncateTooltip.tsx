@@ -1,7 +1,7 @@
 // components/common/TruncateTooltip.tsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FiCopy, FiX, FiCheck } from 'react-icons/fi';
+import { FiCopy, FiX, FiCheck, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 export interface TruncateTooltipProps {
@@ -10,8 +10,10 @@ export interface TruncateTooltipProps {
   id?: string;
   maxWidth?: number;
   renderAsHtml?: boolean;
-  copyOnDoubleClick?: boolean; // NEW PROP
+  copyOnDoubleClick?: boolean;
   onCopy?: () => void;
+  expandable?: boolean; // NEW: Enable inline expand/collapse
+  maxLines?: number; // NEW: Number of lines before truncating (only for expandable mode)
 }
 
 export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
@@ -20,8 +22,10 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   id,
   maxWidth = 320,
   renderAsHtml = false,
-  copyOnDoubleClick = false, // Default false
+  copyOnDoubleClick = false,
   onCopy,
+  expandable = false,
+  maxLines = 2,
 }) => {
   const displayText = text ?? '';
 
@@ -29,10 +33,11 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [justCopied, setJustCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const textRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const tooltipId = `tt-${id ?? Math.random().toString(36).slice(2)}`;
@@ -40,29 +45,36 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   const checkOverflow = useCallback(() => {
     const el = textRef.current;
     if (!el) return;
-    // Allow a small tolerance (1px) for sub-pixel rendering differences
-    const hasOverflow = el.scrollWidth > el.clientWidth + 1;
-    setIsOverflowing(hasOverflow);
-  }, []);
+
+    if (expandable) {
+      // For expandable mode, check if content exceeds maxLines
+      const lineHeight = parseFloat(window.getComputedStyle(el).lineHeight);
+      const maxHeight = lineHeight * maxLines;
+      const hasOverflow = el.scrollHeight > maxHeight + 1;
+      setIsOverflowing(hasOverflow);
+    } else {
+      // Original truncate check for single-line truncation
+      const hasOverflow = el.scrollWidth > el.clientWidth + 1;
+      setIsOverflowing(hasOverflow);
+    }
+  }, [expandable, maxLines]);
 
   useEffect(() => {
-    // Check on mount and resize
     checkOverflow();
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
   }, [checkOverflow, displayText]);
 
-  // Re-check on hover to ensure state is accurate before showing
   const handleMouseEnter = () => {
     checkOverflow();
-    if (!isLocked) {
+    if (!isLocked && !expandable) {
       updatePosition();
       setIsHovered(true);
     }
   };
 
   const handleMouseLeave = () => {
-    if (!isLocked) {
+    if (!isLocked && !expandable) {
       setIsHovered(false);
     }
   };
@@ -75,11 +87,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
       const top = rect.bottom + 8;
       let left = rect.left;
 
-      // Prevent going off right edge
       if (left + maxWidth > viewportWidth) {
         left = viewportWidth - maxWidth - 16;
       }
-      // Prevent going off left edge
       if (left < 16) left = 16;
 
       setCoords({ top, left });
@@ -101,9 +111,8 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     }
   };
 
-  // Single Click: Toggle Lock (Only if truncated)
   const handleClick = (e: React.MouseEvent) => {
-    if (isOverflowing) {
+    if (!expandable && isOverflowing) {
       e.stopPropagation();
       updatePosition();
       setIsLocked((prev) => !prev);
@@ -111,11 +120,10 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     }
   };
 
-  // Double Click: Copy (Always allowed if enabled)
   const handleDoubleClick = async (e: React.MouseEvent) => {
     if (copyOnDoubleClick) {
       e.stopPropagation();
-      e.preventDefault(); // Prevent text selection
+      e.preventDefault();
       await doCopy();
     }
   };
@@ -126,7 +134,11 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     setIsHovered(false);
   };
 
-  // Close on Escape / Outside Click
+  const toggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded((prev) => !prev);
+  };
+
   useEffect(() => {
     if (!isLocked) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -153,10 +165,45 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     };
   }, [isLocked, updatePosition]);
 
-  // Show tooltip if hovered/locked AND (overflowing OR locked)
-  // We allow showing it if locked even if not strictly overflowing (rare case, but safe)
-  const showTooltip = (isHovered && isOverflowing) || isLocked;
+  const showTooltip = !expandable && ((isHovered && isOverflowing) || isLocked);
 
+  // EXPANDABLE MODE: Render with line-clamp and expand button
+  if (expandable) {
+    return (
+      <div className='flex flex-col gap-1.5 w-full min-w-0'>
+        <div
+          ref={textRef}
+          className={`wrap-break-words ${!isExpanded ? `line-clamp-${maxLines}` : ''} ${className ?? ''}`}
+          onDoubleClick={handleDoubleClick}
+        >
+          {renderAsHtml ? <span dangerouslySetInnerHTML={{ __html: displayText }} /> : displayText}
+        </div>
+
+        {isOverflowing && (
+          <button
+            onClick={toggleExpand}
+            className='flex items-center gap-1 text-xs font-medium opacity-70 hover:opacity-100 transition-opacity self-start focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-1 rounded px-1 -mx-1'
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? 'Show less' : 'Show more'}
+          >
+            {isExpanded ? (
+              <>
+                <span>Show less</span>
+                <FiChevronUp size={12} />
+              </>
+            ) : (
+              <>
+                <span>Show more</span>
+                <FiChevronDown size={12} />
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // DEFAULT MODE: Original truncate behavior with tooltip
   return (
     <>
       <span
@@ -172,7 +219,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         onDoubleClick={handleDoubleClick}
         tabIndex={isOverflowing ? 0 : -1}
         aria-describedby={showTooltip ? tooltipId : undefined}
-        title={undefined} // Remove native tooltip
+        title={undefined}
         {...(renderAsHtml ? { dangerouslySetInnerHTML: { __html: displayText } } : {})}
       >
         {!renderAsHtml ? displayText : null}
@@ -183,7 +230,7 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
           <div
             ref={tooltipRef}
             id={tooltipId}
-            role="tooltip"
+            role='tooltip'
             className={`
               fixed z-9999 flex flex-col gap-2 rounded-lg shadow-xl border
               text-sm wrap-break-word whitespace-normal
@@ -214,26 +261,26 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
             </div>
 
             {isLocked && (
-              <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
-                <div className="text-xs text-gray-800 italic">
+              <div className='flex items-center justify-between border-t border-gray-100 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg'>
+                <div className='text-xs text-gray-800 dark:text-gray-300 italic'>
                   {copyOnDoubleClick ? 'Double-click text to copy' : 'Select text to copy'}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className='flex items-center gap-1'>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       doCopy();
                     }}
-                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors"
-                    title="Copy content"
+                    className='p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-300 transition-colors'
+                    title='Copy content'
                   >
-                    {justCopied ? <FiCheck className="text-green-500" /> : <FiCopy />}
+                    {justCopied ? <FiCheck className='text-green-500' /> : <FiCopy />}
                   </button>
-                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+                  <div className='w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1' />
                   <button
                     onClick={handleClose}
-                    className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 rounded text-gray-500 transition-colors"
-                    title="Close tooltip"
+                    className='p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 rounded text-gray-500 transition-colors'
+                    title='Close tooltip'
                   >
                     <FiX />
                   </button>
