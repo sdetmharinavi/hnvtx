@@ -40,8 +40,8 @@ type BaseProps<T extends FieldValues> = {
   required?: boolean;
   className?: string;
   labelClassName?: string;
-  helperText?: string; // NEW: Helper text for better UX
-  tooltip?: string; // NEW: Tooltip for additional context
+  helperText?: string;
+  tooltip?: string;
 };
 
 type SingleDatePickerProps = Omit<
@@ -60,7 +60,6 @@ type SingleDatePickerProps = Omit<
 
 // --- HELPER COMPONENTS ---
 
-// Error message component for consistency
 const ErrorMessage = ({ message }: { message?: string }) => {
   if (!message) return null;
   return (
@@ -85,7 +84,6 @@ const ErrorMessage = ({ message }: { message?: string }) => {
   );
 };
 
-// Helper text component
 const HelperText = ({ text }: { text?: string }) => {
   if (!text) return null;
   return (
@@ -107,7 +105,6 @@ const HelperText = ({ text }: { text?: string }) => {
   );
 };
 
-// Enhanced Label with tooltip support
 const EnhancedLabel = ({
   htmlFor,
   required,
@@ -168,8 +165,8 @@ interface FormInputProps<T extends FieldValues>
   extends BaseProps<T>, Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'size'> {
   register: UseFormRegister<T>;
   treatAsNumber?: boolean;
-  icon?: React.ReactNode; // NEW: Icon support
-  showCharCount?: boolean; // NEW: Character counter
+  icon?: React.ReactNode;
+  showCharCount?: boolean;
   maxLength?: number;
 }
 
@@ -263,8 +260,9 @@ interface FormTextareaProps<T extends FieldValues>
     Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'name' | 'value' | 'onChange'> {
   register?: UseFormRegister<T>;
   control?: Control<T>;
-  showCharCount?: boolean; // NEW: Character counter
-  autoResize?: boolean; // NEW: Auto-resize based on content
+  showCharCount?: boolean;
+  autoResize?: boolean;
+  maxLength?: number;
 }
 
 export function FormTextarea<T extends FieldValues>({
@@ -489,9 +487,9 @@ export interface FormDateInputProps<T extends FieldValues>
     BaseProps<T>,
     Omit<React.InputHTMLAttributes<HTMLInputElement>, 'name' | 'type' | 'size'> {
   control: Control<T>;
-  pickerProps?: Partial<SingleDatePickerProps>;
-  minDate?: Date; // NEW: Min date restriction
-  maxDate?: Date; // NEW: Max date restriction
+  pickerProps?: Partial<SingleDatePickerProps> & { showTimeSelect?: boolean };
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 const DateTextInput = forwardRef<
@@ -513,7 +511,6 @@ const DateTextInput = forwardRef<
             ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
             : 'border-gray-300 dark:border-gray-600',
           'hover:border-gray-400 dark:hover:border-gray-500',
-          // Touch-friendly height
           'min-h-[44px]',
           className ?? '',
         ].join(' ')}
@@ -554,6 +551,10 @@ export function FormDateInput<T extends FieldValues>({
   maxDate,
   ...inputProps
 }: FormDateInputProps<T>) {
+  // Determine date format based on time select availability
+  const isTimeEnabled = pickerProps?.showTimeSelect;
+  const defaultFormat = isTimeEnabled ? 'yyyy-MM-dd h:mm aa' : 'yyyy-MM-dd';
+
   return (
     <div className={className}>
       <EnhancedLabel htmlFor={name} className={labelClassName} tooltip={tooltip}>
@@ -571,13 +572,12 @@ export function FormDateInput<T extends FieldValues>({
           if (raw instanceof Date) {
             selected = raw;
           } else if (typeof raw === 'string' && raw) {
-            // Robust date parsing for "YYYY-MM-DD" to avoid timezone offset issues
-            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            // Check for strict ISO date "YYYY-MM-DD"
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw) && !isTimeEnabled) {
               const [y, m, d] = raw.split('-').map(Number);
-              // Construct Date using local time components to prevent UTC shift
               selected = new Date(y, m - 1, d);
             } else {
-              // Fallback for ISO strings or other formats
+              // Parse full ISO strings (with time)
               const d = new Date(raw);
               if (!isNaN(d.getTime())) selected = d;
             }
@@ -592,16 +592,25 @@ export function FormDateInput<T extends FieldValues>({
                 field.onChange(null);
                 return;
               }
-              const y = value.getFullYear();
-              const m = String(value.getMonth() + 1).padStart(2, '0');
-              const day = String(value.getDate()).padStart(2, '0');
-              const isoDate = `${y}-${m}-${day}`;
-              // Use PathValue casting for strict type compliance
-              field.onChange(isoDate as PathValue<T, Path<T>>);
+
+              let valueToSet;
+              if (isTimeEnabled) {
+                // Return Full ISO String for time-aware inputs
+                valueToSet = value.toISOString();
+              } else {
+                // Return YYYY-MM-DD for date-only inputs
+                const y = value.getFullYear();
+                const m = String(value.getMonth() + 1).padStart(2, '0');
+                const day = String(value.getDate()).padStart(2, '0');
+                valueToSet = `${y}-${m}-${day}`;
+              }
+              
+              // Explicitly cast to satisfy generic type
+              field.onChange(valueToSet as PathValue<T, Path<T>>);
             },
             onBlur: field.onBlur,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            dateFormat: (pickerProps as any)?.dateFormat ?? 'yyyy-MM-dd',
+            dateFormat: (pickerProps as any)?.dateFormat ?? defaultFormat,
             isClearable: true,
             showMonthDropdown: true,
             showYearDropdown: true,
@@ -609,6 +618,10 @@ export function FormDateInput<T extends FieldValues>({
             yearDropdownItemNumber: 15,
             minDate,
             maxDate,
+            // UPDATED: Set default time intervals to 1 minute for granular control
+            // This enables users to select specific minutes when time selection is enabled.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            timeIntervals: (pickerProps as any)?.timeIntervals ?? 1,
             customInput: (
               <DateTextInput
                 errorText={typeof error?.message === 'string' ? error.message : undefined}

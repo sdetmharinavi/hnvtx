@@ -1,3 +1,4 @@
+// components/efile/ActionModals.tsx
 'use client';
 
 import { useEffect } from 'react';
@@ -54,8 +55,8 @@ export const InitiateFileModal = ({
     resolver: zodResolver(initiateFileSchema),
     defaultValues: {
       priority: 'normal',
-      // Default to today in YYYY-MM-DD format for the date input
-      action_date: new Date().toISOString().split('T')[0],
+      // UPDATED: Default to full ISO string to include current time
+      action_date: new Date().toISOString(),
     },
   });
 
@@ -67,30 +68,30 @@ export const InitiateFileModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Initiate New E-File"
-      className="w-0 h-0 bg-transparent"
+      title='Initiate New E-File'
+      className='w-0 h-0 bg-transparent'
     >
       <FormCard
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isPending || isLoadingEmployees}
-        title="New File Record"
+        title='New File Record'
         standalone
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className='space-y-4'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <FormInput
-              name="file_number"
-              label="File Number *"
+              name='file_number'
+              label='File Number *'
               register={register}
               error={errors.file_number}
-              placeholder="e.g. FILE/2024/001"
+              placeholder='e.g. FILE/2024/001'
               required
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className='grid grid-cols-2 gap-4'>
               <FormSelect
-                name="priority"
-                label="Priority"
+                name='priority'
+                label='Priority'
                 control={control}
                 options={[
                   { value: 'normal', label: 'Normal' },
@@ -99,18 +100,23 @@ export const InitiateFileModal = ({
                 ]}
               />
               <FormDateInput
-                name="action_date"
-                label="Creation Date"
+                name='action_date'
+                label='Creation Date'
                 control={control}
                 error={errors.action_date}
+                // UPDATED: Enable Time Selection
+                pickerProps={{
+                  showTimeSelect: true,
+                  dateFormat: 'yyyy-MM-dd h:mm aa',
+                }}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <FormSelect
-              name="category"
-              label="Category *"
+              name='category'
+              label='Category *'
               control={control}
               options={[
                 { value: 'administrative', label: 'Administrative' },
@@ -119,37 +125,37 @@ export const InitiateFileModal = ({
               ]}
             />
             <FormSearchableSelect
-              name="initiator_employee_id"
-              label="Initiator (Employee) *"
+              name='initiator_employee_id'
+              label='Initiator (Employee) *'
               control={control}
               options={employeeOptions}
               error={errors.initiator_employee_id}
-              placeholder="Select employee..."
+              placeholder='Select employee...'
               required
               isLoading={isLoadingEmployees}
-              searchPlaceholder="Search employees..."
+              searchPlaceholder='Search employees...'
             />
           </div>
 
           <FormInput
-            name="subject"
-            label="Subject *"
+            name='subject'
+            label='Subject *'
             register={register}
             error={errors.subject}
             required
           />
           <FormRichTextEditor
-            name="description"
-            label="Description"
+            name='description'
+            label='Description'
             control={control}
             error={errors.description}
           />
           <FormTextarea
-            name="remarks"
-            label="Initial Note"
+            name='remarks'
+            label='Initial Note'
             control={control}
             rows={2}
-            placeholder="e.g. Starting new file..."
+            placeholder='e.g. Starting new file...'
           />
         </div>
       </FormCard>
@@ -179,7 +185,8 @@ export const ForwardFileModal = ({
     defaultValues: {
       file_id: fileId,
       action_type: 'forwarded',
-      action_date: new Date().toISOString().split('T')[0],
+      // UPDATED: Default to full ISO string
+      action_date: new Date().toISOString(),
     },
   });
 
@@ -188,30 +195,30 @@ export const ForwardFileModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Forward File">
+    <Modal isOpen={isOpen} onClose={onClose} title='Forward File'>
       <FormCard
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isPending || isLoadingEmployees}
-        title="Forwarding Details"
+        title='Forwarding Details'
         standalone
-        submitText="Send"
+        submitText='Send'
       >
         <FormSearchableSelect
-          name="to_employee_id"
-          label="Forward To (Employee) *"
+          name='to_employee_id'
+          label='Forward To (Employee) *'
           control={control}
           options={employeeOptions}
           error={errors.to_employee_id}
-          placeholder="Select recipient..."
+          placeholder='Select recipient...'
           required
           isLoading={isLoadingEmployees}
-          searchPlaceholder="Search employees..."
+          searchPlaceholder='Search employees...'
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className='grid grid-cols-2 gap-4'>
           <FormSelect
-            name="action_type"
-            label="Action"
+            name='action_type'
+            label='Action'
             control={control}
             options={[
               { value: 'forwarded', label: 'Forward' },
@@ -219,15 +226,20 @@ export const ForwardFileModal = ({
             ]}
           />
           <FormDateInput
-            name="action_date"
-            label="Movement Date"
+            name='action_date'
+            label='Movement Date'
             control={control}
             error={errors.action_date}
+            // UPDATED: Enable Time Selection
+            pickerProps={{
+              showTimeSelect: true,
+              dateFormat: 'yyyy-MM-dd h:mm aa',
+            }}
           />
         </div>
         <FormTextarea
-          name="remarks"
-          label="Remarks / Instructions *"
+          name='remarks'
+          label='Remarks / Instructions *'
           control={control}
           error={errors.remarks}
           required
@@ -262,8 +274,8 @@ export const EditMovementModal = ({
     defaultValues: {
       movement_id: movement.id || '',
       remarks: movement.remarks || '',
-      // Use action_date if available, else created_at
-      action_date: (movement?.action_date || movement?.created_at || '').split('T')[0] || '',
+      // UPDATED: Preserve time if available
+      action_date: movement.action_date || movement.created_at || new Date().toISOString(),
     },
   });
 
@@ -272,7 +284,8 @@ export const EditMovementModal = ({
       reset({
         movement_id: movement.id || '',
         remarks: movement.remarks || '',
-        action_date: (movement?.action_date || movement?.created_at || '').split('T')[0] || '',
+        // UPDATED: Use full timestamp
+        action_date: movement.action_date || movement.created_at || new Date().toISOString(),
       });
     }
   }, [isOpen, movement, reset]);
@@ -282,25 +295,30 @@ export const EditMovementModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Movement Log">
+    <Modal isOpen={isOpen} onClose={onClose} title='Edit Movement Log'>
       <FormCard
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isPending}
-        title="Edit Log Entry"
+        title='Edit Log Entry'
         standalone
-        submitText="Save Changes"
+        submitText='Save Changes'
       >
         <FormDateInput
-          name="action_date"
-          label="Date of Action"
+          name='action_date'
+          label='Date of Action'
           control={control}
           error={errors.action_date}
           required
+          // UPDATED: Enable Time Selection
+          pickerProps={{
+            showTimeSelect: true,
+            dateFormat: 'yyyy-MM-dd h:mm aa',
+          }}
         />
         <FormTextarea
-          name="remarks"
-          label="Remarks"
+          name='remarks'
+          label='Remarks'
           control={control}
           error={errors.remarks}
           required
@@ -363,7 +381,7 @@ export const EditFileModal = ({
         category: data.category,
         priority: data.priority,
       },
-      { onSuccess: onClose }
+      { onSuccess: onClose },
     );
   };
 
@@ -371,28 +389,28 @@ export const EditFileModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit File Details"
-      className="w-0 h-0 bg-transparent"
+      title='Edit File Details'
+      className='w-0 h-0 bg-transparent'
     >
       <FormCard
         onSubmit={handleSubmit(onSubmit)}
         onCancel={onClose}
         isLoading={isPending}
-        title="Edit Details"
+        title='Edit Details'
         standalone
-        submitText="Update"
+        submitText='Update'
       >
         <FormInput
-          name="subject"
-          label="Subject *"
+          name='subject'
+          label='Subject *'
           register={register}
           error={errors.subject}
           required
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className='grid grid-cols-2 gap-4'>
           <FormSelect
-            name="category"
-            label="Category *"
+            name='category'
+            label='Category *'
             control={control}
             options={[
               { value: 'administrative', label: 'Administrative' },
@@ -402,8 +420,8 @@ export const EditFileModal = ({
             error={errors.category}
           />
           <FormSelect
-            name="priority"
-            label="Priority"
+            name='priority'
+            label='Priority'
             control={control}
             options={[
               { value: 'normal', label: 'Normal' },
@@ -412,7 +430,7 @@ export const EditFileModal = ({
             ]}
           />
         </div>
-        <FormRichTextEditor name="description" label="Description" control={control} />
+        <FormRichTextEditor name='description' label='Description' control={control} />
       </FormCard>
     </Modal>
   );
