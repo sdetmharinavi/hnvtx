@@ -31,6 +31,7 @@ id,category,name,code,description,sort_order,is_system_default,is_ring_based,sta
 2efeaec3-25db-4e92-bb1b-0ce370547cd6,SYSTEM_CAPACITY,300 Gbps (B4),300G,"B4 (300 Gbps): These are high-capacity pizza-box MAAN routers. They have both 100G and 10G ports. 2 × 100G ports, 10 × 10G ports, 10 × 1G Base-X, 4 × 10/100/100 Base-T, 4 × STM1[O](only Cat 1) ports. This makes them suitable for very high aggregation — e.g., many access rings → core.",0,false,false,true,2025-11-23 00:00:00+00,2026-01-25 09:22:24.710309+00
 2f15a2f0-0433-4810-bdb7-375edf9a1413,RING_TYPES,Multiplex Section Shared Protection Ring,MS-SPRing,BSNL’s protection scheme in SDH rings.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 2f238075-a8b3-460f-9c13-3f8a74f0cd5d,OFC_PATH_TYPE,DEFAULT,default,Default entry for Ofc Path Type category,8,true,false,true,2025-08-21 00:00:00+00,2025-12-20 06:06:02.858976+00
+307f739d-2ec7-428c-ae0c-3fb78f38dd34,INVENTORY_CATEGORY,Media Converter,MEDIA_CONVERTER,,0,false,false,true,2026-01-31 07:04:25.206186+00,2026-01-31 07:04:25.206186+00
 30b95289-bc6c-4584-a51d-800e3b6356c9,LINK_TYPES,BTS 2G,2G,,0,false,false,true,2025-11-14 00:00:00+00,2025-11-27 00:00:00+00
 315fc414-ba42-477f-afa6-161df09600c3,OFC_TYPES,12F Armored,12F-A,Twelve-core steel-armored optical fiber cable.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 32cf5e39-ca45-4728-bf99-2348d0aa3524,SYSTEM_TYPES,Synchronous Digital Hierarchy,SDH,Optical transport technology for high-speed telecom backbone.,0,false,true,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00

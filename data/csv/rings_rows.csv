@@ -75,7 +75,7 @@ d754eb42-3981-4173-9d9d-3d98af98cfdd,HNV-20,94f314d2-c022-4a67-b3c1-5c1044a3d4dc
 <strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,,Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-05 12:25:40.882656+00
 d8836bb7-2f9c-484f-89ef-6d5cd6f4f51c,HNV-02,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-blue-600"">OFC STATUS:</strong> READY<br />
 <strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED Vide: TP/Inst. Prg/11_25/30 DATED: 22-11-2025<br />
-<strong class=""text-red-600"">PRESENT STATUS:</strong> LP issue<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,5,true,,Ready,Issued,Configured,true,2025-08-11 00:00:00+00,2026-01-17 09:49:57.624616+00
+<strong class=""text-red-600"">PRESENT STATUS:</strong> LP issue<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,5,true,,Ready,Issued,Configured,true,2025-08-11 00:00:00+00,2026-02-02 07:17:23.620252+00
 d95f0c5e-10b5-4657-a6b2-2b894c6c5b08,HNV-01,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-blue-600"">OFC STATUS:</strong> OFC NOT READY FROM MAHI TO GDP.CPAN OFC CAN BE USED<br />
 <strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED Vide: TP/Inst. Prg/10_25/02 DATED: 06-10-2025<br />
 <strong class=""text-green-600"">BTS STATUS:</strong> ON AIR<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,true,,Partial Ready,Issued,On-Air,true,2025-08-11 00:00:00+00,2026-01-05 11:59:49.037346+00

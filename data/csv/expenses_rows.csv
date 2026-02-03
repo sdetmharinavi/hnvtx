@@ -1,0 +1,2 @@
+id,advance_id,expense_date,category,vendor,invoice_no,amount,terminal_location,description,created_at,updated_at,spent_by_employee_id
+5f4f696a-fea5-4cb5-a55c-c65ff0cd44a4,391f2fad-c233-444f-ab05-4f51eef7ec33,2026-01-29,Point To Point,OLA,CRN10409315155,745.00,HNV TM,For FCN Communications 3rd party OLT shifting from AP Nagar to Sonarpur B1,2026-01-29 15:27:22.630927+00,2026-01-30 15:46:17.107818+00,6e741c80-4fa4-4226-bccb-61a22ea65bef

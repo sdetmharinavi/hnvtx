@@ -134,7 +134,7 @@ function NavItems() {
           },
           {
             id: 'efiles',
-            label: 'E-File Tracking',
+            label: 'E-File',
             icon: <FileText className='h-5 w-5' />,
             href: '/dashboard/e-files',
             roles: ROLES.VIEWERS,
@@ -216,7 +216,7 @@ function NavItems() {
       },
       {
         id: 'diagrams',
-        label: 'Diagrams',
+        label: 'Diagrams & Docs',
         icon: <TfiLayoutMediaOverlayAlt className='h-5 w-5' />,
         href: '/dashboard/diagrams',
         roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
