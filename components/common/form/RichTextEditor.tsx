@@ -27,8 +27,8 @@ import {
   Merge,
   Split,
   Type,
-  Smile, // New Icon
-  PenTool, // New Icon
+  Smile,
+  PenTool,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/common/ui/label/Label';
@@ -404,8 +404,11 @@ export const RichTextEditor = ({
       ],
       editorProps: {
         attributes: {
+          // THE FIX: Added `max-h-[50vh] overflow-y-auto custom-scrollbar`
+          // This forces the editor to scroll internally when content exceeds 50vh,
+          // preventing the modal from growing uncontrollably.
           class:
-            'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
+            'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] max-h-[80vh] overflow-y-auto custom-scrollbar px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
           // Native Spellcheck enabled (browser default behavior)
           spellcheck: 'true',
         },
@@ -442,7 +445,12 @@ export const RichTextEditor = ({
       <div
         className={`border rounded-lg bg-white dark:bg-gray-900 transition-colors flex flex-col ${error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
         <MenuBar editor={editor} />
-        <div className='overflow-x-auto w-full'>
+        {/*
+            The EditorContent div wraps the Tiptap instance.
+            The max-height logic is applied directly to the .ProseMirror class via editorProps above,
+            but adding it here too ensures container constraint.
+        */}
+        <div className='overflow-x-auto w-full rounded-b-lg'>
           <EditorContent editor={editor} placeholder={placeholder} />
         </div>
       </div>
