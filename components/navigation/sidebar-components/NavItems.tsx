@@ -49,63 +49,6 @@ function NavItems() {
         roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
       },
       {
-        id: 'user-management',
-        label: 'User Management',
-        icon: <FiUsers className='h-5 w-5' />,
-        href: '/dashboard/users',
-        roles: PERMISSIONS.canManageUsers, // Correctly restricted
-      },
-      {
-        id: 'audit-logs',
-        label: 'Audit Logs',
-        icon: <FiShield className='h-5 w-5' />,
-        href: '/dashboard/audit-logs',
-        roles: PERMISSIONS.canViewAuditLogs, // Correctly restricted
-      },
-      {
-        id: 'employees',
-        label: 'Employees',
-        icon: <BsPeople className='h-5 w-5' />,
-        href: '/dashboard/employees',
-        roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageEmployees
-      },
-      {
-        id: 'office-management-menu',
-        label: 'Office Management',
-        icon: <FiBriefcase className='h-5 w-5' />,
-        roles: ROLES.VIEWERS,
-        children: [
-          {
-            id: 'inventory',
-            label: 'Inventory',
-            icon: <FiArchive className='h-5 w-5' />,
-            href: '/dashboard/inventory',
-            roles: ROLES.VIEWERS,
-          },
-          {
-            id: 'expenses',
-            label: 'Expenses',
-            icon: <FaRupeeSign className='h-5 w-5' />,
-            href: '/dashboard/expenses',
-            roles: ROLES.VIEWERS,
-          },
-          {
-            id: 'efiles',
-            label: 'E-File Tracking',
-            icon: <FileText className='h-5 w-5' />,
-            href: '/dashboard/e-files',
-            roles: ROLES.VIEWERS,
-          },
-          {
-            id: 'notes',
-            label: 'Tech Notes',
-            icon: <FiBook className='h-5 w-5' />,
-            href: '/dashboard/notes',
-            roles: ROLES.VIEWERS,
-          },
-        ],
-      },
-      {
         id: 'base-menu',
         label: 'Base Structure',
         icon: <BiSitemap className='h-5 w-5' />,
@@ -159,6 +102,49 @@ function NavItems() {
             href: '/dashboard/services',
             icon: <FiDatabase className='h-5 w-5' />,
             roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
+          },
+          {
+            id: 'employees',
+            label: 'Employees',
+            icon: <BsPeople className='h-5 w-5' />,
+            href: '/dashboard/employees',
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageEmployees
+          },
+        ],
+      },
+      {
+        id: 'office-management-menu',
+        label: 'Office Management',
+        icon: <FiBriefcase className='h-5 w-5' />,
+        roles: ROLES.VIEWERS,
+        children: [
+          {
+            id: 'expenses',
+            label: 'Expenses',
+            icon: <FaRupeeSign className='h-5 w-5' />,
+            href: '/dashboard/expenses',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'notes',
+            label: 'Tech Notes',
+            icon: <FiBook className='h-5 w-5' />,
+            href: '/dashboard/notes',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'efiles',
+            label: 'E-File Tracking',
+            icon: <FileText className='h-5 w-5' />,
+            href: '/dashboard/e-files',
+            roles: ROLES.VIEWERS,
+          },
+          {
+            id: 'inventory',
+            label: 'Inventory',
+            icon: <FiArchive className='h-5 w-5' />,
+            href: '/dashboard/inventory',
+            roles: ROLES.VIEWERS,
           },
         ],
       },
@@ -258,6 +244,20 @@ function NavItems() {
         href: 'https://www.google.com/maps/d/u/0/embed?mid=1dpO2c3Qt2EmLFxovZ14rcqkjrN6uqlvP&ehbc=2E312F&ll=22.485295672038035%2C88.3701163022461&z=14',
         roles: ROLES.VIEWERS, // THE FIX: Changed from ROLES.ADMINS
         external: true,
+      },
+      {
+        id: 'user-management',
+        label: 'User Management',
+        icon: <FiUsers className='h-5 w-5' />,
+        href: '/dashboard/users',
+        roles: PERMISSIONS.canManageUsers, // Correctly restricted
+      },
+      {
+        id: 'audit-logs',
+        label: 'Audit Logs',
+        icon: <FiShield className='h-5 w-5' />,
+        href: '/dashboard/audit-logs',
+        roles: PERMISSIONS.canViewAuditLogs, // Correctly restricted
       },
       {
         id: 'help',
