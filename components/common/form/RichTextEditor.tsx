@@ -408,7 +408,7 @@ export const RichTextEditor = ({
           // This forces the editor to scroll internally when content exceeds 50vh,
           // preventing the modal from growing uncontrollably.
           class:
-            'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] max-h-[80vh] overflow-y-auto custom-scrollbar px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
+            'prose dark:prose-invert max-w-none focus:outline-none min-h-[150px] max-h-[75vh] overflow-y-auto custom-scrollbar px-4 py-3 text-sm text-gray-800 dark:text-gray-200 [&_table]:w-full [&_td]:min-w-[100px]',
           // Native Spellcheck enabled (browser default behavior)
           spellcheck: 'true',
         },
