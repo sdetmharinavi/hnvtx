@@ -238,10 +238,10 @@ export default function DiaryPage() {
     onAddNew: canEdit ? openAddModal : undefined,
     isLoading,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'diary_notes', fileName: 'my_diary_notes' } : undefined,
+    exportConfig: canDelete ? { tableName: 'diary_notes', fileName: 'my_diary_notes' } : undefined,
   });
 
-  if (canEdit) {
+  if (canDelete) {
     headerActions.splice(1, 0, {
       label: isUploading ? 'Uploading...' : 'Upload',
       onClick: handleUploadClick,

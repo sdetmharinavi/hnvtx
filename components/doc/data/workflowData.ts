@@ -179,18 +179,6 @@ export const workflowSections: WorkflowSection[] = [
           '**Mutation:** `useTableInsert` sends data to `diary_notes` table.',
         ],
       },
-      {
-        title: '3. Bulk Import Logs',
-        userSteps: [
-          "Click 'Actions' -> 'Upload'.",
-          'Select an Excel file with columns: `note_date`, `content`, `tags`.',
-          'The system will upsert these records, matching by Date + User.',
-        ],
-        techSteps: [
-          '**Hook:** `useDiaryExcelUpload` handles parsing and batch insertion.',
-          '**Constraint:** `unique_note_per_user_per_day` ensures no duplicates for the same day/user.',
-        ],
-      },
     ],
   },
 
@@ -246,6 +234,81 @@ export const workflowSections: WorkflowSection[] = [
       },
     ],
   },
+
+
+  // ============================================================================
+  // MODULE: OFFICE MANAGEMENT (Expenses Added)
+  // ============================================================================
+  {
+    value: 'office_management',
+    icon: 'Briefcase',
+    title: 'Expense Management',
+    subtitle: 'Expenses, Advance',
+    gradient: 'from-amber-500 to-orange-600',
+    iconColor: 'text-amber-500',
+    bgGlow: 'bg-amber-500/10',
+    color: 'yellow',
+    purpose: 'To handle Vehicle Temporary advance, small office advance etc.',
+    workflows: [
+       {
+        title: '1. Managing Advances',
+        userSteps: [
+          'Navigate to `/dashboard/expenses`. The `Advances` tab is shown by default.',
+          'Click `New Advance` to open the form.',
+          'Enter a unique `Request / Reference No`, the total `Amount`, and the `Employee` it was issued to.',
+          'The system will now track this advance.',
+        ],
+        uiSteps: [
+          'Each advance is displayed as a card showing the total amount, amount spent, and remaining balance.',
+          'A progress bar visualizes the utilization percentage of each advance.',
+          'Clicking on an advance card will switch to the `Expense Log` tab, filtered to show only expenses linked to that advance.'
+        ],
+        techSteps: [
+          '**Hook:** `useAdvancesData` fetches from the `v_advances_complete` view.',
+          '**View:** The view performs a `LEFT JOIN` on `expenses` and uses `SUM()` to calculate `spent_amount` and `remaining_balance` in real-time.',
+          '**Permissions:** All authenticated users can create and manage advances.'
+        ]
+      },
+       {
+        title: '2. Logging Expenses',
+        userSteps: [
+          'Navigate to the `Expense Log` tab on the `/dashboard/expenses` page.',
+          'Click `New Expense`.',
+          '**Link to Advance:** Select the corresponding Advance `Request No` from the dropdown. This is a required step.',
+          'Fill in the `Date`, `Amount`, `Vendor`, and other details.',
+          '**Spent By:** This field is auto-filled based on the advance holder but can be overridden if a different employee made the specific payment.',
+          'Click `Submit` to log the expense.'
+        ],
+        uiSteps: [
+          'The expense appears in the data table.',
+          'The related advance card on the `Advances` tab will automatically update its `Spent` and `Balance` amounts.'
+        ],
+        techSteps: [
+          '**Hook:** `useExpensesData` fetches from the `v_expenses_complete` view.',
+          '**View:** The `v_expenses_complete` view joins with `advances` and `employees` to provide rich details like names and request numbers.',
+          '**Logic:** The form uses `useEffect` to auto-populate the `spent_by_employee_id` when the `advance_id` changes.'
+        ]
+      },
+      {
+        title: '3. Bulk Importing Expenses',
+        userSteps: [
+          "On the `Expense Log` tab, click the `Upload Excel` button.",
+          "Prepare an Excel file with columns like `REQ NO`, `DATE`, `AMOUNT`, `VENDOR`, `CATEGORY`, `USED BY` (Employee Name or Pers No).",
+          "Select the file. The system will process all rows.",
+        ],
+        uiSteps: [
+          "A summary modal appears showing the number of successful imports and any errors.",
+          "The expense log table updates with the newly imported records.",
+        ],
+        techSteps: [
+          '**Hook:** `useExpenseExcelUpload` parses the file and prepares the data.',
+          '**RPC:** `upsert_expense_record` is called for each row. It finds the `advance_id` from the `REQ NO` and resolves the employee ID from the `USED BY` name/number.',
+          '**Validation:** The upload will fail for a row if the specified `REQ NO` does not exist in the `advances` table.'
+        ]
+      }
+    ],
+  },
+
 
   // ============================================================================
   // MODULE 4: INVENTORY & ASSETS
@@ -681,7 +744,7 @@ export const workflowSections: WorkflowSection[] = [
       'To manage the granular details of a fiber route, including OTDR distances, splice losses, and end-to-end tracing.',
     workflows: [
       {
-        title: '1. Fiber Strand Management',
+        title: '1. Fiber Connection Management',
         userSteps: [
           'Navigate to `/dashboard/ofc` and click on a cable route.',
           'The table lists every fiber strand (1 to Capacity).',
