@@ -74,7 +74,7 @@ const parseExcelInt = (val: unknown, fieldName?: string): number => {
 
 export function useOfcConnectionsExcelUpload(
   supabase: SupabaseClient<Database>,
-  options?: UseExcelUploadOptions<'v_ofc_connections_complete'>,
+  options?: UseExcelUploadOptions<'v_ofc_connections_complete'>
 ) {
   const { showToasts = true, ...mutationOptions } = options || {};
   const queryClient = useQueryClient();
@@ -110,7 +110,7 @@ export function useOfcConnectionsExcelUpload(
       const dataRows = jsonData.slice(1);
 
       // --- 1. Fetch Reference Data ---
-
+      
       // A. Cables
       const cablesResp = await supabase.from('ofc_cables').select('id, route_name');
       const cableNameToId = new Map<string, string>();
@@ -132,7 +132,7 @@ export function useOfcConnectionsExcelUpload(
       const nodeNameToId = new Map<string, string>();
       if (nodesResp.data) {
         nodesResp.data.forEach((n) => {
-          if (n.name) nodeNameToId.set(n.name.trim().toLowerCase(), n.id);
+            if (n.name) nodeNameToId.set(n.name.trim().toLowerCase(), n.id);
         });
       }
 
@@ -190,7 +190,7 @@ export function useOfcConnectionsExcelUpload(
           });
         }
 
-        // Int Parsing (With updated date fix)
+        // Int Parsing
         const fiberSn = parseExcelInt(processedData.fiber_no_sn, 'fiber_no_sn');
 
         if (!fiberSn || fiberSn <= 0) {
@@ -206,34 +206,57 @@ export function useOfcConnectionsExcelUpload(
           ? parseExcelInt(processedData.fiber_no_en)
           : fiberSn;
 
-        // --- UPDATED NODE RESOLUTION LOGIC ---
+        // --- UPDATED NODE RESOLUTION LOGIC (STRICT) ---
         let updatedSnId = (processedData.updated_sn_id as string) || null;
         let updatedEnId = (processedData.updated_en_id as string) || null;
 
-        // Resolve via Name if ID is missing (common in Excel exports)
-        // Note: processedData will contain keys from the `v_ofc_connections_complete` view if mapped in `buildUploadConfig`
-        // We check for "End A Node" / "End B Node" which map to `updated_sn_name` / `updated_en_name` titles in config
-
-        // We attempt to read from `updated_sn_name` if it exists in processedData (mapped)
+        // Resolve End A (Start)
         if (!updatedSnId && processedData.updated_sn_name) {
-          const key = String(processedData.updated_sn_name).trim().toLowerCase();
-          updatedSnId = nodeNameToId.get(key) || null;
+             const name = String(processedData.updated_sn_name).trim();
+             const key = name.toLowerCase();
+             const found = nodeNameToId.get(key);
+             
+             if (found) {
+                 updatedSnId = found;
+             } else {
+                 // STRICT CHECK: Name provided but not found -> Error
+                 rowValidationErrors.push({
+                     rowIndex: i,
+                     column: 'updated_sn_name',
+                     value: name,
+                     error: `Node '${name}' not found. Cannot set End A.`
+                 });
+             }
         }
+
+        // Resolve End B (End)
         if (!updatedEnId && processedData.updated_en_name) {
-          const key = String(processedData.updated_en_name).trim().toLowerCase();
-          updatedEnId = nodeNameToId.get(key) || null;
+             const name = String(processedData.updated_en_name).trim();
+             const key = name.toLowerCase();
+             const found = nodeNameToId.get(key);
+
+             if (found) {
+                 updatedEnId = found;
+             } else {
+                 // STRICT CHECK: Name provided but not found -> Error
+                 rowValidationErrors.push({
+                     rowIndex: i,
+                     column: 'updated_en_name',
+                     value: name,
+                     error: `Node '${name}' not found. Cannot set End B.`
+                 });
+             }
         }
 
         // Logical Fiber Numbers
         const updatedFiberSn = processedData.updated_fiber_no_sn
           ? parseExcelInt(processedData.updated_fiber_no_sn)
           : fiberSn; // Fallback to physical if not specified
-
+          
         const updatedFiberEn = processedData.updated_fiber_no_en
           ? parseExcelInt(processedData.updated_fiber_no_en)
           : fiberEn; // Fallback to physical
 
-        // Only parse segment order if present
         const pathSegmentOrder = processedData.path_segment_order
           ? parseExcelInt(processedData.path_segment_order)
           : null;
@@ -252,8 +275,7 @@ export function useOfcConnectionsExcelUpload(
           ofc_id: cableId,
           fiber_no_sn: fiberSn,
           fiber_no_en: fiberEn,
-
-          // Use resolved logical values
+          
           updated_fiber_no_sn: updatedFiberSn,
           updated_fiber_no_en: updatedFiberEn,
           updated_sn_id: updatedSnId,
@@ -290,7 +312,7 @@ export function useOfcConnectionsExcelUpload(
         recordsToUpdate.push(record);
       }
 
-      // --- Step 2 & 3: Fetch Existing UUIDs & Merge (Conflict Resolution on ID) ---
+      // --- Step 2 & 3: Fetch Existing UUIDs & Merge ---
       if (recordsToUpdate.length > 0) {
         const uniqueCableIds = Array.from(new Set(recordsToUpdate.map((r) => r.ofc_id)));
 
@@ -306,21 +328,16 @@ export function useOfcConnectionsExcelUpload(
           throw new Error('Failed to validate existing records');
         }
 
-        // Create lookup map: "cableId_fiberSn" -> "uuid"
         const fiberIdMap = new Map<string, string>();
         existingFibers?.forEach((f) => {
           fiberIdMap.set(`${f.ofc_id}_${f.fiber_no_sn}`, f.id);
         });
 
-        // Attach UUIDs to payload. If ID exists, it's an UPDATE.
         recordsToUpdate.forEach((rec) => {
           const key = `${rec.ofc_id}_${rec.fiber_no_sn}`;
           const existingId = fiberIdMap.get(key);
           if (existingId) {
             rec.id = existingId;
-            // Note: We don't overwrite with nulls for logic values if they were missing in Excel,
-            // but here we constructed a full payload. If 'updated_sn_id' is null in payload, it WILL clear db.
-            // This assumes the Excel sheet represents the Desired State.
           }
         });
       }
@@ -336,10 +353,10 @@ export function useOfcConnectionsExcelUpload(
 
         if (updates.length > 0) {
           const { error: updateError } = await supabase
-            .from('ofc_connections')
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('ofc_connections')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .upsert(updates as any, {
-              onConflict: 'id',
+              onConflict: 'id', 
               ignoreDuplicates: false,
             });
           if (updateError) {
@@ -353,8 +370,8 @@ export function useOfcConnectionsExcelUpload(
 
         if (inserts.length > 0) {
           const { error: insertError } = await supabase
-            .from('ofc_connections')
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('ofc_connections')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .insert(inserts as any);
           if (insertError) {
             console.error('Insert Error:', insertError);
