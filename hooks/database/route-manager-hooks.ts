@@ -18,7 +18,6 @@ import {
 } from '@/schemas/custom-schemas';
 import { localDb } from '@/hooks/data/localDb';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 
 const supabase = createClient();
 
@@ -76,9 +75,9 @@ export function useRouteDetails(routeId: string | null) {
         try {
           // THE FIX: Add cache: 'no-store' to ensure we get fresh data after a mutation
           const res = await fetch(`/api/route/${routeId}`, {
-            cache: 'no-store',
+            cache: 'no-store'
           });
-
+          
           if (res.ok) {
             const data = await res.json();
             const parsed = routeDetailsPayloadSchema.safeParse(data);
@@ -127,8 +126,8 @@ export function useRouteDetails(routeId: string | null) {
           segmentsData.length > 1
             ? 'fully_segmented'
             : jointBoxes.length > 0
-              ? 'with_jcs'
-              : 'simple';
+            ? 'with_jcs'
+            : 'simple';
 
         return {
           route: {
@@ -139,7 +138,7 @@ export function useRouteDetails(routeId: string | null) {
           },
           jointBoxes,
           segments: segmentsData,
-          splices: [],
+          splices: [], 
         };
       } catch (err) {
         console.error('Local DB fetch failed for route details:', err);
@@ -187,7 +186,7 @@ export function useJcSplicingDetails(jcId: string | null) {
         // (start_node_id == jc.node_id OR end_node_id == jc.node_id)
         const allSegments = await localDb.cable_segments.toArray();
         const connectedSegments = allSegments.filter(
-          (s) => s.start_node_id === jc.node_id || s.end_node_id === jc.node_id,
+          (s) => s.start_node_id === jc.node_id || s.end_node_id === jc.node_id
         );
 
         // C. Fetch cables to get names
@@ -211,10 +210,10 @@ export function useJcSplicingDetails(jcId: string | null) {
           for (let i = 1; i <= seg.fiber_count; i++) {
             // Check if spliced
             const spliceAsIncoming = splices.find(
-              (s) => s.incoming_segment_id === seg.id && s.incoming_fiber_no === i,
+              (s) => s.incoming_segment_id === seg.id && s.incoming_fiber_no === i
             );
             const spliceAsOutgoing = splices.find(
-              (s) => s.outgoing_segment_id === seg.id && s.outgoing_fiber_no === i,
+              (s) => s.outgoing_segment_id === seg.id && s.outgoing_fiber_no === i
             );
 
             let status = 'available';
@@ -227,7 +226,7 @@ export function useJcSplicingDetails(jcId: string | null) {
               status = 'used_as_incoming';
               spliceId = spliceAsIncoming.id;
               const otherSeg = allSegments.find(
-                (s) => s.id === spliceAsIncoming.outgoing_segment_id,
+                (s) => s.id === spliceAsIncoming.outgoing_segment_id
               );
               const otherCable = otherSeg ? cableMap.get(otherSeg.original_cable_id) : null;
               connectedToSeg = otherCable
@@ -239,7 +238,7 @@ export function useJcSplicingDetails(jcId: string | null) {
               status = 'used_as_outgoing';
               spliceId = spliceAsOutgoing.id;
               const otherSeg = allSegments.find(
-                (s) => s.id === spliceAsOutgoing.incoming_segment_id,
+                (s) => s.id === spliceAsOutgoing.incoming_segment_id
               );
               const otherCable = otherSeg ? cableMap.get(otherSeg.original_cable_id) : null;
               connectedToSeg = otherCable
@@ -307,7 +306,7 @@ export function useManageSplice() {
       // ID conflicts and cascade path calculations.
       if (!isOnline) {
         throw new Error(
-          'Splicing operations require an online connection to ensure network integrity.',
+          'Splicing operations require an online connection to ensure network integrity.'
         );
       }
 
@@ -355,9 +354,9 @@ export function useSyncPathFromTrace() {
   });
 }
 
-/**
+/** 
  * NEW: Reverse Fiber Logical Path
- * Swaps logical endpoints to correct direction errors.
+ * Swaps logical endpoints to correct direction errors. 
  */
 export function useReverseFiberPath() {
   const queryClient = useQueryClient();
@@ -367,37 +366,55 @@ export function useReverseFiberPath() {
   return useMutation({
     mutationFn: async (connectionId: string) => {
       if (!isOnline) throw new Error('Reversing path requires an online connection.');
-
-      // 1. Fetch latest record from DB (source of truth)
+      
+      // 1. Fetch latest record from DB with JOIN to get physical nodes
+      // THE FIX: We select from 'ofc_connections' but also join 'ofc_cables' to access sn_id/en_id
       const { data: connection, error: fetchError } = await supabase
         .from('ofc_connections')
-        .select(
-          'id, sn_id, en_id, fiber_no_sn, fiber_no_en, updated_sn_id, updated_en_id, updated_fiber_no_sn, updated_fiber_no_en',
-        )
+        .select(`
+          id, 
+          fiber_no_sn, 
+          fiber_no_en, 
+          updated_sn_id, 
+          updated_en_id, 
+          updated_fiber_no_sn, 
+          updated_fiber_no_en,
+          ofc_cables (
+            sn_id,
+            en_id
+          )
+        `)
         .eq('id', connectionId)
         .single();
 
       if (fetchError || !connection) {
-        throw new Error('Failed to fetch latest connection data.');
+          throw new Error('Failed to fetch latest connection data: ' + (fetchError?.message || 'Unknown error'));
       }
 
-      // 2. Calculate swapped values
-      const currentSnId = connection.updated_sn_id || connection.sn_id;
-      const currentEnId = connection.updated_en_id || connection.en_id;
+      // 2. Resolve Physical Nodes
+      // connection.ofc_cables is an object here
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cable = connection.ofc_cables as any;
+      const physicalSnId = cable?.sn_id;
+      const physicalEnId = cable?.en_id;
+
+      // 3. Calculate swapped values
+      const currentSnId = connection.updated_sn_id || physicalSnId;
+      const currentEnId = connection.updated_en_id || physicalEnId;
       const currentFiberSn = connection.updated_fiber_no_sn || connection.fiber_no_sn;
       const currentFiberEn = connection.updated_fiber_no_en || connection.fiber_no_en;
 
       if (!currentSnId || !currentEnId || !currentFiberSn || !currentFiberEn) {
-        throw new Error('Cannot swap: Missing node IDs or fiber numbers.');
+          throw new Error('Cannot swap: Missing node IDs or fiber numbers.');
       }
 
-      // 3. Call RPC with SWAPPED values
+      // 4. Call RPC with SWAPPED values
       const payload: PathToUpdate = {
         p_id: connection.id,
         p_start_node_id: currentEnId, // Swapped
-        p_end_node_id: currentSnId, // Swapped
+        p_end_node_id: currentSnId,   // Swapped
         p_start_fiber_no: currentFiberEn, // Swapped
-        p_end_fiber_no: currentFiberSn, // Swapped
+        p_end_fiber_no: currentFiberSn,   // Swapped
       };
 
       const { error } = await supabase.rpc('apply_logical_path_update', payload);
@@ -408,11 +425,12 @@ export function useReverseFiberPath() {
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['rpc-record'] }); // Invalidate single record fetch
-      queryClient.invalidateQueries({ queryKey: ['fiber-trace'] });
+      queryClient.invalidateQueries({ queryKey: ['fiber-trace'] }); 
     },
     onError: (err: Error) => toast.error(`Reverse failed: ${err.message}`),
   });
 }
+
 
 /** Auto Splice. Requires Online. */
 export function useAutoSplice() {

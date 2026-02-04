@@ -288,7 +288,6 @@ export default function InventoryPage() {
                   onClick={() => handleOpenIssueModal(item)}
                   disabled={quantity <= 0}
                   title='Issue Stock'
-                  className='cursor-pointer'
                 >
                   <FiMinusCircle className='w-4 h-4' />
                 </Button>
@@ -298,7 +297,6 @@ export default function InventoryPage() {
                 variant='secondary'
                 onClick={() => handleOpenHistory(item)}
                 title='View History'
-                className='cursor-pointer'
               >
                 <FiClock className='w-4 h-4' />
               </Button>
@@ -307,7 +305,6 @@ export default function InventoryPage() {
                 variant='secondary'
                 onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)}
                 title='QR Code'
-                className='cursor-pointer'
               >
                 <FaQrcode className='w-4 h-4' />
               </Button>

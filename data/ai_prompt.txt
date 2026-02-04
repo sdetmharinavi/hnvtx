@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we need to filter according to Maintenance Terminal for dashboard/systems page. Also while downloading excel from ofc/id and editing and uploading is not updating the updated start and end nodes correctly instead it seems it is being replaced by original start and end nodes instead of updated. Also, in fiber trace, I want a reverse nodes button, on clicking that, updated_sn_id will be saved by updated_en_id and vice versa as well as updated_fiber_no_sn will be saved by updated_fiber_no_en and vice versa.
+Let's begin! First of all we need to fix excel upload for ofc/id. lets simplyfy it and upsert to ofc_connections table in simple way. updated nodes id can be taken from nodes table comparing updated nodes name.

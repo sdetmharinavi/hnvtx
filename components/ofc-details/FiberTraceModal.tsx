@@ -74,6 +74,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     isLoading: isTraceLoading,
     isError,
     error,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     refetch: refetchTrace,
   } = useFiberTrace(traceParams.segmentId, traceParams.fiberNo);
 
@@ -88,9 +89,10 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
         refetch();
         // The useRpcRecord hook will automatically refetch due to query invalidation in hook
         // traceParams will update -> useFiberTrace will update
+        onClose();
       },
     });
-  }, [record?.id, reverseMutation, refetch]);
+  }, [record?.id, reverseMutation, refetch, onClose]);
 
   const handleSyncPath = useCallback(async () => {
     if (!traceData || traceData.length === 0 || !record?.id) {
@@ -227,7 +229,8 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Trace Fiber #${traceParams.fiberNo} on ${cableName || 'Route'}`}
-      size='full'>
+      size='full'
+    >
       <div className='flex flex-col h-full max-h-[85vh]'>
         {/* Toolbar */}
         <div className='flex flex-col md:flex-row justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 gap-3'>
@@ -237,7 +240,8 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
             </span>
             <button
               onClick={() => setIsForwardDirection(!isForwardDirection)}
-              className='flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'>
+              className='flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'
+            >
               <ArrowLeftRight className='w-4 h-4' />
               {isForwardDirection ? 'Start (A) → End (B)' : 'End (B) → Start (A)'}
             </button>
@@ -253,7 +257,8 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
                 disabled={reverseMutation.isPending || isLoading}
                 leftIcon={
                   <RotateCw className={reverseMutation.isPending ? 'animate-spin' : ''} size={16} />
-                }>
+                }
+              >
                 Swap Logical Ends
               </Button>
             )}
