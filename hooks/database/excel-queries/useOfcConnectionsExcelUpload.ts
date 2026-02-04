@@ -128,7 +128,6 @@ export function useOfcConnectionsExcelUpload(
       }
 
       // C. Nodes (CRITICAL FIX for Logical Node Resolution)
-      // We must fetch nodes to resolve 'End A Node' (updated_sn_name) -> 'updated_sn_id'
       const nodesResp = await supabase.from('nodes').select('id, name');
       const nodeNameToId = new Map<string, string>();
       if (nodesResp.data) {
@@ -208,13 +207,14 @@ export function useOfcConnectionsExcelUpload(
           : fiberSn;
 
         // --- UPDATED NODE RESOLUTION LOGIC ---
-        // Look for "updated_sn_name" (End A Node) and "updated_en_name" (End B Node) in processed data
-        // These keys map to what 'OfcDetailsTableColumns.tsx' exports as titles
-
         let updatedSnId = (processedData.updated_sn_id as string) || null;
         let updatedEnId = (processedData.updated_en_id as string) || null;
 
-        // If not provided as ID, try to resolve via Name if present
+        // Resolve via Name if ID is missing (common in Excel exports)
+        // Note: processedData will contain keys from the `v_ofc_connections_complete` view if mapped in `buildUploadConfig`
+        // We check for "End A Node" / "End B Node" which map to `updated_sn_name` / `updated_en_name` titles in config
+
+        // We attempt to read from `updated_sn_name` if it exists in processedData (mapped)
         if (!updatedSnId && processedData.updated_sn_name) {
           const key = String(processedData.updated_sn_name).trim().toLowerCase();
           updatedSnId = nodeNameToId.get(key) || null;
@@ -223,14 +223,6 @@ export function useOfcConnectionsExcelUpload(
           const key = String(processedData.updated_en_name).trim().toLowerCase();
           updatedEnId = nodeNameToId.get(key) || null;
         }
-
-        // Only default to physical if user didn't specify logical explicitly in Excel
-        // But if they provided a name that wasn't found, should we error?
-        // For bulk robustness, we usually keep null or fallback.
-        // NOTE: The backend/trigger creates initial connections. If we are updating, we want to respect user input.
-        // If user input for logical node is blank, we leave it as is (so don't overwrite with null if existing had data?
-        // Upsert overwrites. So if it's blank in Excel, we might overwrite existing logical data with NULL.
-        // However, if `updated_fiber_no` logic below defaults to physical, we should probably be careful.
 
         // Logical Fiber Numbers
         const updatedFiberSn = processedData.updated_fiber_no_sn
@@ -326,18 +318,16 @@ export function useOfcConnectionsExcelUpload(
           const existingId = fiberIdMap.get(key);
           if (existingId) {
             rec.id = existingId;
-
-            // OPTIONAL: If we want to be very safe and NOT overwrite updated_sn_id with null if the user didn't provide it
-            // we would need to check the existing record. But bulk upload semantics usually imply "set state to X".
-            // Since we default to null in parsing if not found, we effectively clear it if column is missing/empty.
-            // This is standard behavior for upserts.
+            // Note: We don't overwrite with nulls for logic values if they were missing in Excel,
+            // but here we constructed a full payload. If 'updated_sn_id' is null in payload, it WILL clear db.
+            // This assumes the Excel sheet represents the Desired State.
           }
         });
       }
 
       uploadResult.totalRows = recordsToUpdate.length;
 
-      // --- Step 4: Execute Upsert using ID conflict ---
+      // --- Step 4: Execute Upsert ---
       if (recordsToUpdate.length > 0) {
         if (showToasts) toast.info(`Committing changes...`);
 

@@ -11,13 +11,16 @@ import {
 } from '@/schemas/zod-schemas';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useSyncPathFromTrace, useReverseFiberPath } from '@/hooks/database/route-manager-hooks'; // ADDED useReverseFiberPath
-import { ArrowLeftRight, RotateCw, RefreshCw } from 'lucide-react'; // ADDED Icons
+import { useSyncPathFromTrace, useReverseFiberPath } from '@/hooks/database/route-manager-hooks';
+import { ArrowLeftRight, RotateCw } from 'lucide-react';
+import { useRpcRecord } from '@/hooks/database'; // Import useRpcRecord
+import { createClient } from '@/utils/supabase/client';
 
 interface FiberTraceModalProps {
   isOpen: boolean;
   onClose: () => void;
   segments: Cable_segmentsRowSchema[] | undefined;
+  // These props might be stale, prefer fetching live data
   fiberNoSn: number | null;
   fiberNoEn: number | null;
   allCables: OfcForSelection[] | undefined;
@@ -30,53 +33,64 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
   isOpen,
   onClose,
   segments,
-  fiberNoSn,
-  fiberNoEn,
   record,
   refetch,
   cableName,
 }) => {
-  // Default to Forward (Start A -> End B)
+  const supabase = createClient();
   const [isForwardDirection, setIsForwardDirection] = useState(true);
 
-  // 1. Determine Start parameters for the query
+  // 1. Fetch Live Connection Data to avoid stale state issues
+  const { data: liveRecord, isLoading: isRecordLoading } = useRpcRecord(
+    supabase,
+    'v_ofc_connections_complete',
+    record?.id || null,
+    { enabled: isOpen && !!record?.id },
+  );
+
+  // Use live data if available, fallback to props (which might be stale but immediate)
+  const currentFiberSn =
+    liveRecord?.updated_fiber_no_sn || liveRecord?.fiber_no_sn || record?.fiber_no_sn || null;
+  const currentFiberEn =
+    liveRecord?.updated_fiber_no_en || liveRecord?.fiber_no_en || record?.fiber_no_en || null;
+
+  // 2. Determine Start parameters
   const traceParams = useMemo(() => {
     if (!segments || segments.length === 0) return { segmentId: null, fiberNo: null };
     const sortedSegments = [...segments].sort((a, b) => a.segment_order - b.segment_order);
 
     if (isForwardDirection) {
-      // Start from the first segment
-      return { segmentId: sortedSegments[0].id, fiberNo: fiberNoSn };
+      // Start from the first segment using Start Node Fiber
+      return { segmentId: sortedSegments[0].id, fiberNo: currentFiberSn };
     } else {
-      // Start from the last segment
-      return { segmentId: sortedSegments[sortedSegments.length - 1].id, fiberNo: fiberNoEn };
+      // Start from the last segment using End Node Fiber
+      return { segmentId: sortedSegments[sortedSegments.length - 1].id, fiberNo: currentFiberEn };
     }
-  }, [segments, isForwardDirection, fiberNoSn, fiberNoEn]);
+  }, [segments, isForwardDirection, currentFiberSn, currentFiberEn]);
 
-  // 2. Fetch Trace Data
+  // 3. Fetch Trace Data
   const {
     data: traceData,
-    isLoading,
+    isLoading: isTraceLoading,
     isError,
     error,
-    refetch: refetchTrace, // ADDED
+    refetch: refetchTrace,
   } = useFiberTrace(traceParams.segmentId, traceParams.fiberNo);
 
   const syncPathMutation = useSyncPathFromTrace();
-  const reverseMutation = useReverseFiberPath(); // ADDED
-
-  // Helper to check if two nodes match
-  const isSameNode = (id1: string | null, id2: string | null) => id1 && id2 && id1 === id2;
+  const reverseMutation = useReverseFiberPath();
 
   const handleReversePath = useCallback(() => {
-    if (!record) return;
-    reverseMutation.mutate(record, {
+    if (!record?.id) return;
+    reverseMutation.mutate(record.id, {
       onSuccess: () => {
-        refetchTrace(); // Reload trace to show new direction logic
-        refetch(); // Reload parent table
+        // Refetch parent list
+        refetch();
+        // The useRpcRecord hook will automatically refetch due to query invalidation in hook
+        // traceParams will update -> useFiberTrace will update
       },
     });
-  }, [record, reverseMutation, refetchTrace, refetch]);
+  }, [record?.id, reverseMutation, refetch]);
 
   const handleSyncPath = useCallback(async () => {
     if (!traceData || traceData.length === 0 || !record?.id) {
@@ -99,6 +113,9 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     let pathEndNodeId: string | null = null;
     let startFiber = 0;
     let endFiber = 0;
+
+    // Helper
+    const isSameNode = (id1: string | null, id2: string | null) => id1 && id2 && id1 === id2;
 
     // --- LOGIC TO DETERMINE TRUE START/END INDEPENDENT OF CABLE ORIENTATION ---
 
@@ -154,9 +171,6 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     }
 
     // --- DIRECTION SWAP ---
-    // The logic above finds the topological "Left" and "Right" ends of the chain.
-    // If the user wants Reverse (Right -> Left), we swap them.
-
     if (!isForwardDirection) {
       const tempNode = pathStartNodeId;
       pathStartNodeId = pathEndNodeId;
@@ -173,7 +187,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     }
 
     const payload: PathToUpdate = {
-      p_id: record.id,
+      p_id: record.id!,
       p_start_node_id: pathStartNodeId,
       p_start_fiber_no: startFiber,
       p_end_node_id: pathEndNodeId,
@@ -182,11 +196,14 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
 
     syncPathMutation.mutate(payload, {
       onSuccess: () => {
-        refetch();
+        refetch(); // Parent list
+        // refetchTrace(); // No need, trace depends on params which won't change
         onClose();
       },
     });
   }, [traceData, record, syncPathMutation, refetch, onClose, isForwardDirection]);
+
+  const isLoading = isTraceLoading || isRecordLoading;
 
   const renderContent = () => {
     if (isLoading) return <PageSpinner text='Tracing fiber path...' />;
@@ -194,7 +211,6 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     if (!traceData || traceData.length === 0)
       return <div className='p-4 text-gray-500'>Path could not be traced.</div>;
 
-    // VISUALIZATION ONLY: Reverse the display list if requested by user
     const displayData = isForwardDirection ? traceData : [...traceData].reverse();
 
     return (
@@ -234,7 +250,7 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
                 variant='outline'
                 size='sm'
                 onClick={handleReversePath}
-                disabled={reverseMutation.isPending}
+                disabled={reverseMutation.isPending || isLoading}
                 leftIcon={
                   <RotateCw className={reverseMutation.isPending ? 'animate-spin' : ''} size={16} />
                 }>

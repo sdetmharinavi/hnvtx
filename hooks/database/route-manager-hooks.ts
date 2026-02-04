@@ -362,14 +362,26 @@ export function useSyncPathFromTrace() {
 export function useReverseFiberPath() {
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
+  const supabase = createClient(); // Ensure supabase client is available
 
   return useMutation({
-    mutationFn: async (connection: V_ofc_connections_completeRowSchema) => {
+    mutationFn: async (connectionId: string) => {
       if (!isOnline) throw new Error('Reversing path requires an online connection.');
-      if (!connection.id) throw new Error('Invalid connection record.');
 
-      // Calculate swapped values based on current state
-      // Use physical fallback if logical is missing
+      // 1. Fetch latest record from DB (source of truth)
+      const { data: connection, error: fetchError } = await supabase
+        .from('ofc_connections')
+        .select(
+          'id, sn_id, en_id, fiber_no_sn, fiber_no_en, updated_sn_id, updated_en_id, updated_fiber_no_sn, updated_fiber_no_en',
+        )
+        .eq('id', connectionId)
+        .single();
+
+      if (fetchError || !connection) {
+        throw new Error('Failed to fetch latest connection data.');
+      }
+
+      // 2. Calculate swapped values
       const currentSnId = connection.updated_sn_id || connection.sn_id;
       const currentEnId = connection.updated_en_id || connection.en_id;
       const currentFiberSn = connection.updated_fiber_no_sn || connection.fiber_no_sn;
@@ -379,7 +391,7 @@ export function useReverseFiberPath() {
         throw new Error('Cannot swap: Missing node IDs or fiber numbers.');
       }
 
-      // Call RPC with SWAPPED values
+      // 3. Call RPC with SWAPPED values
       const payload: PathToUpdate = {
         p_id: connection.id,
         p_start_node_id: currentEnId, // Swapped
@@ -395,7 +407,8 @@ export function useReverseFiberPath() {
       toast.success('Path direction reversed successfully!');
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
-      queryClient.invalidateQueries({ queryKey: ['fiber-trace'] }); // Also refresh trace if open
+      queryClient.invalidateQueries({ queryKey: ['rpc-record'] }); // Invalidate single record fetch
+      queryClient.invalidateQueries({ queryKey: ['fiber-trace'] });
     },
     onError: (err: Error) => toast.error(`Reverse failed: ${err.message}`),
   });
