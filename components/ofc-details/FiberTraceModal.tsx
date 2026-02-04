@@ -177,10 +177,10 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
   }, [traceData, record, syncPathMutation, refetch, onClose, isForwardDirection]);
 
   const renderContent = () => {
-    if (isLoading) return <PageSpinner text="Tracing fiber path..." />;
-    if (isError) return <div className="p-4 text-red-500">Error tracing path: {error.message}</div>;
+    if (isLoading) return <PageSpinner text='Tracing fiber path...' />;
+    if (isError) return <div className='p-4 text-red-500'>Error tracing path: {error.message}</div>;
     if (!traceData || traceData.length === 0)
-      return <div className="p-4 text-gray-500">Path could not be traced.</div>;
+      return <div className='p-4 text-gray-500'>Path could not be traced.</div>;
 
     // VISUALIZATION ONLY: Reverse the display list if requested by user
     const displayData = isForwardDirection ? traceData : [...traceData].reverse();
@@ -199,30 +199,28 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Trace Fiber #${traceParams.fiberNo} on ${cableName || 'Route'}`}
-      size="full"
-    >
-      <div className="flex flex-col h-full max-h-[85vh]">
+      size='full'>
+      <div className='flex flex-col h-full max-h-[85vh]'>
         {/* Toolbar */}
-        <div className="flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className='flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
+          <div className='flex items-center gap-2'>
+            <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
               Trace Direction:
             </span>
             <button
               onClick={() => setIsForwardDirection(!isForwardDirection)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-            >
-              <ArrowLeftRight className="w-4 h-4" />
+              className='flex items-center gap-2 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors'>
+              <ArrowLeftRight className='w-4 h-4' />
               {isForwardDirection ? 'Start (A) → End (B)' : 'End (B) → Start (A)'}
             </button>
           </div>
 
-          <div className="text-xs text-gray-500">
+          <div className='text-xs text-gray-500'>
             Starting from: <strong>{isForwardDirection ? 'First Segment' : 'Last Segment'}</strong>
           </div>
         </div>
 
-        <div className="overflow-y-auto py-4 flex-1">{renderContent()}</div>
+        <div className='overflow-y-auto py-4 flex-1'>{renderContent()}</div>
       </div>
     </Modal>
   );

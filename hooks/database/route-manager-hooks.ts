@@ -75,9 +75,9 @@ export function useRouteDetails(routeId: string | null) {
         try {
           // THE FIX: Add cache: 'no-store' to ensure we get fresh data after a mutation
           const res = await fetch(`/api/route/${routeId}`, {
-            cache: 'no-store'
+            cache: 'no-store',
           });
-          
+
           if (res.ok) {
             const data = await res.json();
             const parsed = routeDetailsPayloadSchema.safeParse(data);
@@ -126,8 +126,8 @@ export function useRouteDetails(routeId: string | null) {
           segmentsData.length > 1
             ? 'fully_segmented'
             : jointBoxes.length > 0
-            ? 'with_jcs'
-            : 'simple';
+              ? 'with_jcs'
+              : 'simple';
 
         return {
           route: {
@@ -138,7 +138,7 @@ export function useRouteDetails(routeId: string | null) {
           },
           jointBoxes,
           segments: segmentsData,
-          splices: [], 
+          splices: [],
         };
       } catch (err) {
         console.error('Local DB fetch failed for route details:', err);
@@ -186,7 +186,7 @@ export function useJcSplicingDetails(jcId: string | null) {
         // (start_node_id == jc.node_id OR end_node_id == jc.node_id)
         const allSegments = await localDb.cable_segments.toArray();
         const connectedSegments = allSegments.filter(
-          (s) => s.start_node_id === jc.node_id || s.end_node_id === jc.node_id
+          (s) => s.start_node_id === jc.node_id || s.end_node_id === jc.node_id,
         );
 
         // C. Fetch cables to get names
@@ -210,10 +210,10 @@ export function useJcSplicingDetails(jcId: string | null) {
           for (let i = 1; i <= seg.fiber_count; i++) {
             // Check if spliced
             const spliceAsIncoming = splices.find(
-              (s) => s.incoming_segment_id === seg.id && s.incoming_fiber_no === i
+              (s) => s.incoming_segment_id === seg.id && s.incoming_fiber_no === i,
             );
             const spliceAsOutgoing = splices.find(
-              (s) => s.outgoing_segment_id === seg.id && s.outgoing_fiber_no === i
+              (s) => s.outgoing_segment_id === seg.id && s.outgoing_fiber_no === i,
             );
 
             let status = 'available';
@@ -226,7 +226,7 @@ export function useJcSplicingDetails(jcId: string | null) {
               status = 'used_as_incoming';
               spliceId = spliceAsIncoming.id;
               const otherSeg = allSegments.find(
-                (s) => s.id === spliceAsIncoming.outgoing_segment_id
+                (s) => s.id === spliceAsIncoming.outgoing_segment_id,
               );
               const otherCable = otherSeg ? cableMap.get(otherSeg.original_cable_id) : null;
               connectedToSeg = otherCable
@@ -238,7 +238,7 @@ export function useJcSplicingDetails(jcId: string | null) {
               status = 'used_as_outgoing';
               spliceId = spliceAsOutgoing.id;
               const otherSeg = allSegments.find(
-                (s) => s.id === spliceAsOutgoing.incoming_segment_id
+                (s) => s.id === spliceAsOutgoing.incoming_segment_id,
               );
               const otherCable = otherSeg ? cableMap.get(otherSeg.original_cable_id) : null;
               connectedToSeg = otherCable
@@ -306,7 +306,7 @@ export function useManageSplice() {
       // ID conflicts and cascade path calculations.
       if (!isOnline) {
         throw new Error(
-          'Splicing operations require an online connection to ensure network integrity.'
+          'Splicing operations require an online connection to ensure network integrity.',
         );
       }
 

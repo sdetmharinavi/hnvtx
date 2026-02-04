@@ -75,7 +75,7 @@ const parseExcelInt = (val: unknown, fieldName?: string): number => {
 
 export function useOfcConnectionsExcelUpload(
   supabase: SupabaseClient<Database>,
-  options?: UseExcelUploadOptions<'v_ofc_connections_complete'>
+  options?: UseExcelUploadOptions<'v_ofc_connections_complete'>,
 ) {
   const { showToasts = true, ...mutationOptions } = options || {};
   const queryClient = useQueryClient();
@@ -303,8 +303,8 @@ export function useOfcConnectionsExcelUpload(
         // 4a. Perform Updates
         if (updates.length > 0) {
           const { error: updateError } = await supabase
-          .from('ofc_connections')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from('ofc_connections')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .upsert(updates as any, {
               onConflict: 'id', // Safe conflict target
               ignoreDuplicates: false,
@@ -324,8 +324,8 @@ export function useOfcConnectionsExcelUpload(
         // Ideally you should add the constraint to the DB.
         if (inserts.length > 0) {
           const { error: insertError } = await supabase
-          .from('ofc_connections')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .from('ofc_connections')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .insert(inserts as any);
           if (insertError) {
             console.error('Insert Error:', insertError);
