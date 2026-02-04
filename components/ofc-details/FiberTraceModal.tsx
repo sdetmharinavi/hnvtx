@@ -1,7 +1,7 @@
 // components/ofc-details/FiberTraceModal.tsx
 'use client';
 
-import { Modal, PageSpinner } from '@/components/common/ui';
+import { Modal, PageSpinner, Button } from '@/components/common/ui'; // ADDED Button
 import { useFiberTrace } from '@/hooks/database/path-queries';
 import { FiberTraceVisualizer } from './FiberTraceVisualizer';
 import { OfcForSelection, PathToUpdate } from '@/schemas/custom-schemas';
@@ -11,8 +11,8 @@ import {
 } from '@/schemas/zod-schemas';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useSyncPathFromTrace } from '@/hooks/database/route-manager-hooks';
-import { ArrowLeftRight } from 'lucide-react';
+import { useSyncPathFromTrace, useReverseFiberPath } from '@/hooks/database/route-manager-hooks'; // ADDED useReverseFiberPath
+import { ArrowLeftRight, RotateCw, RefreshCw } from 'lucide-react'; // ADDED Icons
 
 interface FiberTraceModalProps {
   isOpen: boolean;
@@ -59,12 +59,24 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
     isLoading,
     isError,
     error,
+    refetch: refetchTrace, // ADDED
   } = useFiberTrace(traceParams.segmentId, traceParams.fiberNo);
 
   const syncPathMutation = useSyncPathFromTrace();
+  const reverseMutation = useReverseFiberPath(); // ADDED
 
   // Helper to check if two nodes match
   const isSameNode = (id1: string | null, id2: string | null) => id1 && id2 && id1 === id2;
+
+  const handleReversePath = useCallback(() => {
+    if (!record) return;
+    reverseMutation.mutate(record, {
+      onSuccess: () => {
+        refetchTrace(); // Reload trace to show new direction logic
+        refetch(); // Reload parent table
+      },
+    });
+  }, [record, reverseMutation, refetchTrace, refetch]);
 
   const handleSyncPath = useCallback(async () => {
     if (!traceData || traceData.length === 0 || !record?.id) {
@@ -202,10 +214,10 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
       size='full'>
       <div className='flex flex-col h-full max-h-[85vh]'>
         {/* Toolbar */}
-        <div className='flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
+        <div className='flex flex-col md:flex-row justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 gap-3'>
           <div className='flex items-center gap-2'>
             <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              Trace Direction:
+              View Direction:
             </span>
             <button
               onClick={() => setIsForwardDirection(!isForwardDirection)}
@@ -215,8 +227,23 @@ export const FiberTraceModal: React.FC<FiberTraceModalProps> = ({
             </button>
           </div>
 
-          <div className='text-xs text-gray-500'>
-            Starting from: <strong>{isForwardDirection ? 'First Segment' : 'Last Segment'}</strong>
+          {/* Action Buttons */}
+          <div className='flex items-center gap-2'>
+            {record && (
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={handleReversePath}
+                disabled={reverseMutation.isPending}
+                leftIcon={
+                  <RotateCw className={reverseMutation.isPending ? 'animate-spin' : ''} size={16} />
+                }>
+                Swap Logical Ends
+              </Button>
+            )}
+            <div className='text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded'>
+              Trace from: <strong>{isForwardDirection ? 'First Segment' : 'Last Segment'}</strong>
+            </div>
           </div>
         </div>
 

@@ -18,6 +18,7 @@ import {
 } from '@/schemas/custom-schemas';
 import { localDb } from '@/hooks/data/localDb';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
 
 const supabase = createClient();
 
@@ -348,8 +349,55 @@ export function useSyncPathFromTrace() {
     onSuccess: () => {
       toast.success('Path data synced!');
       queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
     },
     onError: (err: Error) => toast.error(`Sync failed: ${err.message}`),
+  });
+}
+
+/**
+ * NEW: Reverse Fiber Logical Path
+ * Swaps logical endpoints to correct direction errors.
+ */
+export function useReverseFiberPath() {
+  const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+
+  return useMutation({
+    mutationFn: async (connection: V_ofc_connections_completeRowSchema) => {
+      if (!isOnline) throw new Error('Reversing path requires an online connection.');
+      if (!connection.id) throw new Error('Invalid connection record.');
+
+      // Calculate swapped values based on current state
+      // Use physical fallback if logical is missing
+      const currentSnId = connection.updated_sn_id || connection.sn_id;
+      const currentEnId = connection.updated_en_id || connection.en_id;
+      const currentFiberSn = connection.updated_fiber_no_sn || connection.fiber_no_sn;
+      const currentFiberEn = connection.updated_fiber_no_en || connection.fiber_no_en;
+
+      if (!currentSnId || !currentEnId || !currentFiberSn || !currentFiberEn) {
+        throw new Error('Cannot swap: Missing node IDs or fiber numbers.');
+      }
+
+      // Call RPC with SWAPPED values
+      const payload: PathToUpdate = {
+        p_id: connection.id,
+        p_start_node_id: currentEnId, // Swapped
+        p_end_node_id: currentSnId, // Swapped
+        p_start_fiber_no: currentFiberEn, // Swapped
+        p_end_fiber_no: currentFiberSn, // Swapped
+      };
+
+      const { error } = await supabase.rpc('apply_logical_path_update', payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Path direction reversed successfully!');
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections'] });
+      queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
+      queryClient.invalidateQueries({ queryKey: ['fiber-trace'] }); // Also refresh trace if open
+    },
+    onError: (err: Error) => toast.error(`Reverse failed: ${err.message}`),
   });
 }
 

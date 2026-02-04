@@ -39,6 +39,13 @@ export const useSystemsData = createGenericDataQuery<'v_systems_complete'>({
     )
       return false;
     
+    // THE FIX: Added maintenance_terminal_id check
+    if (
+      filters.maintenance_terminal_id &&
+      !matchFilter(s.maintenance_terminal_id, filters.maintenance_terminal_id)
+    )
+      return false;
+    
     if (filters.status) {
       const statusBool = filters.status === 'true';
       if (s.status !== statusBool) return false;

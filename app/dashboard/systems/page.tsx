@@ -1,4 +1,4 @@
-// app/dashboard/systems/page.tsx
+// path: app/dashboard/systems/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -46,7 +46,7 @@ import { formatDate, formatIP } from '@/utils/formatters';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
 import { UserRole } from '@/types/user-roles';
-import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
 import { ActionButton } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
 
@@ -133,6 +133,9 @@ export default function SystemsPage() {
     useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions, isLoading: loadingCaps } =
     useLookupTypeOptions('SYSTEM_CAPACITY');
+  
+  // NEW: Fetch Maintenance Areas for Filtering
+  const { options: maintenanceAreaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
 
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
@@ -149,6 +152,13 @@ export default function SystemsPage() {
         options: capacityOptions,
         isLoading: loadingCaps,
         placeholder: 'All Capacities',
+      },
+      {
+        key: 'maintenance_terminal_id', // Uses ID for filtering in DB
+        type: 'multi-select' as const,
+        options: maintenanceAreaOptions,
+        isLoading: loadingAreas,
+        placeholder: 'All Areas',
       },
       {
         key: 'status',
@@ -169,7 +179,7 @@ export default function SystemsPage() {
         placeholder: 'Sort By',
       },
     ],
-    [systemTypeOptions, capacityOptions, loadingTypes, loadingCaps],
+    [systemTypeOptions, capacityOptions, maintenanceAreaOptions, loadingTypes, loadingCaps, loadingAreas],
   );
 
   const handleFilterChange = useCallback(
@@ -401,7 +411,8 @@ export default function SystemsPage() {
             variant='secondary'
             onClick={() => handleManagePorts(sys)}
             title='Manage Ports'
-            className='font-medium'>
+            className='font-medium'
+          >
             <FiGrid className='w-4 h-4' />
             <span className='ml-1.5 hidden sm:inline'>Ports</span>
           </Button>
