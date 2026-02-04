@@ -235,7 +235,6 @@ export const workflowSections: WorkflowSection[] = [
     ],
   },
 
-
   // ============================================================================
   // MODULE: OFFICE MANAGEMENT (Expenses Added)
   // ============================================================================
@@ -250,7 +249,7 @@ export const workflowSections: WorkflowSection[] = [
     color: 'yellow',
     purpose: 'To handle Vehicle Temporary advance, small office advance etc.',
     workflows: [
-       {
+      {
         title: '1. Managing Advances',
         userSteps: [
           'Navigate to `/dashboard/expenses`. The `Advances` tab is shown by default.',
@@ -261,15 +260,15 @@ export const workflowSections: WorkflowSection[] = [
         uiSteps: [
           'Each advance is displayed as a card showing the total amount, amount spent, and remaining balance.',
           'A progress bar visualizes the utilization percentage of each advance.',
-          'Clicking on an advance card will switch to the `Expense Log` tab, filtered to show only expenses linked to that advance.'
+          'Clicking on an advance card will switch to the `Expense Log` tab, filtered to show only expenses linked to that advance.',
         ],
         techSteps: [
           '**Hook:** `useAdvancesData` fetches from the `v_advances_complete` view.',
           '**View:** The view performs a `LEFT JOIN` on `expenses` and uses `SUM()` to calculate `spent_amount` and `remaining_balance` in real-time.',
-          '**Permissions:** All authenticated users can create and manage advances.'
-        ]
+          '**Permissions:** All authenticated users can create and manage advances.',
+        ],
       },
-       {
+      {
         title: '2. Logging Expenses',
         userSteps: [
           'Navigate to the `Expense Log` tab on the `/dashboard/expenses` page.',
@@ -277,38 +276,37 @@ export const workflowSections: WorkflowSection[] = [
           '**Link to Advance:** Select the corresponding Advance `Request No` from the dropdown. This is a required step.',
           'Fill in the `Date`, `Amount`, `Vendor`, and other details.',
           '**Spent By:** This field is auto-filled based on the advance holder but can be overridden if a different employee made the specific payment.',
-          'Click `Submit` to log the expense.'
+          'Click `Submit` to log the expense.',
         ],
         uiSteps: [
           'The expense appears in the data table.',
-          'The related advance card on the `Advances` tab will automatically update its `Spent` and `Balance` amounts.'
+          'The related advance card on the `Advances` tab will automatically update its `Spent` and `Balance` amounts.',
         ],
         techSteps: [
           '**Hook:** `useExpensesData` fetches from the `v_expenses_complete` view.',
           '**View:** The `v_expenses_complete` view joins with `advances` and `employees` to provide rich details like names and request numbers.',
-          '**Logic:** The form uses `useEffect` to auto-populate the `spent_by_employee_id` when the `advance_id` changes.'
-        ]
+          '**Logic:** The form uses `useEffect` to auto-populate the `spent_by_employee_id` when the `advance_id` changes.',
+        ],
       },
       {
         title: '3. Bulk Importing Expenses',
         userSteps: [
-          "On the `Expense Log` tab, click the `Upload Excel` button.",
-          "Prepare an Excel file with columns like `REQ NO`, `DATE`, `AMOUNT`, `VENDOR`, `CATEGORY`, `USED BY` (Employee Name or Pers No).",
-          "Select the file. The system will process all rows.",
+          'On the `Expense Log` tab, click the `Upload Excel` button.',
+          'Prepare an Excel file with columns like `REQ NO`, `DATE`, `AMOUNT`, `VENDOR`, `CATEGORY`, `USED BY` (Employee Name or Pers No).',
+          'Select the file. The system will process all rows.',
         ],
         uiSteps: [
-          "A summary modal appears showing the number of successful imports and any errors.",
-          "The expense log table updates with the newly imported records.",
+          'A summary modal appears showing the number of successful imports and any errors.',
+          'The expense log table updates with the newly imported records.',
         ],
         techSteps: [
           '**Hook:** `useExpenseExcelUpload` parses the file and prepares the data.',
           '**RPC:** `upsert_expense_record` is called for each row. It finds the `advance_id` from the `REQ NO` and resolves the employee ID from the `USED BY` name/number.',
-          '**Validation:** The upload will fail for a row if the specified `REQ NO` does not exist in the `advances` table.'
-        ]
-      }
+          '**Validation:** The upload will fail for a row if the specified `REQ NO` does not exist in the `advances` table.',
+        ],
+      },
     ],
   },
-
 
   // ============================================================================
   // MODULE 4: INVENTORY & ASSETS
