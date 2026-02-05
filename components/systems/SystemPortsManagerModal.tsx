@@ -40,7 +40,7 @@ import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
+import { PERMISSIONS } from '@/config/permissions';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
@@ -234,8 +234,8 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
   // 7. Configure Columns (Direct call, internal memoization used)
   const columns = PortsManagementTableColumns(ports, portServicesMap);
-  const { role, isSuperAdmin } = useUser();
-  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+  const { canAccess } = useUser();
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const tableActions = useMemo(
     (): TableAction<'v_ports_management_complete'>[] =>

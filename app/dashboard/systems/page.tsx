@@ -45,7 +45,6 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { formatDate, formatIP } from '@/utils/formatters';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
 import { ActionButton } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
@@ -55,6 +54,7 @@ import { PageSpinner } from '@/components/common/ui';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { PERMISSIONS } from '@/config/permissions';
 
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
@@ -81,8 +81,6 @@ export default function SystemsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
   const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
-
-  const { isSuperAdmin, role } = useUser();
 
   const {
     data: systems,
@@ -118,16 +116,9 @@ export default function SystemsPage() {
     ],
   });
 
-  const canEdit =
-    !!isSuperAdmin ||
-    [
-      UserRole.ADMIN,
-      UserRole.ADMINPRO,
-      UserRole.CPANADMIN,
-      UserRole.MAANADMIN,
-      UserRole.SDHADMIN,
-    ].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: systemTypeOptions, isLoading: loadingTypes } =
     useLookupTypeOptions('SYSTEM_TYPES');

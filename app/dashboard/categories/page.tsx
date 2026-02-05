@@ -18,9 +18,9 @@ import { FiLayers } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useMutation } from '@tanstack/react-query';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useCategoriesData } from '@/hooks/data/useCategoriesData';
-import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; // IMPORT
+import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { PERMISSIONS } from '@/config/permissions';
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,11 +28,9 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
 
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
-
-  // --- PERMISSIONS ---
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   // --- DATA FETCHING (Now Offline-Capable) ---
   const {
@@ -54,7 +52,7 @@ export default function CategoriesPage() {
 
   const { mutate: createCategory, isPending: isCreating } = useTableInsert(
     supabase,
-    'lookup_types'
+    'lookup_types',
   );
 
   const { mutate: renameCategory, isPending: isRenaming } = useMutation({
@@ -94,7 +92,7 @@ export default function CategoriesPage() {
         displayName: formatCategoryName({ category: categoryToDelete } as Lookup_typesRowSchema),
       });
     },
-    [bulkDeleteManager]
+    [bulkDeleteManager],
   );
 
   const openCreateModal = useCallback(() => {
@@ -146,7 +144,7 @@ export default function CategoriesPage() {
       refetchCategories,
       handleModalClose,
       categoriesDeduplicated,
-    ]
+    ],
   );
 
   const filteredCategories = useMemo(
@@ -155,14 +153,14 @@ export default function CategoriesPage() {
         (category) =>
           (category.category &&
             category.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          formatCategoryName(category).toLowerCase().includes(searchTerm.toLowerCase())
+          formatCategoryName(category).toLowerCase().includes(searchTerm.toLowerCase()),
       ),
-    [categoriesDeduplicated, searchTerm]
+    [categoriesDeduplicated, searchTerm],
   );
 
   const serverFilters = useMemo(
     (): Filters => ({ name: { operator: 'eq', value: 'DEFAULT' } }),
-    []
+    [],
   );
 
   const headerActions = useStandardHeaderActions({
@@ -204,10 +202,10 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100">
+    <div className='space-y-6 p-6 dark:bg-gray-900 dark:text-gray-100'>
       <PageHeader
-        title="Categories"
-        description="Manage system-wide categories and lookup types."
+        title='Categories'
+        description='Manage system-wide categories and lookup types.'
         icon={<FiLayers />}
         stats={headerStats}
         actions={headerActions}
@@ -218,7 +216,7 @@ export default function CategoriesPage() {
       <GenericFilterBar
         searchQuery={searchTerm}
         onSearchChange={setSearchTerm}
-        searchPlaceholder="Search unique categories..."
+        searchPlaceholder='Search unique categories...'
         filters={{}}
         onFilterChange={() => {}}
         filterConfigs={[]}
@@ -248,11 +246,11 @@ export default function CategoriesPage() {
         isOpen={bulkDeleteManager.isConfirmModalOpen}
         onConfirm={bulkDeleteManager.handleConfirm}
         onCancel={bulkDeleteManager.handleCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={bulkDeleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
         showIcon
         loading={bulkDeleteManager.isPending}
       />

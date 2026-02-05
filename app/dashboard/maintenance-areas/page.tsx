@@ -17,16 +17,15 @@ import { FiMapPin } from 'react-icons/fi';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
+import { PERMISSIONS } from '@/config/permissions';
 
 const AreaFormModal = dynamic(
   () => import('@/components/maintenance-areas/AreaFormModal').then((mod) => mod.AreaFormModal),
-  { loading: () => <PageSpinner text="Loading Area Form..." /> }
+  { loading: () => <PageSpinner text='Loading Area Form...' /> },
 );
 
 export default function MaintenanceAreasPage() {
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
 
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -54,12 +53,13 @@ export default function MaintenanceAreasPage() {
     syncTables: ['maintenance_areas', 'v_maintenance_areas'],
   });
 
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const selectedEntity = useMemo(
     () => allAreas.find((a) => a.id === selectedAreaId) || null,
-    [allAreas, selectedAreaId]
+    [allAreas, selectedAreaId],
   );
   const isInitialLoad = isLoading && allAreas.length === 0;
 
@@ -116,16 +116,16 @@ export default function MaintenanceAreasPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
+    <div className='p-4 md:p-6 dark:bg-gray-900 min-h-screen'>
       <PageHeader
-        title="Maintenance Areas"
-        description="Manage maintenance areas, zones, and terminals."
+        title='Maintenance Areas'
+        description='Manage maintenance areas, zones, and terminals.'
         icon={<FiMapPin />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
-        className="mb-4"
+        className='mb-4'
       />
 
       <EntityManagementComponent<MaintenanceAreaWithRelations>
@@ -173,11 +173,11 @@ export default function MaintenanceAreasPage() {
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteManager.confirmationMessage}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
         showIcon
         loading={deleteManager.isPending}
       />

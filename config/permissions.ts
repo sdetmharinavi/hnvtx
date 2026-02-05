@@ -60,6 +60,7 @@ export const PERMISSIONS = {
   canManageRoutes: ROLES.ROUTE_MANAGERS,
 
   // General
+  canManage: ROLES.ADMINS,
   canViewDashboard: ROLES.VIEWERS,
   canViewDocs: ROLES.VIEWERS,
   canExportData: ROLES.ADMINS,

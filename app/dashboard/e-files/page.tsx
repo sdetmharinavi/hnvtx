@@ -18,7 +18,6 @@ import {
   useImportEFileSystem,
 } from '@/hooks/database/excel-queries/useEFileSystemBackup';
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
-import { UserRole } from '@/types/user-roles';
 import { ActionButton } from '@/components/common/page-header';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { useDataSync } from '@/hooks/data/useDataSync';
@@ -32,6 +31,7 @@ import { toast } from 'sonner';
 import { Row } from '@/hooks/database';
 import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 import { EFileRow } from '@/schemas/efile-schemas';
+import { PERMISSIONS } from '@/config/permissions';
 
 const InitiateFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.InitiateFileModal),
@@ -57,7 +57,6 @@ const CATEGORY_OPTIONS = [
 export default function EFilesPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -97,8 +96,9 @@ export default function EFilesPage() {
   const { mutate: exportBackup, isPending: isBackingUp } = useExportEFileSystem();
   const { mutate: importBackup, isPending: isRestoring } = useImportEFileSystem();
 
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  const canDelete = isSuperAdmin === true || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
@@ -367,15 +367,18 @@ export default function EFilesPage() {
       render: (val, rec) => {
         // Use last_action_date if available (from view update), otherwise fallback to updated_at
         const dateToUse = (rec as EFileRow).last_action_date || val;
-        const canFormat = typeof dateToUse === 'string' || typeof dateToUse === 'number' || dateToUse instanceof Date;
+        const canFormat =
+          typeof dateToUse === 'string' ||
+          typeof dateToUse === 'number' ||
+          dateToUse instanceof Date;
         return (
           <span className='text-xs text-gray-600 dark:text-gray-400 font-mono'>
             {canFormat && dateToUse
-              ? formatDate(dateToUse as string | number | Date, { 
+              ? formatDate(dateToUse as string | number | Date, {
                   format: 'dd-mm-yyyy',
                   hour: '2-digit',
                   minute: '2-digit',
-                  hour12: true
+                  hour12: true,
                 })
               : 'N/A'}
           </span>
@@ -422,15 +425,15 @@ export default function EFilesPage() {
           dataItems={[
             { icon: User, label: 'Started By', value: file.initiator_name },
             { icon: Folder, label: 'Current Holder', value: file.current_holder_name },
-            { 
-              icon: Clock, 
-              label: 'Last Action', 
-              value: formatDate(lastActionDate || '', { 
+            {
+              icon: Clock,
+              label: 'Last Action',
+              value: formatDate(lastActionDate || '', {
                 format: 'dd-mm-yyyy',
-                hour: '2-digit', 
+                hour: '2-digit',
                 minute: '2-digit',
-                hour12: true
-              }) 
+                hour12: true,
+              }),
             },
           ]}
           customFooter={

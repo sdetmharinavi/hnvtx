@@ -13,34 +13,38 @@ import { useFolders } from './hooks/useFolders';
 import { useFileHandling } from './hooks/useFileHandling';
 
 // Components
-import FolderManagement from "./uploader-components/FolderManagement";
-import UploadModeToggle from "./uploader-components/UploadModeToggle";
-import SimpleUpload from "./uploader-components/SimpleUpload";
-import AdvancedUpload from "./uploader-components/AdvancedUpload";
-import RecentlyUploaded from "./uploader-components/RecentlyUploaded";
-import ErrorDisplay from "./uploader-components/ErrorDisplay";
+import FolderManagement from './uploader-components/FolderManagement';
+import UploadModeToggle from './uploader-components/UploadModeToggle';
+import SimpleUpload from './uploader-components/SimpleUpload';
+import AdvancedUpload from './uploader-components/AdvancedUpload';
+import RecentlyUploaded from './uploader-components/RecentlyUploaded';
+import ErrorDisplay from './uploader-components/ErrorDisplay';
 import { PageHeader } from '@/components/common/page-header';
-import { useExportDiagramsBackup, useImportDiagramsBackup } from '@/hooks/database/excel-queries/useDiagramsBackup';
+import {
+  useExportDiagramsBackup,
+  useImportDiagramsBackup,
+} from '@/hooks/database/excel-queries/useDiagramsBackup';
 import { useUser } from '@/providers/UserProvider';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { PERMISSIONS } from '@/config/permissions';
 
 export default function FileUploader() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(false);
-  
+
   const [showUploadSection, setShowUploadSection] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
-  
+
   const { theme } = useThemeStore();
   const uppyTheme = theme === 'system' ? 'auto' : theme;
 
-  const { isSuperAdmin, role } = useUser();
   const isOnline = useOnlineStatus();
 
-  const canCreate = !!isSuperAdmin || role === 'admin' || role === 'admin_pro';
-  const canDelete = !!isSuperAdmin || role === 'admin_pro';
-  
+  const { canAccess } = useUser();
+  const canCreate = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+
   // Backup refs
   const backupInputRef = useRef<HTMLInputElement>(null);
   const { mutate: exportBackup, isPending: isBackingUp } = useExportDiagramsBackup();
@@ -49,7 +53,7 @@ export default function FileUploader() {
   const handleBackupRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) importBackup(file);
-    if (backupInputRef.current) backupInputRef.current.value = "";
+    if (backupInputRef.current) backupInputRef.current.value = '';
   };
 
   const {
@@ -66,12 +70,12 @@ export default function FileUploader() {
   } = useFolders({
     onError: (err) => setError(err),
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['files'] });
     },
   });
-  
+
   const onDeleteFolderWrapper = (id: string) => {
-      handleDeleteFolder(id);
+    handleDeleteFolder(id);
   };
 
   const {
@@ -92,20 +96,16 @@ export default function FileUploader() {
   // WRAPPER for Start Upload to check connectivity
   const handleSafeStartUpload = () => {
     if (!isOnline) {
-      toast.error("You are offline. Please connect to the internet to upload files.", {
-        icon: <WifiOff className="w-4 h-4" />
+      toast.error('You are offline. Please connect to the internet to upload files.', {
+        icon: <WifiOff className='w-4 h-4' />,
       });
       return;
     }
     handleStartUpload();
   };
 
-  const {
-    fileInputRef,
-    handleFileInputChange,
-    triggerFileInput,
-    handleRemoveFile,
-  } = useFileHandling(uppyRef);
+  const { fileInputRef, handleFileInputChange, triggerFileInput, handleRemoveFile } =
+    useFileHandling(uppyRef);
 
   const handleFileDeleted = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['files'] });
@@ -119,78 +119,76 @@ export default function FileUploader() {
   const handlePageRefresh = useCallback(async () => {
     await refreshFolders();
     await queryClient.invalidateQueries({ queryKey: ['files'] });
-    toast.success("Refreshed folders and files.");
+    toast.success('Refreshed folders and files.');
   }, [refreshFolders, queryClient]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <Toaster position="top-right" duration={4000} />
-      
+    <div className='mx-auto max-w-5xl space-y-6 p-4 sm:p-6'>
+      <Toaster position='top-right' duration={4000} />
+
       {/* Hidden input for backup restore */}
-      <input 
-         type="file" 
-         ref={backupInputRef} 
-         onChange={handleBackupRestore} 
-         className="hidden" 
-         accept=".xlsx" 
+      <input
+        type='file'
+        ref={backupInputRef}
+        onChange={handleBackupRestore}
+        className='hidden'
+        accept='.xlsx'
       />
 
       {/* Header with Backup Actions */}
       <PageHeader
-        title="Diagrams & Files"
-        description="Manage network diagrams, specifications, and other documents."
-        icon={<Database className="h-6 w-6" />}
+        title='Diagrams & Files'
+        description='Manage network diagrams, specifications, and other documents.'
+        icon={<Database className='h-6 w-6' />}
         actions={[
-            {
-                label: 'Refresh',
-                variant: 'outline',
-                leftIcon: <RefreshCw className={`h-4 w-4 ${isLoadingFolders ? 'animate-spin' : ''}`} />,
-                onClick: handlePageRefresh,
-                disabled: isLoadingFolders
-            },
-            {
-                label: 'Backup / Restore',
-                variant: 'outline',
-                leftIcon: <Download className="h-4 w-4" />,
-                disabled: isBackingUp || isRestoring || isLoadingFolders,
-                'data-dropdown': true,
-                dropdownoptions: [
-                    {
-                        label: isBackingUp ? "Exporting..." : "Export Full Backup (Excel)",
-                        onClick: () => {
-                           if (!isOnline) toast.error("Backup export requires online connection.");
-                           else exportBackup();
-                        },
-                        disabled: isBackingUp
-                    },
-                    {
-                        label: isRestoring ? "Restoring..." : "Restore from Backup",
-                        onClick: () => {
-                           if (!isOnline) toast.error("Backup restore requires online connection.");
-                           else backupInputRef.current?.click();
-                        },
-                        disabled: isRestoring
-                    }
-                ]
-            },
-            {
-                label: showUploadSection ? 'Hide Upload' : 'Show Upload',
-                onClick: () => setShowUploadSection(!showUploadSection),
-                variant: showUploadSection ? 'secondary' : 'primary',
-                leftIcon: <Upload className="h-4 w-4" />
-            }
+          {
+            label: 'Refresh',
+            variant: 'outline',
+            leftIcon: <RefreshCw className={`h-4 w-4 ${isLoadingFolders ? 'animate-spin' : ''}`} />,
+            onClick: handlePageRefresh,
+            disabled: isLoadingFolders,
+          },
+          {
+            label: 'Backup / Restore',
+            variant: 'outline',
+            leftIcon: <Download className='h-4 w-4' />,
+            disabled: isBackingUp || isRestoring || isLoadingFolders,
+            'data-dropdown': true,
+            dropdownoptions: [
+              {
+                label: isBackingUp ? 'Exporting...' : 'Export Full Backup (Excel)',
+                onClick: () => {
+                  if (!isOnline) toast.error('Backup export requires online connection.');
+                  else exportBackup();
+                },
+                disabled: isBackingUp,
+              },
+              {
+                label: isRestoring ? 'Restoring...' : 'Restore from Backup',
+                onClick: () => {
+                  if (!isOnline) toast.error('Backup restore requires online connection.');
+                  else backupInputRef.current?.click();
+                },
+                disabled: isRestoring,
+              },
+            ],
+          },
+          {
+            label: showUploadSection ? 'Hide Upload' : 'Show Upload',
+            onClick: () => setShowUploadSection(!showUploadSection),
+            variant: showUploadSection ? 'secondary' : 'primary',
+            leftIcon: <Upload className='h-4 w-4' />,
+          },
         ]}
       />
 
-      {(error || cameraError) && (
-         <ErrorDisplay error={error} cameraError={cameraError} />
-      )}
+      {(error || cameraError) && <ErrorDisplay error={error} cameraError={cameraError} />}
 
       {/* Upload Area */}
       {showUploadSection && (
-        <div className="space-y-6 p-6 border border-gray-200 rounded-xl bg-white shadow-sm dark:bg-gray-800 dark:border-gray-700">
+        <div className='space-y-6 p-6 border border-gray-200 rounded-xl bg-white shadow-sm dark:bg-gray-800 dark:border-gray-700'>
           {/* Folder Management */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-100 dark:bg-gray-700/30 dark:border-gray-700">
+          <div className='space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-100 dark:bg-gray-700/30 dark:border-gray-700'>
             <FolderManagement
               newFolderName={newFolderName}
               setNewFolderName={setNewFolderName}
@@ -214,7 +212,7 @@ export default function FileUploader() {
 
           {/* Main Uploader */}
           {folderId ? (
-            <div className="mt-4">
+            <div className='mt-4'>
               {showDashboard ? (
                 <AdvancedUpload
                   uppyRef={uppyRef}
@@ -236,8 +234,8 @@ export default function FileUploader() {
               )}
             </div>
           ) : (
-            <div className="py-12 text-center border-2 border-dashed border-gray-300 rounded-xl dark:border-gray-600">
-              <p className="text-gray-500 dark:text-gray-400 font-medium">
+            <div className='py-12 text-center border-2 border-dashed border-gray-300 rounded-xl dark:border-gray-600'>
+              <p className='text-gray-500 dark:text-gray-400 font-medium'>
                 Please select or create a folder above to enable uploading.
               </p>
             </div>
@@ -245,8 +243,8 @@ export default function FileUploader() {
 
           {/* Recents */}
           {uploadedFiles.length > 0 && (
-            <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-               <RecentlyUploaded uploadedFiles={uploadedFiles} />
+            <div className='pt-6 border-t border-gray-200 dark:border-gray-700'>
+              <RecentlyUploaded uploadedFiles={uploadedFiles} />
             </div>
           )}
         </div>

@@ -36,8 +36,8 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildColumnConfig } from '@/constants/table-column-keys';
 import { FaRupeeSign } from 'react-icons/fa';
-import { UserRole } from '@/types/user-roles';
 import { StatProps } from '@/components/common/page-header/StatCard';
+import { PERMISSIONS } from '@/config/permissions';
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
@@ -49,12 +49,12 @@ const ExpenseFormModal = dynamic(
 );
 
 export default function ExpensesPage() {
-  const { isSuperAdmin, role } = useUser();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('advances');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { sync, isSyncing } = useDataSync();
 

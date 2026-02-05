@@ -10,7 +10,6 @@ import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui'
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useNodesData } from '@/hooks/data/useNodesData';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { NodesRowSchema, V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
@@ -24,6 +23,7 @@ import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 
 const NodeFormModal = dynamic(
   () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
@@ -32,7 +32,6 @@ const NodeFormModal = dynamic(
 
 export default function NodesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { isSuperAdmin, role } = useUser();
 
   const {
     data: nodes,
@@ -67,12 +66,9 @@ export default function NodesPage() {
     'Nodes',
   );
 
-  const canEdit =
-    isSuperAdmin ||
-    role === UserRole.ADMIN ||
-    role === UserRole.ADMINPRO ||
-    role === UserRole.ASSETADMIN;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: nodeTypeOptions, isLoading: loadingNodeTypes } =
     useLookupTypeOptions('NODE_TYPES');

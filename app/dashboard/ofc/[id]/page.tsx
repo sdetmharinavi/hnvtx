@@ -50,6 +50,7 @@ import { useOfcConnectionsExcelUpload } from '@/hooks/database/excel-queries/use
 import { useCreateOfcConnection } from '@/hooks/database/ofc-connections-hooks';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 import { BulkActions } from '@/components/common/BulkActions'; // ADDED IMPORT
+import { PERMISSIONS } from '@/config/permissions';
 
 type ExtendedUtilization = V_cable_utilizationRowSchema & {
   faulty_fibers?: number;
@@ -107,10 +108,9 @@ export default function OfcCableDetailsPage() {
     ],
   });
 
-  const canEdit =
-    !!isSuperAdmin ||
-    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
   const canAdd = canEdit;
   const canVerifyFibers = isSuperAdmin || role === UserRole.ADMINPRO;
 

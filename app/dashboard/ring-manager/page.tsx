@@ -47,8 +47,8 @@ import { useRingExcelUpload } from '@/hooks/database/excel-queries/useRingExcelU
 import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { PERMISSIONS } from '@/config/permissions';
 
 const RingModal = dynamic(
   () => import('@/components/rings/RingModal').then((mod) => mod.RingModal),
@@ -290,7 +290,6 @@ export default function RingManagerPage() {
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSystemsModalOpen, setIsSystemsModalOpen] = useState(false);
@@ -300,8 +299,9 @@ export default function RingManagerPage() {
     null,
   );
 
-  const canEdit = !!(isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const manager = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',

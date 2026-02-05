@@ -20,7 +20,7 @@ import { LogicalPathsTableColumns } from '@/config/table-columns/LogicalPathsTab
 import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
+import { PERMISSIONS } from '@/config/permissions';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
@@ -70,12 +70,9 @@ const useLogicalPathsData = (params: {
 
 export default function LogicalPathsPage() {
   const router = useRouter();
-  const { role, isSuperAdmin } = useUser();
-  const canEdit = useMemo(
-    () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
-    [isSuperAdmin, role],
-  );
-  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);

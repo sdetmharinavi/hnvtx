@@ -15,8 +15,8 @@ import { ImUserTie } from 'react-icons/im';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
+import { PERMISSIONS } from '@/config/permissions';
 
 const DesignationFormModal = dynamic(
   () =>
@@ -28,7 +28,6 @@ const DesignationFormModal = dynamic(
 
 export default function DesignationManagerPage() {
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
 
   const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
   const [isFormOpen, setFormOpen] = useState(false);
@@ -56,8 +55,9 @@ export default function DesignationManagerPage() {
     syncTables: ['employee_designations', 'v_employee_designations'],
   });
 
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: parentOptions, isLoading: isLoadingParents } = useDropdownOptions({
     tableName: 'employee_designations',

@@ -27,11 +27,11 @@ import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import { Row } from '@/hooks/database';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 
 interface AllocatedSystem {
   id: string;
@@ -41,7 +41,6 @@ interface AllocatedSystem {
 export default function ServicesPage() {
   const supabase = createClient();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { isSuperAdmin, role } = useUser();
 
   const {
     data,
@@ -68,12 +67,9 @@ export default function ServicesPage() {
     syncTables: ['services', 'v_services', 'system_connections'],
   });
 
-  const canEdit =
-    !!isSuperAdmin ||
-    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.MAANADMIN, UserRole.CPANADMIN].includes(
-      role as UserRole,
-    );
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
     const name = item.name?.trim().toLowerCase() || '';

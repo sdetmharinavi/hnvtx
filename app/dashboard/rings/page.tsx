@@ -25,8 +25,8 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { PERMISSIONS } from '@/config/permissions';
 
 const STATUS_OPTIONS = {
   OFC: [
@@ -50,8 +50,6 @@ export default function RingsPage() {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
 
-  const { isSuperAdmin, role } = useUser();
-
   const {
     data: rings,
     totalCount,
@@ -74,12 +72,9 @@ export default function RingsPage() {
     syncTables: ['rings', 'v_rings', 'ring_based_systems'],
   });
 
-  const canEdit =
-    isSuperAdmin ||
-    role === UserRole.ADMIN ||
-    role === UserRole.ASSETADMIN ||
-    role === UserRole.ADMINPRO;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   // --- DATA FETCHING FOR MODALS ---
 

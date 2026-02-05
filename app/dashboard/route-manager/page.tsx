@@ -22,13 +22,13 @@ import {
 import { ActionButton } from '@/components/common/page-header';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { PERMISSIONS } from '@/config/permissions';
 
 const JcFormModal = dynamic(
   () => import('@/components/route-manager/JcFormModal').then((mod) => mod.JcFormModal),
-  { loading: () => <PageSpinner text='Loading JC Form...' /> }
+  { loading: () => <PageSpinner text='Loading JC Form...' /> },
 );
 
 export default function RouteManagerPage() {
@@ -39,19 +39,15 @@ export default function RouteManagerPage() {
   const [activeTab, setActiveTab] = useState('visualization');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
 
   // --- SYNC HOOKS ---
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
   // Permissions
-  const canEdit =
-    !!isSuperAdmin ||
-    role === UserRole.ADMIN ||
-    role === UserRole.ADMINPRO ||
-    role === UserRole.ASSETADMIN;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const {
     data: routeDetails,
@@ -130,7 +126,7 @@ export default function RouteManagerPage() {
       const name = jcToRemove.attributes?.name || jcToRemove.node?.name || `JC ${jcId.slice(-4)}`;
       deleteManager.deleteSingle({ id: jcId, name });
     },
-    [allJointBoxesOnRoute, deleteManager]
+    [allJointBoxesOnRoute, deleteManager],
   );
 
   const isBusy = isLoadingRouteDetails || isSyncingData || isFetchingRouteDetails;
@@ -250,18 +246,21 @@ export default function RouteManagerPage() {
               <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}
-                className='w-full flex-1 flex flex-col'>
+                className='w-full flex-1 flex flex-col'
+              >
                 <div className='border-b border-gray-200 dark:border-gray-700 mb-4'>
                   <TabsList className='bg-transparent p-0'>
                     <TabsTrigger
                       value='visualization'
-                      className='data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2'>
+                      className='data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2'
+                    >
                       <FiMap className='mr-2' /> Route Visualization
                     </TabsTrigger>
                     <TabsTrigger
                       value='splicing'
                       disabled={!selectedJc}
-                      className='data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2 disabled:opacity-50'>
+                      className='data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2 disabled:opacity-50'
+                    >
                       <FiGitMerge className='mr-2' />
                       Splice Management {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
                     </TabsTrigger>
@@ -271,7 +270,8 @@ export default function RouteManagerPage() {
                 <div className='flex-1'>
                   <TabsContent
                     value='visualization'
-                    className='h-full mt-0 focus-visible:outline-none'>
+                    className='h-full mt-0 focus-visible:outline-none'
+                  >
                     <RouteVisualization
                       routeDetails={{
                         ...routeDetails,

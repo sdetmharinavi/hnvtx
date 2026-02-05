@@ -21,7 +21,6 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { useLookupActions } from '@/components/lookup/lookup-hooks';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { snakeToTitleCase } from '@/utils/formatters';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -30,6 +29,7 @@ import { DataTable } from '@/components/table'; // Use generic table now
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { Row } from '@/hooks/database';
+import { PERMISSIONS } from '@/config/permissions';
 
 const LookupModal = dynamic(
   () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
@@ -42,10 +42,9 @@ export default function LookupTypesPage() {
     selectedCategory,
   } = useLookupActions();
 
-  const { isSuperAdmin, role } = useUser();
-
-  const canManage = isSuperAdmin || role === UserRole.ADMIN;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canManage = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const crud = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
     tableName: 'lookup_types',

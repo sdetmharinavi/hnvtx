@@ -16,7 +16,6 @@ import {
 } from '@/schemas/zod-schemas';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
 import { createStandardActions } from '@/components/table/action-helpers';
@@ -39,6 +38,7 @@ import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnectionsData';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { PERMISSIONS } from '@/config/permissions';
 
 // Dynamic Imports
 const SystemConnectionFormModal = dynamic(
@@ -65,7 +65,6 @@ const SystemConnectionDetailsModal = dynamic(
 export default function GlobalConnectionsPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // SYNC HOOKS
@@ -114,8 +113,9 @@ export default function GlobalConnectionsPage() {
     ], // Explicit sync list
   });
 
-  const canEdit = !!isSuperAdmin || [UserRole.ADMIN, UserRole.ADMINPRO].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   // Dropdown Options
   const { options: mediaOptions, isLoading: loadingMedia } = useLookupTypeOptions('MEDIA_TYPES');
@@ -238,6 +238,7 @@ export default function GlobalConnectionsPage() {
         canDelete={canDelete}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router],
   );
 

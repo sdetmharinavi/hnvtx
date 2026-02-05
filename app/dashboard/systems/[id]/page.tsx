@@ -49,12 +49,12 @@ import {
 } from 'react-icons/fi';
 import { StatsConfigModal, StatsFilterState } from '@/components/system-details/StatsConfigModal';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import dynamic from 'next/dynamic';
 import { BulkActions } from '@/components/common/BulkActions'; // ADDED
+import { PERMISSIONS } from '@/config/permissions';
 
 // DYNAMIC IMPORTS
 const SystemConnectionFormModal = dynamic(
@@ -93,7 +93,6 @@ export default function SystemConnectionsPage() {
   const systemId = params.id as string;
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { isSuperAdmin, role } = useUser();
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -136,8 +135,9 @@ export default function SystemConnectionsPage() {
 
   const tracePath = useTracePath(supabase);
 
-  const canEdit = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: mediaOptions } = useLookupTypeOptions('MEDIA_TYPES');
   const { options: linkTypeOptions } = useLookupTypeOptions('LINK_TYPES');

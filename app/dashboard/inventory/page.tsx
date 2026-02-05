@@ -48,7 +48,6 @@ const UploadResultModal = dynamic(
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { canAccess } = useUser(); // CHANGED: Destructure canAccess
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -116,7 +115,7 @@ export default function InventoryPage() {
     },
     [filters],
   );
-
+  const { canAccess } = useUser();
   const canEdit = canAccess(PERMISSIONS.canManageInventory);
   const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 

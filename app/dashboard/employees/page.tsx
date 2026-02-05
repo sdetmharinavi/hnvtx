@@ -18,13 +18,13 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useMaintenanceAreaOptions, useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 import { FiUsers, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
 import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 
 const EmployeeForm = dynamic(
   () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
@@ -33,7 +33,6 @@ const EmployeeForm = dynamic(
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { isSuperAdmin, role } = useUser();
 
   const {
     data: employees,
@@ -61,11 +60,9 @@ export default function EmployeesPage() {
     syncTables: ['employees', 'v_employees', 'employee_designations', 'v_employee_designations'],
   });
 
-  const canEdit = useMemo(
-    () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
-    [isSuperAdmin, role],
-  );
-  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: desOptions, isLoading: loadingDes } = useDropdownOptions({
     tableName: 'employee_designations',

@@ -21,7 +21,6 @@ import {
   RPCConfig,
   sanitizeFileName,
   UseExcelDownloadOptions,
-  Column,
 } from '@/hooks/database/excel-queries/excel-helpers';
 import { toast } from 'sonner';
 import { applyFilters } from '@/hooks/database/utility-functions';
@@ -189,7 +188,7 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
   supabase: SupabaseClient<Database>,
   options?: EnhancedUseExcelDownloadOptions<T>
 ) {
-  const { showToasts = true, batchSize = 50000, defaultOrderBy, defaultWrapText = true, defaultAutoFitColumns = true, ...mutationOptions } = options || {};
+  const { showToasts = true, defaultWrapText = true, defaultAutoFitColumns = true, ...mutationOptions } = options || {};
 
   return useMutation<ExcelDownloadResult, Error, EnhancedDownloadOptions<T> & { rpcConfig: RPCConfig }>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
@@ -241,7 +240,7 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
   options?: EnhancedUseExcelDownloadOptions<T>
 ) {
   // FIX: Added maxRows to destructuring, aliased as defaultMaxRows
-  const { showToasts = true, maxRows: defaultMaxRows, defaultOrderBy, defaultWrapText = true, defaultAutoFitColumns = true, ...mutationOptions } = options || {};
+  const { showToasts = true, maxRows: defaultMaxRows, defaultWrapText = true, defaultAutoFitColumns = true, ...mutationOptions } = options || {};
 
   return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {

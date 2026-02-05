@@ -8,8 +8,8 @@ import { useKmlManager, BlobFile } from '@/hooks/useKmlManager';
 import dynamic from 'next/dynamic';
 import { PageSpinner, ConfirmModal } from '@/components/common/ui';
 import { formatFileSize, formatDate } from '@/utils/formatters';
-import { useUser } from '@/providers/UserProvider'; // Import User Provider
-import { UserRole } from '@/types/user-roles';
+import { useUser } from '@/providers/UserProvider';
+import { PERMISSIONS } from '@/config/permissions';
 
 // Dynamically import the map to avoid SSR issues with Leaflet
 const KmlMap = dynamic(() => import('@/components/kml/KmlMap'), {
@@ -28,12 +28,10 @@ export default function KmlManagerPage() {
   const [fileToDelete, setFileToDelete] = useState<BlobFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get User Permissions
-  const { isSuperAdmin, role } = useUser();
-
   // Permission Logic
-  const canDelete = isSuperAdmin; // Strict Super Admin only
-  const canUpload = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ASSETADMIN; // Admins can upload
+  const { canAccess } = useUser();
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+  const canUpload = canAccess(PERMISSIONS.canUploadData);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
