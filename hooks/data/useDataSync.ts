@@ -21,28 +21,16 @@ interface EntitySyncConfig {
 }
 
 // Configuration Map for Sync Strategies
+// UPDATED: All strategies are now 'full' for maximum data consistency.
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  // --- Incremental Sync Tables ---
-  v_audit_logs: {
-    strategy: 'incremental',
-    timestampColumn: 'created_at',
-    relatedTable: 'user_activity_logs',
-  },
-  user_activity_logs: { strategy: 'incremental', timestampColumn: 'created_at' },
-  v_inventory_transactions_extended: {
-    strategy: 'incremental',
-    timestampColumn: 'created_at',
-    relatedTable: 'inventory_transactions',
-  },
-  inventory_transactions: { strategy: 'incremental', timestampColumn: 'created_at' },
-  v_file_movements_extended: {
-    strategy: 'incremental',
-    timestampColumn: 'created_at',
-    relatedTable: 'file_movements',
-  },
-  file_movements: { strategy: 'incremental', timestampColumn: 'created_at' },
+  // --- All Tables Set to Full Sync ---
+  v_audit_logs: { strategy: 'full', relatedTable: 'user_activity_logs' },
+  user_activity_logs: { strategy: 'full' },
+  v_inventory_transactions_extended: { strategy: 'full', relatedTable: 'inventory_transactions' },
+  inventory_transactions: { strategy: 'full' },
+  v_file_movements_extended: { strategy: 'full', relatedTable: 'file_movements' },
+  file_movements: { strategy: 'full' },
 
-  // --- FULL SYNC TABLES ---
   systems: { strategy: 'full' },
   system_connections: { strategy: 'full' },
   ports_management: { strategy: 'full' },
@@ -70,15 +58,10 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   logical_path_segments: { strategy: 'full' },
   sdh_connections: { strategy: 'full' },
   technical_notes: { strategy: 'full' },
-
-  // --- EXPENSE MODULE SYNC ---
-  // Ensure these are present and correct
   advances: { strategy: 'full' },
   expenses: { strategy: 'full' },
   v_advances_complete: { strategy: 'full', relatedTable: 'advances' },
   v_expenses_complete: { strategy: 'full', relatedTable: 'expenses' },
-
-  // Views
   v_systems_complete: { strategy: 'full', relatedTable: 'systems' },
   v_system_connections_complete: { strategy: 'full', relatedTable: 'system_connections' },
   v_ports_management_complete: { strategy: 'full', relatedTable: 'ports_management' },
@@ -102,14 +85,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
-// ... (keep mergePendingMutations, performFullSync, performIncrementalSync as provided in your original file) ...
 
-// Include the rest of the file logic (syncEntity, useDataSync) exactly as provided in the context,
-// ensuring the SYNC_CONFIG map above replaces the existing one.
-// [Rest of useDataSync.ts content omitted for brevity as it was correct in the context]
-// Only the SYNC_CONFIG object needed the explicit check/update.
-
-// ... (Rest of useDataSync.ts) ...
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
@@ -333,7 +309,7 @@ export async function syncEntity(
     const config = SYNC_CONFIG[entityName];
     const safeConfig = config || { strategy: 'full' };
 
-    if (safeConfig.strategy === 'incremental') {
+    if (safeConfig.strategy === 'incremental' && safeConfig.timestampColumn) {
       count = await performIncrementalSync(supabase, db, entityName, safeConfig.timestampColumn);
     } else {
       count = await performFullSync(supabase, db, entityName, safeConfig);
