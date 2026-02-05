@@ -63,6 +63,7 @@ export const PERMISSIONS = {
   canViewDashboard: ROLES.VIEWERS,
   canViewDocs: ROLES.VIEWERS,
   canExportData: ROLES.ADMINS,
+  canUploadData: ROLES.ADMINS,
 
   // Dangerous Actions
   canDeleteCritical: ROLES.PROADMINS,
