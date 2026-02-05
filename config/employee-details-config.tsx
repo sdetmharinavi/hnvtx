@@ -1,3 +1,5 @@
+'use client';
+
 // ==== EMPLOYEE DETAILS MODAL CONFIGURATION ====
 
 import {
@@ -18,6 +20,7 @@ import {
 } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
+import { useUser } from '@/providers/UserProvider';
 
 type EmployeeDetails =
   | V_employeesRowSchema
@@ -58,6 +61,7 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
 });
 
 // Employee details modal configuration
+
 export const employeeDetailsConfig = {
   header: createHeaderConfig({} as EmployeeDetails), // Will be overridden in the component
 
@@ -146,9 +150,15 @@ export const EmployeeDetailsModal = ({
   onClose: () => void;
   isOpen: boolean;
 }) => {
+  const { isSuperAdmin } = useUser();
+
   if (!employee) {
     return null;
   }
+
+  const sections = (employeeDetailsConfig.sections || []).filter((section) =>
+    isSuperAdmin ? true : section.title !== 'Timestamps',
+  );
 
   return (
     <DetailsModal<EmployeeDetails>
@@ -158,6 +168,7 @@ export const EmployeeDetailsModal = ({
       config={{
         ...employeeDetailsConfig,
         header: createHeaderConfig(employee),
+        sections,
       }}
     />
   );

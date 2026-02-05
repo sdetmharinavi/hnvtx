@@ -50,7 +50,7 @@ function NavItems() {
       },
       {
         id: 'base-menu',
-        label: 'Base Structure',
+        label: 'Base Menu',
         icon: <BiSitemap className='h-5 w-5' />,
         roles: ROLES.VIEWERS,
         children: [
