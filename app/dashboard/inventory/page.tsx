@@ -20,10 +20,10 @@ import { useLookupTypeOptions, useActiveNodeOptions } from '@/hooks/data/useDrop
 import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from '@/schemas/zod-schemas';
 import { formatCurrency } from '@/utils/formatters';
 import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import { EnhancedUploadResult } from '@/hooks/database';
-import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
+import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 
 const InventoryFormModal = dynamic(
   () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
@@ -48,7 +48,7 @@ const UploadResultModal = dynamic(
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { role, isSuperAdmin } = useUser();
+  const { canAccess } = useUser(); // CHANGED: Destructure canAccess
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -117,15 +117,8 @@ export default function InventoryPage() {
     [filters],
   );
 
-  const canEdit = useMemo(
-    () =>
-      !!isSuperAdmin ||
-      role === UserRole.ADMIN ||
-      role === UserRole.ADMINPRO ||
-      role === UserRole.ASSETADMIN,
-    [isSuperAdmin, role],
-  );
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
+  const canEdit = canAccess(PERMISSIONS.canManageInventory);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const totalInventoryValue = useMemo(() => {
     return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);
@@ -356,17 +349,12 @@ export default function InventoryPage() {
         showStatusUpdate: false,
         canDelete: () => canDelete,
       }}
-      // THE FIX: Use DataGrid component here
       renderGrid={() => (
         <DataGrid
           data={inventory}
           renderItem={renderItem}
           isLoading={isLoading}
           isEmpty={inventory.length === 0}
-          // The Layout handles the pagination rendering for the grid via tableProps,
-          // but our DataGrid also supports it if passed directly.
-          // Since DashboardPageLayout renders pagination for the grid slot based on tableProps,
-          // we don't need to pass it again here to avoid double pagination.
         />
       )}
       tableProps={{
@@ -396,10 +384,6 @@ export default function InventoryPage() {
         customToolbar: <></>,
       }}
       isEmpty={inventory.length === 0 && !isLoading}
-      // Note: Empty state is handled by DataGrid internally if renderGrid is used,
-      // but DashboardPageLayout might render it too.
-      // Ideally, DashboardPageLayout should pass the empty state to renderGrid or handle it.
-      // Current implementation of DashboardPageLayout renders emptyState if isEmpty is true.
       emptyState={
         <div className='col-span-full py-16 text-center text-gray-500'>
           <FiArchive className='w-12 h-12 mx-auto mb-3 text-gray-300' />

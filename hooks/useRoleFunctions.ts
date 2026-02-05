@@ -9,10 +9,11 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb, StoredVUserProfilesExtended } from '@/hooks/data/localDb';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { UseQueryResult } from '@tanstack/react-query';
-import { parseJson } from '@/config/helper-functions'; // ADDED IMPORT
+import { parseJson } from '@/config/helper-functions';
 
 type UserPermissionsData = V_user_profiles_extendedRowSchema | null;
 
+// THE FIX: Change string[] to readonly string[] to compatible with config/permissions.ts
 interface UserPermissions {
   profile: UserPermissionsData;
   role: UserRole;
@@ -21,13 +22,13 @@ interface UserPermissions {
   error: Error | null;
   isError: boolean;
   refetch: () => Promise<UseQueryResult<UserPermissionsData, Error>>;
+  canAccess: (allowedRoles?: readonly string[]) => boolean; 
+  hasRole: (requiredRole: string) => boolean;
+  hasAnyRole: (requiredRoles: readonly string[]) => boolean;
 }
 
 type UserRole = string | null;
 type SuperAdminStatus = boolean | null;
-
-// REMOVED: Duplicate safeJsonParse function
-// const safeJsonParse = ...
 
 export const useUserPermissionsExtended = () => {
   const supabase = createClient();
@@ -51,7 +52,6 @@ export const useUserPermissionsExtended = () => {
       ...profileData,
       id: profileData.id,
       email: profileData.email,
-      // CHANGED: Use shared utility
       address: parseJson(profileData.address) as Json,
       preferences: parseJson(profileData.preferences) as Json,
       status: profileData.status || 'inactive',
@@ -60,7 +60,6 @@ export const useUserPermissionsExtended = () => {
       last_sign_in_at: profileData.last_sign_in_at
         ? new Date(profileData.last_sign_in_at).toISOString()
         : null,
-      // Default missing view fields
       computed_status: null,
       account_age_days: null,
       last_activity_period: null,
@@ -123,14 +122,17 @@ export const useUserPermissionsExtended = () => {
     (requiredRole: string) => permissions.role === requiredRole,
     [permissions.role]
   );
+  
+  // THE FIX: Accept readonly array
   const hasAnyRole = React.useCallback(
-    (requiredRoles: string[]) =>
+    (requiredRoles: readonly string[]) =>
       permissions.role ? requiredRoles.includes(permissions.role) : false,
     [permissions.role]
   );
 
+  // THE FIX: Accept readonly array
   const canAccess = React.useCallback(
-    (allowedRoles?: string[]): boolean => {
+    (allowedRoles?: readonly string[]): boolean => {
       if (permissions.isSuperAdmin) return true;
       if (!allowedRoles || allowedRoles.length === 0) return true;
       return hasAnyRole(allowedRoles);
