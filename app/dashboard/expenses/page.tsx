@@ -54,7 +54,7 @@ export default function ExpensesPage() {
   const [activeTab, setActiveTab] = useState('advances');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canDelete = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
+  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const { sync, isSyncing } = useDataSync();
 
@@ -630,7 +630,7 @@ export default function ExpensesPage() {
               }}
               actions={createStandardActions({
                 onEdit: expenseCrud.editModal.openEdit,
-                onDelete: expenseCrud.actions.handleDelete,
+                onDelete: canDelete ? expenseCrud.actions.handleDelete : undefined,
               })}
             />
           )}
