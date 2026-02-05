@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we need filters according to header status, I mean on clicking header status, respective filter should apply. In expense log we need filters according to advances. Also clicking on one advance shows expenses of all which should not happen. Excel download should be filtered according to advances filter. Also analyse if any lint errors in the project files.
+Let's begin! First of all we need filters according to header status as applied in expense page, I mean on clicking header status, respective filter should apply for all other pages.
