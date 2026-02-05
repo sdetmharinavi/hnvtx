@@ -206,8 +206,8 @@ export default function EmployeesPage() {
         actions: headerActions,
         stats: [
           { value: totalCount, label: 'Total Employees' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
+          { value: activeCount, label: 'Working', color: 'success' },
+          { value: inactiveCount, label: 'Retired', color: 'danger' },
         ],
         isLoading: isInitialLoad,
         isFetching: isFetching,

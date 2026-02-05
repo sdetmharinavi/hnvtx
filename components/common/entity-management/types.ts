@@ -67,6 +67,6 @@ export interface EntityTreeItemProps<T extends BaseEntity> {
     expandedEntities: Set<string>;
     onSelect: (id: string) => void;
     onToggleExpand: (id: string) => void;
-    onToggleStatus: (e: React.MouseEvent, entity: T) => void;
+    onToggleStatus?: (e: React.MouseEvent, entity: T) => void;
     isLoading: boolean;
 }

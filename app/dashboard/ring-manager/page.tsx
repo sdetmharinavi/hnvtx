@@ -800,7 +800,9 @@ export default function RingManagerPage() {
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
           isFetching={isFetching}
           // THE FIX: Pass the adapted wrapper function here
-          toggleStatusMutation={{ mutate: toggleStatusWrapper, isPending: isMutating }}
+          toggleStatusMutation={
+            canDelete ? { mutate: toggleStatusWrapper, isPending: isMutating } : undefined
+          }
           onEdit={
             canEdit
               ? (e) => {

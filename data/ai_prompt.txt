@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we need to fix excel upload for ofc/id. lets simplyfy it and upsert to ofc_connections table in simple way. updated nodes id can be taken from nodes table comparing updated nodes name.
+Let's begin! First of all we need filters according to header status, I mean on clicking header status, respective filter should apply. In expense log we need filters according to advances. Also clicking on one advance shows expenses of all which should not happen. Excel download should be filtered according to advances filter.

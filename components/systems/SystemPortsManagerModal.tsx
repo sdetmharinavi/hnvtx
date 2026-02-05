@@ -39,6 +39,8 @@ import { localDb } from '@/hooks/data/localDb';
 import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield } from 'lucide-react';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
+import { useUser } from '@/providers/UserProvider';
+import { UserRole } from '@/types/user-roles';
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
@@ -100,7 +102,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     ['port-types-filter'],
     async () =>
       (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
+    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray(),
   );
 
   const portTypeCodeOptions = useMemo(() => {
@@ -141,14 +143,14 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         ],
       },
     ],
-    [portTypeCodeOptions, loadingTypes]
+    [portTypeCodeOptions, loadingTypes],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
   // -------------------------
 
@@ -162,7 +164,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       },
       limit: 2000,
     },
-    { enabled: !!systemId && isOpen }
+    { enabled: !!systemId && isOpen },
   );
 
   // 4. Build Service Map (Bi-Directional)
@@ -226,23 +228,25 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(
     supabase,
-    'v_ports_management_complete'
+    'v_ports_management_complete',
   );
   const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
   // 7. Configure Columns (Direct call, internal memoization used)
   const columns = PortsManagementTableColumns(ports, portServicesMap);
+  const { role, isSuperAdmin } = useUser();
+  const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
   const tableActions = useMemo(
     (): TableAction<'v_ports_management_complete'>[] =>
       createStandardActions<V_ports_management_completeRowSchema>({
         onEdit: editModal.openEdit,
-        onDelete: crudActions.handleDelete,
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
         onToggleStatus: (record) =>
           crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus]
+    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus],
   );
 
   // 8. Handlers
@@ -288,10 +292,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           onError: (err) => {
             toast.error(`Failed to populate ports: ${err.message}`);
           },
-        }
+        },
       );
     },
-    [systemId, bulkUpsert, refetch]
+    [systemId, bulkUpsert, refetch],
   );
 
   const headerActions = useMemo((): ActionButton[] => {
@@ -340,18 +344,18 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       const services = portName ? portServicesMap[portName] : [];
 
       return (
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+        <div className='flex flex-col gap-3'>
+          <div className='flex justify-between items-start'>
+            <div className='flex items-center gap-3'>
+              <div className='h-10 w-10 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-700 font-mono font-bold text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600'>
                 {record.port?.replace(/^(Gi|Te|Fa|Eth)/i, '') || '?'}
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-gray-100">{record.port}</h4>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex gap-2">
+                <h4 className='font-semibold text-gray-900 dark:text-gray-100'>{record.port}</h4>
+                <div className='text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex gap-2'>
                   <span>{record.port_type_name || 'Generic'}</span>
                   {record.sfp_serial_no && (
-                    <span className="font-mono">SFP: {record.sfp_serial_no}</span>
+                    <span className='font-mono'>SFP: {record.sfp_serial_no}</span>
                   )}
                 </div>
               </div>
@@ -360,25 +364,25 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           </div>
 
           {services && services.length > 0 ? (
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2">
-              <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+            <div className='bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded border border-blue-100 dark:border-blue-800 space-y-2'>
+              <div className='text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide'>
                 Allocated Service
               </div>
               {services.map((svc, i) => (
                 <div
                   key={`${svc.id} + ${i}`}
-                  className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700"
+                  className='flex items-center gap-2 text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-xs border dark:border-gray-700'
                 >
                   {svc.system_working_interface === portName ? (
-                    <Activity className="w-3.5 h-3.5 text-blue-500" />
+                    <Activity className='w-3.5 h-3.5 text-blue-500' />
                   ) : (
-                    <Shield className="w-3.5 h-3.5 text-purple-500" />
+                    <Shield className='w-3.5 h-3.5 text-purple-500' />
                   )}
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate text-gray-800 dark:text-gray-200">
+                  <div className='min-w-0 flex-1'>
+                    <div className='font-medium truncate text-gray-800 dark:text-gray-200'>
                       {svc.service_name || svc.connected_system_name}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
+                    <div className='text-xs text-gray-500 truncate'>
                       {svc.connected_link_type_name}{' '}
                       {svc.bandwidth_allocated && `• ${svc.bandwidth_allocated}`}
                     </div>
@@ -387,12 +391,12 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
               ))}
             </div>
           ) : (
-            <div className="text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+            <div className='text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-800 p-2 rounded text-center'>
               No services allocated
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+          <div className='flex items-center gap-2 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700'>
             <span
               className={`px-2 py-0.5 rounded text-xs font-bold ${
                 record.port_admin_status
@@ -415,7 +419,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         </div>
       );
     },
-    [portServicesMap]
+    [portServicesMap],
   );
 
   if (!isOpen) return null;
@@ -425,28 +429,28 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       title={`Manage Ports for: ${system?.system_name}`}
-      size="full"
+      size='full'
     >
-      <div className="space-y-4">
+      <div className='space-y-4'>
         {error && <ErrorDisplay error={error.message} />}
 
         <input
-          type="file"
+          type='file'
           ref={fileInputRef}
           onChange={handleFileChange}
-          className="hidden"
-          accept=".xlsx, .xls"
+          className='hidden'
+          accept='.xlsx, .xls'
         />
 
         <UploadResultModal
           isOpen={isUploadResultOpen}
           onClose={() => setIsUploadResultOpen(false)}
           result={uploadResult}
-          title="Ports Upload Report"
+          title='Ports Upload Report'
         />
 
         <PageHeader
-          title="System Ports"
+          title='System Ports'
           icon={<FiServer />}
           stats={[
             { value: portStats.total, label: 'Total' },
@@ -465,7 +469,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         <GenericFilterBar
           searchQuery={search.searchQuery}
           onSearchChange={search.setSearchQuery}
-          searchPlaceholder="Search ports, serials..."
+          searchPlaceholder='Search ports, serials...'
           filters={filters.filters}
           onFilterChange={handleFilterChange}
           setFilters={filters.setFilters} // Passed specifically for multi-select
@@ -474,7 +478,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
         <DataTable
           autoHideEmptyColumns={true}
-          tableName="v_ports_management_complete"
+          tableName='v_ports_management_complete'
           data={ports}
           columns={columns}
           loading={isLoading}
@@ -517,10 +521,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           isOpen={deleteModal.isOpen}
           onConfirm={deleteModal.onConfirm}
           onCancel={deleteModal.onCancel}
-          title="Confirm Port Deletion"
+          title='Confirm Port Deletion'
           message={deleteModal.message}
           loading={deleteModal.loading}
-          type="danger"
+          type='danger'
         />
       </div>
     </Modal>

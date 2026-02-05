@@ -46,7 +46,7 @@ const useLogicalPathsData = (params: {
       limit: pageLimit,
       offset: (currentPage - 1) * pageLimit,
       orderBy: 'path_name',
-    }
+    },
   );
 
   const mappedData = useMemo(() => {
@@ -73,7 +73,7 @@ export default function LogicalPathsPage() {
   const { role, isSuperAdmin } = useUser();
   const canEdit = useMemo(
     () => isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO,
-    [isSuperAdmin, role]
+    [isSuperAdmin, role],
   );
   const canDelete = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
@@ -128,13 +128,13 @@ export default function LogicalPathsPage() {
             setItemToDelete(null);
             setDeleteModalOpen(false);
           },
-        }
+        },
       );
     }
   };
 
-  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(
-    () => [
+  const tableActions = useMemo<TableAction<'v_end_to_end_paths'>[]>(() => {
+    const actions: TableAction<'v_end_to_end_paths'>[] = [
       {
         key: 'view',
         label: 'View Details',
@@ -148,16 +148,20 @@ export default function LogicalPathsPage() {
         },
         variant: 'secondary',
       },
-      {
+    ];
+
+    if (canDelete) {
+      actions.push({
         key: 'deprovision',
         label: 'De-provision Path',
         icon: <FiTrash2 />,
         onClick: handleDeletePath,
         variant: 'danger',
-      },
-    ],
-    [handleDeletePath, router]
-  );
+      });
+    }
+
+    return actions;
+  }, [canDelete, handleDeletePath, router]);
 
   const headerActions = useStandardHeaderActions<'v_end_to_end_paths'>({
     data: logicalPaths,
@@ -186,10 +190,10 @@ export default function LogicalPathsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className='p-6 space-y-6'>
       <PageHeader
-        title="Logical Fiber Paths"
-        description="View and manage all provisioned end-to-end service paths."
+        title='Logical Fiber Paths'
+        description='View and manage all provisioned end-to-end service paths.'
         icon={<FiGitBranch />}
         stats={headerStats}
         actions={headerActions}
@@ -199,7 +203,7 @@ export default function LogicalPathsPage() {
 
       <DataTable<'v_end_to_end_paths'>
         autoHideEmptyColumns={true}
-        tableName="v_end_to_end_paths"
+        tableName='v_end_to_end_paths'
         data={logicalPaths}
         columns={LogicalPathsTableColumns(logicalPaths)}
         loading={isLoading}
@@ -225,7 +229,7 @@ export default function LogicalPathsPage() {
             onClearFilters={handleClearFilters}
             hasActiveFilters={hasActiveFilters}
             activeFilterCount={0}
-            searchPlaceholder="Search by path or route name..."
+            searchPlaceholder='Search by path or route name...'
           >
             placeholder
           </SearchAndFilters>
@@ -236,10 +240,10 @@ export default function LogicalPathsPage() {
         isOpen={canDelete && isDeleteModalOpen}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteModalOpen(false)}
-        title="Confirm De-provisioning"
+        title='Confirm De-provisioning'
         message={`Are you sure you want to de-provision "${itemToDelete?.name}"? This will release all associated fibers.`}
         loading={deprovisionMutation.isPending}
-        type="danger"
+        type='danger'
       />
     </div>
   );
