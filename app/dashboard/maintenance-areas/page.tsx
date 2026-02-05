@@ -18,6 +18,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useMaintenanceAreasData } from '@/hooks/data/useMaintenanceAreasData';
 import { useUser } from '@/providers/UserProvider';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const AreaFormModal = dynamic(
   () => import('@/components/maintenance-areas/AreaFormModal').then((mod) => mod.AreaFormModal),
@@ -96,15 +97,45 @@ export default function MaintenanceAreasPage() {
     },
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'maintenance_areas' } : undefined,
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Areas' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Areas',
+        color: 'default',
+        // Click clears the status filter
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   if (error && isInitialLoad) {
     return (
@@ -121,7 +152,7 @@ export default function MaintenanceAreasPage() {
         title='Maintenance Areas'
         description='Manage maintenance areas, zones, and terminals.'
         icon={<FiMapPin />}
-        stats={headerStats}
+        stats={headerStats} // Interactive Stats
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}

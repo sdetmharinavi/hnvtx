@@ -21,6 +21,8 @@ import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useUser } from '@/providers/UserProvider';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
+import { Filters } from '@/hooks/database/queries-type-helpers';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
@@ -28,15 +30,26 @@ const useLogicalPathsData = (params: {
   currentPage: number;
   pageLimit: number;
   searchQuery: string;
+  statusFilter?: string; // Added filter support
 }): DataQueryHookReturn<LogicalPathView> => {
-  const { currentPage, pageLimit, searchQuery } = params;
+  const { currentPage, pageLimit, searchQuery, statusFilter } = params;
   const supabase = createClient();
 
   const searchFilters = useMemo(() => {
-    if (!searchQuery) return {};
-    const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
-    return { or: searchString };
-  }, [searchQuery]);
+    const filters: Filters = {};
+
+    if (searchQuery) {
+      const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
+      filters.or = searchString;
+    }
+
+    // Add status filtering
+    if (statusFilter) {
+      filters.operational_status = statusFilter;
+    }
+
+    return filters;
+  }, [searchQuery, statusFilter]);
 
   const { data, isLoading, isFetching, error, refetch } = usePagedData<V_end_to_end_pathsRowSchema>(
     supabase,
@@ -77,6 +90,7 @@ export default function LogicalPathsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>(''); // Local filter state
   const [showFilters, setShowFilters] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -84,18 +98,19 @@ export default function LogicalPathsPage() {
   const {
     data: logicalPaths,
     totalCount,
-    activeCount,
-    inactiveCount,
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useLogicalPathsData({ currentPage, pageLimit, searchQuery });
+  } = useLogicalPathsData({ currentPage, pageLimit, searchQuery, statusFilter });
 
   const deprovisionMutation = useDeprovisionPath();
 
-  const handleClearFilters = () => setSearchQuery('');
-  const hasActiveFilters = !!searchQuery;
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('');
+  };
+  const hasActiveFilters = !!searchQuery || !!statusFilter;
 
   const handleDeletePath = useCallback((record: Row<'v_end_to_end_paths'>) => {
     if (!record.path_id) {
@@ -167,15 +182,37 @@ export default function LogicalPathsPage() {
       toast.success('Logical paths refreshed!');
     },
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'v_end_to_end_paths' } : undefined,
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Paths' },
-    { value: activeCount, label: 'Active' },
-    { value: inactiveCount, label: 'Inactive' },
-  ];
+  // --- INTERACTIVE STATS ---
+  // The backend view doesn't return generic active/inactive counts easily if we are filtering on specific status text.
+  // We'll rely on the filter prop.
+  const headerStats = useMemo<StatProps[]>(() => {
+    return [
+      {
+        value: totalCount,
+        label: 'Total Paths',
+        onClick: () => setStatusFilter(''),
+        isActive: !statusFilter,
+      },
+      {
+        value: null, // Dynamic count not available without specific query
+        label: 'Configured',
+        color: 'success',
+        onClick: () => setStatusFilter('configured'),
+        isActive: statusFilter === 'configured',
+      },
+      {
+        value: null,
+        label: 'Provisioned',
+        color: 'primary',
+        onClick: () => setStatusFilter('provisioned'),
+        isActive: statusFilter === 'provisioned',
+      },
+    ];
+  }, [totalCount, statusFilter]);
 
   if (error) {
     return (
@@ -192,7 +229,7 @@ export default function LogicalPathsPage() {
         title='Logical Fiber Paths'
         description='View and manage all provisioned end-to-end service paths.'
         icon={<FiGitBranch />}
-        stats={headerStats}
+        stats={headerStats} // Interactive Stats
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}
@@ -225,10 +262,23 @@ export default function LogicalPathsPage() {
             onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={handleClearFilters}
             hasActiveFilters={hasActiveFilters}
-            activeFilterCount={0}
+            activeFilterCount={statusFilter ? 1 : 0}
             searchPlaceholder='Search by path or route name...'
           >
-            placeholder
+            {/* Add a select dropdown for status in the filter panel too */}
+            <div className='flex flex-col gap-1'>
+              <label className='text-xs font-medium text-gray-700 dark:text-gray-300'>Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className='px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+              >
+                <option value=''>All</option>
+                <option value='configured'>Configured</option>
+                <option value='provisioned'>Provisioned</option>
+                <option value='unprovisioned'>Unprovisioned</option>
+              </select>
+            </div>
           </SearchAndFilters>
         }
       />

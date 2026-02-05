@@ -21,6 +21,7 @@ import { Row } from '@/hooks/database';
 import { formatDate } from '@/utils/formatters';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 export default function AuditLogsPage() {
   const { isSuperAdmin, role } = useUser();
@@ -46,6 +47,7 @@ export default function AuditLogsPage() {
     pagination,
     viewModal,
     bulkActions,
+    filters, // Need filters for stats logic
   } = crud;
 
   const filterConfigs = useMemo<FilterConfig[]>(
@@ -90,6 +92,55 @@ export default function AuditLogsPage() {
     isFetching: isFetching,
     exportConfig: !!isSuperAdmin ? { tableName: 'v_audit_logs', useRpc: true } : undefined,
   });
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    // Calculate counts based on current data slice (or could be fetched separately)
+    // For local-first with large data, doing a full count is expensive without a specific hook.
+    // However, we can show filtered counts based on current list if paginated,
+    // OR just simple interactive buttons to switch views.
+
+    // Since useAuditLogsData returns data matching the filter, we can't count "all insert" if filter is "delete".
+    // We will use buttons to switch filters.
+
+    const currentAction = filters.filters.action_type;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Logs',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.action_type;
+            return next;
+          }),
+        isActive: !currentAction,
+      },
+      {
+        value: null, // Don't show number if unknown
+        label: 'Inserts',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, action_type: 'INSERT' })),
+        isActive: currentAction === 'INSERT',
+      },
+      {
+        value: null,
+        label: 'Updates',
+        color: 'primary', // Changed to blue/primary
+        onClick: () => filters.setFilters((prev) => ({ ...prev, action_type: 'UPDATE' })),
+        isActive: currentAction === 'UPDATE',
+      },
+      {
+        value: null,
+        label: 'Deletes',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, action_type: 'DELETE' })),
+        isActive: currentAction === 'DELETE',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, filters.filters.action_type, filters.setFilters]);
 
   const renderMobileItem = useCallback((record: Row<'v_audit_logs'>, actions: React.ReactNode) => {
     const getActionColor = (action: string) => {
@@ -166,7 +217,7 @@ export default function AuditLogsPage() {
         title: 'System Audit Logs',
         description: 'Track all user activities and data changes across the platform.',
         icon: <FiShield />,
-        stats: [{ label: 'Total Logs', value: totalCount }],
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading: isLoading,
         isFetching: isFetching,
@@ -232,13 +283,6 @@ export default function AuditLogsPage() {
             onClose={viewModal.close}
             log={viewModal.record as V_audit_logsRowSchema | null}
           />
-          {/* Note: Delete modal is now handled by Layout automatically via 'crud' prop, 
-              but we didn't pass deleteModal in crud options explicitly for 'user_activity_logs' 
-              because it uses a different delete hook if needed. 
-              However, useCrudManager provides a generic one. 
-              Since Audit Logs uses bulk delete only for super admins via useCrudManager, 
-              the auto modal should work fine.
-          */}
         </>
       }
     />

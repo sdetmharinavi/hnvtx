@@ -32,6 +32,7 @@ import { Row } from '@/hooks/database';
 import { DataGrid } from '@/components/common/DataGrid'; // NEW IMPORT
 import { EFileRow } from '@/schemas/efile-schemas';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const InitiateFileModal = dynamic(
   () => import('@/components/efile/ActionModals').then((mod) => mod.InitiateFileModal),
@@ -195,6 +196,52 @@ export default function EFilesPage() {
     }
     return result;
   }, [files, searchQuery, filters]);
+
+  // --- INTERACTIVE STATS ---
+  // Note: Since useEFiles hook performs filtering in the query itself (passed 'status'),
+  // calculating global stats requires assuming what the counts would be.
+  // The 'files' array returned only contains what matches the hook's filter.
+  // For EFiles, the `status` filter is fundamental.
+  // We'll keep it simple: Show count of currently visible/fetched files.
+  // If we wanted true totals, we'd need a separate aggregation query.
+  // Given the 'status' filter is a top-level prop to the hook, changing it triggers a refetch.
+
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.status;
+
+    return [
+      {
+        value: filteredFiles.length, // Just show visible count for now as we don't have global aggregation
+        label:
+          currentStatus === 'active'
+            ? 'Active Files'
+            : currentStatus === 'closed'
+              ? 'Closed Files'
+              : 'Total Files',
+        color:
+          currentStatus === 'active'
+            ? 'success'
+            : currentStatus === 'closed'
+              ? 'default'
+              : 'primary',
+      },
+      // We can add buttons to switch modes quickly
+      {
+        value: null,
+        label: 'Show Active',
+        color: 'success',
+        onClick: () => setFilters((prev) => ({ ...prev, status: 'active' })),
+        isActive: currentStatus === 'active',
+      },
+      {
+        value: null,
+        label: 'Show Closed',
+        color: 'default',
+        onClick: () => setFilters((prev) => ({ ...prev, status: 'closed' })),
+        isActive: currentStatus === 'closed',
+      },
+    ];
+  }, [filteredFiles.length, filters.status]);
 
   const isBusy = isFetching || isSyncingData;
 
@@ -387,7 +434,6 @@ export default function EFilesPage() {
     },
   ];
 
-  // THE FIX: Created memoized renderItem function
   const renderItem = useCallback(
     (file: Row<'v_e_files_extended'>) => {
       const isClosed = file.status === 'closed';
@@ -465,7 +511,6 @@ export default function EFilesPage() {
     [canEdit, canDelete, router, setEditModal, setDeleteModal, setForwardModal],
   );
 
-  // THE FIX: Simplified renderGrid to use the new DataGrid component
   const renderGrid = useCallback(
     () => (
       <DataGrid
@@ -493,7 +538,7 @@ export default function EFilesPage() {
         title: 'E-File Tracking',
         description: 'Track physical files, manage movement, and view history.',
         icon: <FileText />,
-        stats: [{ value: filteredFiles.length, label: 'Visible Files' }],
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading: isLoading,
       }}

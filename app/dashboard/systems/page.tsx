@@ -14,6 +14,7 @@ import {
   FiActivity,
   FiGrid,
   FiTag,
+  FiPlus, // Added import
 } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
@@ -45,7 +46,7 @@ import { createStandardActions } from '@/components/table/action-helpers';
 import { formatDate, formatIP } from '@/utils/formatters';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useUser } from '@/providers/UserProvider';
-import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions'; // IMPORTED
+import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
 
@@ -55,6 +56,7 @@ import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added import
 
 const SystemModal = dynamic(
   () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
@@ -124,8 +126,6 @@ export default function SystemsPage() {
     useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions, isLoading: loadingCaps } =
     useLookupTypeOptions('SYSTEM_CAPACITY');
-  
-  // NEW: Fetch Maintenance Areas for Filtering
   const { options: maintenanceAreaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
 
   const filterConfigs = useMemo<FilterConfig[]>(
@@ -145,7 +145,7 @@ export default function SystemsPage() {
         placeholder: 'All Capacities',
       },
       {
-        key: 'maintenance_terminal_id', // Uses ID for filtering in DB
+        key: 'maintenance_terminal_id',
         type: 'multi-select' as const,
         options: maintenanceAreaOptions,
         isLoading: loadingAreas,
@@ -170,7 +170,14 @@ export default function SystemsPage() {
         placeholder: 'Sort By',
       },
     ],
-    [systemTypeOptions, capacityOptions, maintenanceAreaOptions, loadingTypes, loadingCaps, loadingAreas],
+    [
+      systemTypeOptions,
+      capacityOptions,
+      maintenanceAreaOptions,
+      loadingTypes,
+      loadingCaps,
+      loadingAreas,
+    ],
   );
 
   const handleFilterChange = useCallback(
@@ -310,7 +317,7 @@ export default function SystemsPage() {
         label: 'Add New',
         onClick: editModal.openAdd,
         variant: 'primary',
-        leftIcon: <FiDatabase />,
+        leftIcon: <FiPlus />, // Use imported FiPlus
         disabled: isBusy,
       });
     }
@@ -325,6 +332,41 @@ export default function SystemsPage() {
     editModal.openAdd,
     canEdit,
   ]);
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Systems',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const handleSave = useCallback(
     (formData: SystemFormData) => {
@@ -455,11 +497,7 @@ export default function SystemsPage() {
         title: 'System Management',
         description: 'Manage all network systems, including CPAN, MAAN, SDH, DWDM etc.',
         icon: <FiDatabase />,
-        stats: [
-          { value: totalCount, label: 'Total Systems' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ],
+        stats: headerStats, // Use interactive stats
         actions: headerActions,
         isLoading: isInitialLoad,
         isFetching: isFetching,

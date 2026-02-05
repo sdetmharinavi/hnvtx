@@ -49,6 +49,7 @@ import { formatDate } from '@/utils/formatters';
 import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const RingModal = dynamic(
   () => import('@/components/rings/RingModal').then((mod) => mod.RingModal),
@@ -625,26 +626,58 @@ export default function RingManagerPage() {
     canEdit,
   ]);
 
-  const headerStats = useMemo(() => {
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentSpecFilter = filters.filters.spec_status;
+    const currentOfcFilter = filters.filters.ofc_status;
+    const currentBtsFilter = filters.filters.bts_status;
+
     return [
-      { value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`, label: 'Total Rings / Nodes' },
+      {
+        value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`,
+        label: 'Total Rings / Nodes',
+        color: 'default',
+        // Click clears specific status filters to show all
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.ofc_status;
+            delete next.spec_status;
+            delete next.bts_status;
+            return next;
+          }),
+        isActive: !currentSpecFilter && !currentOfcFilter && !currentBtsFilter,
+      },
       {
         value: `${dynamicStats.bts.nodesOnAir} / ${dynamicStats.bts.configuredCount}`,
         label: 'Nodes On-Air / Rings Configured',
-        color: 'success' as const,
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, bts_status: 'On-Air' })),
+        isActive: currentBtsFilter === 'On-Air',
       },
       {
         value: `${dynamicStats.spec.issued} / ${dynamicStats.spec.pending}`,
         label: 'SPEC (Issued/Pend)',
-        color: 'primary' as const,
+        color: 'primary',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, spec_status: 'Issued' })),
+        isActive: currentSpecFilter === 'Issued',
       },
       {
         value: `${dynamicStats.ofc.ready} / ${dynamicStats.ofc.partial} / ${dynamicStats.ofc.pending}`,
         label: 'OFC (Ready/Partial/Pend)',
-        color: 'warning' as const,
+        color: 'warning',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, ofc_status: 'Ready' })),
+        isActive: currentOfcFilter === 'Ready',
       },
     ];
-  }, [dynamicStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dynamicStats,
+    filters.filters.ofc_status,
+    filters.filters.spec_status,
+    filters.filters.bts_status,
+    filters.setFilters,
+  ]);
 
   const dynamicFilterConfig: EntityConfig<RingEntity> = useMemo(
     () => ({
@@ -789,7 +822,7 @@ export default function RingManagerPage() {
         title='Ring Manager'
         description='Manage network rings, status, and topology.'
         icon={<GiLinkedRings />}
-        stats={headerStats}
+        stats={headerStats} // Interactive Stats
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}

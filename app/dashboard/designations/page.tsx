@@ -17,6 +17,7 @@ import { useDesignationsData } from '@/hooks/data/useDesignationsData';
 import { useUser } from '@/providers/UserProvider';
 import { useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const DesignationFormModal = dynamic(
   () =>
@@ -109,13 +110,40 @@ export default function DesignationManagerPage() {
     exportConfig: canEdit ? { tableName: 'employee_designations' } : undefined,
   });
 
-  const headerStats = useMemo(() => {
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
     return [
-      { value: totalCount, label: 'Total Designations' },
-      { value: activeCount, label: 'Active', color: 'success' as const },
-      { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
+      {
+        value: totalCount,
+        label: 'Total Designations',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
     ];
-  }, [totalCount, activeCount, inactiveCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   if (error && isInitialLoad) {
     return (
@@ -132,7 +160,7 @@ export default function DesignationManagerPage() {
         title='Designation Management'
         description='Manage designations and their related information.'
         icon={<ImUserTie />}
-        stats={headerStats}
+        stats={headerStats} // Interactive Stats
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}

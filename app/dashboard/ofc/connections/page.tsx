@@ -24,6 +24,7 @@ import { EnhancedUploadResult, Filters } from '@/hooks/database';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { FiberTraceModal } from '@/components/ofc-details/FiberTraceModal';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 export default function GlobalOfcConnectionsPage() {
   const supabase = createClient();
@@ -38,7 +39,6 @@ export default function GlobalOfcConnectionsPage() {
   // const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // -- UPDATED STATE FOR TRACING --
-  // We now store the full segment list to allow the modal to handle direction switching
   const [tracingFiber, setTracingFiber] = useState<{
     segments: Cable_segmentsRowSchema[];
     record: V_ofc_connections_completeRowSchema;
@@ -201,11 +201,39 @@ export default function GlobalOfcConnectionsPage() {
     });
   }
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Fibers' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive/Faulty', color: 'danger' as const },
-  ];
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Fibers',
+        color: 'default',
+        onClick: () =>
+          setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive/Faulty',
+        color: 'danger',
+        onClick: () => setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+  }, [totalCount, activeCount, inactiveCount, filters.status]);
 
   if (error)
     return (
@@ -245,7 +273,7 @@ export default function GlobalOfcConnectionsPage() {
         title='Physical Fiber Inventory'
         description='Search, export, and manage physical fiber properties across all cables.'
         icon={<FiActivity />}
-        stats={headerStats}
+        stats={headerStats} // Interactive
         actions={headerActions}
         isLoading={isLoading && fibers.length === 0}
         isFetching={isFetching}

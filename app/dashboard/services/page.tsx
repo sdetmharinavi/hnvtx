@@ -32,6 +32,7 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 interface AllocatedSystem {
   id: string;
@@ -90,14 +91,12 @@ export default function ServicesPage() {
     () => [
       {
         key: 'link_type_id',
-        // label: 'Link Type',
         type: 'multi-select' as const,
         options: linkTypeOptions,
         isLoading: loadingLinks,
       },
       {
         key: 'allocation_status',
-        // label: 'Allocation',
         type: 'native-select' as const,
         options: [
           { value: 'allocated', label: 'Allocated' },
@@ -106,7 +105,6 @@ export default function ServicesPage() {
       },
       {
         key: 'status',
-        // label: 'Status',
         type: 'native-select' as const,
         options: [
           { value: 'true', label: 'Active' },
@@ -179,6 +177,41 @@ export default function ServicesPage() {
       enhancedHeaderActions.push(addNewAction);
     }
   }
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Services',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const renderItem = useCallback(
     (service: V_servicesRowSchema) => {
@@ -312,11 +345,7 @@ export default function ServicesPage() {
         title: 'Service Management',
         description: 'Manage logical services, customers, and link definitions.',
         icon: <DatabaseIcon />,
-        stats: [
-          { value: totalCount, label: 'Total Services' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ],
+        stats: headerStats, // Interactive Stats
         actions: enhancedHeaderActions,
         isLoading: isLoading,
         isFetching: isFetching,

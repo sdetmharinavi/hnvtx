@@ -25,6 +25,7 @@ import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const EmployeeForm = dynamic(
   () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
@@ -79,14 +80,12 @@ export default function EmployeesPage() {
     () => [
       {
         key: 'employee_designation_id',
-        // label: 'Designation',
         type: 'multi-select' as const,
         options: desOptions,
         isLoading: loadingDes,
       },
       {
         key: 'maintenance_terminal_id',
-        // label: 'Area',
         type: 'multi-select' as const,
         options: areaOptions,
         isLoading: loadingAreas,
@@ -116,6 +115,41 @@ export default function EmployeesPage() {
     isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'employees' } : undefined,
   });
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Employees',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Working',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Retired / Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -201,11 +235,7 @@ export default function EmployeesPage() {
         description: 'Manage your team members and their contact details.',
         icon: <FiUsers />,
         actions: headerActions,
-        stats: [
-          { value: totalCount, label: 'Total Employees' },
-          { value: activeCount, label: 'Working', color: 'success' },
-          { value: inactiveCount, label: 'Retired', color: 'danger' },
-        ],
+        stats: headerStats, // Interactive Stats
         isLoading: isInitialLoad,
         isFetching: isFetching,
       }}

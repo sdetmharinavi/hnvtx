@@ -30,6 +30,7 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { Row } from '@/hooks/database';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const LookupModal = dynamic(
   () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
@@ -136,11 +137,49 @@ export default function LookupTypesPage() {
       : undefined,
   });
 
-  const headerStats = [
-    { value: totalCount, label: 'Total Types' },
-    { value: activeCount, label: 'Active', color: 'success' as const },
-    { value: inactiveCount, label: 'Inactive', color: 'danger' as const },
-  ];
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    if (!hasSelectedCategory) return [];
+
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Types',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hasSelectedCategory,
+    totalCount,
+    activeCount,
+    inactiveCount,
+    filters.filters.status,
+    filters.setFilters,
+  ]);
 
   const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
     crudActions.handleSave(data);

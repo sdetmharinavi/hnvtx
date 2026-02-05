@@ -26,6 +26,7 @@ import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added import
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -107,14 +108,14 @@ export default function OfcPage() {
         type: 'multi-select' as const,
         options: ofcTypeOptions,
         isLoading: loadingTypes,
-        placeholder: 'All Cable Types'
+        placeholder: 'All Cable Types',
       },
       {
         key: 'ofc_owner_id',
         type: 'multi-select' as const,
         options: ofcOwnerOptions,
         isLoading: loadingOwners,
-        placeholder: 'All Owners'
+        placeholder: 'All Owners',
       },
     ],
     [ofcTypeOptions, ofcOwnerOptions, loadingTypes, loadingOwners],
@@ -140,6 +141,42 @@ export default function OfcPage() {
     isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
   });
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Cables',
+        color: 'default',
+        // Click clears the status filter
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const renderItem = useCallback(
     (cable: V_ofc_cables_completeRowSchema) => {
@@ -169,7 +206,12 @@ export default function OfcPage() {
             { icon: FiMapPin, label: 'Area', value: cable.maintenance_area_name },
             { icon: FiActivity, label: 'Asset No', value: cable.asset_no, optional: true },
             { icon: FiDatabase, label: 'Transnet ID', value: cable.transnet_id, optional: true },
-            { icon: CiCalendarDate, label: 'Commissioning Date', value: cable.commissioned_on, optional: true },
+            {
+              icon: CiCalendarDate,
+              label: 'Commissioning Date',
+              value: cable.commissioned_on,
+              optional: true,
+            },
           ]}
           customFooter={
             <>
@@ -226,11 +268,7 @@ export default function OfcPage() {
         title: 'OFC Cable Management',
         description: 'Manage OFC cables and their related information.',
         icon: <AiFillMerge />,
-        stats: [
-          { value: totalCount, label: 'Total Cables' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ],
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading: isInitialLoad,
         isFetching: isFetching,

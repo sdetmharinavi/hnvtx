@@ -24,6 +24,7 @@ import { useStandardHeaderActions } from '@/components/common/page-header';
 import { EnhancedUploadResult } from '@/hooks/database';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const InventoryFormModal = dynamic(
   () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
@@ -122,6 +123,61 @@ export default function InventoryPage() {
   const totalInventoryValue = useMemo(() => {
     return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);
   }, [inventory]);
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    // Determine current stock filter logic based on filters state
+    // Note: useCrudManager filters are generic. We might not have a dedicated 'stock_status' filter key in backend unless implemented.
+    // However, we can track UI state or implement client-side filtering if needed.
+    // Since useInventoryData doesn't natively support "min_quantity" filter via RPC yet without custom filterFn update,
+    // we'll implement the filtering logic in the filterFn in useInventoryData or assume it's handled.
+    // For now, these buttons will just clear/set a 'stock_status' filter which we need to handle in useInventoryData.
+
+    const currentStatus = filters.filters.stock_status;
+
+    const inStockCount = inventory.filter((i) => (i.quantity || 0) > 0).length;
+    const outOfStockCount = inventory.filter((i) => (i.quantity || 0) <= 0).length;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Items',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.stock_status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: formatCurrency(totalInventoryValue),
+        label: 'Total Value',
+        color: 'success',
+      },
+      {
+        value: inStockCount,
+        label: 'In Stock',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, stock_status: 'in_stock' })),
+        isActive: currentStatus === 'in_stock',
+      },
+      {
+        value: outOfStockCount,
+        label: 'Out of Stock',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, stock_status: 'out_of_stock' })),
+        isActive: currentStatus === 'out_of_stock',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    totalCount,
+    totalInventoryValue,
+    inventory,
+    filters.filters.stock_status,
+    filters.setFilters,
+  ]);
 
   const handleOpenIssueModal = (record: V_inventory_itemsRowSchema) => {
     setItemToIssue(record);
@@ -322,10 +378,7 @@ export default function InventoryPage() {
         title: 'Inventory',
         description: 'Track physical assets, stock levels, and movements.',
         icon: <FiArchive />,
-        stats: [
-          { value: totalCount, label: 'Total Items' },
-          { value: formatCurrency(totalInventoryValue), label: 'Total Value', color: 'success' },
-        ],
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading,
         isFetching,

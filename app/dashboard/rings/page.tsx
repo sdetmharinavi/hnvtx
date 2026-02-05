@@ -27,6 +27,7 @@ import { Row } from '@/hooks/database';
 import { useUser } from '@/providers/UserProvider';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const STATUS_OPTIONS = {
   OFC: [
@@ -87,7 +88,7 @@ export default function RingsPage() {
   const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[], [ringTypesRaw]);
   const maintenanceAreas = useMemo(
     () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
-    [maintenanceAreasRaw]
+    [maintenanceAreasRaw],
   );
 
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
@@ -98,7 +99,7 @@ export default function RingsPage() {
         value: t.id,
         label: t.name,
       })),
-    [ringTypes]
+    [ringTypes],
   );
 
   const maintenanceAreaFilterOptions = useMemo(
@@ -107,16 +108,20 @@ export default function RingsPage() {
         value: a.id,
         label: a.name,
       })),
-    [maintenanceAreas]
+    [maintenanceAreas],
   );
 
-  const { stats, totalNodesAcrossRings } = useMemo(() => {
+  // --- REFACTOR: Calculate stats and provide onClick handlers ---
+  const headerStats = useMemo<StatProps[]>(() => {
     const s = {
       spec: { issued: 0, pending: 0 },
       ofc: { ready: 0, partial: 0, pending: 0 },
       bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
     };
     let nodesSum = 0;
+
+    // Calculate based on CURRENTLY LOADED data (usually appropriate for stats on the list)
+    // If you wanted global stats, you'd need a separate hook or aggregation query.
     rings.forEach((r) => {
       nodesSum += r.total_nodes || 0;
       if (r.spec_status === 'Issued') s.spec.issued++;
@@ -133,8 +138,58 @@ export default function RingsPage() {
         s.bts.pending++;
       }
     });
-    return { stats: s, totalNodesAcrossRings: nodesSum };
-  }, [rings]);
+
+    const currentOfcFilter = filters.filters.ofc_status;
+    const currentSpecFilter = filters.filters.spec_status;
+    const currentBtsFilter = filters.filters.bts_status;
+
+    return [
+      {
+        value: `${nodesSum} / ${totalCount}`,
+        label: 'Total Nodes / Rings',
+        color: 'default',
+        // Click clears specific status filters
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.ofc_status;
+            delete next.spec_status;
+            delete next.bts_status;
+            return next;
+          }),
+        isActive: !currentOfcFilter && !currentSpecFilter && !currentBtsFilter,
+      },
+      {
+        value: `${s.bts.nodesOnAir} / ${s.bts.configuredCount}`,
+        label: 'Nodes On-Air / Rings Configured',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, bts_status: 'On-Air' })),
+        isActive: currentBtsFilter === 'On-Air',
+      },
+      {
+        value: `${s.spec.issued} / ${s.spec.pending}`,
+        label: 'SPEC (Issued/Pend)',
+        color: 'primary',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, spec_status: 'Issued' })),
+        isActive: currentSpecFilter === 'Issued',
+      },
+      {
+        value: `${s.ofc.ready} / ${s.ofc.partial} / ${s.ofc.pending}`,
+        label: 'OFC (Ready/Partial/Pend)',
+        color: 'warning',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, ofc_status: 'Ready' })),
+        isActive: currentOfcFilter === 'Ready',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    rings,
+    totalCount,
+    filters.filters.ofc_status,
+    filters.filters.spec_status,
+    filters.filters.bts_status,
+    filters.setFilters,
+  ]);
 
   const columns = RingsColumns(rings, STATUS_OPTIONS);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
@@ -143,7 +198,7 @@ export default function RingsPage() {
     (record: V_ringsRowSchema) => {
       if (record.id) router.push(`/dashboard/rings/${record.id}`);
     },
-    [router]
+    [router],
   );
 
   const tableActions = useMemo((): TableAction<'v_rings'>[] => {
@@ -164,36 +219,17 @@ export default function RingsPage() {
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    isFetching: isFetching, // Added isFetching
+    isFetching: isFetching,
     exportConfig: canEdit ? { tableName: 'rings' } : undefined,
   });
 
-  const headerStats = [
-    { value: `${totalNodesAcrossRings} / ${totalCount}`, label: 'Total Nodes / Rings' },
-    {
-      value: `${stats.bts.nodesOnAir} / ${stats.bts.configuredCount}`,
-      label: 'Nodes On-Air / Rings Configured',
-      color: 'success' as const,
-    },
-    {
-      value: `${stats.spec.issued} / ${stats.spec.pending}`,
-      label: 'SPEC (Issued/Pend)',
-      color: 'primary' as const,
-    },
-    {
-      value: `${stats.ofc.ready} / ${stats.ofc.partial} / ${stats.ofc.pending}`,
-      label: 'OFC (Ready/Partial/Pend)',
-      color: 'warning' as const,
-    },
-  ];
-
   const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-start">
+      <div className='flex flex-col gap-2'>
+        <div className='flex justify-between items-start'>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{record.name}</h3>
-            <span className="inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+            <h3 className='font-semibold text-gray-900 dark:text-gray-100'>{record.name}</h3>
+            <span className='inline-flex mt-1 items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'>
               {record.ring_type_name}
             </span>
           </div>
@@ -208,21 +244,21 @@ export default function RingsPage() {
   }
 
   return (
-    <div className="mx-auto space-y-4 p-6">
+    <div className='mx-auto space-y-4 p-6'>
       <PageHeader
-        title="Ring Management"
-        description="Manage network rings, assign systems, and track phase progress."
+        title='Ring Management'
+        description='Manage network rings, assign systems, and track phase progress.'
         icon={<GiLinkedRings />}
-        stats={headerStats}
+        stats={headerStats} // Interactive Stats
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
-        className="mb-4"
+        className='mb-4'
       />
 
       <DataTable
         autoHideEmptyColumns={true}
-        tableName="v_rings"
+        tableName='v_rings'
         data={rings}
         columns={orderedColumns}
         loading={isLoading}
@@ -252,45 +288,45 @@ export default function RingsPage() {
             activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
           >
             <SelectFilter
-              label="Ring Type"
-              filterKey="ring_type_id"
+              label='Ring Type'
+              filterKey='ring_type_id'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={ringTypeFilterOptions}
               isLoading={isLoadingRingTypes}
             />
             <SelectFilter
-              label="Maintenance Area"
-              filterKey="maintenance_terminal_id"
+              label='Maintenance Area'
+              filterKey='maintenance_terminal_id'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={maintenanceAreaFilterOptions}
               isLoading={isLoadingAreas}
             />
             <SelectFilter
-              label="OFC Status"
-              filterKey="ofc_status"
+              label='OFC Status'
+              filterKey='ofc_status'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={STATUS_OPTIONS.OFC}
             />
             <SelectFilter
-              label="SPEC Status"
-              filterKey="spec_status"
+              label='SPEC Status'
+              filterKey='spec_status'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={STATUS_OPTIONS.SPEC}
             />
             <SelectFilter
-              label="Working Status"
-              filterKey="bts_status"
+              label='Working Status'
+              filterKey='bts_status'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={STATUS_OPTIONS.BTS}
             />
             <SelectFilter
-              label="Active Record"
-              filterKey="status"
+              label='Active Record'
+              filterKey='status'
               filters={filters.filters}
               setFilters={filters.setFilters}
               options={[
@@ -318,11 +354,11 @@ export default function RingsPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteModal.message}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
         showIcon
         loading={deleteModal.loading}
       />

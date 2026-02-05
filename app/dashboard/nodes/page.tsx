@@ -24,6 +24,7 @@ import { getNodeIcon } from '@/utils/getNodeIcons';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Import StatProps
 
 const NodeFormModal = dynamic(
   () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
@@ -79,7 +80,6 @@ export default function NodesPage() {
     () => [
       {
         key: 'coordinates_status',
-        // label: 'Coords',
         type: 'native-select' as const,
         options: [
           { value: 'with_coords', label: 'With Coordinates' },
@@ -89,7 +89,6 @@ export default function NodesPage() {
       },
       {
         key: 'node_type_id',
-        // label: 'Node Type',
         type: 'multi-select' as const,
         options: nodeTypeOptions,
         isLoading: loadingNodeTypes,
@@ -97,7 +96,6 @@ export default function NodesPage() {
       },
       {
         key: 'maintenance_terminal_id',
-        // label: 'Maintenance Area',
         type: 'multi-select' as const,
         options: areaOptions,
         isLoading: loadingAreas,
@@ -137,6 +135,44 @@ export default function NodesPage() {
     leftIcon: <FiCopy />,
     hideTextOnMobile: true,
   });
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Nodes',
+        color: 'default',
+        // Click clears the status filter to show all
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        // Click sets status to 'true'
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive',
+        color: 'danger',
+        // Click sets status to 'false'
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const renderItem = useCallback(
     (node: V_nodes_completeRowSchema) => {
@@ -238,11 +274,7 @@ export default function NodesPage() {
         title: 'Node Management',
         description: 'Manage network locations, towers, and exchanges.',
         icon: <FiCpu />,
-        stats: [
-          { value: totalCount, label: 'Total Nodes' },
-          { value: activeCount, label: 'Active', color: 'success' },
-          { value: inactiveCount, label: 'Inactive', color: 'danger' },
-        ],
+        stats: headerStats,
         actions: headerActions,
         isLoading: isInitialLoad,
         isFetching: isFetching,
@@ -252,7 +284,6 @@ export default function NodesPage() {
       searchPlaceholder='Search node name, remark...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
-      // THE FIX: Pass setFilters
       setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}

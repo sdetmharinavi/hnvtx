@@ -19,6 +19,7 @@ import { NoteViewModal } from '@/components/notes/NoteViewModal';
 import { V_technical_notesRowSchema } from '@/schemas/zod-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { DataGrid } from '@/components/common/DataGrid';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 export default function NotesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -32,9 +33,8 @@ export default function NotesPage() {
   const {
     data: notes,
     totalCount,
-    // THE FIX: Restore activeCount and inactiveCount as they are now correct
-    activeCount,
-    inactiveCount,
+    activeCount, // Published
+    inactiveCount, // Drafts
     isLoading,
     isMutating: isCrudMutating,
     isFetching,
@@ -136,6 +136,44 @@ export default function NotesPage() {
     exportConfig: { tableName: 'v_technical_notes' },
   });
 
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.is_published;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Notes',
+        color: 'default',
+        // Click clears the is_published filter
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.is_published;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Published',
+        color: 'success',
+        // Click sets is_published to 'true'
+        onClick: () => filters.setFilters((prev) => ({ ...prev, is_published: 'true' })),
+        isActive: currentStatus === 'true',
+      },
+      {
+        value: inactiveCount,
+        label: 'Drafts',
+        color: 'warning',
+        // Click sets is_published to 'false'
+        onClick: () => filters.setFilters((prev) => ({ ...prev, is_published: 'false' })),
+        isActive: currentStatus === 'false',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.is_published, filters.setFilters]);
+
   const renderItem = useCallback(
     (note: V_technical_notesRowSchema) => (
       <GenericEntityCard
@@ -211,12 +249,7 @@ export default function NotesPage() {
         title: 'Technical Notes',
         description: 'Knowledge base, technical documentation, and team updates.',
         icon: <FiBook />,
-        // THE FIX: Use the corrected counts from the hook
-        stats: [
-          { value: totalCount, label: 'Total Notes' },
-          { value: activeCount, label: 'Published', color: 'success' },
-          { value: inactiveCount, label: 'Drafts', color: 'warning' },
-        ],
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading,
         isFetching,

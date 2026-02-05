@@ -24,6 +24,7 @@ import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
 import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { StatProps } from '@/components/common/page-header/StatCard'; // Added
 
 const AdminUsersPage = () => {
   const { isSuperAdmin, role, isLoading: isUserLoading } = useUser();
@@ -51,6 +52,7 @@ const AdminUsersPage = () => {
     editModal,
     viewModal,
     bulkActions,
+    filters,
   } = crud;
 
   const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
@@ -97,16 +99,6 @@ const AdminUsersPage = () => {
       createStandardActions<V_user_profiles_extendedRowSchema>({
         onEdit: canManage ? editModal.openEdit : undefined,
         onView: viewModal.open,
-        // We handle generic delete via crud, but this page uses a custom hook for users
-        // so we can still use the crud modal if we wire the delete handler correctly,
-        // OR we just use the custom handler here.
-        // For simplicity, let's just use the custom hook logic for now.
-        // Actually, let's rely on crud delete modal but map the confirm to our custom hook.
-        // BUT useCrudManager's handleDelete maps to the generic delete manager.
-        // For users, we need the specific API route.
-        // So we'll skip passing onDelete here and rely on bulk actions or custom buttons.
-        // Wait, standard actions are row-level.
-        // Let's implement a custom row delete for consistency.
         onDelete: canManage
           ? (rec) => {
               if (window.confirm(`Are you sure you want to delete ${rec.full_name}?`)) {
@@ -171,6 +163,46 @@ const AdminUsersPage = () => {
     isLoading: isLoading,
     exportConfig: { tableName: 'user_profiles' },
   });
+
+  // --- INTERACTIVE STATS ---
+  const headerStats = useMemo<StatProps[]>(() => {
+    const currentStatus = filters.filters.status;
+    const activeCount = users.filter((r) => r.status === 'active').length;
+    const inactiveCount = users.filter((r) => r.status !== 'active').length;
+
+    return [
+      {
+        value: totalCount,
+        label: 'Total Users',
+        color: 'default',
+        onClick: () =>
+          filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'active' })),
+        isActive: currentStatus === 'active',
+      },
+      {
+        value: inactiveCount,
+        label: 'Inactive/Suspended',
+        color: 'danger',
+        // Inactive encompasses both inactive and suspended. For simplicity we can set filter to inactive
+        // or just clear filters and let the user use the dropdown for specifics.
+        // Let's set it to 'inactive' for the quick filter.
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'inactive' })),
+        isActive: currentStatus === 'inactive',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, users, filters.filters.status, filters.setFilters]);
 
   const renderMobileItem = useCallback(
     (record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
@@ -252,19 +284,7 @@ const AdminUsersPage = () => {
         title: 'User Management',
         description: 'Manage network users and their related information.',
         icon: <FiUsers />,
-        stats: [
-          { value: totalCount, label: 'Total Users' },
-          {
-            value: users.filter((r) => r.status === 'active').length,
-            label: 'Active',
-            color: 'success',
-          },
-          {
-            value: users.filter((r) => r.status !== 'active').length,
-            label: 'Inactive/Suspended',
-            color: 'danger',
-          },
-        ],
+        stats: headerStats, // Interactive stats
         actions: headerActions,
         isLoading: isLoading,
       }}
