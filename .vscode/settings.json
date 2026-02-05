@@ -4,6 +4,7 @@
       "dexie",
       "isdistinct",
       "isdropdown",
+      "pers",
       "phfts",
       "plfts",
       "upserted",

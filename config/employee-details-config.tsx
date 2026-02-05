@@ -43,7 +43,7 @@ const createHeaderConfig = (emp: EmployeeDetails): HeaderConfig<EmployeeDetails>
       key: 'designation',
       component: (value: unknown, data: EmployeeDetails) =>
         data.employee_designation_name ? (
-          <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-200">
+          <span className='px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-200'>
             {data.employee_designation_name}
           </span>
         ) : null,

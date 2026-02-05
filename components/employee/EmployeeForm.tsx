@@ -3,6 +3,7 @@ import {
   FormDateInput,
   FormInput,
   FormSearchableSelect,
+  FormSwitch,
   FormTextarea,
 } from '@/components/common/form/FormControls';
 import {
@@ -167,6 +168,7 @@ const EmployeeForm = ({
             error={errors.maintenance_terminal_id}
             placeholder='Select maintenance area'
           />
+          <FormSwitch name='status' label='' control={control} error={errors.status} />
         </div>
         <FormTextarea
           name='employee_addr'

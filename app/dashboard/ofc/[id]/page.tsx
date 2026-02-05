@@ -225,63 +225,63 @@ export default function OfcCableDetailsPage() {
           {canEdit &&
             (isFree ? (
               <Button
-                size="xs"
-                variant="ghost"
+                size='xs'
+                variant='ghost'
                 onClick={() => setAssignFiber(record)}
-                title="Assign to Service"
-                className="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                title='Assign to Service'
+                className='text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20'
               >
-                <LinkIcon className="w-4 h-4" />
+                <LinkIcon className='w-4 h-4' />
               </Button>
             ) : (
-              <div className="flex gap-1">
+              <div className='flex gap-1'>
                 <Button
-                  size="xs"
-                  variant="ghost"
+                  size='xs'
+                  variant='ghost'
                   onClick={() => setAssignFiber(record)}
-                  title="Edit Link"
+                  title='Edit Link'
                 >
-                  <Settings className="w-4 h-4" />
+                  <Settings className='w-4 h-4' />
                 </Button>
                 <Button
-                  size="xs"
-                  variant="ghost"
+                  size='xs'
+                  variant='ghost'
                   onClick={() => setFiberToUnlink(record)}
-                  title="Unlink"
-                  className="text-orange-600 hover:bg-orange-50"
+                  title='Unlink'
+                  className='text-orange-600 hover:bg-orange-50'
                 >
-                  <Unlink className="w-4 h-4" />
+                  <Unlink className='w-4 h-4' />
                 </Button>
               </div>
             ))}
           {canEdit && (
             <Button
-              size="xs"
-              variant="ghost"
+              size='xs'
+              variant='ghost'
               onClick={() => editModal.openEdit(record)}
-              title="Edit Fiber Properties"
+              title='Edit Fiber Properties'
             >
-              <Edit2 className="w-4 h-4" />
+              <Edit2 className='w-4 h-4' />
             </Button>
           )}
           {canDelete && (
             <Button
-              size="xs"
-              variant="ghost"
-              className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+              size='xs'
+              variant='ghost'
+              className='text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
               onClick={() => crudActions.handleDelete(record)}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className='w-4 h-4' />
             </Button>
           )}
-          <div className="flex-1"></div>
+          <div className='flex-1'></div>
           <Button
-            size="xs"
-            variant="outline"
+            size='xs'
+            variant='outline'
             onClick={() => handleTraceClick(record)}
-            title="Trace Path"
+            title='Trace Path'
           >
-            <GitCommit className="w-4 h-4 mr-1" /> Trace
+            <GitCommit className='w-4 h-4 mr-1' /> Trace
           </Button>
         </>
       );
@@ -299,14 +299,14 @@ export default function OfcCableDetailsPage() {
       {
         key: 'trace',
         label: 'Trace Path',
-        icon: <GitCommit className="h-4 w-4" />,
+        icon: <GitCommit className='h-4 w-4' />,
         onClick: handleTraceClick,
         variant: 'secondary' as const,
       },
       {
         key: 'link',
         label: 'Link Service',
-        icon: <LinkIcon className="h-4 w-4" />,
+        icon: <LinkIcon className='h-4 w-4' />,
         onClick: (record: V_ofc_connections_completeRowSchema) => setAssignFiber(record),
         variant: 'primary' as const,
         hidden: (record: V_ofc_connections_completeRowSchema) => !!record.system_id || !canEdit,
@@ -314,7 +314,7 @@ export default function OfcCableDetailsPage() {
       {
         key: 'edit-link',
         label: 'Edit Link',
-        icon: <Edit2 className="h-4 w-4" />,
+        icon: <Edit2 className='h-4 w-4' />,
         onClick: (record: V_ofc_connections_completeRowSchema) => setAssignFiber(record),
         variant: 'secondary' as const,
         hidden: (record: V_ofc_connections_completeRowSchema) => !record.system_id || !canEdit,
@@ -322,7 +322,7 @@ export default function OfcCableDetailsPage() {
       {
         key: 'unlink',
         label: 'Unlink Service',
-        icon: <Unlink className="h-4 w-4" />,
+        icon: <Unlink className='h-4 w-4' />,
         onClick: (record: V_ofc_connections_completeRowSchema) => setFiberToUnlink(record),
         variant: 'danger' as const,
         hidden: (record: V_ofc_connections_completeRowSchema) => !record.system_id || !canEdit,
@@ -330,7 +330,7 @@ export default function OfcCableDetailsPage() {
       ...createStandardActions({
         onEdit: canEdit ? editModal.openEdit : undefined,
         onDelete: canDelete ? crudActions.handleDelete : undefined,
-        onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
+        onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
       }),
     ],
     [
@@ -395,7 +395,7 @@ export default function OfcCableDetailsPage() {
       label: isUploading ? 'Uploading...' : 'Upload Data',
       onClick: handleUploadClick,
       variant: 'outline',
-      leftIcon: <Upload className="w-4 h-4" />,
+      leftIcon: <Upload className='w-4 h-4' />,
       disabled: isUploading || isLoading,
       hideTextOnMobile: true,
     });
@@ -447,17 +447,17 @@ export default function OfcCableDetailsPage() {
   }
 
   return (
-    <div className="mx-auto space-y-6 p-4 md:p-6">
+    <div className='mx-auto space-y-6 p-4 md:p-6'>
       <input
-        type="file"
+        type='file'
         ref={fileInputRef}
         onChange={handleFileChange}
-        className="hidden"
-        accept=".xlsx, .xls, .csv"
+        className='hidden'
+        accept='.xlsx, .xls, .csv'
       />
 
       <PageHeader
-        title="OFC Cable Details"
+        title='OFC Cable Details'
         description={`Managing connections for route: ${routeDetails.route.route_name}`}
         icon={<GitBranch />}
         stats={headerStats}
@@ -470,14 +470,14 @@ export default function OfcCableDetailsPage() {
       <GenericFilterBar
         searchQuery={search.searchQuery}
         onSearchChange={search.setSearchQuery}
-        searchPlaceholder="Search fibers, systems..."
+        searchPlaceholder='Search fibers, systems...'
         filters={filters.filters}
         onFilterChange={handleFilterChange}
         filterConfigs={filterConfigs}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
-      
+
       {/* ADDED: Bulk Actions */}
       {bulkActions.selectedCount > 0 && (
         <BulkActions
@@ -486,23 +486,23 @@ export default function OfcCableDetailsPage() {
           onBulkDelete={bulkActions.handleBulkDelete}
           onBulkUpdateStatus={bulkActions.handleBulkUpdateStatus}
           onClearSelection={bulkActions.handleClearSelection}
-          entityName="fiber connection"
+          entityName='fiber connection'
           showStatusUpdate={true}
           canDelete={() => canDelete}
         />
       )}
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+      <div className='rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800'>
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
             {cableConnectionsData.map((fiber) => (
               <FiberConnectionCard key={fiber.id} fiber={fiber} actions={getCardActions(fiber)} />
             ))}
             {cableConnectionsData.length === 0 && !isLoading && (
-              <div className="col-span-full">
+              <div className='col-span-full'>
                 <FancyEmptyState
-                  title="No fibers found"
-                  description="Adjust filters to see results"
+                  title='No fibers found'
+                  description='Adjust filters to see results'
                 />
               </div>
             )}
@@ -510,14 +510,17 @@ export default function OfcCableDetailsPage() {
         ) : (
           <DataTable<'v_ofc_connections_complete'>
             autoHideEmptyColumns={true}
-            tableName="v_ofc_connections_complete"
+            tableName='v_ofc_connections_complete'
             data={cableConnectionsData as Row<'v_ofc_connections_complete'>[]}
             columns={orderedColumns}
             loading={isLoading}
             actions={tableActions}
             selectable={canDelete} // ADDED
-            onRowSelect={(rows) => { // ADDED
-              const validRows = rows.filter((row): row is Row<'v_ofc_connections_complete'> & { id: string } => !!row.id);
+            onRowSelect={(rows) => {
+              // ADDED
+              const validRows = rows.filter(
+                (row): row is Row<'v_ofc_connections_complete'> & { id: string } => !!row.id,
+              );
               bulkActions.handleRowSelect(validRows);
             }}
             onCellEdit={crudActions.handleCellEdit}
@@ -558,10 +561,10 @@ export default function OfcCableDetailsPage() {
         isOpen={!!fiberToUnlink}
         onConfirm={handleUnlink}
         onCancel={() => setFiberToUnlink(null)}
-        title="Unlink Service"
+        title='Unlink Service'
         message={`Are you sure you want to unlink Fiber #${fiberToUnlink?.fiber_no_sn} from the service?`}
-        confirmText="Unlink"
-        type="danger"
+        confirmText='Unlink'
+        type='danger'
         loading={isUnlinking}
       />
 
@@ -569,9 +572,9 @@ export default function OfcCableDetailsPage() {
         isOpen={deleteModal.isOpen}
         onConfirm={deleteModal.onConfirm}
         onCancel={deleteModal.onCancel}
-        title="Confirm Deletion"
+        title='Confirm Deletion'
         message={deleteModal.message}
-        type="danger"
+        type='danger'
         loading={deleteModal.loading}
       />
 

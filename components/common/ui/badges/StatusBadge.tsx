@@ -19,7 +19,8 @@ export const StatusBadge = ({
   return (
     <span
       className={`
-        inline-flex items-center gap-2 px-3 py-1.5
+        inline-flex items-center gap-2
+        ${showStatusLabel ? 'px-3 py-1.5' : 'p-0'}
         rounded-full text-xs font-semibold tracking-wide
         border backdrop-blur-sm
         transition-all duration-300 ease-out
@@ -31,7 +32,7 @@ export const StatusBadge = ({
     >
       <span
         className={`
-          relative w-2 h-2 rounded-full shadow-sm
+          relative w-2 h-2 rounded-full shadow-sm shrink-0
           ${config.dot} ${config.dotShadow}
           ${config.pulse ? 'animate-pulse' : ''}
         `}
@@ -46,7 +47,7 @@ export const StatusBadge = ({
           />
         )}
       </span>
-      {showStatusLabel && <span className='font-medium'>{displayLabel}</span>}
+      {showStatusLabel && <span className='font-medium whitespace-nowrap'>{displayLabel}</span>}
     </span>
   );
 };

@@ -148,6 +148,7 @@ export default function EmployeesPage() {
           .toUpperCase()}
         avatarColor={getAvatarColor(emp.employee_name || '')}
         status={emp.status}
+        showStatusLabel={false}
         subBadge={
           emp.employee_pers_no ? (
             <span className='inline-flex items-center text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium'>
@@ -244,7 +245,7 @@ export default function EmployeesPage() {
           onView: viewModal.open,
           onEdit: canEdit ? editModal.openEdit : undefined,
           onDelete: canDelete ? crudActions.handleDelete : undefined,
-          onToggleStatus: canEdit ? crudActions.handleToggleStatus : undefined,
+          onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
         }),
         selectable: canDelete,
         onRowSelect: (rows) => {

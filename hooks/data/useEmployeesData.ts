@@ -17,6 +17,7 @@ export const useEmployeesData = createGenericDataQuery<'v_employees'>({
     'employee_email',
     'employee_contact',
     'employee_designation_name',
+    'remark'
   ],
   defaultSortField: 'employee_name',
   rpcLimit: DEFAULTS.PAGE_SIZE,
