@@ -1,12 +1,15 @@
+// components/common/page-header/StatCard.tsx
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
 
 export interface StatProps {
-  value: string | number;
+  value: string | number | null | undefined; // FIXED: Allow null/undefined
   label: string;
   icon?: ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'default';
   isLoading?: boolean;
+  onClick?: () => void;
+  isActive?: boolean;
 }
 
 export const StatCard: React.FC<StatProps> = ({
@@ -15,6 +18,8 @@ export const StatCard: React.FC<StatProps> = ({
   icon,
   color = 'default',
   isLoading = false,
+  onClick,
+  isActive = false,
 }) => {
   const statColors = {
     primary: 'text-blue-600 dark:text-blue-400',
@@ -40,24 +45,35 @@ export const StatCard: React.FC<StatProps> = ({
     default: 'bg-white dark:bg-gray-900',
   };
 
+  const activeClass = isActive
+    ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-900'
+    : '';
+
+  const interactiveClass = onClick
+    ? 'cursor-pointer hover:shadow-md transition-all active:scale-[0.98]'
+    : '';
+
   return (
     <div
+      onClick={onClick}
       className={cn(
-        // MOBILE OPTIMIZATION: Reduced padding from p-4 to p-3 on mobile
         'rounded-lg border p-3 sm:p-4 flex items-start gap-3 sm:gap-4',
         borderColors[color],
         bgColors[color],
+        activeClass,
+        interactiveClass,
       )}
+      role={onClick ? 'button' : 'status'}
+      tabIndex={onClick ? 0 : undefined}
     >
-      {/* Hide icon on very small screens if needed, or keep small */}
       {icon && <div className={`shrink-0 text-xl sm:text-2xl ${statColors[color]}`}>{icon}</div>}
       <div className='min-w-0'>
-        {/* min-w-0 prevents truncation issues in grid */}
         <div className={`text-xl sm:text-2xl font-bold truncate ${statColors[color]}`}>
           {isLoading ? (
             <div className='h-6 w-12 sm:h-8 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse'></div>
           ) : (
-            value
+            // Ensure we render valid React children (handle null/undefined explicitly if needed, though React ignores them)
+            (value ?? '-')
           )}
         </div>
         <div className='text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate' title={label}>

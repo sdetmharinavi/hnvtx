@@ -6,14 +6,23 @@ import { useUser } from '@/providers/UserProvider';
 import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { useAdvancesData, useExpensesData } from '@/hooks/data/useExpensesData';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { FiPlus, FiUpload, FiList, FiPieChart, FiRefreshCw, FiDownload } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiUpload,
+  FiList,
+  FiPieChart,
+  FiRefreshCw,
+  FiDownload,
+  FiFilter,
+  FiX,
+} from 'react-icons/fi';
 import { DataGrid } from '@/components/common/DataGrid';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { calculatePercentage, formatCurrency, formatDate } from '@/utils/formatters';
 import { ProgressBar } from '@/components/common/ui/ProgressBar';
 import { createClient } from '@/utils/supabase/client';
 import dynamic from 'next/dynamic';
-import { PageSpinner, StatusBadge } from '@/components/common/ui';
+import { PageSpinner, StatusBadge, Button } from '@/components/common/ui';
 import { Tabs, TabsList, TabsTrigger } from '@/components/common/ui/tabs';
 import { useExpenseExcelUpload } from '@/hooks/database/excel-queries/useExpenseExcelUpload';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
@@ -28,6 +37,7 @@ import { useTableExcelDownload } from '@/hooks/database/excel-queries';
 import { buildColumnConfig } from '@/constants/table-column-keys';
 import { FaRupeeSign } from 'react-icons/fa';
 import { UserRole } from '@/types/user-roles';
+import { StatProps } from '@/components/common/page-header/StatCard';
 
 const AdvanceFormModal = dynamic(
   () => import('@/components/expenses/AdvanceFormModal').then((mod) => mod.AdvanceFormModal),
@@ -110,6 +120,50 @@ export default function ExpensesPage() {
       console.error('Refresh failed', error);
     }
   }, [activeTab, sync, advanceCrud, expenseCrud]);
+
+  // --- DYNAMIC HEADER STATS (FILTERABLE) ---
+  const advanceStats: StatProps[] = useMemo(() => {
+    const activeCount = advanceCrud.data.filter((a) => a.status === 'active').length;
+    const pendingCount = advanceCrud.data.filter((a) => a.status === 'pending').length;
+    const settledCount = advanceCrud.data.filter((a) => a.status === 'settled').length;
+    const currentStatus = advanceCrud.filters.filters.status;
+
+    return [
+      {
+        value: advanceCrud.totalCount,
+        label: 'All Advances',
+        onClick: () =>
+          advanceCrud.filters.setFilters((prev) => {
+            const next = { ...prev };
+            delete next.status;
+            return next;
+          }),
+        isActive: !currentStatus,
+      },
+      {
+        value: activeCount,
+        label: 'Active',
+        color: 'success',
+        onClick: () => advanceCrud.filters.setFilters((prev) => ({ ...prev, status: 'active' })),
+        isActive: currentStatus === 'active',
+      },
+      {
+        value: pendingCount,
+        label: 'Pending',
+        color: 'warning',
+        onClick: () => advanceCrud.filters.setFilters((prev) => ({ ...prev, status: 'pending' })),
+        isActive: currentStatus === 'pending',
+      },
+      {
+        value: settledCount,
+        label: 'Settled',
+        color: 'default',
+        onClick: () => advanceCrud.filters.setFilters((prev) => ({ ...prev, status: 'settled' })),
+        isActive: currentStatus === 'settled',
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advanceCrud.data, advanceCrud.totalCount, advanceCrud.filters.filters]);
 
   // --- EXPORT HANDLERS ---
   const handleExportAdvances = useCallback(() => {
@@ -287,13 +341,21 @@ export default function ExpensesPage() {
           onDelete={advanceCrud.actions.handleDelete}
           canEdit={true}
           canDelete={canDelete}
-          onView={() => {
-            setActiveTab('expenses');
+          onView={(record) => {
+            if (record.id) {
+              expenseCrud.filters.setFilters({ advance_id: record.id });
+              setActiveTab('expenses');
+            }
           }}
         />
       );
     },
-    [advanceCrud.editModal.openEdit, advanceCrud.actions.handleDelete, canDelete],
+    [
+      advanceCrud.editModal.openEdit,
+      advanceCrud.actions.handleDelete,
+      canDelete,
+      expenseCrud.filters,
+    ],
   );
 
   const expenseColumns: Column<Row<'v_expenses_complete'>>[] = useMemo(
@@ -360,6 +422,15 @@ export default function ExpensesPage() {
     [],
   );
 
+  const activeAdvanceId = expenseCrud.filters.filters.advance_id
+    ? String(expenseCrud.filters.filters.advance_id)
+    : null;
+
+  const activeAdvanceDetails = useMemo(() => {
+    if (!activeAdvanceId) return null;
+    return advanceCrud.data.find((a) => a.id === activeAdvanceId);
+  }, [activeAdvanceId, advanceCrud.data]);
+
   const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
 
   return (
@@ -377,7 +448,6 @@ export default function ExpensesPage() {
         result={uploadResult}
       />
 
-      {/* Tabs - Made responsive with full width on mobile */}
       <div className='bg-white dark:bg-gray-800 p-1 rounded-lg border dark:border-gray-700 shadow-sm w-full sm:w-fit'>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className='w-full sm:w-auto'>
@@ -397,6 +467,7 @@ export default function ExpensesPage() {
             title: 'Advance Requests',
             description: 'Manage temporary cash advances given to employees.',
             icon: <FaRupeeSign />,
+            stats: advanceStats,
             actions: [
               {
                 label: 'Refresh',
@@ -438,6 +509,8 @@ export default function ExpensesPage() {
             data: advanceCrud.data,
             columns: advanceColumns,
             loading: advanceCrud.isLoading,
+            searchable: false, // Hide duplicate search/filter inside table
+            filterable: false,
             actions: createStandardActions({
               onEdit: advanceCrud.editModal.openEdit,
               onDelete: advanceCrud.actions.handleDelete,
@@ -463,6 +536,18 @@ export default function ExpensesPage() {
             title: 'Expense Log',
             description: 'Detailed log of all operational expenses and vendor payments.',
             icon: <FiList />,
+            stats: [
+              {
+                value: expenseCrud.totalCount,
+                label: 'Filtered Expenses',
+              },
+              {
+                value:
+                  activeAdvanceDetails?.req_no ||
+                  (activeAdvanceId ? 'Selected ID' : 'All Advances'),
+                label: 'Filter Context',
+              },
+            ],
             actions: [
               {
                 label: 'Refresh',
@@ -499,12 +584,41 @@ export default function ExpensesPage() {
           }}
           crud={expenseCrud as UseCrudManagerReturn<V_expenses_completeRowSchema>}
           viewMode='table'
+          renderBulkActions={() =>
+            activeAdvanceId ? (
+              <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-center justify-between'>
+                <div className='flex items-center gap-2 text-blue-800 dark:text-blue-200'>
+                  <FiFilter />
+                  <span className='text-sm font-medium'>
+                    Viewing expenses for Advance:{' '}
+                    <strong>{activeAdvanceDetails?.req_no || activeAdvanceId}</strong>
+                  </span>
+                </div>
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  className='text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/40'
+                  onClick={() => {
+                    expenseCrud.filters.setFilters((prev) => {
+                      const next = { ...prev };
+                      delete next.advance_id;
+                      return next;
+                    });
+                  }}
+                >
+                  <FiX className='mr-1' /> Clear Filter
+                </Button>
+              </div>
+            ) : null
+          }
           renderTable={() => (
             <DataTable
               data={expenseCrud.data}
               columns={expenseColumns}
               tableName='v_expenses_complete'
               loading={expenseCrud.isLoading}
+              searchable={false} // Hide duplicate search/filter inside table
+              filterable={false}
               pagination={{
                 current: expenseCrud.pagination.currentPage,
                 pageSize: expenseCrud.pagination.pageLimit,

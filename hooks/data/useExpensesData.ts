@@ -19,6 +19,7 @@ export const useExpensesData = createGenericDataQuery<'v_expenses_complete'>({
   orderBy: 'desc',
   rpcLimit: DEFAULTS.PAGE_SIZE,
   filterFn: (item, filters) => {
+    // Exact match for advance_id
     if (filters.advance_id && item.advance_id !== filters.advance_id) return false;
     return true;
   },
