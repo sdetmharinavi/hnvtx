@@ -46,21 +46,21 @@ export const StatCard: React.FC<StatProps> = ({
         // MOBILE OPTIMIZATION: Reduced padding from p-4 to p-3 on mobile
         'rounded-lg border p-3 sm:p-4 flex items-start gap-3 sm:gap-4',
         borderColors[color],
-        bgColors[color]
+        bgColors[color],
       )}
     >
       {/* Hide icon on very small screens if needed, or keep small */}
       {icon && <div className={`shrink-0 text-xl sm:text-2xl ${statColors[color]}`}>{icon}</div>}
-      <div className="min-w-0">
+      <div className='min-w-0'>
         {/* min-w-0 prevents truncation issues in grid */}
         <div className={`text-xl sm:text-2xl font-bold truncate ${statColors[color]}`}>
           {isLoading ? (
-            <div className="h-6 w-12 sm:h-8 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+            <div className='h-6 w-12 sm:h-8 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse'></div>
           ) : (
             value
           )}
         </div>
-        <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate" title={label}>
+        <div className='text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate' title={label}>
           {label}
         </div>
       </div>
