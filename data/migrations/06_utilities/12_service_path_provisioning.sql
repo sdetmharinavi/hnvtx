@@ -260,7 +260,9 @@ WITH path_fibers AS (
     oc.id as fiber_id,
     oc.path_segment_order,
     cable.route_name,
-    oc.fiber_no_sn
+    -- THE FIX: Select start AND end fibers
+    COALESCE(oc.updated_fiber_no_sn, oc.fiber_no_sn) as start_fiber,
+    COALESCE(oc.updated_fiber_no_en, oc.fiber_no_en) as end_fiber
   FROM public.logical_fiber_paths lfp
   JOIN public.ofc_connections oc ON lfp.id = oc.logical_path_id
   JOIN public.ofc_cables cable ON oc.ofc_id = cable.id
@@ -271,7 +273,8 @@ aggregated_paths AS (
     path_role,
     path_direction,
     string_agg(
-      route_name || '(F' || fiber_no_sn || ')',
+      -- THE FIX: Format as Name(Fxx/Fyy)
+      route_name || '(F' || start_fiber || '/F' || end_fiber || ')',
       ' → ' ORDER BY path_segment_order
     ) AS path_string
   FROM path_fibers

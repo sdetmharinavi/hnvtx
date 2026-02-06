@@ -31,7 +31,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
     supabase,
     'v_system_connections_complete',
     connectionId ?? null,
-    { enabled: isExpanded && !!connectionId }
+    { enabled: isExpanded && !!connectionId },
   );
 
   const allocatedFiberIds = useMemo(() => {
@@ -59,7 +59,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
         orderBy: 'path_segment_order',
         orderDir: 'asc',
       },
-      { enabled: isExpanded && allocatedFiberIds.length > 0 }
+      { enabled: isExpanded && allocatedFiberIds.length > 0 },
     );
 
   const isLoading = isConnectionLoading || isFibersLoading;
@@ -68,7 +68,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
     allotedService?.replace(/\s*\(Working\)\s*/g, '').trim() || 'No Service Alloted';
 
   return (
-    <div className="border-b border-gray-200/50 dark:border-gray-700/30 last:border-0">
+    <div className='border-b border-gray-200/50 dark:border-gray-700/30 last:border-0'>
       {/* Compact Header */}
       <div
         className={`flex items-center gap-2 py-1.5 px-2.5 transition-colors ${
@@ -91,17 +91,17 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
         }}
       >
         {hasConnectionId && (
-          <div className="shrink-0 text-gray-400 dark:text-gray-500">
+          <div className='shrink-0 text-gray-400 dark:text-gray-500'>
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </div>
         )}
-        <Activity size={13} className="shrink-0 text-blue-500 dark:text-blue-400" />
+        <Activity size={13} className='shrink-0 text-blue-500 dark:text-blue-400' />
         <TruncateTooltip
-          className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate flex-1"
+          className='text-xs font-medium text-gray-700 dark:text-gray-300 truncate flex-1'
           text={displayLabel}
         />
         {hasConnectionId && (
-          <span className="shrink-0 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+          <span className='shrink-0 text-[10px] text-gray-400 dark:text-gray-500 font-medium'>
             {isExpanded ? 'Less' : 'More'}
           </span>
         )}
@@ -109,19 +109,19 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
 
       {/* Expanded Content */}
       {isExpanded && hasConnectionId && (
-        <div className="px-2.5 pb-2 space-y-2 bg-gray-50/30 dark:bg-gray-800/20">
+        <div className='px-2.5 pb-2 space-y-2 bg-gray-50/30 dark:bg-gray-800/20'>
           {isLoading ? (
-            <div className="flex items-center justify-center py-6 gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">Loading...</span>
+            <div className='flex items-center justify-center py-6 gap-2'>
+              <Loader2 className='w-4 h-4 animate-spin text-blue-500' />
+              <span className='text-[11px] text-gray-500 dark:text-gray-400'>Loading...</span>
             </div>
           ) : (
             <>
               {/* Logical Route - Compact Card */}
-              <div className="bg-white dark:bg-gray-900/40 rounded border border-gray-200/60 dark:border-gray-700/50 p-2">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <div className="w-1 h-3 bg-blue-500 rounded-full" />
-                  <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+              <div className='bg-white dark:bg-gray-900/40 rounded border border-gray-200/60 dark:border-gray-700/50 p-2'>
+                <div className='flex items-center gap-1.5 mb-1.5'>
+                  <div className='w-1 h-3 bg-blue-500 rounded-full' />
+                  <span className='text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide'>
                     Logical Route
                   </span>
                 </div>
@@ -129,15 +129,15 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
               </div>
 
               {/* Physical Segments - Compact List */}
-              <div className="bg-white dark:bg-gray-900/40 rounded border border-gray-200/60 dark:border-gray-700/50 p-2">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1 h-3 bg-emerald-500 rounded-full" />
-                    <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+              <div className='bg-white dark:bg-gray-900/40 rounded border border-gray-200/60 dark:border-gray-700/50 p-2'>
+                <div className='flex items-center justify-between mb-1.5'>
+                  <div className='flex items-center gap-1.5'>
+                    <div className='w-1 h-3 bg-emerald-500 rounded-full' />
+                    <span className='text-[10px] font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide'>
                       Physical Segments
                     </span>
                     {ofcData?.data && ofcData.data.length > 0 && (
-                      <span className="text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded-full font-medium">
+                      <span className='text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded-full font-medium'>
                         {ofcData.data.length}
                       </span>
                     )}
@@ -145,8 +145,8 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
                   {connection?.system_id && (
                     <Link
                       href={`/dashboard/systems/${connection.system_id}`}
-                      target="_blank"
-                      className="flex items-center gap-0.5 text-[10px] text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium"
+                      target='_blank'
+                      className='flex items-center gap-0.5 text-[10px] text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium'
                       onClick={(e) => e.stopPropagation()}
                     >
                       View <ExternalLink size={9} />
@@ -155,59 +155,65 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
                 </div>
 
                 {ofcData?.data && ofcData.data.length > 0 ? (
-                  <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar">
-                    {ofcData.data.map((seg, idx) => (
-                      <div
-                        key={seg.id || idx}
-                        className="p-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded hover:bg-gray-100/80 dark:hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
-                      >
-                        {/* Segment Name & Tags */}
-                        <div className="flex items-start justify-between gap-1.5 mb-1">
-                          <TruncateTooltip
-                            className="text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate flex-1 leading-tight"
-                            text={`${seg.ofc_route_name} ${seg.ofc_type_name}`}
-                          />
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className="font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[9px] font-medium whitespace-nowrap">
-                              F{seg.updated_fiber_no_sn}→F{seg.updated_fiber_no_en}
-                            </span>
-                            <span className="font-mono bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-medium capitalize">
-                              {seg.path_direction}
-                            </span>
-                          </div>
-                        </div>
+                  <div className='max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar'>
+                    {ofcData.data.map((seg, idx) => {
+                      // Correct Logic: Prefer Logical (Updated) Fiber #, Fallback to Physical
+                      const startFib = seg.updated_fiber_no_sn ?? seg.fiber_no_sn;
+                      const endFib = seg.updated_fiber_no_en ?? seg.fiber_no_en;
 
-                        {/* Metrics Row */}
-                        <div className="flex items-center gap-2 text-[10px]">
-                          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                            <Cable size={10} className="shrink-0" />
-                            <span className="font-mono font-medium text-gray-800 dark:text-gray-200">
-                              {seg.otdr_distance_sn_km}km
-                            </span>
+                      return (
+                        <div
+                          key={seg.id || idx}
+                          className='p-1.5 bg-gray-50/50 dark:bg-gray-800/30 rounded hover:bg-gray-100/80 dark:hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+                        >
+                          {/* Segment Name & Tags */}
+                          <div className='flex items-start justify-between gap-1.5 mb-1'>
+                            <TruncateTooltip
+                              className='text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate flex-1 leading-tight'
+                              text={`${seg.ofc_route_name} ${seg.ofc_type_name}`}
+                            />
+                            <div className='flex items-center gap-1 shrink-0'>
+                              <span className='font-mono bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded text-[9px] font-medium whitespace-nowrap'>
+                                F{startFib}→F{endFib}
+                              </span>
+                              <span className='font-mono bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-medium capitalize'>
+                                {seg.path_direction}
+                              </span>
+                            </div>
                           </div>
 
-                          {(seg.sn_power_dbm || seg.en_power_dbm) && (
-                            <>
-                              <span className="text-gray-300 dark:text-gray-600">•</span>
-                              <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                <Zap size={10} className="shrink-0" />
-                                <span className="font-medium">
-                                  {seg.sn_power_dbm ? seg.updated_sn_name : seg.updated_en_name}:
-                                </span>
-                                <span className="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                                  {seg.sn_power_dbm || seg.en_power_dbm}dBm
-                                </span>
-                              </div>
-                            </>
-                          )}
+                          {/* Metrics Row */}
+                          <div className='flex items-center gap-2 text-[10px]'>
+                            <div className='flex items-center gap-1 text-gray-600 dark:text-gray-400'>
+                              <Cable size={10} className='shrink-0' />
+                              <span className='font-mono font-medium text-gray-800 dark:text-gray-200'>
+                                {seg.otdr_distance_sn_km}km
+                              </span>
+                            </div>
+
+                            {(seg.sn_power_dbm || seg.en_power_dbm) && (
+                              <>
+                                <span className='text-gray-300 dark:text-gray-600'>•</span>
+                                <div className='flex items-center gap-1 text-gray-600 dark:text-gray-400'>
+                                  <Zap size={10} className='shrink-0' />
+                                  <span className='font-medium'>
+                                    {seg.sn_power_dbm ? seg.updated_sn_name : seg.updated_en_name}:
+                                  </span>
+                                  <span className='font-mono font-semibold text-gray-800 dark:text-gray-200'>
+                                    {seg.sn_power_dbm || seg.en_power_dbm}dBm
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="py-4 text-center">
-                    <Cable size={20} className="mx-auto mb-1 text-gray-300 dark:text-gray-600" />
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  <div className='py-4 text-center'>
+                    <Cable size={20} className='mx-auto mb-1 text-gray-300 dark:text-gray-600' />
+                    <p className='text-[10px] text-gray-500 dark:text-gray-400'>
                       No segments found
                     </p>
                   </div>

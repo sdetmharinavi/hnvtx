@@ -18,7 +18,7 @@ import {
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiServer, FiRefreshCw } from 'react-icons/fi';
+import { FiServer, FiRefreshCw, FiZap, FiMapPin } from 'react-icons/fi';
 import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
@@ -67,9 +67,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  // THE FIX: Removed manual SQL string construction.
-  // Instead, we prepare a filters object.
-  // If no IDs, we pass a dummy ID to ensure we return nothing instead of everything.
   const fiberFilters = useMemo(() => {
     if (allocatedFiberIds.length > 0) {
       return { id: allocatedFiberIds };
@@ -354,29 +351,61 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     );
   }, []);
 
+  // FIX: Use updated fiber numbers (logical) for both start and end, defaulting to physical
   const renderFiberMobile = useCallback((record: Row<'v_ofc_connections_complete'>) => {
+    const startFib = record.updated_fiber_no_sn ?? record.fiber_no_sn;
+    const endFib = record.updated_fiber_no_en ?? record.fiber_no_en;
+
     return (
-      <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-col gap-1.5 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm'>
         <div className='flex justify-between items-center'>
-          <span className='text-sm font-semibold text-blue-950 dark:text-blue-50 truncate max-w-[70%]'>
+          <span className='text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[70%]'>
             {record.ofc_route_name}
           </span>
-          <div className='flex items-center gap-1 text-xs font-mono font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded'>
-            <span>F{record.fiber_no_sn}</span>
-            <span className='text-blue-600 dark:text-blue-400'>→</span>
-            <span>F{record.fiber_no_en}</span>
+          <div className='flex items-center gap-1.5 text-xs font-mono font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded'>
+            <span>F{startFib}</span>
+            <span className='text-blue-400'>→</span>
+            <span>F{endFib}</span>
           </div>
         </div>
-        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
-          <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
-          <span>End A Rx: {record.sn_power_dbm || '-'} dBm</span>
+
+        <div className='grid grid-cols-2 gap-2 mt-1 text-xs'>
+          <div className='flex items-center gap-1.5 text-gray-600 dark:text-gray-400'>
+            <FiMapPin className='w-3 h-3' />
+            <span className='truncate'>{record.updated_sn_name || record.sn_name}</span>
+          </div>
+          <div className='flex items-center gap-1.5 justify-end text-gray-600 dark:text-gray-400'>
+            <span className='truncate'>{record.updated_en_name || record.en_name}</span>
+            <FiMapPin className='w-3 h-3' />
+          </div>
         </div>
-        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
-          <span>{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</span>
-          <span>End B Rx: {record.en_power_dbm || '-'} dBm</span>
-        </div>
-        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
-          <span>Route Loss: {record.route_loss_db || '-'} dB</span>
+
+        <div className='flex justify-between text-xs pt-2 mt-1 border-t border-gray-100 dark:border-gray-700/50'>
+          <div className='flex flex-col'>
+            <span className='text-[10px] uppercase text-gray-400 font-bold'>End A</span>
+            <span className='font-mono'>
+              {record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}
+            </span>
+            <span className='font-mono text-blue-600 dark:text-blue-400'>
+              {record.sn_power_dbm ? `${record.sn_power_dbm} dBm` : '-'}
+            </span>
+          </div>
+          <div className='flex flex-col items-center'>
+            <span className='text-[10px] uppercase text-gray-400 font-bold'>Loss</span>
+            <div className='flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold mt-1'>
+              <FiZap className='w-3 h-3' />
+              <span>{record.route_loss_db || '-'} dB</span>
+            </div>
+          </div>
+          <div className='flex flex-col items-end'>
+            <span className='text-[10px] uppercase text-gray-400 font-bold'>End B</span>
+            <span className='font-mono'>
+              {record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}
+            </span>
+            <span className='font-mono text-purple-600 dark:text-purple-400'>
+              {record.en_power_dbm ? `${record.en_power_dbm} dBm` : '-'}
+            </span>
+          </div>
         </div>
       </div>
     );

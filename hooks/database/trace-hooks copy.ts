@@ -1,6 +1,4 @@
 // hooks/database/trace-hooks.ts
-'use client';
-
 import { useCallback } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
@@ -10,7 +8,6 @@ interface FiberConnection {
   id: string;
   ofc_route_name: string | null;
   fiber_no_sn: number | null;
-  fiber_no_en: number | null; // Ensure this is typed
   updated_fiber_no_sn: number | null;
   updated_fiber_no_en: number | null;
 }
@@ -48,7 +45,6 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
               `
               id,
               fiber_no_sn,
-              fiber_no_en,
               updated_fiber_no_sn,
               updated_fiber_no_en,
               ofc_cables (
@@ -73,7 +69,6 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
           const flattenedData = (data as any[]).map((item) => ({
             id: item.id,
             fiber_no_sn: item.fiber_no_sn,
-            fiber_no_en: item.fiber_no_en, // Capture physical end
             updated_fiber_no_sn: item.updated_fiber_no_sn,
             updated_fiber_no_en: item.updated_fiber_no_en,
             // Handle the joined relationship safely
@@ -93,10 +88,10 @@ export const useTracePath = (supabase: SupabaseClient<Database>) => {
             .map((f) => {
               // Use updated fiber numbers (logical path) if available, else physical
               const startFib = f.updated_fiber_no_sn ?? f.fiber_no_sn;
-              // THE FIX: Ensure we use the EN property for the second value, defaulting to physical EN
-              const endFib = f.updated_fiber_no_en ?? f.fiber_no_en;
+              const endFib = f.updated_fiber_no_en ?? f.fiber_no_sn;
 
-              return `${f.ofc_route_name}(F${startFib}/F${endFib})`;
+              // THE FIX: Always show both start and end fiber numbers for clarity
+              return `${f.ofc_route_name} (F${startFib}/${endFib})`;
             })
             .join(' → ');
         };
