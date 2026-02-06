@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we need to fix the issue that in Logical Route fibers are not showing as (updated_fiber_no_sn / updated_fiber_no_en) instead showing only (updated_fiber_no_sn) . Also in mobile view even Physical Fiber Segments is showing wrong i.e. (updated_fiber_no_sn -> updated_fiber_no_sn) instead of (updated_fiber_no_sn -> updated_fiber_no_en)
+Let's begin! First of all do you have any suggestion for UI/UX improvements?

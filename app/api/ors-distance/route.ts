@@ -7,6 +7,12 @@ export async function POST(req: NextRequest) {
   // 10s timeout for the external API
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+  // Define variables in outer scope to be accessible in catch block for fallback
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let a: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let b: any;
+
   try {
     const body = await req.text();
     if (!body) {
@@ -21,7 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { a, b } = parsedBody;
+    // Assign to outer variables
+    ({ a, b } = parsedBody);
 
     // Validate coordinates
     if (!a?.lat || !a?.long || !b?.lat || !b?.long) {
@@ -74,9 +81,15 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     clearTimeout(timeoutId); // Ensure timeout is cleared
 
-    console.error('ORS Fetch failed completely:', error);
+    console.warn('ORS Fetch failed or timed out, falling back to Haversine:', error);
 
-    // Return a generic fallback response if we can't calculate
+    // Fallback if we have valid coordinates
+    if (a?.lat && a?.long && b?.lat && b?.long) {
+      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
+      return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
+    }
+
+    // Return a generic error only if fallback is impossible
     return NextResponse.json({ error: 'Routing service unavailable' }, { status: 500 });
   }
 }
