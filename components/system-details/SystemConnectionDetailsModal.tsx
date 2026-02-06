@@ -67,9 +67,15 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     ].filter(Boolean);
   }, [connection]);
 
-  const fiberIdFilter = useMemo(() => {
-    if (allocatedFiberIds.length === 0) return undefined;
-    return `id::text IN ('${allocatedFiberIds.join("','")}')`;
+  // THE FIX: Removed manual SQL string construction.
+  // Instead, we prepare a filters object.
+  // If no IDs, we pass a dummy ID to ensure we return nothing instead of everything.
+  const fiberFilters = useMemo(() => {
+    if (allocatedFiberIds.length > 0) {
+      return { id: allocatedFiberIds };
+    }
+    // Fallback: return impossible ID to fetch 0 rows (safeguard)
+    return { id: '00000000-0000-0000-0000-000000000000' };
   }, [allocatedFiberIds]);
 
   // 2. Fetch Fiber Segments
@@ -81,11 +87,10 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     supabase,
     'v_ofc_connections_complete',
     {
-      filters: {
-        or: fiberIdFilter,
-      },
+      filters: fiberFilters, // Pass clean object filter
       limit: 100,
     },
+    // Only enable if we actually have IDs to look for
     { enabled: allocatedFiberIds.length > 0 },
   );
 
