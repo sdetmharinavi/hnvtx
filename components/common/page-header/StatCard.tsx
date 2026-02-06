@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
 
 export interface StatProps {
-  value: string | number | null | undefined; // FIXED: Allow null/undefined
+  value: string | number | null | undefined;
   label: string;
   icon?: ReactNode;
   color?: 'primary' | 'success' | 'warning' | 'danger' | 'default';
@@ -57,26 +57,28 @@ export const StatCard: React.FC<StatProps> = ({
     <div
       onClick={onClick}
       className={cn(
-        'rounded-lg border p-3 sm:p-4 flex items-start gap-3 sm:gap-4',
+        'rounded-lg border p-3 sm:p-4 flex items-center sm:items-start gap-3 sm:gap-4',
         borderColors[color],
         bgColors[color],
         activeClass,
         interactiveClass,
       )}
       role={onClick ? 'button' : 'status'}
-      tabIndex={onClick ? 0 : undefined}
-    >
-      {icon && <div className={`shrink-0 text-xl sm:text-2xl ${statColors[color]}`}>{icon}</div>}
-      <div className='min-w-0'>
-        <div className={`text-xl sm:text-2xl font-bold truncate ${statColors[color]}`}>
+      tabIndex={onClick ? 0 : undefined}>
+      {icon && (
+        <div className={`shrink-0 text-lg sm:text-xl md:text-2xl ${statColors[color]}`}>{icon}</div>
+      )}
+      <div className='min-w-0 flex flex-col justify-center sm:block'>
+        <div className={`text-lg sm:text-xl md:text-2xl font-bold truncate ${statColors[color]}`}>
           {isLoading ? (
             <div className='h-6 w-12 sm:h-8 sm:w-16 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse'></div>
           ) : (
-            // Ensure we render valid React children (handle null/undefined explicitly if needed, though React ignores them)
             (value ?? '-')
           )}
         </div>
-        <div className='text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate' title={label}>
+        <div
+          className='text-[10px] sm:text-xs md:text-sm text-gray-600 dark:text-gray-400 truncate'
+          title={label}>
           {label}
         </div>
       </div>

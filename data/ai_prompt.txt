@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all we need filters according to header status as applied in expense page, I mean on clicking header status, respective filter should apply for all other pages.
+Let's begin! First of all we need to fix the issue that breadcrumb not showing in mobile devices and other UX/UI issues.

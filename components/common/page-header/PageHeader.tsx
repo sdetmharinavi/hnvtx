@@ -40,6 +40,7 @@ export function PageHeader({
     <>
       {showHeader && (
         <div className={cn('space-y-4 sm:space-y-6', className)}>
+          {/* Breadcrumbs render here, now visible on mobile */}
           <Breadcrumbs />
 
           {/* Header Section */}
@@ -56,7 +57,7 @@ export function PageHeader({
                 </h1>
               </div>
               {description && (
-                <p className='text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed'>
+                <p className='text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl'>
                   {description}
                 </p>
               )}
@@ -87,8 +88,7 @@ export function PageHeader({
                     <Button
                       key={`desktop-action-${index}`}
                       {...btnProps}
-                      disabled={action.disabled || isLoading}
-                    >
+                      disabled={action.disabled || isLoading}>
                       {action.label}
                     </Button>
                   );
@@ -104,21 +104,20 @@ export function PageHeader({
               {stats && stats.length > 0 && (
                 <div
                   className={cn(
-                    'grid gap-3 sm:gap-4 grow',
-                    // Responsive grid columns based on number of stats
+                    'grid gap-2 sm:gap-4 grow',
+                    // Responsive grid columns
+                    'grid-cols-2', // Default mobile: 2 cols
                     stats.length === 1 && 'grid-cols-1',
-                    stats.length === 2 && 'grid-cols-2',
-                    stats.length === 3 && 'grid-cols-2 sm:grid-cols-3',
-                    stats.length >= 4 && 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4',
-                  )}
-                >
+                    stats.length === 3 && 'sm:grid-cols-3',
+                    stats.length >= 4 && 'lg:grid-cols-4',
+                  )}>
                   {stats.map((stat) => (
                     <StatCard key={stat.label} {...stat} isLoading={isFetching} />
                   ))}
                 </div>
               )}
 
-              {/* Mobile Actions - Horizontal Scroll */}
+              {/* Mobile Actions - Horizontal Scroll with better padding */}
               {actions.length > 0 && (
                 <div className='flex lg:hidden items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0'>
                   <div className='flex items-center gap-2 min-w-min'>
@@ -150,8 +149,8 @@ export function PageHeader({
                           key={`mobile-action-${index}`}
                           {...btnProps}
                           className='shrink-0 whitespace-nowrap'
-                          disabled={action.disabled || isLoading}
-                        >
+                          size='sm' // Smaller buttons on mobile
+                          disabled={action.disabled || isLoading}>
                           {hideTextOnMobile ? '' : action.label}
                         </Button>
                       );
