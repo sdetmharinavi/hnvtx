@@ -7,22 +7,22 @@ import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { TruncateTooltip } from '@/components/common/TruncateTooltip';
 import { TableSkeleton } from '@/components/common/ui/table/TableSkeleton';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
+import { cn } from '@/lib/utils';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
 
-interface TableBodyProps<T extends TableOrViewName>
-  extends Pick<
-    DataTableProps<T>,
-    | 'columns'
-    | 'selectable'
-    | 'bordered'
-    | 'density'
-    | 'striped'
-    | 'hoverable'
-    | 'loading'
-    | 'emptyText'
-  > {
+interface TableBodyProps<T extends TableOrViewName> extends Pick<
+  DataTableProps<T>,
+  | 'columns'
+  | 'selectable'
+  | 'bordered'
+  | 'density'
+  | 'striped'
+  | 'hoverable'
+  | 'loading'
+  | 'emptyText'
+> {
   actions?: TableAction<T>[];
   processedData: DataRow<T>[];
   visibleColumns: Column<Row<T>>[];
@@ -38,8 +38,10 @@ interface TableBodyProps<T extends TableOrViewName>
   isLoading: boolean;
 }
 
-interface TableRowProps<T extends TableOrViewName>
-  extends Omit<TableBodyProps<T>, 'processedData' | 'loading' | 'emptyText'> {
+interface TableRowProps<T extends TableOrViewName> extends Omit<
+  TableBodyProps<T>,
+  'processedData' | 'loading' | 'emptyText'
+> {
   record: DataRow<T>;
   rowIndex: number;
   isSelected: boolean;
@@ -60,7 +62,6 @@ function TableRowBase<T extends TableOrViewName>({
   hasActions,
   striped,
   hoverable,
-  selectedRows,
   editingCell,
   editValue,
   setEditValue,
@@ -71,11 +72,10 @@ function TableRowBase<T extends TableOrViewName>({
 }: // isLoading,
 TableRowProps<T>) {
   const editInputRef = useRef<HTMLInputElement>(null);
-  const editSelectRef = useRef<HTMLSelectElement>(null); // Added ref for select
+  const editSelectRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (editingCell && editingCell.rowIndex === rowIndex) {
-      // Check which ref is active and focus it
       if (editInputRef.current) {
         editInputRef.current.focus();
         editInputRef.current.select();
@@ -85,48 +85,174 @@ TableRowProps<T>) {
     }
   }, [editingCell, rowIndex]);
 
-  // Loading UI is handled at the TableBodyBase level.
+  const isStriped = striped && rowIndex % 2 === 1;
+
+  const trClasses = cn(
+    'group transition-colors',
+    hoverable && 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+    isStriped && 'bg-gray-50/50 dark:bg-gray-700/25',
+    isSelected && 'bg-blue-50 dark:bg-blue-900/20',
+  );
+
+  const stickyTdClasses = cn(
+    'sticky right-0 z-10',
+    densityClasses[density ?? 'default'],
+    'text-center whitespace-nowrap',
+    'transition-colors',
+    // Background logic - order matters for override
+    isSelected
+      ? 'bg-blue-50 dark:bg-blue-900/20'
+      : isStriped
+        ? 'bg-gray-50 dark:bg-gray-700/25'
+        : 'bg-white dark:bg-gray-800',
+    // Hover state needs to be separate and use group-hover
+    hoverable && 'group-hover:bg-gray-100 dark:group-hover:bg-gray-700',
+    // Special override for when it's selected AND hovered
+    isSelected && hoverable && 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40',
+    // Border logic
+    bordered
+      ? 'border-b border-l border-gray-200 dark:border-gray-700'
+      : 'shadow-[inset_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.05)]',
+  );
 
   return (
-    <tr
-      className={`${striped && rowIndex % 2 === 1 ? 'bg-gray-50/50 dark:bg-gray-700/25' : ''} ${
-        hoverable ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50' : ''
-      } ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''} transition-colors`}
-    >
+    <tr className={trClasses}>
       {selectable && (
         <td
-          className={`w-12 px-4 py-3 whitespace-nowrap overflow-hidden ${
-            bordered
-              ? `${
-                  rowIndex < selectedRows.length - 1 ? 'border-b' : ''
-                } border-r border-gray-200 dark:border-gray-700`
-              : ''
-          }`}
+          className={cn(
+            'sticky left-0 z-10 w-12 px-4 py-3 whitespace-nowrap overflow-hidden',
+            'transition-colors',
+            isSelected
+              ? 'bg-blue-50 dark:bg-blue-900/20'
+              : isStriped
+                ? 'bg-gray-50 dark:bg-gray-700/25'
+                : 'bg-white dark:bg-gray-800',
+            hoverable && 'group-hover:bg-gray-100 dark:group-hover:bg-gray-700',
+            isSelected && hoverable && 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40',
+            bordered ? `border-b border-r border-gray-200 dark:border-gray-700` : '',
+          )}
           style={{ width: 48, minWidth: 48, maxWidth: 48 }}
         >
           <input
-            type="checkbox"
+            type='checkbox'
             checked={isSelected}
             onChange={(e) => onRowSelect(record, e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className='rounded border-gray-300 text-blue-600 focus:ring-blue-500'
             aria-label={`Select row ${rowIndex + 1}`}
           />
         </td>
       )}
+      {visibleColumns.map((column, colIndex) => {
+        const isEditing =
+          editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key;
+
+        return (
+          <td
+            key={column.key}
+            className={cn(
+              'relative text-sm text-gray-900 dark:text-white whitespace-nowrap',
+              densityClasses[density ?? 'default'],
+              column.align === 'center'
+                ? 'text-center'
+                : column.align === 'right'
+                  ? 'text-right'
+                  : '',
+              column.editable && 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50',
+              bordered
+                ? `border-b ${
+                    colIndex < visibleColumns.length - 1 || hasActions ? 'border-r' : ''
+                  } border-gray-200 dark:border-gray-700`
+                : '',
+            )}
+            style={{
+              width: column.width,
+              minWidth: column.width ? undefined : '100px',
+              maxWidth: '350px',
+            }}
+            onClick={() => column.editable && onCellEdit(record, column, rowIndex)}
+          >
+            {isEditing ? (
+              <div
+                className='absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-xl ring-2 ring-blue-500/20 dark:ring-blue-500/40'
+                style={{ width: 'auto', minWidth: '100%', minHeight: '100%' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {column.editOptions ? (
+                  <select
+                    ref={editSelectRef}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveCellEdit();
+                      if (e.key === 'Escape') cancelCellEdit();
+                    }}
+                    className='min-w-[120px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
+                  >
+                    {column.editOptions.map((opt) => (
+                      <option key={String(opt.value)} value={String(opt.value)}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    ref={editInputRef}
+                    type='text'
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveCellEdit();
+                      if (e.key === 'Escape') cancelCellEdit();
+                    }}
+                    className='min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
+                  />
+                )}
+
+                <div className='flex items-center gap-1 shrink-0'>
+                  <button
+                    type='button'
+                    onClick={saveCellEdit}
+                    className='p-1.5 text-green-600 hover:text-green-700 bg-green-50 dark:bg-green-900/30 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors'
+                    aria-label='Save'
+                    title='Save (Enter)'
+                  >
+                    <FiCheck size={14} />
+                  </button>
+                  <button
+                    type='button'
+                    onClick={cancelCellEdit}
+                    className='p-1.5 text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/30 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors'
+                    aria-label='Cancel'
+                    title='Cancel (Esc)'
+                  >
+                    <FiX size={14} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className='flex items-center gap-2 group min-w-0 overflow-hidden max-w-full'>
+                {column.render ? (
+                  column.render(record[column.dataIndex as keyof DataRow<T>], record, rowIndex)
+                ) : (
+                  <TruncateTooltip
+                    text={String(record[column.dataIndex as keyof DataRow<T>] ?? '—')}
+                    className='text-sm'
+                  />
+                )}
+                {column.editable && (
+                  <FiEdit3
+                    size={12}
+                    className='opacity-0 group-hover:opacity-50 text-gray-400 shrink-0'
+                  />
+                )}
+              </div>
+            )}
+          </td>
+        );
+      })}
       {hasActions && (
-        <td
-          className={`w-32 ${
-            densityClasses[density ?? 'default']
-          } text-center whitespace-nowrap overflow-hidden ${
-            bordered
-              ? `${
-                  rowIndex < selectedRows.length - 1 ? 'border-b' : ''
-                } border-gray-200 dark:border-gray-700`
-              : ''
-          }`}
-          style={{ width: 128, minWidth: 128, maxWidth: 128 }}
-        >
-          <div className="flex items-center justify-center gap-1">
+        <td className={stickyTdClasses} style={{ width: 128, minWidth: 128, maxWidth: 128 }}>
+          <div className='flex items-center justify-center gap-1'>
             {actions?.map((action) => {
               const isHidden =
                 typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
@@ -150,10 +276,17 @@ TableRowProps<T>) {
               return (
                 <button
                   key={action.key}
-                  onClick={() => !isDisabled && action.onClick(record, rowIndex)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isDisabled) {
+                      action.onClick(record, rowIndex);
+                    }
+                  }}
                   disabled={isDisabled}
                   className={`p-1 rounded transition-colors ${
-                    isDisabled ? 'opacity-50 cursor-not-allowed' : variants[variant]
+                    isDisabled
+                      ? 'opacity-50 cursor-not-allowed'
+                      : `hover:bg-gray-200 dark:hover:bg-gray-600 ${variants[variant]}`
                   }`}
                   title={action.label}
                 >
@@ -164,129 +297,13 @@ TableRowProps<T>) {
           </div>
         </td>
       )}
-      {visibleColumns.map((column, colIndex) => {
-        const isEditing =
-          editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key;
-
-        return (
-          <td
-            key={column.key}
-            // Removed overflow-hidden from the TD class list
-            className={`relative ${
-              densityClasses[density ?? 'default']
-            } text-sm text-gray-900 dark:text-white whitespace-nowrap ${
-              column.align === 'center'
-                ? 'text-center'
-                : column.align === 'right'
-                ? 'text-right'
-                : ''
-            } ${
-              column.editable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50' : ''
-            } ${
-              bordered
-                ? `${rowIndex < selectedRows.length - 1 ? 'border-b' : ''} ${
-                    colIndex < visibleColumns.length - 1 || hasActions ? 'border-r' : ''
-                  } border-gray-200 dark:border-gray-700`
-                : ''
-            } `}
-            style={{
-              width: column.width,
-              minWidth: column.width ? undefined : '100px',
-              maxWidth: '350px',
-            }}
-            onClick={() => column.editable && onCellEdit(record, column, rowIndex)}
-          >
-            {isEditing ? (
-              // Edit Mode: Absolute overlay
-              <div
-                className="absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-xl ring-2 ring-blue-500/20 dark:ring-blue-500/40"
-                // Ensure it is at least 100% width, but grows to fit content (buttons)
-                style={{ width: 'auto', minWidth: '100%', minHeight: '100%' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {column.editOptions ? (
-                  // Dropdown Edit
-                  <select
-                    ref={editSelectRef}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveCellEdit();
-                      if (e.key === 'Escape') cancelCellEdit();
-                    }}
-                    className="min-w-[120px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {column.editOptions.map((opt) => (
-                      <option key={String(opt.value)} value={String(opt.value)}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  // Text Edit
-                  <input
-                    ref={editInputRef}
-                    type="text"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveCellEdit();
-                      if (e.key === 'Escape') cancelCellEdit();
-                    }}
-                    className="min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                )}
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={saveCellEdit}
-                    className="p-1.5 text-green-600 hover:text-green-700 bg-green-50 dark:bg-green-900/30 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
-                    aria-label="Save"
-                    title="Save (Enter)"
-                  >
-                    <FiCheck size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelCellEdit}
-                    className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/30 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                    aria-label="Cancel"
-                    title="Cancel (Esc)"
-                  >
-                    <FiX size={14} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              // Display Mode: Wrap in div with overflow-hidden to handle text clipping
-              <div className="flex items-center gap-2 group min-w-0 overflow-hidden max-w-full">
-                {column.render ? (
-                  column.render(record[column.dataIndex as keyof DataRow<T>], record, rowIndex)
-                ) : (
-                  <TruncateTooltip
-                    text={String(record[column.dataIndex as keyof DataRow<T>] ?? '—')}
-                    className="text-sm"
-                  />
-                )}
-                {column.editable && (
-                  <FiEdit3
-                    size={12}
-                    className="opacity-0 group-hover:opacity-50 text-gray-400 shrink-0"
-                  />
-                )}
-              </div>
-            )}
-          </td>
-        );
-      })}
     </tr>
   );
 }
 
 // Memoized Table Row component for performance optimization (preserve generics via assertion)
 const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>(
-  props: TableRowProps<T>
+  props: TableRowProps<T>,
 ) => React.ReactElement;
 
 // Base TableBody component (generic). We'll memoize with a type assertion below to preserve generics.
@@ -305,7 +322,7 @@ function TableBodyBase<T extends TableOrViewName>({
             colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)}
             className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}
           >
-            <div className="py-6">
+            <div className='py-6'>
               <TableSkeleton
                 rows={processedData.length || 5}
                 columns={
@@ -329,7 +346,7 @@ function TableBodyBase<T extends TableOrViewName>({
             className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}
           >
             <FancyEmptyState
-              title="No Data Found"
+              title='No Data Found'
               description={emptyText || 'Try adjusting your search or filters.'}
             />
           </td>
@@ -361,5 +378,5 @@ function TableBodyBase<T extends TableOrViewName>({
 }
 
 export const TableBody = React.memo(TableBodyBase) as <T extends TableOrViewName>(
-  props: TableBodyProps<T>
+  props: TableBodyProps<T>,
 ) => React.ReactElement;
