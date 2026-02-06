@@ -109,7 +109,9 @@ export function GenericEntityCard<T>({
     const value = item.value;
 
     if (value === null || value === undefined || value === '') {
-      return <span className='text-gray-400 dark:text-gray-500 italic'>Not specified</span>;
+      return (
+        <span className='text-slate-500 dark:text-slate-400 italic font-medium'>Not specified</span>
+      );
     }
 
     if (typeof value === 'string' || typeof value === 'number') {
@@ -125,8 +127,12 @@ export function GenericEntityCard<T>({
           const [lat, long] = coords;
           return (
             <div className='flex flex-col gap-0.5'>
-              <span className='text-xs text-gray-600 dark:text-gray-400'>Lat: {lat.trim()}</span>
-              <span className='text-xs text-gray-600 dark:text-gray-400'>Long: {long.trim()}</span>
+              <span className='text-sm font-semibold text-blue-900 dark:text-blue-100'>
+                Lat: {lat.trim()}
+              </span>
+              <span className='text-sm font-semibold text-blue-900 dark:text-blue-100'>
+                Long: {long.trim()}
+              </span>
             </div>
           );
         }
@@ -138,18 +144,18 @@ export function GenericEntityCard<T>({
           <TruncateTooltip
             text={stringValue}
             copyOnDoubleClick={item.copyable}
-            className='text-gray-700 dark:text-gray-300'
+            className='text-blue-950 dark:text-blue-50 font-semibold'
           />
         );
       }
 
       return (
-        <span className='text-gray-700 dark:text-gray-300'>
+        <span className='text-blue-950 dark:text-blue-50 font-semibold'>
           {item.copyable ? (
             <TruncateTooltip
               text={stringValue}
               copyOnDoubleClick={true}
-              className='text-gray-700 dark:text-gray-300'
+              className='text-blue-950 dark:text-blue-50 font-semibold'
             />
           ) : (
             stringValue
@@ -159,7 +165,7 @@ export function GenericEntityCard<T>({
     }
 
     // If it's ReactNode, render as is
-    return <div className='text-gray-700 dark:text-gray-300'>{value}</div>;
+    return <div className='text-blue-950 dark:text-blue-50 font-semibold'>{value}</div>;
   };
 
   return (
@@ -254,7 +260,7 @@ export function GenericEntityCard<T>({
                   border border-blue-100 dark:border-blue-800/50
                   bg-linear-to-br from-white to-blue-50 dark:from-gray-700 dark:to-gray-800
                   group-hover:shadow-lg group-hover:scale-105
-                  text-gray-700 dark:text-gray-300
+                  text-blue-900 dark:text-blue-100
                 '
                 >
                   {headerIcon}
@@ -277,7 +283,7 @@ export function GenericEntityCard<T>({
               )}
               {subtitle && !subBadge && (
                 <p
-                  className={`text-xs text-gray-600 dark:text-gray-400 font-medium truncate ${subtitleClassName}`}
+                  className={`text-sm text-blue-800 dark:text-blue-200 font-semibold truncate ${subtitleClassName}`}
                   title={subtitle}
                 >
                   {subtitle}
@@ -299,7 +305,7 @@ export function GenericEntityCard<T>({
               {title}
             </h3>
             <p
-              className={`text-sm text-gray-600 dark:text-gray-400 font-medium mb-2 ${subtitleClassName}`}
+              className={`text-sm text-blue-800 dark:text-blue-200 font-semibold mb-2 ${subtitleClassName}`}
               title={subtitle}
             >
               {subtitle || '—'}
@@ -328,7 +334,7 @@ export function GenericEntityCard<T>({
                     ${
                       isRemark
                         ? 'bg-linear-to-br from-amber-50/50 to-amber-100/50 dark:from-amber-900/10 dark:to-amber-900/20 border-amber-200 dark:border-amber-800/30'
-                        : ''
+                        : 'bg-linear-to-br from-blue-50/30 to-indigo-50/30 dark:from-blue-900/10 dark:to-indigo-900/10 border-blue-100 dark:border-blue-800/30'
                     }
                     ${dataItemClassName}
                   `}
@@ -339,7 +345,7 @@ export function GenericEntityCard<T>({
                     ${
                       isRemark
                         ? 'bg-linear-to-br from-amber-100 to-amber-200 dark:from-amber-800/30 dark:to-amber-900/40 border-amber-300 dark:border-amber-700/50'
-                        : ''
+                        : 'bg-linear-to-br from-blue-100 to-indigo-100 dark:from-blue-800/30 dark:to-indigo-800/30 border-blue-200 dark:border-blue-700/50'
                     }
                   `}
                     aria-hidden='true'
@@ -347,8 +353,8 @@ export function GenericEntityCard<T>({
                     <ItemIcon
                       className={`w-4 h-4 ${
                         isRemark
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-blue-600 dark:text-blue-400'
+                          ? 'text-amber-800 dark:text-amber-300'
+                          : 'text-blue-800 dark:text-blue-300'
                       } ${item.iconClassName || ''}`}
                       aria-hidden='true'
                     />
@@ -359,8 +365,8 @@ export function GenericEntityCard<T>({
                       text-[10px] font-bold uppercase tracking-wider leading-none mb-1
                       ${
                         isRemark
-                          ? 'text-amber-700 dark:text-amber-300'
-                          : 'text-gray-600 dark:text-gray-400'
+                          ? 'text-amber-900 dark:text-amber-200'
+                          : 'text-blue-800 dark:text-blue-200'
                       }
                       ${item.labelClassName || ''}
                     `}
@@ -371,8 +377,8 @@ export function GenericEntityCard<T>({
                       className={`
                       ${
                         isRemark
-                          ? 'text-amber-800 dark:text-amber-200'
-                          : 'text-gray-900 dark:text-gray-300'
+                          ? 'text-amber-950 dark:text-amber-100'
+                          : 'text-blue-950 dark:text-blue-50'
                       }
                       ${item.valueClassName || ''}
                     `}
@@ -418,10 +424,10 @@ export function GenericEntityCard<T>({
               title='View Details'
               aria-label={`View details for ${title}`}
               className={`
-                font-medium hover:scale-105 transition-transform duration-200 cursor-pointer
-                bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600
-                text-gray-700 dark:text-gray-300
-                border-gray-300 dark:border-gray-600
+                font-semibold hover:scale-105 transition-transform duration-200 cursor-pointer
+                bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/40
+                text-blue-900 dark:text-blue-100
+                border-blue-300 dark:border-blue-700
                 ${actionButtonClassName}
               `}
             >
@@ -443,9 +449,10 @@ export function GenericEntityCard<T>({
               title='Edit'
               aria-label={`Edit ${title}`}
               className={`
-                text-blue-600 hover:text-blue-700 hover:bg-blue-50 
-                dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 
+                text-blue-800 hover:text-blue-900 hover:bg-blue-50 
+                dark:text-blue-300 dark:hover:text-blue-200 dark:hover:bg-blue-900/20 
                 hover:scale-105 transition-all duration-200 cursor-pointer
+                font-semibold
                 ${actionButtonClassName}
               `}
             >
@@ -458,9 +465,10 @@ export function GenericEntityCard<T>({
               size='xs'
               variant='ghost'
               className={`
-                text-red-600 hover:text-red-700 hover:bg-red-50 
-                dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 
+                text-red-800 hover:text-red-900 hover:bg-red-50 
+                dark:text-red-300 dark:hover:text-red-200 dark:hover:bg-red-900/20 
                 hover:scale-105 transition-all duration-200 cursor-pointer
+                font-semibold
                 ${actionButtonClassName}
               `}
               onClick={(e) => {

@@ -29,10 +29,10 @@ interface SystemConnectionDetailsModalProps {
 }
 
 const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
-  <div className='flex items-center justify-between bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-t-lg border-b border-gray-200 dark:border-gray-700 mt-6 first:mt-0'>
+  <div className='flex items-center justify-between bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 px-4 py-3 rounded-t-lg border-b border-blue-200 dark:border-blue-800/50 mt-6 first:mt-0'>
     <div className='flex items-center gap-3'>
       <div className='w-1 h-6 bg-blue-600 rounded-full'></div>
-      <h3 className='text-lg font-semibold text-gray-900 dark:text-white'>{title}</h3>
+      <h3 className='text-lg font-bold text-blue-900 dark:text-blue-100'>{title}</h3>
     </div>
     {action}
   </div>
@@ -130,7 +130,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 200,
         render: (val, record) => {
           return (
-            <span className='font-medium text-gray-900 dark:text-white'>
+            <span className='font-semibold text-blue-950 dark:text-blue-50'>
               {(val as string) ||
                 (record as V_system_connections_completeRowSchema).connected_system_name ||
                 'N/A'}
@@ -151,9 +151,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 150,
         render: (val) =>
           val ? (
-            <span className='font-medium text-gray-700 dark:text-gray-300'>{val as string}</span>
+            <span className='font-semibold text-blue-900 dark:text-blue-100'>{val as string}</span>
           ) : (
-            <span className='text-gray-400 italic text-xs'>-</span>
+            <span className='text-slate-500 dark:text-slate-400 italic text-xs'>-</span>
           ),
       },
       {
@@ -163,11 +163,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 130,
         render: (val) =>
           val ? (
-            <span className='font-mono text-sm bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded'>
+            <span className='font-mono text-sm font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 px-1.5 py-0.5 rounded'>
               {formatIP(val)}
             </span>
           ) : (
-            <span className='text-gray-400 italic text-xs'>-</span>
+            <span className='text-slate-500 dark:text-slate-400 italic text-xs'>-</span>
           ),
       },
       {
@@ -177,9 +177,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
         width: 120,
         render: (val) =>
           val ? (
-            <span className='font-mono text-sm'>{val as string}</span>
+            <span className='font-mono text-sm font-semibold text-blue-900 dark:text-blue-100'>
+              {val as string}
+            </span>
           ) : (
-            <span className='text-gray-400 italic text-xs'>-</span>
+            <span className='text-slate-500 dark:text-slate-400 italic text-xs'>-</span>
           ),
       },
       { key: 'bandwidth', title: 'Capacity', dataIndex: 'bandwidth', width: 100 },
@@ -248,7 +250,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       title: 'End Info',
       dataIndex: 'end',
       width: 80,
-      render: (val) => <span className='font-bold text-blue-600'>{val as string}</span>,
+      render: (val) => (
+        <span className='font-bold text-blue-700 dark:text-blue-300'>{val as string}</span>
+      ),
     },
     {
       key: 'node_ip',
@@ -276,7 +280,11 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       dataIndex: 'protection_interface',
       width: 150,
       render: (val: unknown) =>
-        val ? <>{String(val)}</> : <span className='text-gray-400 italic text-xs'>-</span>,
+        val ? (
+          <>{String(val)}</>
+        ) : (
+          <span className='text-slate-500 dark:text-slate-400 italic text-xs'>-</span>
+        ),
     },
   ];
 
@@ -302,13 +310,13 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     return (
       <div className='flex flex-col gap-4'>
         <div>
-          <div className='text-[10px] text-gray-500 uppercase font-bold mb-1 tracking-wide'>
+          <div className='text-[10px] text-blue-700 dark:text-blue-300 uppercase font-bold mb-1 tracking-wide'>
             Service Name / Customer
           </div>
-          <div className='font-semibold text-lg text-gray-900 dark:text-white wrap-break-words leading-tight'>
+          <div className='font-bold text-lg text-blue-950 dark:text-blue-50 wrap-break-words leading-tight'>
             {record.service_name || record.customer_name || 'N/A'}
           </div>
-          <div className='inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'>
+          <div className='inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'>
             {record.connected_link_type_name || 'Link'}
           </div>
         </div>
@@ -322,21 +330,23 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
       <div className='flex items-center justify-between'>
         <div>
           <div className='flex items-center gap-2 mb-1'>
-            <span className='font-bold text-blue-600 text-xs uppercase tracking-wide'>
+            <span className='font-bold text-blue-700 dark:text-blue-300 text-xs uppercase tracking-wide'>
               {record.end}
             </span>
-            <span className='text-xs font-mono bg-gray-100 dark:bg-gray-700 px-1.5 rounded text-gray-600 dark:text-gray-300'>
+            <span className='text-xs font-mono font-semibold bg-blue-100 dark:bg-blue-900/30 px-1.5 rounded text-blue-900 dark:text-blue-100'>
               {record.node_ip || 'No IP'}
             </span>
           </div>
-          <div className='text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2'>
-            <FiServer className='w-3.5 h-3.5 text-gray-400' />
+          <div className='text-sm font-semibold text-blue-950 dark:text-blue-50 flex items-center gap-2'>
+            <FiServer className='w-3.5 h-3.5 text-blue-600 dark:text-blue-400' />
             {record.system_name}
           </div>
         </div>
         <div className='text-right'>
-          <div className='text-[10px] text-gray-400 uppercase mb-0.5'>Interface</div>
-          <div className='font-mono text-sm font-bold text-gray-800 dark:text-gray-200'>
+          <div className='text-[10px] text-blue-700 dark:text-blue-300 uppercase mb-0.5 font-bold'>
+            Interface
+          </div>
+          <div className='font-mono text-sm font-bold text-blue-900 dark:text-blue-100'>
             {record.interface || '-'}
           </div>
         </div>
@@ -348,24 +358,24 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     return (
       <div className='flex flex-col gap-1.5'>
         <div className='flex justify-between items-center'>
-          <span className='text-sm font-medium text-gray-900 dark:text-white truncate max-w-[70%]'>
+          <span className='text-sm font-semibold text-blue-950 dark:text-blue-50 truncate max-w-[70%]'>
             {record.ofc_route_name}
           </span>
-          <div className='flex items-center gap-1 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded'>
+          <div className='flex items-center gap-1 text-xs font-mono font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-1.5 py-0.5 rounded'>
             <span>F{record.fiber_no_sn}</span>
-            <span className='text-gray-400'>→</span>
+            <span className='text-blue-600 dark:text-blue-400'>→</span>
             <span>F{record.fiber_no_en}</span>
           </div>
         </div>
-        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
+        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
           <span>{record.otdr_distance_sn_km ? `${record.otdr_distance_sn_km} km` : '-'}</span>
           <span>End A Rx: {record.sn_power_dbm || '-'} dBm</span>
         </div>
-        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
+        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
           <span>{record.otdr_distance_en_km ? `${record.otdr_distance_en_km} km` : '-'}</span>
           <span>End B Rx: {record.en_power_dbm || '-'} dBm</span>
         </div>
-        <div className='flex justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700 pt-1.5 mt-0.5'>
+        <div className='flex justify-between text-xs font-medium text-blue-800 dark:text-blue-200 border-t border-blue-100 dark:border-blue-800/50 pt-1.5 mt-0.5'>
           <span>Route Loss: {record.route_loss_db || '-'} dB</span>
         </div>
       </div>
@@ -440,7 +450,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 <div className='flex gap-2'>
                   <button
                     onClick={handleRefreshData}
-                    className='p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50'
+                    className='p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50'
                     title='Refresh Connection Data'
                     disabled={isBusy}
                   >
@@ -448,7 +458,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                   </button>
                   <button
                     onClick={handleOpenAllocationModal}
-                    className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors shadow-sm'
+                    className='px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors shadow-sm'
                   >
                     {allocatedFiberIds.length > 0 ? 'Modify Allocation' : 'Map OFC'}
                   </button>
@@ -456,20 +466,22 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
               }
             />
             <div className='p-4 space-y-6'>
-              <div className='p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700'>
-                <h4 className='text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide'>
+              <div className='p-4 bg-linear-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 rounded-lg border border-blue-100 dark:border-blue-900/30'>
+                <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
                   Logical Route
                 </h4>
                 <PathDisplay systemConnectionId={connection.id} />
               </div>
 
               <div>
-                <h4 className='text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 uppercase tracking-wide'>
+                <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
                   Physical Fiber Segments
                 </h4>
                 {!ofcData?.data || ofcData.data.length === 0 ? (
-                  <div className='p-6 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg'>
-                    <p className='text-gray-500 dark:text-gray-400'>No fibers allocated yet.</p>
+                  <div className='p-6 text-center border-2 border-dashed border-blue-200 dark:border-blue-800/50 rounded-lg bg-blue-50/30 dark:bg-blue-950/10'>
+                    <p className='text-blue-700 dark:text-blue-300 font-medium'>
+                      No fibers allocated yet.
+                    </p>
                   </div>
                 ) : (
                   <DataTable
@@ -506,7 +518,7 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           )}
         </div>
       ) : (
-        <div className='flex items-center justify-center h-full text-red-500'>
+        <div className='flex items-center justify-center h-full text-red-700 dark:text-red-300 font-semibold'>
           Connection not found
         </div>
       )}
