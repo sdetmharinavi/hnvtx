@@ -35,11 +35,27 @@ const PORT_TYPES = {
   PON: 'c362e3d1-51b5-4a67-82cf-a9f194e46e6a',
   TEN_GE: '6c9460cb-22dd-4457-82e3-0ccebe0f3afc',
   STM1: '7be2cd28-a794-4f98-b2aa-31ea6c1c6edc',
+  STM16: '3de66615-3963-4edc-98ad-a2f08eda5417',
   // New Type for C1 System (Ensure this UUID exists in lookup_types or replace with existing Ethernet UUID)
   HUNDRED_GE: 'f50ef056-24c8-4287-b9c0-99e91af68c59',
 };
 
 export const PORT_TEMPLATES: Record<string, PortTemplate> = {
+    // TEJAS STM16 2.5G Ports (System Capacity ID: 7244eee4-00f5-4dd7-b4a0-3cbc37abe2eb)
+  '7244eee4-00f5-4dd7-b4a0-3cbc37abe2eb': {
+    name: 'TEJAS STM16 2.5G Ports Configuration',
+    description: 'Configuration for TEJAS STM16 2.5G Ports',
+    ports: [
+      // Slot 1
+      createPort('2.3', PORT_TYPES.STM16, '2.5 Gbps'),
+      createPort('2.4', PORT_TYPES.STM16, '2.5 Gbps'),
+      // Slot 2
+      createPort('4.3', PORT_TYPES.STM16, '2.5 Gbps'),
+      createPort('4.4', PORT_TYPES.STM16, '2.5 Gbps'),
+      // NMS
+      createPort('NMS', PORT_TYPES.FE, 'FE'),
+    ],
+  },
   // A1 Ports (System Capacity ID: 42f21547-e070-4a94-a13d-d4f158e51fc1)
   '42f21547-e070-4a94-a13d-d4f158e51fc1': {
     name: 'A1 Ports Configuration',
