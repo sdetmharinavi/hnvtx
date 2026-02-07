@@ -18,7 +18,14 @@ import {
 import { FiberAllocationModal } from '@/components/system-details/FiberAllocationModal';
 import { PathDisplay } from '@/components/system-details/PathDisplay';
 import { OfcDetailsTableColumns } from '@/config/table-columns/OfcDetailsTableColumns';
-import { FiServer, FiRefreshCw, FiZap, FiMapPin } from 'react-icons/fi';
+import {
+  FiRefreshCw,
+  FiChevronDown,
+  FiChevronRight,
+  FiMapPin,
+  FiZap,
+  FiServer,
+} from 'react-icons/fi'; // ADDED Chevrons
 import { formatIP } from '@/utils/formatters';
 
 interface SystemConnectionDetailsModalProps {
@@ -28,13 +35,36 @@ interface SystemConnectionDetailsModalProps {
   parentSystem: V_systems_completeRowSchema | null;
 }
 
-const SectionHeader = ({ title, action }: { title: string; action?: React.ReactNode }) => (
-  <div className='flex items-center justify-between bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 px-4 py-3 rounded-t-lg border-b border-blue-200 dark:border-blue-800/50 mt-6 first:mt-0'>
+// Collapsible Header Component
+const SectionHeader = ({
+  title,
+  action,
+  isCollapsible = false,
+  isExpanded = true,
+  onToggle,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  isCollapsible?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
+}) => (
+  <div
+    className={`flex items-center justify-between bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 px-4 py-3 border-b border-blue-200 dark:border-blue-800/50 mt-6 first:mt-0 rounded-t-lg ${isCollapsible ? 'cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/40' : ''}`}
+    onClick={isCollapsible && onToggle ? onToggle : undefined}
+  >
     <div className='flex items-center gap-3'>
       <div className='w-1 h-6 bg-blue-600 rounded-full'></div>
-      <h3 className='text-lg font-bold text-blue-900 dark:text-blue-100'>{title}</h3>
+      <h3 className='text-lg font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2'>
+        {title}
+        {isCollapsible && (
+          <span className='text-blue-400 dark:text-blue-500'>
+            {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          </span>
+        )}
+      </h3>
     </div>
-    {action}
+    {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
   </div>
 );
 
@@ -48,6 +78,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
   const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [connectionToAllocate, setConnectionToAllocate] =
     useState<V_system_connections_completeRowSchema | null>(null);
+
+  // Expanded states for sections
+  const [isPathExpanded, setIsPathExpanded] = useState(false);
 
   // 1. Fetch Connection Details
   const {
@@ -71,7 +104,6 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     if (allocatedFiberIds.length > 0) {
       return { id: allocatedFiberIds };
     }
-    // Fallback: return impossible ID to fetch 0 rows (safeguard)
     return { id: '00000000-0000-0000-0000-000000000000' };
   }, [allocatedFiberIds]);
 
@@ -84,10 +116,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
     supabase,
     'v_ofc_connections_complete',
     {
-      filters: fiberFilters, // Pass clean object filter
+      filters: fiberFilters,
       limit: 100,
     },
-    // Only enable if we actually have IDs to look for
     { enabled: allocatedFiberIds.length > 0 },
   );
 
@@ -475,6 +506,9 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
           <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden'>
             <SectionHeader
               title='Optical Fiber Path'
+              isCollapsible={true}
+              isExpanded={isPathExpanded}
+              onToggle={() => setIsPathExpanded(!isPathExpanded)}
               action={
                 <div className='flex gap-2'>
                   <button
@@ -494,46 +528,48 @@ export const SystemConnectionDetailsModal: React.FC<SystemConnectionDetailsModal
                 </div>
               }
             />
-            <div className='p-4 space-y-6'>
-              <div className='p-4 bg-linear-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 rounded-lg border border-blue-100 dark:border-blue-900/30'>
-                <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
-                  Logical Route
-                </h4>
-                <PathDisplay systemConnectionId={connection.id} />
-              </div>
+            {isPathExpanded && (
+              <div className='p-4 space-y-6'>
+                <div className='p-4 bg-linear-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 rounded-lg border border-blue-100 dark:border-blue-900/30'>
+                  <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
+                    Logical Route
+                  </h4>
+                  <PathDisplay systemConnectionId={connection.id} />
+                </div>
 
-              <div>
-                <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
-                  Physical Fiber Segments
-                </h4>
-                {!ofcData?.data || ofcData.data.length === 0 ? (
-                  <div className='p-6 text-center border-2 border-dashed border-blue-200 dark:border-blue-800/50 rounded-lg bg-blue-50/30 dark:bg-blue-950/10'>
-                    <p className='text-blue-700 dark:text-blue-300 font-medium'>
-                      No fibers allocated yet.
-                    </p>
-                  </div>
-                ) : (
-                  <DataTable
-                    autoHideEmptyColumns={true}
-                    tableName='v_ofc_connections_complete'
-                    data={ofcData.data}
-                    columns={ofcColumns}
-                    searchable={false}
-                    filterable={false}
-                    showColumnSelector={false}
-                    showColumnsToggle={false}
-                    renderMobileItem={renderFiberMobile}
-                    pagination={{
-                      current: 1,
-                      pageSize: 10,
-                      total: ofcData.data.length,
-                      onChange: () => {},
-                    }}
-                    density='compact'
-                  />
-                )}
+                <div>
+                  <h4 className='text-sm font-bold text-blue-800 dark:text-blue-200 mb-3 uppercase tracking-wide'>
+                    Physical Fiber Segments
+                  </h4>
+                  {!ofcData?.data || ofcData.data.length === 0 ? (
+                    <div className='p-6 text-center border-2 border-dashed border-blue-200 dark:border-blue-800/50 rounded-lg bg-blue-50/30 dark:bg-blue-950/10'>
+                      <p className='text-blue-700 dark:text-blue-300 font-medium'>
+                        No fibers allocated yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <DataTable
+                      autoHideEmptyColumns={true}
+                      tableName='v_ofc_connections_complete'
+                      data={ofcData.data}
+                      columns={ofcColumns}
+                      searchable={false}
+                      filterable={false}
+                      showColumnSelector={false}
+                      showColumnsToggle={false}
+                      renderMobileItem={renderFiberMobile}
+                      pagination={{
+                        current: 1,
+                        pageSize: 10,
+                        total: ofcData.data.length,
+                        onChange: () => {},
+                      }}
+                      density='compact'
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {isAllocationModalOpen && (

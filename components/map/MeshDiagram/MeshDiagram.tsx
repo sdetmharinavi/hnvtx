@@ -14,6 +14,7 @@ import { MeshControls } from './MeshControls';
 import { useMeshLayout } from './utils/meshUtils';
 import { MeshDiagramProps } from './types';
 import { RingMapNode } from '@/components/map/ClientRingMap/types';
+import { FiEye, FiEyeOff } from 'react-icons/fi'; // ADDED Icons
 
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
   const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
@@ -35,11 +36,14 @@ export default function MeshDiagram({
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, L.LatLngExpression>>({});
+
+  // NEW STATE: Toggle UI controls
+  const [uiVisible, setUiVisible] = useState(true);
+
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
   const bgColor = isDark ? '#0f172a' : '#f8fafc';
 
-  // Memoized Layout Calculation (Prevents zoom reset on label move)
   const { nodePositions, bounds } = useMeshLayout(nodes);
 
   const groupedConnections = useMemo(() => groupLines(connections), [connections]);
@@ -72,7 +76,23 @@ export default function MeshDiagram({
 
   return (
     <div className={containerClass}>
-      <MeshControls onBack={onBack} isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
+      {/* UI Visibility Toggle Button */}
+      <button
+        onClick={() => setUiVisible(!uiVisible)}
+        className='absolute top-4 left-4 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
+        title={uiVisible ? 'Hide Controls' : 'Show Controls'}
+      >
+        {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+      </button>
+
+      {/* Conditionally Render Controls */}
+      {uiVisible && (
+        <MeshControls
+          onBack={onBack}
+          isFullScreen={isFullScreen}
+          setIsFullScreen={setIsFullScreen}
+        />
+      )}
 
       <MapContainer
         bounds={bounds}
@@ -82,11 +102,12 @@ export default function MeshDiagram({
         maxZoom={3}
         scrollWheelZoom={true}
         attributionControl={false}
-        zoomControl={false}
-        className="dark:bg-blue-950! shadow-lg"
+        zoomControl={false} // Disable default zoom, we might want custom or use built-in conditionally
+        className='dark:bg-blue-950! shadow-lg'
       >
         <MeshController bounds={bounds} />
-        <ZoomControl position="bottomright" />
+        {/* Render ZoomControl only if UI is visible */}
+        {uiVisible && <ZoomControl position='bottomright' />}
 
         {Array.from(groupedConnections.values()).map((groupLines) => {
           return groupLines.map(([nodeA, nodeB], index) => {
@@ -140,7 +161,7 @@ export default function MeshDiagram({
               position={pos}
               portsList={portsList}
               theme={theme}
-              labelPosition={labelPositions[nodeId]} // Pass custom position if set
+              labelPosition={labelPositions[nodeId]}
               onLabelDragEnd={handleLabelDragEnd}
             />
           );

@@ -17,6 +17,7 @@ import { FullscreenControl } from './controllers/FullscreenControl';
 import { MapFlyToController } from './controllers/MapFlyToController';
 import { MapNode, PortDisplayInfo, RingMapNode, SegmentConfigMap } from './types';
 import { RotatedDragOverlay } from './controllers/RotatedDragOverlay';
+import { FiEye, FiEyeOff } from 'react-icons/fi'; // Import icons
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -31,7 +32,6 @@ interface ClientRingMapProps {
   nodePorts?: Map<string, PortDisplayInfo[]>;
 }
 
-// Helper to group parallel lines
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
   const groups = new Map<string, Array<[RingMapNode, RingMapNode]>>();
   lines.forEach((line) => {
@@ -61,10 +61,10 @@ export default function ClientRingMap({
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
 
-  // Rotation State
-  const [rotation, setRotation] = useState(0);
+  // NEW STATE: Control visibility of UI overlays
+  const [uiVisible, setUiVisible] = useState(true);
 
-  // Container Dimensions State
+  const [rotation, setRotation] = useState(0);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +72,7 @@ export default function ClientRingMap({
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
+  // ... (useMemo for nodes, posMap, mapCenter, groupedSolidLines) ...
   const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
   const nodePosMap = useMemo(() => {
@@ -103,6 +104,7 @@ export default function ClientRingMap({
     }
   };
 
+  // ... (useEffect hooks for Leaflet icons, resizing, popups, rotation) ...
   useEffect(() => {
     import('@/utils/mapUtils').then((utils) => {
       utils.fixLeafletIcons();
@@ -111,7 +113,6 @@ export default function ClientRingMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-
     const updateDimensions = () => {
       if (containerRef.current) {
         setDimensions({
@@ -121,7 +122,6 @@ export default function ClientRingMap({
       }
     };
     updateDimensions();
-
     const observer = new ResizeObserver(() => {
       window.requestAnimationFrame(updateDimensions);
     });
@@ -131,13 +131,13 @@ export default function ClientRingMap({
 
   useEffect(() => {
     Object.values(markerRefs.current).forEach((marker) =>
-      showAllNodePopups ? marker.openPopup() : marker.closePopup()
+      showAllNodePopups ? marker.openPopup() : marker.closePopup(),
     );
   }, [showAllNodePopups]);
 
   useEffect(() => {
     Object.values(polylineRefs.current).forEach((polyline) =>
-      showAllLinePopups ? polyline.openPopup() : polyline.closePopup()
+      showAllLinePopups ? polyline.openPopup() : polyline.closePopup(),
     );
   }, [showAllLinePopups]);
 
@@ -167,7 +167,7 @@ export default function ClientRingMap({
     const lngs = displayNodes.map((n) => n.displayLng);
     return new LatLngBounds(
       [Math.min(...lats), Math.min(...lngs)],
-      [Math.max(...lats), Math.max(...lngs)]
+      [Math.max(...lats), Math.max(...lngs)],
     );
   }, [displayNodes]);
 
@@ -188,7 +188,7 @@ export default function ClientRingMap({
   const handleZoomOut = () => mapRef.current?.zoomOut();
 
   if (displayNodes.length === 0)
-    return <div className="py-10 text-center">No nodes to display</div>;
+    return <div className='py-10 text-center'>No nodes to display</div>;
 
   const isRotated90 = Math.abs(rotation) % 180 === 90;
 
@@ -215,8 +215,19 @@ export default function ClientRingMap({
 
   return (
     <div className={wrapperClass} ref={containerRef}>
-      <MapLegend />
-      {showControls && (
+      {/* UI Visibility Toggle - Always Visible */}
+      <button
+        onClick={() => setUiVisible(!uiVisible)}
+        className='absolute top-12 left-2 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
+        title={uiVisible ? 'Hide Map Tools' : 'Show Map Tools'}
+      >
+        {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+      </button>
+
+      {/* Conditionally Render UI Elements */}
+      {uiVisible && <MapLegend />}
+
+      {showControls && uiVisible && (
         <MapControls
           onBack={onBack}
           showAllNodePopups={showAllNodePopups}
@@ -236,7 +247,7 @@ export default function ClientRingMap({
           zoom={13}
           ref={mapRef}
           style={{ height: '100%', width: '100%' }}
-          className="z-0 bg-gray-200 dark:bg-gray-800"
+          className='z-0 bg-gray-200 dark:bg-gray-800'
           closePopupOnClick={false}
           zoomControl={false}
         >
@@ -245,17 +256,17 @@ export default function ClientRingMap({
           <MapFlyToController coords={flyToCoordinates} />
           <RotatedDragOverlay rotation={rotation} />
 
-          <LayersControl position="bottomright">
-            <LayersControl.BaseLayer checked name="Street View">
+          <LayersControl position='bottomright'>
+            <LayersControl.BaseLayer checked name='Street View'>
               <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               />
             </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="Satellite View">
+            <LayersControl.BaseLayer name='Satellite View'>
               <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+                url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
               />
             </LayersControl.BaseLayer>
           </LayersControl>
@@ -287,14 +298,14 @@ export default function ClientRingMap({
                   end={end}
                   startPos={startPos}
                   endPos={endPos}
-                  type="solid"
+                  type='solid'
                   theme={theme}
                   showPopup={showAllLinePopups}
                   setPolylineRef={setPolylineRef}
                   config={config}
                   customColor={lineColor}
                   curveOffset={curveOffset}
-                  rotation={rotation} // ADDED: Pass rotation here
+                  rotation={rotation}
                 />
               );
             });
@@ -313,12 +324,12 @@ export default function ClientRingMap({
                   end={target}
                   startPos={startPos}
                   endPos={endPos}
-                  type="dashed"
+                  type='dashed'
                   theme={theme}
                   showPopup={showAllLinePopups}
                   setPolylineRef={setPolylineRef}
                   hasReverse={false}
-                  rotation={rotation} // ADDED: Pass rotation here
+                  rotation={rotation}
                 />
               );
             })}

@@ -167,7 +167,7 @@ export const MeshConnectionLine = ({
   }
 
   // ADDED: Hit box weight based on device
-  const hitWeight = isMobile ? 40 : 15;
+  const hitWeight = isMobile ? 30 : 15;
 
   return (
     <>
