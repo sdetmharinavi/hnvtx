@@ -10,6 +10,7 @@ import { MeshConnectionLineProps } from './types';
 import { PopupFiberRow } from '@/components/map/PopupFiberRow';
 import { toast } from 'sonner';
 import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
+import useIsMobile from '@/hooks/useIsMobile'; // ADDED
 
 type LogicalPath = {
   id: string;
@@ -38,16 +39,16 @@ export const MeshConnectionLine = ({
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = isInteracted;
 
+  // ADDED: Mobile check
+  const isMobile = useIsMobile();
+
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
 
-  // --- Local State for Remarks UI ---
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
-  // --- LOGICAL PATH QUERY ---
   const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
-    // THE FIX: Changed key to start with 'logical_fiber_paths' for correct invalidation
     queryKey: [
       'logical_fiber_paths',
       'mesh-segment',
@@ -96,7 +97,6 @@ export const MeshConnectionLine = ({
     }
   }, [logicalPaths, config?.connectionId, isEditingRemark]);
 
-  // --- REMARK MUTATION ---
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
       const existingPath = logicalPaths[0];
@@ -111,7 +111,6 @@ export const MeshConnectionLine = ({
         const { error } = await supabase.from('logical_fiber_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
-          // THE FIX: Insert ports from config
           source_port: config?.sourcePort || null,
           destination_port: config?.destPort || null,
           remark: text,
@@ -132,7 +131,6 @@ export const MeshConnectionLine = ({
     },
   });
 
-  // Updated handlers with stopPropagation
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     saveRemark(remarkText);
@@ -163,57 +161,72 @@ export const MeshConnectionLine = ({
   if (curveOffset !== 0) {
     positions = getCurvedPath(startPos, endPos, curveOffset);
   } else if (isSpur || nodesLength !== 2) {
-    // THE FIX: Use dashed line for spurs
     positions = [startPos, endPos];
   } else {
     positions = getCurvedPath(startPos, endPos, 0.15);
   }
 
-  return (
-    <Polyline
-      positions={positions}
-      pathOptions={{
-        color: color,
-        weight: isSpur ? 2 : 4,
-        opacity: 0.8,
-        lineCap: 'round',
-        lineJoin: 'round',
-        // THE FIX: Add dashArray for spurs
-        dashArray: isSpur ? '10, 10' : undefined,
-      }}
-      eventHandlers={{
-        click: () => setIsInteracted(true),
-        popupopen: () => setIsInteracted(true),
-      }}
-    >
-      <Popup className={isDark ? 'dark-popup' : ''} minWidth={280} maxWidth={350}>
-        <div className="text-sm w-full">
-          {hasConfig ? (
-            <div className="mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
-              </div>
-            </div>
-          ) : (
-            !isSpur && (
-              <div className="mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center">
-                Physical link not provisioned
-              </div>
-            )
-          )}
+  // ADDED: Hit box weight based on device
+  const hitWeight = isMobile ? 40 : 15;
 
-          <PopupRemarksRow
-            remark={remarkText}
-            isEditing={isEditingRemark}
-            editText={remarkText}
-            isSaving={isSaving}
-            onEditClick={handleEditClick}
-            onSaveClick={handleSaveClick}
-            onCancelClick={handleCancelClick}
-            onTextChange={setRemarkText}
-          />
-        </div>
-      </Popup>
-    </Polyline>
+  return (
+    <>
+      {/* 1. VISUAL LINE (Non-Interactive) */}
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: color,
+          weight: isSpur ? 2 : 4,
+          opacity: 0.8,
+          lineCap: 'round',
+          lineJoin: 'round',
+          dashArray: isSpur ? '10, 10' : undefined,
+          interactive: false, // Clicks pass through
+        }}
+      />
+
+      {/* 2. HIT BOX LINE (Interactive, Invisible) */}
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: 'transparent',
+          weight: hitWeight,
+          opacity: 0,
+        }}
+        eventHandlers={{
+          click: () => setIsInteracted(true),
+          popupopen: () => setIsInteracted(true),
+        }}
+      >
+        <Popup className={isDark ? 'dark-popup' : ''} minWidth={280} maxWidth={350}>
+          <div className='text-sm w-full'>
+            {hasConfig ? (
+              <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>
+                <div className='divide-y divide-gray-100 dark:divide-gray-700'>
+                  <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
+                </div>
+              </div>
+            ) : (
+              !isSpur && (
+                <div className='mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center'>
+                  Physical link not provisioned
+                </div>
+              )
+            )}
+
+            <PopupRemarksRow
+              remark={remarkText}
+              isEditing={isEditingRemark}
+              editText={remarkText}
+              isSaving={isSaving}
+              onEditClick={handleEditClick}
+              onSaveClick={handleSaveClick}
+              onCancelClick={handleCancelClick}
+              onTextChange={setRemarkText}
+            />
+          </div>
+        </Popup>
+      </Polyline>
+    </>
   );
 };
