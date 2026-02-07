@@ -11,9 +11,9 @@ import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { UseQueryResult } from '@tanstack/react-query';
 import { parseJson } from '@/config/helper-functions';
 
+// ... (Types unchanged)
 type UserPermissionsData = V_user_profiles_extendedRowSchema | null;
 
-// THE FIX: Change string[] to readonly string[] to compatible with config/permissions.ts
 interface UserPermissions {
   profile: UserPermissionsData;
   role: UserRole;
@@ -22,7 +22,7 @@ interface UserPermissions {
   error: Error | null;
   isError: boolean;
   refetch: () => Promise<UseQueryResult<UserPermissionsData, Error>>;
-  canAccess: (allowedRoles?: readonly string[]) => boolean; 
+  canAccess: (allowedRoles?: readonly string[]) => boolean;
   hasRole: (requiredRole: string) => boolean;
   hasAnyRole: (requiredRoles: readonly string[]) => boolean;
 }
@@ -47,7 +47,7 @@ export const useUserPermissionsExtended = () => {
 
     const profileData = data[0];
 
-    // Transform RPC result to match Schema
+    // Transform RPC result
     const transformedData = {
       ...profileData,
       id: profileData.id,
@@ -60,6 +60,7 @@ export const useUserPermissionsExtended = () => {
       last_sign_in_at: profileData.last_sign_in_at
         ? new Date(profileData.last_sign_in_at).toISOString()
         : null,
+      // Fill defaults for view fields not in RPC
       computed_status: null,
       account_age_days: null,
       last_activity_period: null,
@@ -85,7 +86,7 @@ export const useUserPermissionsExtended = () => {
   // 3. Use Local First Hook
   const {
     data: profiles = [],
-    isLoading,
+    isLoading: isQueryLoading,
     error,
     isError,
     refetch,
@@ -105,6 +106,10 @@ export const useUserPermissionsExtended = () => {
 
   const profile = profiles[0] || null;
 
+  // OPTIMIZATION: Only report loading if we have NO profile and auth is still processing
+  // This prevents the "Verifying permissions..." spinner from blocking UI if we have cached data
+  const isLoading = isQueryLoading && !profile && authState !== 'unauthenticated';
+
   const permissions = React.useMemo(
     () => ({
       profile: profile as UserPermissionsData,
@@ -122,17 +127,16 @@ export const useUserPermissionsExtended = () => {
     (requiredRole: string) => permissions.role === requiredRole,
     [permissions.role]
   );
-  
-  // THE FIX: Accept readonly array
+
   const hasAnyRole = React.useCallback(
     (requiredRoles: readonly string[]) =>
       permissions.role ? requiredRoles.includes(permissions.role) : false,
     [permissions.role]
   );
 
-  // THE FIX: Accept readonly array
   const canAccess = React.useCallback(
     (allowedRoles?: readonly string[]): boolean => {
+      // If we have a profile (even from cache), we can check logic
       if (permissions.isSuperAdmin) return true;
       if (!allowedRoles || allowedRoles.length === 0) return true;
       return hasAnyRole(allowedRoles);
@@ -145,13 +149,14 @@ export const useUserPermissionsExtended = () => {
     hasRole,
     hasAnyRole,
     canAccess,
-    isReady: !permissions.isLoading && !permissions.error,
+    isReady: !isLoading && !permissions.error,
   };
 };
 
+// ... (Rest of file unchanged) ...
 export const useHasPermission = (allowedRoles?: string[]): boolean => {
-  const { canAccess } = useUserPermissionsExtended();
-  return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles]);
+    const { canAccess } = useUserPermissionsExtended();
+    return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles]);
 };
-
+  
 export type { UserRole, SuperAdminStatus, UserPermissions };

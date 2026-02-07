@@ -1,5 +1,5 @@
 // hooks/data/useLocalFirstQuery.ts
-import { useQuery, type QueryKey } from '@tanstack/react-query';
+import { useQuery, type QueryKey, useQueryClient } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -37,8 +37,6 @@ const VIEW_TO_TABLE_MAP: Record<string, string> = {
   v_system_connections_complete: 'system_connections',
   v_ofc_connections_complete: 'ofc_connections',
   v_user_profiles_extended: 'user_profiles',
-  
-  // NEW ENTRIES FOR EXPENSES
   v_advances_complete: 'advances',
   v_expenses_complete: 'expenses',
 };
@@ -60,8 +58,9 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   const isOnline = useOnlineStatus();
   const isSyncingRef = useRef(false);
   const [hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
+  const queryClient = useQueryClient();
 
-  // 1. Fetch Local Data
+  // 1. Fetch Local Data (Dexie)
   const localData = useLiveQuery(
     () => {
       return Promise.resolve(localQueryFn()).finally(() => {
@@ -79,6 +78,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   }, [localData]);
 
   // 2. Network Query Configuration
+  // Optimization: If we have local data, we don't strictly *need* to fetch immediately if staleTime is Infinity
   const shouldFetchOnMount = enabled && isOnline && autoSync;
 
   const {
@@ -102,6 +102,8 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     refetchOnReconnect: false,
     staleTime,
     retry: 1,
+    // THE FIX: Use cached data if available while fetching new data
+    placeholderData: (previousData) => previousData,
   });
 
   // 3. Safe Sync Network Data to Local DB (Upsert + Prune)
@@ -161,14 +163,29 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     }
   }, [networkData, dexieTable, tableName, localData, skipSync]);
 
+  // 4. Data Resolution Strategy
+  // If we have cached network data (from React Query), use it first as it's the fastest source on navigation.
+  // Fallback to local Dexie data.
+  // If neither, return empty array.
+  
+  const cachedData = queryClient.getQueryData<TRow[]>(queryKey);
+  
   const resolvedData =
     preferNetwork && networkData
       ? networkData
       : Array.isArray(localData)
       ? localData
+      : cachedData // Fallback to React Query cache if Dexie is still loading
+      ? (cachedData as unknown as TLocal[])
       : [];
 
-  const isHardLoading = localData === 'loading' && !hasInitialLocalLoad && !networkData;
+  // 5. Loading State Logic (Optimized)
+  // Only "loading" if we have absolutely NO data (no local, no network cache, no active network fetch result)
+  const isHardLoading = 
+    localData === 'loading' && 
+    !hasInitialLocalLoad && 
+    !networkData && 
+    !cachedData;
 
   const isError = isNetworkError && !hasInitialLocalLoad;
   const error = isError ? networkError : null;

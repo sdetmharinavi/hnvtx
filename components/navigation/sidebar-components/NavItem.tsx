@@ -2,14 +2,15 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { FiChevronDown } from 'react-icons/fi';
 import { NavItem as NavItemType, submenuVariants } from './sidebar-types';
-import { toast } from 'sonner';
 import { UserRole } from '@/types/user-roles';
-import { ButtonSpinner } from '@/components/common/ui/LoadingSpinner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; // Added hooks
 import { useUser } from '@/providers/UserProvider';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { ButtonSpinner } from '@/components/common/ui/LoadingSpinner'; // Added import
 
 interface NavItemProps {
   item: NavItemType;
@@ -28,11 +29,11 @@ export const NavItem = ({
   toggleExpanded,
   setHoveredItem,
 }: NavItemProps) => {
-  const router = useRouter();
   const pathname = usePathname();
   const { isSuperAdmin, role } = useUser();
+
+  // Re-introduced loading state
   const [isLoading, setIsLoading] = useState(false);
-  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   // Check Permissions
   const hasPermission = (roles: readonly (UserRole | string)[]) => {
@@ -54,101 +55,60 @@ export const NavItem = ({
     return pathname.startsWith(item.href);
   }
 
-  // Clear loading state when the route changes successfully
+  // Reset loading state when the path changes (Navigation Complete)
   useEffect(() => {
-    if (pathname === navigatingTo) {
-      setIsLoading(false);
-      setNavigatingTo(null);
-    }
-  }, [pathname, navigatingTo]);
+    setIsLoading(false);
+  }, [pathname]);
 
   if (!hasPermission(item.roles)) return null;
 
-  const itemContentClasses = `
-    flex cursor-pointer items-center justify-between py-3 text-sm font-medium
-    transition-all duration-200 rounded-lg mx-2 mb-1
-    ${
-      active
-        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm'
-        : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm'
-    }
-    ${isCollapsed ? 'justify-center px-4' : `pr-4 ${depth > 0 ? 'pl-8' : 'pl-4'}`}
-  `;
-
-  // OPTIMIZATION: Prefetch the route code and data on hover
-  const handlePrefetch = () => {
-    if (item.href && !item.external && !hasChildren) {
-      router.prefetch(item.href);
-    }
-  };
-
-  // Internal Navigation Handler
-  const handleInternalClick = async (e: React.MouseEvent) => {
-    // If it has children, just toggle expansion
-    if (hasChildren) {
-      e.preventDefault();
-      toggleExpanded(item.id);
-      return;
-    }
-
-    // Perform navigation
-    if (item.href) {
-      try {
-        setNavigatingTo(item.href);
-        setIsLoading(true);
-        await router.push(item.href);
-      } catch (error) {
-        console.error('Navigation error:', error);
-        toast.error('Failed to navigate. Please try again.');
-        setIsLoading(false);
-        setNavigatingTo(null);
-      }
-    }
-  };
+  const itemContentClasses = cn(
+    'flex items-center justify-between py-3 text-sm font-medium transition-all duration-200 rounded-lg mx-2 mb-1 cursor-pointer',
+    active
+      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shadow-sm'
+      : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-sm',
+    isCollapsed ? 'justify-center px-4' : `pr-4 ${depth > 0 ? 'pl-8' : 'pl-4'}`,
+  );
 
   const renderContent = () => (
     <>
-      <div className="flex items-center space-x-3">
-        <span className="shrink-0">
-          {isLoading && pathname !== item.href ? <ButtonSpinner size="xs" /> : item.icon}
+      <div className='flex items-center space-x-3 min-w-0'>
+        <span className='shrink-0 flex items-center justify-center w-5 h-5'>
+          {/* Show spinner if loading and this specific item is the active target, OR if it's the current active link updating */}
+          {isLoading && active ? <ButtonSpinner size='xs' /> : item.icon}
         </span>
-        {!isCollapsed && (
-          <span className="truncate">
-            {isLoading && pathname !== item.href ? 'Loading...' : item.label}
-          </span>
-        )}
+        {!isCollapsed && <span className='truncate'>{item.label}</span>}
       </div>
       {!isCollapsed && hasChildren && (
         <button
           onClick={(e) => {
-            e.preventDefault(); // Prevent bubbling to parent click
+            e.preventDefault();
             e.stopPropagation();
             toggleExpanded(item.id);
           }}
-          className="p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 z-10"
+          className='p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 z-10'
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
           <motion.div animate={{ rotate: isExpanded ? 0 : -90 }} transition={{ duration: 0.2 }}>
-            <FiChevronDown className="w-4 h-4" />
+            <FiChevronDown className='w-4 h-4' />
           </motion.div>
         </button>
       )}
     </>
   );
 
-  // --- EXTERNAL LINK RENDERING ---
+  // --- 1. EXTERNAL LINKS ---
   if (item.external) {
     return (
       <div
         key={item.id}
-        className="relative"
+        className='relative'
         onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
         onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
       >
         <a
           href={item.href}
-          target="_blank"
-          // If preferNative is true, remove 'noreferrer' to allow OS handoff
+          target='_blank'
           rel={item.preferNative ? undefined : 'noopener noreferrer'}
           className={itemContentClasses}
           onClick={(e) => {
@@ -160,20 +120,35 @@ export const NavItem = ({
         >
           {renderContent()}
         </a>
+      </div>
+    );
+  }
 
-        {/* External Submenu (Rare, but supported) */}
-        {!isCollapsed && hasChildren && (
+  // --- 2. PARENT ITEM WITH CHILDREN (No HREF usually) ---
+  if (hasChildren) {
+    return (
+      <div
+        key={item.id}
+        className='relative'
+        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
+        onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
+      >
+        <div onClick={() => toggleExpanded(item.id)} className={itemContentClasses}>
+          {renderContent()}
+        </div>
+
+        {!isCollapsed && (
           <AnimatePresence initial={false}>
             {isExpanded && (
               <motion.div
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
+                initial='hidden'
+                animate='visible'
+                exit='hidden'
                 variants={submenuVariants}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                className='overflow-hidden'
               >
-                <div className="ml-6 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+                <div className='ml-6 border-l-2 border-gray-200 dark:border-gray-700 pl-2'>
                   {item.children?.map((child) => (
                     <NavItem
                       key={child.id}
@@ -194,65 +169,31 @@ export const NavItem = ({
     );
   }
 
-  // --- INTERNAL NAVIGATION RENDERING ---
+  // --- 3. INTERNAL LINK ITEMS ---
   return (
-    <div
-      key={item.id}
-      className="relative"
-      onMouseEnter={() => {
-        // Handle hover menu for collapsed state
-        if (isCollapsed && hasChildren) setHoveredItem(item);
-        // Trigger Next.js Prefetch
-        handlePrefetch();
-      }}
-      onMouseLeave={() => {
-        if (isCollapsed && hasChildren) setHoveredItem(null);
-      }}
-    >
-      <div
-        onClick={handleInternalClick}
+    <div key={item.id} className='relative'>
+      <Link
+        href={item.href || '#'}
         className={itemContentClasses}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+        prefetch={true}
+        title={isCollapsed ? item.label : undefined}
+        onClick={(e) => {
+          // If already on this page, don't navigate again
+          if (item.href === pathname) {
             e.preventDefault();
-            handleInternalClick(e as unknown as React.MouseEvent);
+            return;
           }
+          setIsLoading(true);
         }}
       >
-        {renderContent()}
-      </div>
-
-      {/* Recursive Children Rendering */}
-      {!isCollapsed && hasChildren && (
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              variants={submenuVariants}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="ml-6 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
-                {item.children?.map((child) => (
-                  <NavItem
-                    key={child.id}
-                    item={child}
-                    isCollapsed={isCollapsed}
-                    depth={depth + 1}
-                    expandedItems={expandedItems}
-                    toggleExpanded={toggleExpanded}
-                    setHoveredItem={setHoveredItem}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      )}
+        {/* We need to pass isLoading manually here because renderContent relies on closure scope state */}
+        <div className='flex items-center space-x-3 min-w-0'>
+          <span className='shrink-0 flex items-center justify-center w-5 h-5'>
+            {isLoading ? <ButtonSpinner size='xs' /> : item.icon}
+          </span>
+          {!isCollapsed && <span className='truncate'>{item.label}</span>}
+        </div>
+      </Link>
     </div>
   );
 };

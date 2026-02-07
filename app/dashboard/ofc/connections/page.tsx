@@ -3,9 +3,9 @@
 
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { useStandardHeaderActions } from '@/components/common/page-header';
 import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
-import { DataTable, TableAction } from '@/components/table';
+import { TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
   V_ofc_connections_completeRowSchema,
@@ -26,25 +26,23 @@ import { EnhancedUploadResult, Row } from '@/hooks/database';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { useReleaseFiber } from '@/hooks/database/fiber-assignment-hooks';
 import dynamic from 'next/dynamic';
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { StatProps } from '@/components/common/page-header/StatCard';
-import { PERMISSIONS } from '@/config/permissions';
 import { FiberAssignmentModal } from '@/components/ofc-details/FiberAssignmentModal';
-import { BulkActions } from '@/components/common/BulkActions';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 
 const FiberTraceModal = dynamic(
   () => import('@/components/ofc-details/FiberTraceModal').then((mod) => mod.FiberTraceModal),
-  { ssr: false, loading: () => <PageSpinner /> }
+  { ssr: false, loading: () => <PageSpinner /> },
 );
 
 const OfcConnectionsFormModal = dynamic(
   () =>
     import('@/components/ofc-details/OfcConnectionsFormModal').then(
-      (mod) => mod.OfcConnectionsFormModal
+      (mod) => mod.OfcConnectionsFormModal,
     ),
-  { loading: () => <PageSpinner text='Loading Form...' /> }
+  { loading: () => <PageSpinner text='Loading Form...' /> },
 );
 
 export default function GlobalOfcConnectionsPage() {
@@ -55,7 +53,7 @@ export default function GlobalOfcConnectionsPage() {
   const canEdit =
     !!isSuperAdmin ||
     [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN, UserRole.ASSETADMIN].includes(
-      role as UserRole
+      role as UserRole,
     );
   const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
@@ -63,12 +61,13 @@ export default function GlobalOfcConnectionsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [assignFiber, setAssignFiber] = useState<V_ofc_connections_completeRowSchema | null>(null);
   const [fiberToUnlink, setFiberToUnlink] = useState<V_ofc_connections_completeRowSchema | null>(
-    null
+    null,
   );
   const [tracingFiber, setTracingFiber] = useState<{
     segments: Cable_segmentsRowSchema[];
     record: V_ofc_connections_completeRowSchema;
   } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTracing, setIsTracing] = useState(false);
   const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
   const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
@@ -113,7 +112,7 @@ export default function GlobalOfcConnectionsPage() {
         if (result.successCount > 0) refetch();
       },
       onError: (err) => toast.error(err.message),
-    }
+    },
   );
 
   // --- HANDLERS ---
@@ -121,7 +120,7 @@ export default function GlobalOfcConnectionsPage() {
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -135,7 +134,7 @@ export default function GlobalOfcConnectionsPage() {
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
-    [uploadConnections]
+    [uploadConnections],
   );
 
   const handleTraceClick = useCallback(
@@ -154,14 +153,13 @@ export default function GlobalOfcConnectionsPage() {
         if (segmentError) throw segmentError;
         setTracingFiber({ segments: data || [], record });
       } catch (err) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         console.error('Trace error', err);
         toast.error('Failed to prepare trace data.');
       } finally {
         setIsTracing(false);
       }
     },
-    [supabase]
+    [supabase],
   );
 
   const handleUnlink = () => {
@@ -183,7 +181,7 @@ export default function GlobalOfcConnectionsPage() {
         ],
       },
     ],
-    []
+    [],
   );
 
   const columns = OfcDetailsTableColumns(fibers);
@@ -231,7 +229,8 @@ export default function GlobalOfcConnectionsPage() {
         onDelete: canDelete ? (rec) => crudActions.handleDelete(rec) : undefined,
       }),
     ],
-    [canEdit, canDelete, editModal.openEdit, crudActions.handleDelete, handleTraceClick]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canEdit, canDelete, editModal.openEdit, crudActions.handleDelete, handleTraceClick],
   );
 
   const headerActions = useStandardHeaderActions({
@@ -297,6 +296,7 @@ export default function GlobalOfcConnectionsPage() {
         isActive: currentStatus === 'false',
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   // Bulk Actions Handlers
@@ -361,7 +361,7 @@ export default function GlobalOfcConnectionsPage() {
         selectable: canDelete, // Allow selection if can delete
         onRowSelect: (rows) => {
           const validRows = rows.filter(
-            (r): r is Row<'v_ofc_connections_complete'> & { id: string } => !!r.id
+            (r): r is Row<'v_ofc_connections_complete'> & { id: string } => !!r.id,
           );
           bulkActions.handleRowSelect(validRows);
         },
@@ -399,36 +399,40 @@ export default function GlobalOfcConnectionsPage() {
             <OfcConnectionsFormModal
               isOpen={editModal.isOpen}
               onClose={editModal.close}
-              editingOfcConnections={editModal.record && editModal.record.id && editModal.record.ofc_id ? {
-                id: editModal.record.id,
-                ofc_id: editModal.record.ofc_id,
-                connection_category: editModal.record.connection_category || 'SPLICE_TYPES',
-                connection_type: editModal.record.connection_type || 'straight',
-                fiber_no_en: editModal.record.fiber_no_en || 1,
-                fiber_no_sn: editModal.record.fiber_no_sn || 1,
-                created_at: editModal.record.created_at,
-                destination_port: editModal.record.destination_port,
-                en_dom: editModal.record.en_dom,
-                en_power_dbm: editModal.record.en_power_dbm,
-                fiber_role: editModal.record.fiber_role,
-                logical_path_id: editModal.record.logical_path_id,
-                otdr_distance_en_km: editModal.record.otdr_distance_en_km,
-                otdr_distance_sn_km: editModal.record.otdr_distance_sn_km,
-                path_direction: editModal.record.path_direction,
-                path_segment_order: editModal.record.path_segment_order,
-                remark: editModal.record.remark,
-                route_loss_db: editModal.record.route_loss_db,
-                sn_dom: editModal.record.sn_dom,
-                sn_power_dbm: editModal.record.sn_power_dbm,
-                source_port: editModal.record.source_port,
-                status: editModal.record.status ?? true,
-                system_id: editModal.record.system_id,
-                updated_at: editModal.record.updated_at,
-                updated_en_id: editModal.record.updated_en_id,
-                updated_fiber_no_en: editModal.record.updated_fiber_no_en,
-                updated_fiber_no_sn: editModal.record.updated_fiber_no_sn,
-                updated_sn_id: editModal.record.updated_sn_id,
-              } : null}
+              editingOfcConnections={
+                editModal.record && editModal.record.id && editModal.record.ofc_id
+                  ? {
+                      id: editModal.record.id,
+                      ofc_id: editModal.record.ofc_id,
+                      connection_category: editModal.record.connection_category || 'SPLICE_TYPES',
+                      connection_type: editModal.record.connection_type || 'straight',
+                      fiber_no_en: editModal.record.fiber_no_en || 1,
+                      fiber_no_sn: editModal.record.fiber_no_sn || 1,
+                      created_at: editModal.record.created_at,
+                      destination_port: editModal.record.destination_port,
+                      en_dom: editModal.record.en_dom,
+                      en_power_dbm: editModal.record.en_power_dbm,
+                      fiber_role: editModal.record.fiber_role,
+                      logical_path_id: editModal.record.logical_path_id,
+                      otdr_distance_en_km: editModal.record.otdr_distance_en_km,
+                      otdr_distance_sn_km: editModal.record.otdr_distance_sn_km,
+                      path_direction: editModal.record.path_direction,
+                      path_segment_order: editModal.record.path_segment_order,
+                      remark: editModal.record.remark,
+                      route_loss_db: editModal.record.route_loss_db,
+                      sn_dom: editModal.record.sn_dom,
+                      sn_power_dbm: editModal.record.sn_power_dbm,
+                      source_port: editModal.record.source_port,
+                      status: editModal.record.status ?? true,
+                      system_id: editModal.record.system_id,
+                      updated_at: editModal.record.updated_at,
+                      updated_en_id: editModal.record.updated_en_id,
+                      updated_fiber_no_en: editModal.record.updated_fiber_no_en,
+                      updated_fiber_no_sn: editModal.record.updated_fiber_no_sn,
+                      updated_sn_id: editModal.record.updated_sn_id,
+                    }
+                  : null
+              }
               onSubmit={crudActions.handleSave as (data: Ofc_connectionsInsertSchema) => void}
               isLoading={isMutating}
             />
