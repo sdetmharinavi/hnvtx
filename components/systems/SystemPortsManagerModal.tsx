@@ -4,7 +4,7 @@
 import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ActionButton, PageHeader } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay, Modal } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Modal, DebouncedInput } from '@/components/common/ui';
 import { DataTable, TableAction } from '@/components/table';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
@@ -32,15 +32,46 @@ import { Row, TableOrViewName } from '@/hooks/database';
 import { generatePortsFromTemplate } from '@/config/port-templates';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
-// IMPORT GENERIC FILTER BAR
-import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
 import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { PortHeatmap } from '@/components/systems/PortHeatmap';
-import { Activity, Shield } from 'lucide-react';
+import { Activity, Shield, Search } from 'lucide-react';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
 import { useUser } from '@/providers/UserProvider';
 import { PERMISSIONS } from '@/config/permissions';
+import dynamic from 'next/dynamic';
+import { PageSpinner } from '@/components/common/ui';
+
+// DYNAMIC IMPORTS
+const SystemConnectionFormModal = dynamic(
+  () =>
+    import('@/components/system-details/SystemConnectionFormModal').then(
+      (mod) => mod.SystemConnectionFormModal
+    ),
+  { loading: () => <PageSpinner text="Loading Form..." /> }
+);
+
+const FiberAllocationModal = dynamic(
+  () =>
+    import('@/components/system-details/FiberAllocationModal').then(
+      (mod) => mod.FiberAllocationModal
+    ),
+  { loading: () => <PageSpinner text="Loading Ports..." /> }
+);
+
+const SystemFiberTraceModal = dynamic(
+  () => import('@/components/system-details/SystemFiberTraceModal').then((mod) => mod.default),
+  { ssr: false }
+);
+
+const SystemConnectionDetailsModal = dynamic(
+  () =>
+    import('@/components/system-details/SystemConnectionDetailsModal').then(
+      (mod) => mod.SystemConnectionDetailsModal
+    ),
+  { ssr: false }
+);
 
 type ExtendedConnection = V_system_connections_completeRowSchema & {
   en_protection_interface?: string | null;
@@ -91,7 +122,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     if (isOpen) {
       filters.setFilters((prev) => ({
         ...prev,
-        port_type_code: ['GE(O)', 'GE(E)', '10GE', 'GE/10GE', 'PON'],
+        port_type_code: ['GE(O)', 'GE(E)', '10GE', 'GE/10GE', 'PON', 'STM16'],
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,57 +133,17 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     ['port-types-filter'],
     async () =>
       (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray(),
+    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
   );
 
   const portTypeCodeOptions = useMemo(() => {
     return (portTypesData || [])
       .filter((t) => t.name !== 'DEFAULT' && t.code)
       .map((t) => ({
-        value: t.name!,
-        label: t.code ?? t.name ?? '',
+        value: t.code!,
+        label: t.code!,
       }));
   }, [portTypesData]);
-
-  // --- DRY FILTER CONFIG ---
-  const filterConfigs = useMemo<FilterConfig[]>(
-    () => [
-      {
-        key: 'port_type_code',
-        label: 'Port Types',
-        type: 'multi-select',
-        options: portTypeCodeOptions,
-        isLoading: loadingTypes,
-      },
-      {
-        key: 'port_utilization',
-        label: 'Utilization',
-        type: 'native-select',
-        options: [
-          { value: 'true', label: 'In Use' },
-          { value: 'false', label: 'Free' },
-        ],
-      },
-      {
-        key: 'port_admin_status',
-        label: 'Admin Status',
-        type: 'native-select',
-        options: [
-          { value: 'true', label: 'Up' },
-          { value: 'false', label: 'Down' },
-        ],
-      },
-    ],
-    [portTypeCodeOptions, loadingTypes],
-  );
-
-  const handleFilterChange = useCallback(
-    (key: string, value: string | null) => {
-      filters.setFilters((prev) => ({ ...prev, [key]: value }));
-    },
-    [filters],
-  );
-  // -------------------------
 
   // 3. Fetch Connections (Bi-Directional)
   const { data: connectionsResult } = usePagedData<V_system_connections_completeRowSchema>(
@@ -164,7 +155,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       },
       limit: 2000,
     },
-    { enabled: !!systemId && isOpen },
+    { enabled: !!systemId && isOpen }
   );
 
   // 4. Build Service Map (Bi-Directional)
@@ -228,7 +219,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
   const { mutate: exportPorts, isPending: isExporting } = useTableExcelDownload(
     supabase,
-    'v_ports_management_complete',
+    'v_ports_management_complete'
   );
   const { bulkUpsert } = useTableBulkOperations(supabase, 'ports_management');
 
@@ -245,8 +236,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         onToggleStatus: (record) =>
           crudActions.handleToggleStatus({ ...record, status: record.port_admin_status }),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus],
+    [editModal.openEdit, crudActions.handleDelete, crudActions.handleToggleStatus, canDelete]
   );
 
   // 8. Handlers
@@ -292,10 +282,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           onError: (err) => {
             toast.error(`Failed to populate ports: ${err.message}`);
           },
-        },
+        }
       );
     },
-    [systemId, bulkUpsert, refetch],
+    [systemId, bulkUpsert, refetch]
   );
 
   const headerActions = useMemo((): ActionButton[] => {
@@ -419,7 +409,7 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
         </div>
       );
     },
-    [portServicesMap],
+    [portServicesMap]
   );
 
   if (!isOpen) return null;
@@ -429,28 +419,28 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
       isOpen={isOpen}
       onClose={onClose}
       title={`Manage Ports for: ${system?.system_name}`}
-      size='full'
+      size="full"
     >
-      <div className='space-y-4'>
+      <div className="space-y-4">
         {error && <ErrorDisplay error={error.message} />}
 
         <input
-          type='file'
+          type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          className='hidden'
-          accept='.xlsx, .xls'
+          className="hidden"
+          accept=".xlsx, .xls, .csv"
         />
 
         <UploadResultModal
           isOpen={isUploadResultOpen}
           onClose={() => setIsUploadResultOpen(false)}
           result={uploadResult}
-          title='Ports Upload Report'
+          title="Ports Upload Report"
         />
 
         <PageHeader
-          title='System Ports'
+          title="System Ports"
           icon={<FiServer />}
           stats={[
             { value: portStats.total, label: 'Total' },
@@ -465,20 +455,62 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
 
         <PortHeatmap ports={ports} onPortClick={editModal.openEdit} />
 
-        {/* REUSABLE FILTER BAR */}
-        <GenericFilterBar
-          searchQuery={search.searchQuery}
-          onSearchChange={search.setSearchQuery}
-          searchPlaceholder='Search ports, serials...'
-          filters={filters.filters}
-          onFilterChange={handleFilterChange}
-          setFilters={filters.setFilters} // Passed specifically for multi-select
-          filterConfigs={filterConfigs}
-        />
+        {/* --- REFACTORED FILTER SECTION --- */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center">
+          <div className="w-full lg:w-96">
+            <DebouncedInput
+              placeholder="Search ports, serials..."
+              value={search.searchQuery}
+              onChange={search.setSearchQuery}
+              leftIcon={<Search className="text-gray-400" />}
+              fullWidth
+              clearable
+            />
+          </div>
+          <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0 items-center no-scrollbar">
+            <div className="min-w-[180px]">
+              <MultiSelectFilter
+                label="Port Types"
+                filterKey="port_type_code"
+                filters={filters.filters}
+                setFilters={filters.setFilters}
+                options={portTypeCodeOptions}
+                isLoading={loadingTypes}
+              />
+            </div>
+            <div className="min-w-[140px]">
+              <select
+                value={String(filters.filters.port_utilization ?? '')}
+                onChange={(e) =>
+                  filters.setFilters((prev) => ({ ...prev, port_utilization: e.target.value }))
+                }
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Utilization</option>
+                <option value="true">In Use</option>
+                <option value="false">Free</option>
+              </select>
+            </div>
+            <div className="min-w-[140px]">
+              <select
+                value={String(filters.filters.port_admin_status ?? '')}
+                onChange={(e) =>
+                  filters.setFilters((prev) => ({ ...prev, port_admin_status: e.target.value }))
+                }
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Admin Status</option>
+                <option value="true">Up</option>
+                <option value="false">Down</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        {/* --- END REFACTORED FILTER SECTION --- */}
 
         <DataTable
           autoHideEmptyColumns={true}
-          tableName='v_ports_management_complete'
+          tableName="v_ports_management_complete"
           data={ports}
           columns={columns}
           loading={isLoading}
@@ -521,10 +553,10 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
           isOpen={deleteModal.isOpen}
           onConfirm={deleteModal.onConfirm}
           onCancel={deleteModal.onCancel}
-          title='Confirm Port Deletion'
+          title="Confirm Port Deletion"
           message={deleteModal.message}
           loading={deleteModal.loading}
-          type='danger'
+          type="danger"
         />
       </div>
     </Modal>

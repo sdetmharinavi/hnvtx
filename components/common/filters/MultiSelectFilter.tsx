@@ -2,12 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FiChevronDown, FiCheck } from 'react-icons/fi';
+import { FiChevronDown, FiCheck, FiLoader } from 'react-icons/fi';
 import { Filters } from '@/hooks/database';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { Label } from '@/components/common/ui/label/Label';
 import useIsomorphicLayoutEffect from '@/hooks/useIsomorphicLayoutEffect';
-
 const normalizeToStringArray = (value: Filters[string]): string[] => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item));
@@ -17,16 +16,15 @@ const normalizeToStringArray = (value: Filters[string]): string[] => {
   }
   return [];
 };
-
 interface MultiSelectFilterProps {
   label?: string;
   filterKey: string;
   filters: Filters;
   setFilters: React.Dispatch<React.SetStateAction<Filters>>;
   options: Option[];
-  placeholder?: string; // ADDED: Placeholder prop
+  placeholder?: string;
+  isLoading?: boolean;
 }
-
 export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   label,
   filterKey,
@@ -34,6 +32,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
   setFilters,
   options,
   placeholder,
+  isLoading = false, // THIS IS THE FIX: Destructured with a default value
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +43,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
 
   const rawValue = filters[filterKey];
   const selectedValues = normalizeToStringArray(rawValue);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!isOpen) return;
@@ -58,7 +56,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
-
   const updatePosition = () => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -81,7 +78,6 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen]);
-
   const handleToggleOption = (e: React.MouseEvent, value: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -120,60 +116,63 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
       return newFilters;
     });
   };
-
   const DropdownContent = (
     <div
       ref={dropdownRef}
       style={dropdownStyle}
       className='fixed mt-1 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100 origin-top'
       onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
+      onClick={(e) => e.stopPropagation()}>
       <div className='p-2 border-b border-gray-100 dark:border-gray-700 flex justify-between'>
         <button
           onClick={handleSelectAll}
-          className='text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium'
-        >
+          className='text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium'>
           Select All
         </button>
         <button
           onClick={handleClear}
           className='text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400'
-        >
+          disabled={isLoading}>
           Clear
         </button>
       </div>
       <div className='max-h-60 overflow-auto p-1 custom-scrollbar'>
-        {options.map((option) => {
-          const isSelected = selectedValues.includes(option.value);
-          return (
-            <div
-              key={option.value}
-              title={option.label}
-              onClick={(e) => handleToggleOption(e, option.value)}
-              className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs text-wrap outline-none transition-colors ${
-                isSelected
-                  ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
-                  : 'text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {isSelected && (
-                <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
-                  <FiCheck className='h-4 w-4 text-blue-600 dark:text-blue-400' />
-                </span>
-              )}
-              {option.label && <span className='block truncate font-medium'> {option.label} </span>}
-            </div>
-          );
-        })}
-        {options.length === 0 && (
+        {/* THIS IS THE FIX: Added loading state check */}
+        {isLoading ? (
+          <div className='flex items-center justify-center gap-2 p-4 text-xs text-gray-500'>
+            <FiLoader className='animate-spin' />
+            Loading...
+          </div>
+        ) : options.length === 0 ? (
           <div className='py-2 px-2 text-xs text-gray-500 text-center'>No options available</div>
+        ) : (
+          options.map((option) => {
+            const isSelected = selectedValues.includes(option.value);
+            return (
+              <div
+                key={option.value}
+                title={option.label}
+                onClick={(e) => handleToggleOption(e, option.value)}
+                className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs text-wrap outline-none transition-colors ${
+                  isSelected
+                    ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
+                    : 'text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700'
+                }`}>
+                {isSelected && (
+                  <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
+                    <FiCheck className='h-4 w-4 text-blue-600 dark:text-blue-400' />
+                  </span>
+                )}
+                {option.label && (
+                  <span className='block truncate font-medium'> {option.label} </span>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>
   );
-
-  // LOGIC FIX: Determine Button Text
   let buttonText = placeholder || label || 'Options';
   if (selectedValues.length > 0) {
     if (selectedValues.length === options.length) {
@@ -186,14 +185,11 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
         : `${selectedValues.length} Selected`;
     }
   }
-
   return (
     <div className='space-y-2 relative' ref={containerRef}>
-      {/* Optional Top Label: Only show if provided */}
       {label && (
         <Label className='text-sm font-medium text-gray-700 dark:text-gray-300'>{label}</Label>
       )}
-
       <button
         ref={triggerRef}
         type='button'
@@ -206,15 +202,13 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
           selectedValues.length > 0
             ? 'border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400'
             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-        }`}
-      >
+        }`}>
         <span
           className={`block truncate ${
             selectedValues.length === 0
               ? 'text-gray-500 dark:text-gray-400'
               : 'text-gray-900 dark:text-white'
-          }`}
-        >
+          }`}>
           {buttonText}
         </span>
         <FiChevronDown
