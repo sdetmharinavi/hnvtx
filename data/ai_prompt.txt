@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all do you have any suggestion for UI/UX improvements?
+Let's begin! First of all we need Link service button and functionality in dashboard/ofc/connections page also. Also we need to fix port modal where in Port Types dropdown showing No options available.

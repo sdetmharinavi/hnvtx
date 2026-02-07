@@ -1,3 +1,4 @@
+
 // hooks/data/useDropdownOptions.ts
 'use client';
 
@@ -151,7 +152,7 @@ export const useLookupTypeOptions = (
   labelField: string = 'name'
 ) => {
   const { options, isLoading, originalData } = useDropdownOptions({
-    tableName: 'lookup_types',
+    tableName: 'v_lookup_types',
     valueField: 'id',
     labelField: labelField,
     filters: { category, status: true },

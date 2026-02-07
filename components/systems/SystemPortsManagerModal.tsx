@@ -33,8 +33,10 @@ import { generatePortsFromTemplate } from '@/config/port-templates';
 import { usePortsData } from '@/hooks/data/usePortsData';
 import { formatDate } from '@/utils/formatters';
 import { MultiSelectFilter } from '@/components/common/filters/MultiSelectFilter';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
-import { localDb } from '@/hooks/data/localDb';
+// THE FIX: Removed useOfflineQuery
+// import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
+// import { localDb } from '@/hooks/data/localDb';
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions'; // THE FIX: Imported hook
 import { PortHeatmap } from '@/components/systems/PortHeatmap';
 import { Activity, Shield, Search } from 'lucide-react';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
@@ -128,21 +130,24 @@ export const SystemPortsManagerModal: React.FC<SystemPortsManagerModalProps> = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // 2. Fetch Port Types for Filter
-  const { data: portTypesData, isLoading: loadingTypes } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['port-types-filter'],
-    async () =>
-      (await supabase.from('lookup_types').select('*').eq('category', 'PORT_TYPES')).data ?? [],
-    async () => await localDb.lookup_types.where({ category: 'PORT_TYPES' }).toArray()
-  );
+  // 2. Fetch Port Types for Filter (CORRECTED IMPLEMENTATION)
+  // We use useLookupTypeOptions to get the full list of port types securely
+  const { originalData: portTypesData, isLoading: loadingTypes } =
+    useLookupTypeOptions('PORT_TYPES');
 
   const portTypeCodeOptions = useMemo(() => {
-    return (portTypesData || [])
+    // Cast to expected type because originalData is generic Row[]
+    const types = (portTypesData || []) as Lookup_typesRowSchema[];
+    
+    return types
       .filter((t) => t.name !== 'DEFAULT' && t.code)
       .map((t) => ({
         value: t.code!,
-        label: t.code!,
-      }));
+        label: t.code!, // Use code as label for compact display in filter
+      }))
+      // Deduplicate options if there are multiple entries with same code (unlikely but safe)
+      .filter((v, i, a) => a.findIndex(t => t.value === v.value) === i)
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [portTypesData]);
 
   // 3. Fetch Connections (Bi-Directional)
