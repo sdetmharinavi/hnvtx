@@ -292,7 +292,9 @@ export const ConnectionLine = ({
   };
 
   // ADDED: Hit box weight based on device
-  const hitWeight = isMobile ? 30 : 15;
+  const hitWeight = isMobile ? 30 : 5;
+
+  console.log('config', config);
 
   return (
     <>
@@ -349,9 +351,6 @@ export const ConnectionLine = ({
             >
               <X size={14} />
             </button>
-            {/* <div className='font-semibold mb-2 border-b border-gray-200 dark:border-gray-700 pb-1 text-gray-700 dark:text-gray-300 pr-6'>
-              {config?.source}/{config?.sourcePort} - {config?.dest}/{config?.destPort}
-            </div> */}
 
             {hasConfig ? (
               <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>

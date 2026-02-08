@@ -218,7 +218,7 @@ export default function ClientRingMap({
       {/* UI Visibility Toggle - Always Visible */}
       <button
         onClick={() => setUiVisible(!uiVisible)}
-        className='absolute top-12 left-2 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
+        className='absolute top-16 left-2 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
         title={uiVisible ? 'Hide Map Tools' : 'Show Map Tools'}
       >
         {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
