@@ -62,7 +62,7 @@ export const NavItem = ({
   const itemContentClasses = cn(
     'group relative flex items-center transition-all duration-200 rounded-xl cursor-pointer overflow-hidden',
     active
-      ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 text-white shadow-lg hover:shadow-xl hover:from-blue-600 hover:via-indigo-600 hover:to-cyan-600'
+      ? 'bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 text-white shadow-lg hover:shadow-xl hover:from-blue-600 hover:via-indigo-600 hover:to-cyan-600'
       : 'text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800',
     // Collapsed vs Expanded spacing
     isCollapsed
@@ -86,7 +86,7 @@ export const NavItem = ({
             isCollapsed ? 'w-10 h-10' : 'w-9 h-9',
             active
               ? 'bg-white bg-opacity-25 backdrop-blur-sm shadow-lg'
-              : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 group-hover:from-blue-100 group-hover:to-indigo-100 dark:group-hover:from-blue-900 dark:group-hover:to-indigo-900 border border-blue-100 dark:border-gray-600',
+              : 'bg-linear-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 group-hover:from-blue-100 group-hover:to-indigo-100 dark:group-hover:from-blue-900 dark:group-hover:to-indigo-900 border border-blue-100 dark:border-gray-600',
           )}
         >
           {isLoading ? (
@@ -145,7 +145,7 @@ export const NavItem = ({
             'relative z-10 p-2 rounded-lg transition-all duration-200',
             active
               ? 'bg-white bg-opacity-20 hover:bg-opacity-30'
-              : 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900 dark:hover:to-indigo-900 border border-blue-100 dark:border-gray-600',
+              : 'bg-linear-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900 dark:hover:to-indigo-900 border border-blue-100 dark:border-gray-600',
           )}
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
@@ -231,11 +231,11 @@ export const NavItem = ({
                 className='overflow-hidden'
               >
                 <div className='relative ml-5 pl-5 mt-1'>
-                  {/* Gradient Border */}
-                  <div className='absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 via-indigo-400 to-blue-400 dark:from-blue-500 dark:via-indigo-500 dark:to-blue-500 rounded-full' />
+                  {/* linear Border */}
+                  <div className='absolute left-0 top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-400 via-indigo-400 to-blue-400 dark:from-blue-500 dark:via-indigo-500 dark:to-blue-500 rounded-full' />
 
                   {/* Connecting Dot */}
-                  <div className='absolute left-[-3px] top-3 w-2 h-2 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full' />
+                  <div className='absolute left-[-3px] top-3 w-2 h-2 bg-linear-to-br from-blue-400 to-indigo-500 rounded-full' />
 
                   {item.children?.map((child, index) => (
                     <motion.div
