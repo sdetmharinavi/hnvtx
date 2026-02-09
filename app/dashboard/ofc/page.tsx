@@ -96,6 +96,7 @@ export default function OfcPage() {
   } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
     localTableName: 'v_ofc_cables_complete',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dataQueryHook: useOfcData as any, // Cast due to type extension
     displayNameField: 'route_name',
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
