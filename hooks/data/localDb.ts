@@ -18,7 +18,7 @@ import {
   FilesRowSchema,
   FoldersRowSchema,
   V_nodes_completeRowSchema,
-  V_ofc_cables_completeRowSchema,
+  // V_ofc_cables_completeRowSchema, // REPLACED by ExtendedOfcCable
   V_systems_completeRowSchema,
   V_ringsRowSchema,
   V_employeesRowSchema,
@@ -60,6 +60,9 @@ import {
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
+
+// ADDED: Import the extended schema for OFC Cables
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 export type StoredUserProfiles = {
   id: string;
@@ -129,6 +132,15 @@ export type StoredVUserProfilesExtended = {
   raw_user_meta_data: Json | null;
 };
 
+// ADDED: Manual type definition for the new link table until codegen runs
+export interface OfcCableLinkRow {
+  id: string;
+  cable_id_1: string;
+  cable_id_2: string;
+  description?: string | null;
+  created_at?: string | null;
+}
+
 export interface SyncStatus {
   tableName: string;
   lastSynced: string | null;
@@ -182,20 +194,25 @@ export class HNVTMDatabase extends Dexie {
   logical_paths!: Table<Logical_pathsRowSchema, string>;
   ofc_connections!: Table<Ofc_connectionsRowSchema, string>;
 
+  // ADDED: Link table
+  ofc_cable_links!: Table<OfcCableLinkRow, string>;
+
   files!: Table<FilesRowSchema, string>;
   folders!: Table<FoldersRowSchema, string>;
   advances!: Table<AdvancesInsertSchema, string>;
   expenses!: Table<ExpensesInsertSchema, string>;
 
 
-  // Added technical notes
   technical_notes!: Table<Technical_notesRowSchema, string>;
   v_technical_notes!: Table<V_technical_notesRowSchema, string>;
   v_advances_complete!: Table<V_advances_completeRowSchema, string>;
   v_expenses_complete!: Table<V_expenses_completeRowSchema, string>;
 
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
-  v_ofc_cables_complete!: Table<V_ofc_cables_completeRowSchema, string>;
+  
+  // UPDATED: Use ExtendedOfcCable type for the view to support linked_cables
+  v_ofc_cables_complete!: Table<ExtendedOfcCable, string>;
+  
   v_systems_complete!: Table<V_systems_completeRowSchema, string>;
   v_rings!: Table<V_ringsRowSchema, string>;
   v_employees!: Table<V_employeesRowSchema, string>;
@@ -231,9 +248,8 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-    // Bumped version number to force schema update
-    this.version(42).stores({
-      // ... previous stores ...
+    // Bumped version to 43 to apply schema changes
+    this.version(43).stores({
       lookup_types: '&id, category, name, sort_order, status',
       v_lookup_types: '&id, category, name',
 
@@ -251,6 +267,9 @@ export class HNVTMDatabase extends Dexie {
 
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
+      
+      // ADDED: New link table store
+      ofc_cable_links: '&id, cable_id_1, cable_id_2',
 
       ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status, updated_at',
       v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name, status, updated_at',
@@ -309,7 +328,6 @@ export class HNVTMDatabase extends Dexie {
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
 
-      // ADDED: Notes
       technical_notes: '&id, title, is_published, created_at, updated_at',
       v_technical_notes: '&id, title, is_published, author_id, created_at, updated_at',
 
@@ -319,7 +337,6 @@ export class HNVTMDatabase extends Dexie {
       advances: '&id, req_no, employee_id, status, advance_date',
       expenses: '&id, advance_id, expense_date, category, vendor',
 
-      // FIXED: Added missing indexes for filtering/sorting
       v_advances_complete: '&id, req_no, employee_name, status, advance_date, created_at',
       v_expenses_complete: '&id, advance_id, expense_date, category, vendor, invoice_no, advance_req_no, created_at',
 

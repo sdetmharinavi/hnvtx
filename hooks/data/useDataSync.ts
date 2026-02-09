@@ -21,7 +21,6 @@ interface EntitySyncConfig {
 }
 
 // Configuration Map for Sync Strategies
-// UPDATED: All strategies are now 'full' for maximum data consistency.
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   // --- All Tables Set to Full Sync ---
   v_audit_logs: { strategy: 'full', relatedTable: 'user_activity_logs' },
@@ -39,6 +38,10 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   nodes: { strategy: 'full' },
   rings: { strategy: 'full' },
   ofc_cables: { strategy: 'full' },
+  
+  // ADDED: Link table
+  ofc_cable_links: { strategy: 'full' },
+
   lookup_types: { strategy: 'full' },
   employee_designations: { strategy: 'full' },
   user_profiles: { strategy: 'full' },
@@ -85,7 +88,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
-
+// ... (Rest of file remains unchanged)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
   const merged = [...serverData];
@@ -121,7 +124,10 @@ async function performFullSync(
   entityName: PublicTableOrViewName,
   config: EntitySyncConfig,
 ) {
-  const table = getTable(entityName);
+  // Use 'as any' to bypass the PublicTableOrViewName type check for now since
+  // 'ofc_cable_links' is not yet in the generated types union.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = getTable(entityName as any);
   let offset = 0;
   let hasMore = true;
   let totalSynced = 0;
@@ -239,7 +245,8 @@ async function performIncrementalSync(
   entityName: PublicTableOrViewName,
   timestampColumn: string = 'created_at',
 ) {
-  const table = getTable(entityName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = getTable(entityName as any);
   const latestRecord = await table.orderBy(timestampColumn).last();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let lastTimestamp: string | null = (latestRecord as any)?.[timestampColumn] || null;
@@ -346,7 +353,7 @@ export function useDataSync() {
   const isSyncing = useSyncStore((state) => state.isGlobalSyncing);
 
   const executeSync = useCallback(
-    async (specificTables?: PublicTableOrViewName[]) => {
+    async (specificTables?: (PublicTableOrViewName | string)[]) => {
       if (!isOnline) {
         toast.error('Cannot sync while offline.');
         return;
@@ -369,7 +376,8 @@ export function useDataSync() {
 
         for (const entity of entitiesToSync) {
           try {
-            await syncEntity(supabase, localDb, entity);
+            // Cast to PublicTableOrViewName to satisfy TS in the loop
+            await syncEntity(supabase, localDb, entity as PublicTableOrViewName);
           } catch (e) {
             failures.push(`${entity} (${(e as Error).message})`);
           }
