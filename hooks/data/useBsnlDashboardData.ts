@@ -10,7 +10,6 @@ import { BsnlNode, BsnlCable, BsnlSystem } from '@/components/bsnl/types';
 import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { Json } from '@/types/supabase-types';
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
@@ -39,28 +38,37 @@ const matchesFilter = (
 };
 
 // Helper to transform cable data to match ExtendedOfcCable type
-const transformCableData = (cables: any[]): ExtendedOfcCable[] => {
-  return cables.map(item => {
+export const transformCableData = (cables: BsnlCable[]): ExtendedOfcCable[] => {
+  return cables.map((item) => {
     const linkedCables = item.linked_cables;
-    // Parse JSON if it's a string, otherwise use as-is
     let parsedLinkedCables: LinkedCable[] | null = null;
-    
+
     if (linkedCables) {
       if (typeof linkedCables === 'string') {
         try {
           parsedLinkedCables = JSON.parse(linkedCables);
         } catch (e) {
+          console.log(e);
           console.warn('Failed to parse linked_cables JSON:', linkedCables);
           parsedLinkedCables = null;
         }
       } else if (Array.isArray(linkedCables)) {
-        parsedLinkedCables = linkedCables;
+        const validLinkedCables = linkedCables.filter(
+          (lc): lc is LinkedCable =>
+            lc !== null &&
+            typeof lc === 'object' &&
+            'link_id' in lc &&
+            'cable_id' in lc &&
+            'route_name' in lc,
+        );
+
+        parsedLinkedCables = validLinkedCables.length > 0 ? validLinkedCables : null;
       }
     }
-    
+
     return {
       ...item,
-      linked_cables: parsedLinkedCables as Json
+      linked_cables: parsedLinkedCables ?? null,
     };
   });
 };

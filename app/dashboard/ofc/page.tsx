@@ -4,14 +4,14 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { 
-  FiActivity, 
-  FiMapPin, 
-  FiLayers, 
-  FiDatabase, 
-  FiClock, 
+import {
+  FiActivity,
+  FiMapPin,
+  FiLayers,
+  FiDatabase,
+  FiClock,
   FiLink,
-  FiTrash2 
+  FiTrash2,
 } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
@@ -71,7 +71,10 @@ export default function OfcPage() {
 
   // New State for Linking
   const [linkingCable, setLinkingCable] = useState<ExtendedOfcCable | null>(null);
-  const [cableToUnlink, setCableToUnlink] = useState<{ parent: ExtendedOfcCable; link: LinkedCable } | null>(null);
+  const [cableToUnlink, setCableToUnlink] = useState<{
+    parent: ExtendedOfcCable;
+    link: LinkedCable;
+  } | null>(null);
 
   const { mutate: unlinkCable, isPending: isUnlinking } = useUnlinkCable();
 
@@ -105,16 +108,24 @@ export default function OfcPage() {
 
   // Transform the data to match ExtendedOfcCable type
   const transformedOfcData: ExtendedOfcCable[] = useMemo(() => {
-    return ofcData.map(item => {
-      const linkedCables = item.linked_cables;
-      // Parse JSON if it's a string, otherwise use as-is
-      const parsedLinkedCables = typeof linkedCables === 'string' 
-        ? JSON.parse(linkedCables) 
-        : linkedCables;
-      
+    return ofcData.map((item) => {
+      const raw = item.linked_cables;
+
+      let parsed: LinkedCable[] | null;
+
+      if (typeof raw === 'string') {
+        // handle empty string or invalid JSON defensively if you want
+        parsed = raw.trim() ? (JSON.parse(raw) as LinkedCable[]) : null;
+      } else if (Array.isArray(raw)) {
+        parsed = raw as LinkedCable[];
+      } else {
+        // covers undefined and any other falsy/non-array value
+        parsed = null;
+      }
+
       return {
         ...item,
-        linked_cables: parsedLinkedCables as LinkedCable[] | null | undefined
+        linked_cables: parsed, // now: LinkedCable[] | null
       };
     });
   }, [ofcData]);
@@ -173,7 +184,7 @@ export default function OfcPage() {
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
 
   const handleRefresh = async () => {
-    if(isOnline) {
+    if (isOnline) {
       await syncData(['ofc_cables', 'v_ofc_cables_complete', 'ofc_cable_links']);
     }
     refetch();
@@ -220,13 +231,14 @@ export default function OfcPage() {
         isActive: currentStatus === 'false',
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   // Handle Unlink Confirmation
   const confirmUnlink = () => {
     if (cableToUnlink) {
       unlinkCable(cableToUnlink.link.link_id, {
-        onSuccess: () => setCableToUnlink(null)
+        onSuccess: () => setCableToUnlink(null),
       });
     }
   };
@@ -270,47 +282,47 @@ export default function OfcPage() {
           customFooter={
             <div className='space-y-3 w-full'>
               <GenericRemarks remark={cable.remark || ''} />
-              
+
               {/* LINKED CABLES SECTION */}
               {linkedCables.length > 0 && (
-                 <div className='bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800'>
-                   <div className='flex items-center justify-between mb-1'>
-                      <div className='text-[10px] text-blue-600 font-bold uppercase flex items-center gap-1'>
-                        <FiLink className='w-3 h-3' /> Linked Routes
-                      </div>
-                   </div>
-                   <div className='flex flex-wrap gap-1'>
-                     {linkedCables.map((link) => (
-                       <div 
-                         key={link.link_id} 
-                         className='group flex items-center gap-1.5 text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700'
-                       >
-                         <span 
-                            className="cursor-pointer hover:underline truncate max-w-[120px]"
+                <div className='bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800'>
+                  <div className='flex items-center justify-between mb-1'>
+                    <div className='text-[10px] text-blue-600 font-bold uppercase flex items-center gap-1'>
+                      <FiLink className='w-3 h-3' /> Linked Routes
+                    </div>
+                  </div>
+                  <div className='flex flex-wrap gap-1'>
+                    {linkedCables.map((link) => (
+                      <div
+                        key={link.link_id}
+                        className='group flex items-center gap-1.5 text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700'
+                      >
+                        <span
+                          className='cursor-pointer hover:underline truncate max-w-[120px]'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/dashboard/ofc/${link.cable_id}`);
+                          }}
+                          title={link.description || link.route_name}
+                        >
+                          {link.route_name}
+                        </span>
+                        {canEdit && (
+                          <button
                             onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/dashboard/ofc/${link.cable_id}`);
+                              e.stopPropagation();
+                              setCableToUnlink({ parent: cable, link });
                             }}
-                            title={link.description || link.route_name}
-                         >
-                            {link.route_name}
-                         </span>
-                         {canEdit && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCableToUnlink({ parent: cable, link });
-                                }}
-                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Unlink"
-                            >
-                                <FiTrash2 className="w-2.5 h-2.5" />
-                            </button>
-                         )}
-                       </div>
-                     ))}
-                   </div>
-                 </div>
+                            className='text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity'
+                            title='Unlink'
+                          >
+                            <FiTrash2 className='w-2.5 h-2.5' />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
 
               <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full pt-2 border-t border-gray-100 dark:border-gray-700/50'>
@@ -325,17 +337,17 @@ export default function OfcPage() {
             </div>
           }
           extraActions={
-             canEdit ? (
-                <Button
-                    size='xs'
-                    variant='secondary'
-                    onClick={() => setLinkingCable(cable)}
-                    title='Link to another cable'
-                    className='font-medium'
-                >
-                    <FiLink className='w-4 h-4' />
-                </Button>
-             ) : undefined
+            canEdit ? (
+              <Button
+                size='xs'
+                variant='secondary'
+                onClick={() => setLinkingCable(cable)}
+                title='Link to another cable'
+                className='font-medium'
+              >
+                <FiLink className='w-4 h-4' />
+              </Button>
+            ) : undefined
           }
           onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
           onEdit={(record) => editModal.openEdit(record as V_ofc_cables_completeRowSchema)}
@@ -345,7 +357,16 @@ export default function OfcPage() {
         />
       );
     },
-    [router, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, setLinkingCable, setCableToUnlink],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      editModal.openEdit,
+      crudActions.handleDelete,
+      canEdit,
+      canDelete,
+      setLinkingCable,
+      setCableToUnlink,
+    ],
   );
 
   const renderGrid = useCallback(
@@ -366,6 +387,7 @@ export default function OfcPage() {
         }}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [ofcData, renderItem, isLoading, totalCount, pagination],
   );
 
@@ -436,12 +458,7 @@ export default function OfcPage() {
       isEmpty={transformedOfcData.length === 0 && !isLoading}
       modals={
         <>
-          <input
-            type='file'
-            ref={fileInputRef}
-            className='hidden'
-            accept='.xlsx, .xls, .csv'
-          />
+          <input type='file' ref={fileInputRef} className='hidden' accept='.xlsx, .xls, .csv' />
 
           {editModal.isOpen && (
             <OfcForm
@@ -454,11 +471,11 @@ export default function OfcPage() {
           )}
 
           {linkingCable && (
-             <CableLinkingModal 
-                isOpen={!!linkingCable}
-                onClose={() => setLinkingCable(null)}
-                sourceCable={linkingCable}
-             />
+            <CableLinkingModal
+              isOpen={!!linkingCable}
+              onClose={() => setLinkingCable(null)}
+              sourceCable={linkingCable}
+            />
           )}
 
           <ConfirmModal
@@ -475,15 +492,16 @@ export default function OfcPage() {
             isOpen={!!cableToUnlink}
             onConfirm={confirmUnlink}
             onCancel={() => setCableToUnlink(null)}
-            title="Unlink Cable"
+            title='Unlink Cable'
             message={
-                <span>
-                   Are you sure you want to unlink <strong>{cableToUnlink?.link.route_name}</strong> from 
-                   <strong>{cableToUnlink?.parent.route_name}</strong>?
-                </span>
+              <span>
+                Are you sure you want to unlink <strong>{cableToUnlink?.link.route_name}</strong>{' '}
+                from
+                <strong>{cableToUnlink?.parent.route_name}</strong>?
+              </span>
             }
-            type="danger"
-            confirmText="Unlink"
+            type='danger'
+            confirmText='Unlink'
             loading={isUnlinking}
           />
         </>

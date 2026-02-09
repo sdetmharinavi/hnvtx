@@ -184,7 +184,7 @@ export type LinkedCable = z.infer<typeof linkedCableSchema>;
 
 // Extended Schema to include the JSONB aggregated column
 export const extendedOfcCableSchema = v_ofc_cables_completeRowSchema.extend({
-  linked_cables: z.array(linkedCableSchema).nullable().optional(),
+  linked_cables: z.array(linkedCableSchema).nullable(),
 });
 
 export type ExtendedOfcCable = z.infer<typeof extendedOfcCableSchema>;
