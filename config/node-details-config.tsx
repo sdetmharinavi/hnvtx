@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
+import { useUser } from '@/providers/UserProvider';
 
 // Node details modal configuration
 export const nodeDetailsConfig = {
@@ -31,7 +32,7 @@ export const nodeDetailsConfig = {
         key: 'node_type_name',
         component: (type: string) =>
           type ? (
-            <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full dark:bg-green-900 dark:text-green-200">
+            <span className='px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full dark:bg-green-900 dark:text-green-200'>
               {type}
             </span>
           ) : null,
@@ -100,5 +101,9 @@ export const NodeDetailsModal = ({
   onClose: () => void;
   isOpen: boolean;
 }) => {
-  return <DetailsModal data={node} onClose={onClose} isOpen={isOpen} config={nodeDetailsConfig} />;
+   const { isSuperAdmin } = useUser();
+    const sections = (nodeDetailsConfig.sections || []).filter((section) =>
+      isSuperAdmin ? true : section.title !== 'Timestamps',
+    );
+  return <DetailsModal data={node} onClose={onClose} isOpen={isOpen} config={{...nodeDetailsConfig, sections}} />;
 };

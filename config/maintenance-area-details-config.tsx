@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { MaintenanceAreaWithRelations } from '@/config/areas';
+import { useUser } from '@/providers/UserProvider';
 
 // This configuration defines how to display the rich data for a Maintenance Area.
 export const maintenanceAreaDetailsConfig = {
@@ -62,7 +63,7 @@ export const maintenanceAreaDetailsConfig = {
           formatter: (email) => {
             if (typeof email === 'string' && email.trim()) {
               return (
-                <a href={`mailto:${email}`} className="text-blue-600 hover:underline">
+                <a href={`mailto:${email}`} className='text-blue-600 hover:underline'>
                   {email}
                 </a>
               );
@@ -113,12 +114,16 @@ export const MaintenanceAreaDetailsModal = ({
   onClose: () => void;
   isOpen: boolean;
 }) => {
+  const { isSuperAdmin } = useUser();
+  const sections = (maintenanceAreaDetailsConfig.sections || []).filter((section) =>
+    isSuperAdmin ? true : section.title !== 'Timestamps',
+  );
   return (
     <DetailsModal
       data={area}
       onClose={onClose}
       isOpen={isOpen}
-      config={maintenanceAreaDetailsConfig}
+      config={{ ...maintenanceAreaDetailsConfig, sections }}
       loading={!area}
     />
   );

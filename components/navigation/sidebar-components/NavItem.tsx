@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { FiChevronDown, FiExternalLink } from 'react-icons/fi';
 import { NavItem as NavItemType, submenuVariants } from './sidebar-types';
 import { UserRole } from '@/types/user-roles';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,9 @@ interface NavItemProps {
   depth?: number;
   expandedItems: string[];
   toggleExpanded: (id: string) => void;
-  setHoveredItem: (item: NavItemType | null) => void;
+  // THE FIX: Add explicit mouse event handlers
+  onMouseEnter: (item: NavItemType, position: DOMRect | null) => void;
+  onMouseLeave: () => void;
 }
 
 export const NavItem = ({
@@ -27,13 +29,14 @@ export const NavItem = ({
   depth = 0,
   expandedItems,
   toggleExpanded,
-  setHoveredItem,
+  onMouseEnter, // THE FIX
+  onMouseLeave, // THE FIX
 }: NavItemProps) => {
   const pathname = usePathname();
   const { isSuperAdmin, role } = useUser();
   const [isLoading, setIsLoading] = useState(false);
+  const itemRef = useRef<HTMLDivElement>(null);
 
-  // Check Permissions
   const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
     if (!roles || roles.length === 0) return false;
@@ -78,11 +81,9 @@ export const NavItem = ({
           isCollapsed ? 'justify-center' : 'gap-1 min-w-0 flex-1',
         )}
       >
-        {/* Enhanced Icon Container */}
         <div
           className={cn(
             'shrink-0 flex items-center justify-center rounded-xl transition-all duration-200',
-            // Smaller icon in collapsed mode for better fit
             isCollapsed ? 'w-10 h-10' : 'w-9 h-9',
             active
               ? 'bg-white bg-opacity-25 backdrop-blur-sm shadow-lg'
@@ -106,7 +107,6 @@ export const NavItem = ({
           )}
         </div>
 
-        {/* Enhanced Label - Only show when not collapsed */}
         {!isCollapsed && (
           <div className='flex-1 min-w-0'>
             <span
@@ -122,7 +122,6 @@ export const NavItem = ({
           </div>
         )}
 
-        {/* Active Indicator - Only show when not collapsed */}
         {active && !isCollapsed && (
           <motion.div
             className='absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-white rounded-r-full shadow-xl'
@@ -133,7 +132,6 @@ export const NavItem = ({
         )}
       </div>
 
-      {/* Enhanced Expand Button - Only show when not collapsed */}
       {!isCollapsed && hasChildren && (
         <button
           onClick={(e) => {
@@ -163,7 +161,6 @@ export const NavItem = ({
         </button>
       )}
 
-      {/* External Link Badge - Only show when not collapsed */}
       {!isCollapsed && item.external && (
         <div
           className={cn(
@@ -184,9 +181,14 @@ export const NavItem = ({
     return (
       <div
         key={item.id}
+        ref={itemRef}
         className='relative'
-        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
-        onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
+        onMouseEnter={() => {
+          if (isCollapsed && hasChildren && itemRef.current) {
+            onMouseEnter(item, itemRef.current.getBoundingClientRect());
+          }
+        }}
+        onMouseLeave={onMouseLeave}
       >
         <a
           href={item.href}
@@ -211,9 +213,14 @@ export const NavItem = ({
     return (
       <div
         key={item.id}
+        ref={itemRef}
         className='relative'
-        onMouseEnter={() => isCollapsed && hasChildren && setHoveredItem(item)}
-        onMouseLeave={() => isCollapsed && hasChildren && setHoveredItem(null)}
+        onMouseEnter={() => {
+          if (isCollapsed && hasChildren && itemRef.current) {
+            onMouseEnter(item, itemRef.current.getBoundingClientRect());
+          }
+        }}
+        onMouseLeave={onMouseLeave}
       >
         <div onClick={() => toggleExpanded(item.id)} className={itemContentClasses}>
           {renderContent()}
@@ -231,12 +238,8 @@ export const NavItem = ({
                 className='overflow-hidden'
               >
                 <div className='relative ml-1 pl-1 mt-1'>
-                  {/* linear Border */}
                   <div className='absolute left-0 top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-400 via-indigo-400 to-blue-400 dark:from-blue-500 dark:via-indigo-500 dark:to-blue-500 rounded-full' />
-
-                  {/* Connecting Dot */}
                   <div className='absolute left-[-3px] top-3 w-2 h-2 bg-linear-to-br from-blue-400 to-indigo-500 rounded-full' />
-
                   {item.children?.map((child, index) => (
                     <motion.div
                       key={child.id}
@@ -255,7 +258,8 @@ export const NavItem = ({
                         depth={depth + 1}
                         expandedItems={expandedItems}
                         toggleExpanded={toggleExpanded}
-                        setHoveredItem={setHoveredItem}
+                        onMouseEnter={onMouseEnter}
+                        onMouseLeave={onMouseLeave}
                       />
                     </motion.div>
                   ))}
