@@ -13,7 +13,8 @@ import {
   TileLayerProps,
 } from 'react-leaflet';
 import { LatLngBounds, LatLngExpression } from 'leaflet';
-import { BsnlNode, BsnlCable, BsnlSystem } from './types';
+import { BsnlNode, BsnlSystem } from './types';
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 import 'leaflet/dist/leaflet.css';
 import { Maximize, Minimize } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
@@ -121,7 +122,7 @@ const MapContent = ({
   filteredNodes,
   filterKey,
 }: {
-  cables: BsnlCable[];
+  cables: ExtendedOfcCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
   displayNodes: DisplayNode<BsnlNode>[];
   mapBounds: LatLngBounds | null;
@@ -182,7 +183,7 @@ const MapContent = ({
       <TileLayer {...({ url: mapUrl, attribution: mapAttribution } as TileLayerProps)} />
 
       {/* Render Cables */}
-      {visibleCables.map((cable: BsnlCable) => {
+      {visibleCables.map((cable: ExtendedOfcCable) => {
         const startNode = nodeMap.get(cable.sn_id!);
         const endNode = nodeMap.get(cable.en_id!);
 
@@ -278,7 +279,7 @@ MapContent.displayName = 'MapContent';
 
 interface OptimizedNetworkMapProps {
   nodes: BsnlNode[];
-  cables: BsnlCable[];
+  cables: ExtendedOfcCable[];
   systems: BsnlSystem[];
   selectedSystem: BsnlSystem | null;
   visibleLayers?: { nodes: boolean; cables: boolean; systems: boolean };

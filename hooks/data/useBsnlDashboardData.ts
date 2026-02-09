@@ -10,6 +10,7 @@ import { BsnlNode, BsnlCable, BsnlSystem } from '@/components/bsnl/types';
 import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { Json } from '@/types/supabase-types';
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
@@ -59,7 +60,7 @@ const transformCableData = (cables: any[]): ExtendedOfcCable[] => {
     
     return {
       ...item,
-      linked_cables: parsedLinkedCables
+      linked_cables: parsedLinkedCables as Json // Cast back to Json to match expected type
     };
   });
 };

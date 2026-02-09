@@ -13,7 +13,7 @@ import { useBsnlDashboardData } from '@/hooks/data/useBsnlDashboardData';
 import { PageSpinner, ErrorDisplay, StatusBadge } from '@/components/common/ui';
 import { toast } from 'sonner';
 import { DashboardStatsGrid } from '@/components/bsnl/DashboardStatsGrid';
-import { BsnlSearchFilters } from '@/schemas/custom-schemas';
+import { BsnlSearchFilters, ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
 import { LatLngBounds } from 'leaflet';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { SystemDetailsModal } from '@/config/system-details-config';
@@ -35,6 +35,33 @@ const OptimizedNetworkMap = dynamic(
     ),
   },
 );
+
+// Helper to transform cable data to match ExtendedOfcCable type
+const transformCableData = (cables: any[]): ExtendedOfcCable[] => {
+  return cables.map(item => {
+    const linkedCables = item.linked_cables;
+    // Parse JSON if it's a string, otherwise use as-is
+    let parsedLinkedCables: LinkedCable[] | null = null;
+    
+    if (linkedCables) {
+      if (typeof linkedCables === 'string') {
+        try {
+          parsedLinkedCables = JSON.parse(linkedCables);
+        } catch (e) {
+          console.warn('Failed to parse linked_cables JSON:', linkedCables);
+          parsedLinkedCables = null;
+        }
+      } else if (Array.isArray(linkedCables)) {
+        parsedLinkedCables = linkedCables;
+      }
+    }
+    
+    return {
+      ...item,
+      linked_cables: parsedLinkedCables
+    };
+  });
+};
 
 type BsnlDashboardTab = 'overview' | 'systems' | 'routes';
 
@@ -67,7 +94,7 @@ export default function ScalableFiberNetworkDashboard() {
   const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
   const [selectedSystem, setSelectedSystem] = useState<BsnlSystem | null>(null);
-  const [selectedCable, setSelectedCable] = useState<BsnlCable | null>(null);
+  const [selectedCable, setSelectedCable] = useState<ExtendedOfcCable | null>(null);
 
   const handleBoundsChange = useCallback((bounds: LatLngBounds | null) => {
     setMapBounds(bounds);
@@ -191,7 +218,7 @@ export default function ScalableFiberNetworkDashboard() {
         label: 'View Details',
         icon: <Eye />,
         onClick: (record) => {
-          setSelectedCable(record as BsnlCable);
+          setSelectedCable(record as ExtendedOfcCable);
           setIsCableDetailsOpen(true);
         },
       },

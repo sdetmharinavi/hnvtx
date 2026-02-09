@@ -2,12 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { X, GitBranch, Plus, Trash2 } from 'lucide-react';
-import { BsnlNode, BsnlCable, BsnlSystem, FiberRoutePath } from '@/components/bsnl/types';
+import { BsnlNode, BsnlSystem, FiberRoutePath } from '@/components/bsnl/types';
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 // The mock data is now only used as a fallback and is correctly typed.
 export const mockData = {
   nodes: [] as BsnlNode[],
-  ofcCables: [] as BsnlCable[],
+  ofcCables: [] as ExtendedOfcCable[],
   systems: [] as BsnlSystem[],
 };
 
@@ -29,7 +30,7 @@ interface PathBuilderProps {
   onPathChange: (newPath: FiberRoutePath[]) => void;
   startNodeId: string;
   nodes: BsnlNode[];
-  cables: BsnlCable[];
+  cables: ExtendedOfcCable[];
   allAllocatedFibers: Set<string>;
 }
 
@@ -255,7 +256,7 @@ interface AdvancedAllocationModalProps {
   onSave: (data: AllocationSaveData) => void;
   systems: BsnlSystem[];
   nodes: BsnlNode[];
-  cables: BsnlCable[];
+  cables: ExtendedOfcCable[];
 }
 
 function AdvancedAllocationModal({

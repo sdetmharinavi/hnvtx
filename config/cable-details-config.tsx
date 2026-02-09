@@ -7,12 +7,12 @@ import {
 } from '@/components/common/ui/Modal/DetailsModal';
 import { FiGitBranch, FiMapPin, FiClock, FiInfo, FiHash, FiActivity } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
-import { BsnlCable } from '@/components/bsnl/types';
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 export const cableDetailsConfig = {
   header: {
-    title: (cable: BsnlCable) => cable.route_name || 'Unnamed Route',
-    subtitle: (cable: BsnlCable) => cable.ofc_owner_name || 'Unknown Owner',
+    title: (cable: ExtendedOfcCable) => cable.route_name || 'Unnamed Route',
+    subtitle: (cable: ExtendedOfcCable) => cable.ofc_owner_name || 'Unknown Owner',
     badges: [
       {
         key: 'status',
@@ -28,7 +28,7 @@ export const cableDetailsConfig = {
           ) : null,
       },
     ],
-  } as HeaderConfig<BsnlCable>,
+  } as HeaderConfig<ExtendedOfcCable>,
 
   sections: [
     {
@@ -69,7 +69,7 @@ export const cableDetailsConfig = {
         },
       ],
     },
-  ] as SectionConfig<BsnlCable>[],
+  ] as SectionConfig<ExtendedOfcCable>[],
 };
 
 export const CableDetailsModal = ({
@@ -77,7 +77,7 @@ export const CableDetailsModal = ({
   onClose,
   isOpen,
 }: {
-  cable: BsnlCable | null;
+  cable: ExtendedOfcCable | null;
   onClose: () => void;
   isOpen: boolean;
 }) => {

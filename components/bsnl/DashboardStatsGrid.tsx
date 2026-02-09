@@ -5,12 +5,13 @@ import React, { useMemo } from 'react';
 import { Network, Activity, AlertTriangle, Cable } from 'lucide-react';
 import { Card } from '@/components/common/ui';
 import { BsnlNode, BsnlCable, BsnlSystem } from './types';
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 // Updated interface to accept data AND filter callback
 interface DashboardStatsGridProps {
   data: {
     nodes: BsnlNode[];
-    ofcCables: BsnlCable[];
+    ofcCables: ExtendedOfcCable[];
     systems: BsnlSystem[];
   };
   onStatusClick: (status: 'active' | 'inactive' | 'all') => void;
