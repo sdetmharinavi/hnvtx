@@ -60,7 +60,7 @@ const transformCableData = (cables: any[]): ExtendedOfcCable[] => {
     
     return {
       ...item,
-      linked_cables: parsedLinkedCables as Json // Cast back to Json to match expected type
+      linked_cables: parsedLinkedCables as Json
     };
   });
 };
