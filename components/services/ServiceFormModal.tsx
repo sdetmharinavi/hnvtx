@@ -14,10 +14,11 @@ import { useActiveNodeOptions, useLookupTypeOptions } from '@/hooks/data/useDrop
 import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 import { useFormModal } from '@/hooks/useFormModal';
 import { z } from 'zod';
+// import { zodResolver } from '@hookform/resolvers/zod'; // Not needed directly, handled by hook
 
 const serviceFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  node_id: z.string().min(1, 'Start Location is required'), // Changed to string for compatibility with Select values
+  node_id: z.string().min(1, 'Start Location is required'), // Changed to string for Select compatibility
   end_node_id: z.string().nullable().optional(),
   link_type_id: z.string().nullable().optional(),
   bandwidth_allocated: z.string().nullable().optional(),

@@ -147,7 +147,7 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   // --- Effects ---
 
-  // Reset step on close/open
+  // Reset step on close/open (Form reset handled by hook, this handles UI state)
   useEffect(() => {
     if (isOpen) {
       setStep(1);
