@@ -67,7 +67,7 @@ export const NavItem = ({
     // Collapsed vs Expanded spacing
     isCollapsed
       ? 'justify-center py-1.5 px-1 mx-0.5 mb-1.5'
-      : `justify-between py-1.5 px-2 mx-1 mb-1.5 ${depth > 0 ? 'pl-5' : ''}`,
+      : `justify-between py-1.5 px-2 mx-1 mb-1.5 ${depth > 0 ? 'pl-2' : ''}`,
   );
 
   const renderContent = () => (
@@ -230,7 +230,7 @@ export const NavItem = ({
                 transition={{ duration: 0.3, ease: [0.4, 0.0, 0.2, 1] }}
                 className='overflow-hidden'
               >
-                <div className='relative ml-5 pl-5 mt-1'>
+                <div className='relative ml-1 pl-1 mt-1'>
                   {/* linear Border */}
                   <div className='absolute left-0 top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-400 via-indigo-400 to-blue-400 dark:from-blue-500 dark:via-indigo-500 dark:to-blue-500 rounded-full' />
 

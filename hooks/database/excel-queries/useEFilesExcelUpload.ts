@@ -2,17 +2,42 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
-import { logRowProcessing } from './excel-helpers';
-import { parseExcelFile } from '@/utils/excel-parser'; // THE FIX
 import {
   EnhancedUploadResult,
-  ProcessingLog,
-  ValidationError,
+  UploadColumnMapping,
 } from '@/hooks/database/queries-type-helpers';
+import { processExcelData } from './excel-helpers';
 
 interface EFileUploadOptions {
   file: File;
 }
+
+// Define the column mapping configuration
+const EFILE_COLUMNS: UploadColumnMapping<'v_e_files_extended'>[] = [
+  { excelHeader: 'File Number', dbKey: 'file_number', required: true },
+  { excelHeader: 'File No', dbKey: 'file_number' },
+  { excelHeader: 'File No.', dbKey: 'file_number' },
+  
+  { excelHeader: 'Subject', dbKey: 'subject', required: true },
+  { excelHeader: 'Subject / Description', dbKey: 'subject' },
+  
+  { excelHeader: 'Description', dbKey: 'description' },
+  
+  { excelHeader: 'Category', dbKey: 'category', required: true },
+  { excelHeader: 'Priority', dbKey: 'priority' },
+  { excelHeader: 'Remarks', dbKey: 'description' }, // Map 'Remarks' to description if desc is missing, or use custom logic later
+  
+  // RPC expects 'initiator_name' string for lookup
+  { excelHeader: 'Initiator', dbKey: 'initiator_name', required: true },
+  { excelHeader: 'Initiator Name', dbKey: 'initiator_name' },
+  { excelHeader: 'Started By', dbKey: 'initiator_name' },
+  
+  // RPC expects 'current_holder_name' string for lookup
+  { excelHeader: 'Current Holder', dbKey: 'current_holder_name' },
+  { excelHeader: 'Currently With', dbKey: 'current_holder_name' },
+  { excelHeader: 'Holder', dbKey: 'current_holder_name' },
+  { excelHeader: 'Current Location', dbKey: 'current_holder_name' },
+];
 
 export function useEFilesExcelUpload() {
   const supabase = createClient();
@@ -20,111 +45,65 @@ export function useEFilesExcelUpload() {
 
   return useMutation<EnhancedUploadResult, Error, EFileUploadOptions>({
     mutationFn: async ({ file }) => {
-      const processingLogs: ProcessingLog[] = [];
-      const allValidationErrors: ValidationError[] = [];
+      toast.info('Processing Excel file...');
+      
+      // 1. Use Generic Processor
+      const { 
+          validRecords, 
+          validationErrors, 
+          processingLogs, 
+          skippedRows, 
+          errorCount: initialErrorCount 
+      } = await processExcelData(file, EFILE_COLUMNS);
+
       const uploadResult: EnhancedUploadResult = {
         successCount: 0,
-        errorCount: 0,
-        totalRows: 0,
+        errorCount: initialErrorCount,
+        totalRows: validRecords.length + initialErrorCount,
         errors: [],
         processingLogs,
-        validationErrors: allValidationErrors,
-        skippedRows: 0,
+        validationErrors,
+        skippedRows,
       };
 
-      toast.info('Parsing Excel file...');
-      // THE FIX: Use off-thread parser
-      const jsonData = await parseExcelFile(file);
-
-      if (jsonData.length < 2) {
-        toast.warning('No data found.');
+      if (validRecords.length === 0 && initialErrorCount === 0) {
+        toast.warning('No valid data found in the Excel file.');
         return uploadResult;
       }
 
-      const headers = (jsonData[0] as string[]).map((h) => String(h).trim().toLowerCase());
-      const dataRows = jsonData.slice(1);
-
-      const columnMap: Record<string, string> = {
-        'file number': 'file_number',
-        'file no': 'file_number',
-        'file no.': 'file_number',
-        subject: 'subject',
-        description: 'description',
-        'subject / description': 'subject',
-        category: 'category',
-        priority: 'priority',
-        remarks: 'remarks',
-        initiator: 'initiator_name',
-        'initiator name': 'initiator_name',
-        'started by': 'initiator_name',
-        'current holder': 'current_holder_name',
-        'currently with': 'current_holder_name',
-        holder: 'current_holder_name',
-        'current location': 'current_holder_name',
-        'current holder name': 'current_holder_name',
-      };
-
-      const validPayloads = [];
-
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i] as unknown[];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rowData: any = {};
-        const rowErrors: ValidationError[] = [];
-        let isEmpty = true;
-
-        headers.forEach((header, idx) => {
-          if (row[idx]) isEmpty = false;
-          const key = columnMap[header] || header;
-          if (
-            [
-              'file_number',
-              'subject',
-              'description',
-              'category',
-              'priority',
-              'remarks',
-              'initiator_name',
-              'current_holder_name',
-            ].includes(key)
-          ) {
-            rowData[key] = row[idx];
-          }
-        });
-
-        if (isEmpty) {
-          uploadResult.skippedRows++;
-          continue;
-        }
-
-        if (!rowData.file_number)
-          rowErrors.push({ rowIndex: i, column: 'file_number', value: '', error: 'Required' });
-        if (!rowData.subject)
-          rowErrors.push({ rowIndex: i, column: 'subject', value: '', error: 'Required' });
-        if (!rowData.category)
-          rowErrors.push({ rowIndex: i, column: 'category', value: '', error: 'Required' });
-        if (!rowData.initiator_name)
-          rowErrors.push({ rowIndex: i, column: 'initiator_name', value: '', error: 'Required' });
-
-        if (rowErrors.length > 0) {
-          allValidationErrors.push(...rowErrors);
-          uploadResult.errorCount++;
-          uploadResult.errors.push({
-            rowIndex: i + 2,
-            data: rowData,
-            error: rowErrors.map((e) => e.error).join(', '),
-          });
-          processingLogs.push(logRowProcessing(i, i + 2, rowData, {}, rowErrors, true));
-        } else {
-          validPayloads.push(rowData);
-        }
+      if (validationErrors.length > 0) {
+         validationErrors.forEach(err => {
+             uploadResult.errors.push({
+                 rowIndex: err.rowIndex,
+                 data: err.data,
+                 error: err.error
+             });
+         });
       }
 
-      uploadResult.totalRows = validPayloads.length;
+      // 2. Prepare Payload for Bulk RPC
+      // The RPC bulk_initiate_e_files accepts JSONB where keys match the RPC args
+      // (file_number, subject, initiator_name, etc.)
+      // validRecords already has the keys mapped via 'dbKey' in EFILE_COLUMNS.
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const validPayloads = validRecords.map((r: any) => ({
+          file_number: r.file_number,
+          subject: r.subject,
+          description: r.description,
+          category: r.category,
+          priority: r.priority,
+          initiator_name: r.initiator_name,
+          current_holder_name: r.current_holder_name,
+          remarks: r.description ? 'Imported from Excel' : r.remarks // Basic remark
+      }));
+
+      uploadResult.totalRows = validPayloads.length + initialErrorCount;
 
       if (validPayloads.length > 0) {
         toast.info(`Uploading ${validPayloads.length} files...`);
 
+        // 3. Call Bulk RPC
         const { data: result, error } = await supabase.rpc('bulk_initiate_e_files', {
           p_files: validPayloads,
         });
@@ -139,7 +118,11 @@ export function useEFilesExcelUpload() {
         if (res.errors && res.errors.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           res.errors.forEach((err: any) => {
-            uploadResult.errors.push({ rowIndex: -1, data: err.file_number, error: err.error });
+            uploadResult.errors.push({ 
+                rowIndex: -1, 
+                data: err.file_number || 'Unknown File', 
+                error: err.error 
+            });
           });
         }
       }
@@ -154,6 +137,8 @@ export function useEFilesExcelUpload() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['e-files'] });
+      // Invalidate extended view caches
+      queryClient.invalidateQueries({ queryKey: ['v_e_files_extended-data'] });
     },
     onError: (err) => {
       toast.error(`Upload failed: ${err.message}`);

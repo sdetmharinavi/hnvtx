@@ -2,8 +2,7 @@
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, SubmitHandler, Resolver, SubmitErrorHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { SubmitHandler, SubmitErrorHandler } from 'react-hook-form';
 import { Button } from '@/components/common/ui';
 import {
   FormDateInput,
@@ -27,7 +26,8 @@ import {
 } from '@/hooks/data/useDropdownOptions';
 import { localDb } from '@/hooks/data/localDb';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
-import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
+import { useFormModal } from '@/hooks/useFormModal';
 
 const systemModalFormSchema = systemFormValidationSchema.extend({
   ring_id: z
@@ -40,25 +40,6 @@ const systemModalFormSchema = systemFormValidationSchema.extend({
     .nullable(),
 });
 type SystemFormValues = z.infer<typeof systemModalFormSchema>;
-
-const createDefaultFormValues = (): SystemFormValues => ({
-  system_name: '',
-  system_type_id: '',
-  system_capacity_id: '',
-  node_id: '',
-  maan_node_id: null,
-  maintenance_terminal_id: null,
-  ip_address: '',
-  commissioned_on: null,
-  remark: '',
-  s_no: '',
-  asset_no: '', // Added default
-  status: true,
-  ring_id: '',
-  order_in_ring: 0,
-  make: '',
-  is_hub: false,
-});
 
 interface SystemModalProps {
   isOpen: boolean;
@@ -75,7 +56,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   onSubmit,
   isLoading,
 }) => {
-  const isEditMode = !!rowData;
   const [step, setStep] = useState(1);
 
   // --- Data Fetching ---
@@ -87,17 +67,53 @@ export const SystemModal: FC<SystemModalProps> = ({
   const { options: ringOptions } = useActiveRingOptions();
   const [inferredTerminalOption, setInferredTerminalOption] = useState<Option | null>(null);
 
-  // --- Form Setup ---
-  const form = useForm<SystemFormValues>({
-    resolver: zodResolver(systemModalFormSchema) as Resolver<SystemFormValues>,
-    defaultValues: createDefaultFormValues(),
-    mode: 'onChange',
+  // --- Use Form Modal Hook ---
+  const { form, isEditMode } = useFormModal<SystemFormValues, V_systems_completeRowSchema>({
+    isOpen,
+    schema: systemModalFormSchema,
+    record: rowData,
+    defaultValues: {
+      system_name: '',
+      system_type_id: '',
+      system_capacity_id: '',
+      node_id: '',
+      maan_node_id: null,
+      maintenance_terminal_id: null,
+      ip_address: '',
+      commissioned_on: null,
+      remark: '',
+      s_no: '',
+      asset_no: '',
+      status: true,
+      ring_id: '',
+      order_in_ring: 0,
+      make: '',
+      is_hub: false,
+    },
+    mapRecord: (record) => ({
+      system_name: record.system_name || '',
+      system_type_id: record.system_type_id || '',
+      system_capacity_id: record.system_capacity_id || '',
+      node_id: record.node_id || '',
+      maan_node_id: record.maan_node_id || null,
+      maintenance_terminal_id: record.maintenance_terminal_id,
+      ip_address: record.ip_address ? record.ip_address.split('/')[0] : '',
+      commissioned_on: record.commissioned_on || null,
+      remark: record.remark || '',
+      s_no: record.s_no || '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      asset_no: (record as any).asset_no || '',
+      status: record.status ?? true,
+      ring_id: record.ring_id ?? '',
+      order_in_ring: record.order_in_ring ?? 0,
+      make: record.make ?? '',
+      is_hub: record.is_hub ?? false,
+    }),
   });
 
   const {
     register,
     handleSubmit,
-    reset,
     control,
     watch,
     setValue,
@@ -108,6 +124,7 @@ export const SystemModal: FC<SystemModalProps> = ({
   const selectedSystemTypeId = watch('system_type_id');
   const selectedNodeId = watch('node_id');
 
+  // --- Derived State ---
   const isRingBasedSystem = useMemo(() => {
     if (!systemTypesRaw || !selectedSystemTypeId) return false;
     const typeRecord = (systemTypesRaw as unknown as Lookup_typesRowSchema[]).find(
@@ -128,7 +145,29 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
+  // --- Effects ---
+
+  // Reset step on close/open
   useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+      // Re-populate inferred terminal option if editing
+      if (rowData?.maintenance_terminal_id && rowData?.system_maintenance_terminal_name) {
+        setInferredTerminalOption({
+          value: rowData.maintenance_terminal_id,
+          label: rowData.system_maintenance_terminal_name,
+        });
+      } else {
+        setInferredTerminalOption(null);
+      }
+    }
+  }, [isOpen, rowData]);
+
+  // Auto-fill Maintenance Terminal when Node changes
+  useEffect(() => {
+    // Skip if in edit mode and the node ID matches the original record (prevent overwrite on load)
+    if (isEditMode && rowData && selectedNodeId === rowData.node_id) return;
+
     const autoFillTerminal = async () => {
       if (!selectedNodeId) return;
       try {
@@ -150,7 +189,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       }
     };
     autoFillTerminal();
-  }, [selectedNodeId, setValue]);
+  }, [selectedNodeId, setValue, isEditMode, rowData]);
 
   const effectiveTerminalOptions = useMemo(() => {
     if (inferredTerminalOption) {
@@ -161,43 +200,7 @@ export const SystemModal: FC<SystemModalProps> = ({
     return maintenanceTerminalOptions;
   }, [maintenanceTerminalOptions, inferredTerminalOption]);
 
-  useEffect(() => {
-    if (isOpen) {
-      if (isEditMode && rowData) {
-        reset({
-          system_name: rowData.system_name || '',
-          system_type_id: rowData.system_type_id || '',
-          system_capacity_id: rowData.system_capacity_id || '',
-          node_id: rowData.node_id || '',
-          maan_node_id: rowData.maan_node_id || null,
-          maintenance_terminal_id: rowData.maintenance_terminal_id,
-          ip_address: rowData.ip_address ? rowData.ip_address.split('/')[0] : '',
-          commissioned_on: rowData.commissioned_on || null,
-          remark: rowData.remark || '',
-          s_no: rowData.s_no || '',
-          // Use 'as any' if the type update hasn't propagated to rowData type yet
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          asset_no: (rowData as any).asset_no || '',
-          status: rowData.status ?? true,
-          ring_id: rowData.ring_id ?? '',
-          order_in_ring: rowData.order_in_ring ?? 0,
-          make: rowData.make ?? '',
-          is_hub: rowData.is_hub ?? false,
-        });
-        if (rowData.maintenance_terminal_id && rowData.system_maintenance_terminal_name) {
-          setInferredTerminalOption({
-            value: rowData.maintenance_terminal_id,
-            label: rowData.system_maintenance_terminal_name,
-          });
-        }
-      } else {
-        reset(createDefaultFormValues());
-        setInferredTerminalOption(null);
-      }
-      setStep(1);
-    }
-  }, [isOpen, isEditMode, rowData, reset]);
-
+  // --- Submit Handlers ---
   const onValidSubmit: SubmitHandler<SystemFormValues> = useCallback(
     (formData) => {
       const payload = formData as unknown as SystemFormData;
@@ -384,7 +387,7 @@ export const SystemModal: FC<SystemModalProps> = ({
                     step='0.1'
                     register={register}
                     error={errors.order_in_ring}
-                    placeholder='e.g. 1, 2, 2.1...'
+                    placeholder='e.g. 1, 2, 2.1, 3...'
                   />
                   <FormSwitch
                     name='is_hub'
