@@ -10,12 +10,7 @@ import {
   FiLayers, 
   FiDatabase, 
   FiClock, 
-  FiLink, 
-  FiExternalLink,
-  FiUpload, 
-  FiDownload, 
-  FiRefreshCw, 
-  FiPlus, 
+  FiLink,
   FiTrash2 
 } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
@@ -43,17 +38,9 @@ import { StatProps } from '@/components/common/page-header/StatCard';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
-import { buildUploadConfig } from '@/constants/table-column-keys';
-import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload'; // (Used generic logic, import corrected in previous steps)
-import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
-import { PERMISSIONS } from '@/config/permissions';
 import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas'; // IMPORTED
 import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks'; // IMPORTED
 import { CableLinkingModal } from '@/components/ofc/CableLinkingModal'; // IMPORTED
-
-// Use Generic Upload for OFC since explicit hook wasn't provided in previous context, 
-// but we'll assume standard bulk upload pattern is used.
-import { useTableBulkOperations } from '@/hooks/database'; 
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -106,7 +93,7 @@ export default function OfcPage() {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'ofc_cables', ExtendedOfcCable>({
+  } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
     localTableName: 'v_ofc_cables_complete',
     dataQueryHook: useOfcData as any, // Cast due to type extension
@@ -115,7 +102,23 @@ export default function OfcPage() {
     syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'], // Added ofc_cable_links
   });
 
-  const isInitialLoad = isLoading && ofcData.length === 0;
+  // Transform the data to match ExtendedOfcCable type
+  const transformedOfcData: ExtendedOfcCable[] = useMemo(() => {
+    return ofcData.map(item => {
+      const linkedCables = item.linked_cables;
+      // Parse JSON if it's a string, otherwise use as-is
+      const parsedLinkedCables = typeof linkedCables === 'string' 
+        ? JSON.parse(linkedCables) 
+        : linkedCables;
+      
+      return {
+        ...item,
+        linked_cables: parsedLinkedCables as LinkedCable[] | null | undefined
+      };
+    });
+  }, [ofcData]);
+
+  const isInitialLoad = isLoading && transformedOfcData.length === 0;
 
   const canEdit =
     !!isSuperAdmin ||
@@ -334,7 +337,7 @@ export default function OfcPage() {
              ) : undefined
           }
           onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
-          onEdit={editModal.openEdit}
+          onEdit={(record) => editModal.openEdit(record as V_ofc_cables_completeRowSchema)}
           onDelete={crudActions.handleDelete}
           canEdit={canEdit}
           canDelete={canDelete}
@@ -347,10 +350,10 @@ export default function OfcPage() {
   const renderGrid = useCallback(
     () => (
       <DataGrid
-        data={ofcData}
+        data={transformedOfcData}
         renderItem={renderItem}
         isLoading={isLoading}
-        isEmpty={ofcData.length === 0 && !isLoading}
+        isEmpty={transformedOfcData.length === 0 && !isLoading}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -429,7 +432,7 @@ export default function OfcPage() {
         },
         customToolbar: <></>,
       }}
-      isEmpty={ofcData.length === 0 && !isLoading}
+      isEmpty={transformedOfcData.length === 0 && !isLoading}
       modals={
         <>
           <input
