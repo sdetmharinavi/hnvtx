@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { V_nodes_completeRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
@@ -86,7 +87,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     isError: isCablesError,
     error: cablesError,
     refetch: refetchCables,
-  } = useLocalFirstQuery<'v_ofc_cables_complete'>({
+  } = useLocalFirstQuery<'v_ofc_cables_complete', V_ofc_cables_completeRowSchema, ExtendedOfcCable>({
     queryKey: ['topology-cables', maintenanceAreaId],
     onlineQueryFn: cablesOnlineFn,
     localQueryFn: cablesLocalFn,

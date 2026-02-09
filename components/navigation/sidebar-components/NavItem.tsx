@@ -111,7 +111,7 @@ export const NavItem = ({
           <div className='flex-1 min-w-0'>
             <span
               className={cn(
-                'block truncate font-bold transition-colors duration-200',
+                'block truncate font-bold text-sm transition-colors duration-200',
                 active
                   ? 'text-white'
                   : 'text-gray-800 dark:text-gray-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300',
