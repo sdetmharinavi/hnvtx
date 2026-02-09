@@ -137,4 +137,4 @@ Offline Write Queuing: Create/Update/Delete actions (for Inventory, Diary, Emplo
 Safety Guards: Complex operations like Route Splicing are blocked offline to prevent data corruption.
 UI Feedback: Clear indicators for offline status, syncing state, and queued changes.
 
-Let's begin! First of all, like in dashboard/services we have implemented Allocations, We want to implement linked/related cables in dashboard/ofc. We can add any cable to that linked cable list of the cable and on clicking on that link, we will go to that cable id.
+Let's begin! 

@@ -5,11 +5,18 @@ import { createClient } from '@/utils/supabase/client';
 import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters, PublicTableOrViewName, Row } from '@/hooks/database';
 import { useLocalFirstQuery } from './useLocalFirstQuery';
-import { buildServerSearchString, performClientPagination } from '@/hooks/database/search-utils';
-import { Table } from 'dexie';
+import {
+  buildServerSearchString,
+  performClientPagination,
+  performClientSort
+} from '@/hooks/database/search-utils';
+import { Table, Collection } from 'dexie';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FilterFunction<T> = (item: T, filters: Record<string, any>) => boolean;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LocalCollectionFactory<T> = (table: Table<T, any>) => Collection<T, any> | Table<T, any>;
 
 interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   tableName: T;
@@ -21,6 +28,16 @@ interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   rpcLimit?: number;
   orderBy?: 'asc' | 'desc';
   activeStatusField?: keyof Row<T> & string;
+  /**
+   * Optional: Provide a function to start the Dexie query chain (e.g., use an Index).
+   * Must return a Collection or Table. Do not call .toArray() or .sortBy() here.
+   */
+  getLocalCollection?: LocalCollectionFactory<Row<T>>;
+  /**
+   * Optional: Base filters to always apply to the RPC call (e.g., { system_id: '...' }).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  baseFilters?: Record<string, any>;
 }
 
 export function createGenericDataQuery<T extends PublicTableOrViewName>(
@@ -36,6 +53,8 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
     rpcLimit = 6000,
     orderBy = 'asc',
     activeStatusField = 'status' as keyof Row<T> & string,
+    getLocalCollection,
+    baseFilters = {},
   } = options;
 
   return (params: DataQueryHookParams): DataQueryHookReturn<Row<T>> => {
@@ -53,9 +72,11 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
 
     const onlineQueryFn = useCallback(async (): Promise<Row<T>[]> => {
       const searchString = buildServerSearchString(searchQuery, actualServerSearchFields);
-      // Explicitly cast filters to Record<string, any> to allow 'or' property injection
+
+      // Merge baseFilters with UI filters
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const queryFilters: Record<string, any> = { ...filters };
+      const queryFilters: Record<string, any> = { ...baseFilters, ...filters };
+
       if (searchString) {
         queryFilters.or = searchString;
       }
@@ -63,6 +84,8 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       // Remove client-side only filters
       if ('coordinates_status' in queryFilters) delete queryFilters.coordinates_status;
       if ('sortBy' in queryFilters) delete queryFilters.sortBy;
+      // OFC specific client-filters
+      if ('allocation_status' in queryFilters) delete queryFilters.allocation_status;
 
       const rpcFilters = buildRpcFilters(queryFilters);
 
@@ -82,7 +105,7 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       return (data as any)?.data || [];
     }, [searchQuery, filters, actualServerSearchFields, supabase]);
 
-    const localQueryFn = useCallback(() => {
+    const localQueryFn = useCallback(async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const table = (localDb as any)[tableName] as Table<Row<T>, any>;
       if (!table) {
@@ -90,12 +113,14 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
         return Promise.resolve([]);
       }
 
-      let collection = table.orderBy(String(defaultSortField));
-      if (orderBy === 'desc') {
-        collection = collection.reverse();
-      }
+      // 1. Get Initial Collection (Filtered by index if provided, or default order)
+      // Note: If getLocalCollection is NOT provided, we use orderBy to leverage DB sort.
+      // If it IS provided (e.g. where('ofc_id')), we lose the sort, so we must sort in memory later.
+      const collection = getLocalCollection
+        ? getLocalCollection(table)
+        : table.orderBy(String(defaultSortField));
 
-      return collection
+      let dbResults = await collection
         .filter((item) => {
           let matches = true;
 
@@ -117,7 +142,11 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
             if (!filterFn(item, filters)) matches = false;
           } else {
             for (const [key, value] of Object.entries(filters)) {
-              if (value && key !== 'or' && key !== 'sortBy') {
+              // Skip special keys or keys managed by baseFilters/getLocalCollection
+              if (value && key !== 'or' && key !== 'sortBy' && key !== 'allocation_status') {
+                 // Skip base filters if they are already handled by getLocalCollection
+                 if (baseFilters && key in baseFilters) continue;
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemVal = (item as any)[key];
                 if (Array.isArray(value)) {
@@ -149,6 +178,15 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
           return matches;
         })
         .toArray();
+
+        // 2. Explicit In-Memory Sort
+        // This ensures correct ordering even if getLocalCollection used a non-sorting index
+        if (defaultSortField) {
+           dbResults = performClientSort(dbResults, defaultSortField, orderBy);
+        }
+
+        return dbResults;
+
     }, [searchQuery, filters]);
 
     const {
@@ -159,12 +197,12 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
       refetch,
       networkStatus,
     } = useLocalFirstQuery<T>({
-      queryKey: [`${tableName}-data`, searchQuery, filters],
+      queryKey: [`${tableName}-data`, searchQuery, filters, baseFilters],
       onlineQueryFn,
       localQueryFn,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       dexieTable: (localDb as any)[tableName],
-      localQueryDeps: [searchQuery, filters],
+      localQueryDeps: [searchQuery, filters, baseFilters],
       // OPTIMIZATION: If we are searching, prefer network data and skip DB sync to avoid lag
       preferNetwork: isSearching,
       skipSync: isSearching,

@@ -1,36 +1,33 @@
 // hooks/data/useOfcConnectionsData.ts
-import { useMemo, useCallback } from 'react';
-import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
-import { V_ofc_connections_completeRowSchema } from '@/schemas/zod-schemas';
-import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
-import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
-import {
-  buildServerSearchString,
-  performClientSearch,
-  performClientPagination,
-} from '@/hooks/database/search-utils';
+import { useMemo } from 'react';
+import { createGenericDataQuery } from './useGenericDataQuery';
+import { DEFAULTS } from '@/constants/constants';
 
 export const useOfcConnectionsData = (cableId: string | null) => {
-  return function useData(
-    params: DataQueryHookParams
-  ): DataQueryHookReturn<V_ofc_connections_completeRowSchema> {
-    const { currentPage, pageLimit, filters, searchQuery } = params;
+  const hook = useMemo(() => createGenericDataQuery<'v_ofc_connections_complete'>({
+    tableName: 'v_ofc_connections_complete',
 
-    // Search Config
-    const searchFields = [
+    // Inject the cable ID as a mandatory server-side filter
+    baseFilters: cableId ? { ofc_id: cableId } : {},
+
+    // Use an indexed query for local data fetching optimization
+    // THE FIX: Do NOT call .sortBy() here. Return the Collection.
+    // The generic hook will handle sorting via performClientSort.
+    getLocalCollection: (table) => {
+        if (!cableId) return table.limit(0); // Return empty if no ID
+        return table.where('ofc_id').equals(cableId);
+    },
+
+    searchFields: [
       'system_name',
       'connection_type',
       'updated_sn_name',
       'updated_en_name',
       'remark',
-      'updated_fiber_no_en',
-      'updated_fiber_no_sn',
-    ] as (keyof V_ofc_connections_completeRowSchema)[];
+    ],
 
-    // Server search needs specific casts for numbers
-    const serverSearchFields = [
+    // Specific casts for the RPC OR search
+    serverSearchFields: [
       'system_name',
       'connection_type',
       'updated_sn_name',
@@ -38,128 +35,37 @@ export const useOfcConnectionsData = (cableId: string | null) => {
       'remark::text',
       'updated_fiber_no_en::text',
       'updated_fiber_no_sn::text',
-    ];
+    ],
 
-    const onlineQueryFn = useCallback(async (): Promise<V_ofc_connections_completeRowSchema[]> => {
-      if (!cableId) return [];
+    defaultSortField: 'fiber_no_sn',
+    rpcLimit: DEFAULTS.PAGE_SIZE,
 
-      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+    filterFn: (c, filters) => {
+      // 1. Media/Link Type Filters
+      if (filters.ofc_type_name && c.ofc_type_name !== filters.ofc_type_name) return false;
 
-      // Filter out client-side filters (like allocation_status) from RPC params
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { allocation_status, ...serverFilters } = filters;
-
-      const rpcFilters = buildRpcFilters({
-        ...serverFilters,
-        ofc_id: cableId,
-        or: searchString,
-      });
-
-      const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_ofc_connections_complete',
-        p_limit: 5000,
-        p_offset: 0,
-        p_filters: rpcFilters,
-        p_order_by: 'fiber_no_sn',
-        p_order_dir: 'asc',
-      });
-
-      if (error) throw error;
-      return (data as { data: V_ofc_connections_completeRowSchema[] })?.data || [];
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, cableId, serverSearchFields]);
-
-    const localQueryFn = useCallback(() => {
-      if (!cableId) {
-        return localDb.v_ofc_connections_complete.limit(0).toArray();
-      }
-      return localDb.v_ofc_connections_complete
-        .where('ofc_id')
-        .equals(cableId)
-        .sortBy('fiber_no_sn');
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cableId]);
-
-    const {
-      data: allConnections = [],
-      isLoading,
-      isFetching,
-      error,
-      refetch,
-    } = useLocalFirstQuery<'v_ofc_connections_complete', V_ofc_connections_completeRowSchema>({
-      queryKey: ['ofc_connections-data', cableId, searchQuery, filters],
-      onlineQueryFn,
-      localQueryFn,
-      dexieTable: localDb.v_ofc_connections_complete,
-      localQueryDeps: [cableId],
-    });
-
-    const processedData = useMemo(() => {
-      if (!allConnections || !cableId) {
-        return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
+      // 2. Status Filter
+      if (filters.status) {
+        const statusBool = filters.status === 'true';
+        if (c.status !== statusBool) return false;
       }
 
-      let filtered = allConnections;
-
-      // 1. Search
-      if (searchQuery) {
-        filtered = performClientSearch(filtered, searchQuery, searchFields);
-
-        // Manual Numeric Filtering addition
-        const lowerQ = searchQuery.toLowerCase();
-        if (searchQuery && !isNaN(Number(searchQuery))) {
-          const numericMatches = allConnections.filter(
-            (c) => String(c.fiber_no_sn).includes(lowerQ) || String(c.fiber_no_en).includes(lowerQ)
-          );
-          // Union of results
-          const ids = new Set(filtered.map((f) => f.id));
-          numericMatches.forEach((m) => {
-            if (!ids.has(m.id)) filtered.push(m);
-          });
-        }
-      }
-
-      // NEW: Extended Allocation Status Logic
+      // 3. Custom Allocation Status Logic (Ported from original hook)
       if (filters.allocation_status) {
         const filterVal = filters.allocation_status;
 
         if (filterVal === 'faulty') {
-          // Faulty = Status is False
-          filtered = filtered.filter((c) => !c.status);
+          return !c.status;
         } else if (filterVal === 'available') {
-          // Spare = Status True AND No Allocation
-          filtered = filtered.filter((c) => c.status && !c.system_id && !c.logical_path_id);
+          return !!c.status && !c.system_id && !c.logical_path_id;
         } else if (filterVal === 'allocated') {
-          // Utilized = Status True AND Allocated
-          filtered = filtered.filter((c) => c.status && (!!c.system_id || !!c.logical_path_id));
+          return !!c.status && (!!c.system_id || !!c.logical_path_id);
         }
       }
 
-      // 2. Filters
-      if (filters.status) {
-        const statusBool = filters.status === 'true';
-        filtered = filtered.filter((c) => c.status === statusBool);
-      }
+      return true;
+    },
+  }), [cableId]);
 
-      // 3. Sort (Manual numeric sort for fibers)
-      filtered.sort((a, b) => (a.fiber_no_sn || 0) - (b.fiber_no_sn || 0));
-
-      const totalCount = filtered.length;
-      const activeCount = filtered.filter((c) => !!c.status).length;
-      const inactiveCount = totalCount - activeCount;
-
-      // 4. Paginate
-      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
-
-      return {
-        data: paginatedData,
-        totalCount,
-        activeCount,
-        inactiveCount,
-      };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allConnections, searchQuery, filters, currentPage, pageLimit, cableId]);
-
-    return { ...processedData, isLoading, isFetching, error, refetch };
-  };
+  return hook;
 };
