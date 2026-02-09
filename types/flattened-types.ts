@@ -922,6 +922,30 @@ export type NodesUpdate = {
     updated_at?: string | null;
 };
 
+export type Ofc_cable_linksRow = {
+    cable_id_1: string;
+    cable_id_2: string;
+    created_at: string | null;
+    description: string | null;
+    id: string;
+};
+
+export type Ofc_cable_linksInsert = {
+    cable_id_1: string;
+    cable_id_2: string;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+};
+
+export type Ofc_cable_linksUpdate = {
+    cable_id_1?: string;
+    cable_id_2?: string;
+    created_at?: string | null;
+    description?: string | null;
+    id?: string;
+};
+
 export type Ofc_cablesRow = {
     asset_no: string | null;
     capacity: number;
@@ -1799,6 +1823,7 @@ export type V_ofc_cables_completeRow = {
     en_node_type_name: string | null;
     id: string | null;
     last_activity_at: string | null;
+    linked_cables: Json | null;
     maintenance_area_code: string | null;
     maintenance_area_name: string | null;
     maintenance_terminal_id: string | null;
@@ -2119,6 +2144,7 @@ export const tableNames = [
   "lookup_types",
   "maintenance_areas",
   "nodes",
+  "ofc_cable_links",
   "ofc_cables",
   "ofc_connections",
   "ports_management",

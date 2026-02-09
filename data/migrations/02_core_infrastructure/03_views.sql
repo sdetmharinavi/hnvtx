@@ -83,10 +83,28 @@ SELECT
   ma.name AS maintenance_area_name,
   ma.code AS maintenance_area_code,
 
-  -- [NEW] Last Activity Timestamp
-  -- Calculates the most recent timestamp between the cable record update 
-  -- and any updates to its underlying fiber connections.
-  GREATEST(ofc.updated_at, conn_stats.last_conn_update) as last_activity_at
+  -- Last Activity
+  GREATEST(ofc.updated_at, conn_stats.last_conn_update) as last_activity_at,
+
+  -- NEW: Aggregated Linked Cables (Bidirectional lookup)
+  COALESCE(
+    (
+      SELECT jsonb_agg(
+        jsonb_build_object(
+            'link_id', links.id,
+            'cable_id', CASE WHEN links.cable_id_1 = ofc.id THEN links.cable_id_2 ELSE links.cable_id_1 END,
+            'route_name', linked_cable.route_name,
+            'description', links.description
+        )
+      )
+      FROM public.ofc_cable_links links
+      JOIN public.ofc_cables linked_cable 
+        ON (links.cable_id_1 = linked_cable.id OR links.cable_id_2 = linked_cable.id)
+      WHERE (links.cable_id_1 = ofc.id OR links.cable_id_2 = ofc.id)
+        AND linked_cable.id <> ofc.id
+    ),
+    '[]'::jsonb
+  ) AS linked_cables
 
 FROM public.ofc_cables ofc
 LEFT JOIN public.nodes sn ON ofc.sn_id = sn.id
@@ -96,13 +114,11 @@ LEFT JOIN public.lookup_types lt_ofc_owner ON ofc.ofc_owner_id = lt_ofc_owner.id
 LEFT JOIN public.maintenance_areas ma ON ofc.maintenance_terminal_id = ma.id
 LEFT JOIN public.lookup_types lt_sn_type ON sn.node_type_id = lt_sn_type.id
 LEFT JOIN public.lookup_types lt_en_type ON en.node_type_id = lt_en_type.id
--- [NEW] Join to aggregate connection updates
 LEFT JOIN (
   SELECT ofc_id, MAX(updated_at) as last_conn_update 
   FROM public.ofc_connections 
   GROUP BY ofc_id
 ) conn_stats ON ofc.id = conn_stats.ofc_id;
 
--- Grant Permissions
+-- Re-grant permissions
 GRANT SELECT ON public.v_ofc_cables_complete TO authenticated;
-

@@ -40,44 +40,65 @@ export type Database = {
       }
       flow_state: {
         Row: {
-          auth_code: string
+          auth_code: string | null
           auth_code_issued_at: string | null
           authentication_method: string
-          code_challenge: string
-          code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"]
+          code_challenge: string | null
+          code_challenge_method:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
           created_at: string | null
+          email_optional: boolean
           id: string
+          invite_token: string | null
+          linking_target_id: string | null
+          oauth_client_state_id: string | null
           provider_access_token: string | null
           provider_refresh_token: string | null
           provider_type: string
+          referrer: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
-          auth_code: string
+          auth_code?: string | null
           auth_code_issued_at?: string | null
           authentication_method: string
-          code_challenge: string
-          code_challenge_method: Database["auth"]["Enums"]["code_challenge_method"]
+          code_challenge?: string | null
+          code_challenge_method?:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
           created_at?: string | null
+          email_optional?: boolean
           id: string
+          invite_token?: string | null
+          linking_target_id?: string | null
+          oauth_client_state_id?: string | null
           provider_access_token?: string | null
           provider_refresh_token?: string | null
           provider_type: string
+          referrer?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
-          auth_code?: string
+          auth_code?: string | null
           auth_code_issued_at?: string | null
           authentication_method?: string
-          code_challenge?: string
-          code_challenge_method?: Database["auth"]["Enums"]["code_challenge_method"]
+          code_challenge?: string | null
+          code_challenge_method?:
+            | Database["auth"]["Enums"]["code_challenge_method"]
+            | null
           created_at?: string | null
+          email_optional?: boolean
           id?: string
+          invite_token?: string | null
+          linking_target_id?: string | null
+          oauth_client_state_id?: string | null
           provider_access_token?: string | null
           provider_refresh_token?: string | null
           provider_type?: string
+          referrer?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -392,6 +413,7 @@ export type Database = {
           logo_uri: string | null
           redirect_uris: string
           registration_type: Database["auth"]["Enums"]["oauth_registration_type"]
+          token_endpoint_auth_method: string
           updated_at: string
         }
         Insert: {
@@ -406,6 +428,7 @@ export type Database = {
           logo_uri?: string | null
           redirect_uris: string
           registration_type: Database["auth"]["Enums"]["oauth_registration_type"]
+          token_endpoint_auth_method: string
           updated_at?: string
         }
         Update: {
@@ -420,6 +443,7 @@ export type Database = {
           logo_uri?: string | null
           redirect_uris?: string
           registration_type?: Database["auth"]["Enums"]["oauth_registration_type"]
+          token_endpoint_auth_method?: string
           updated_at?: string
         }
         Relationships: []
@@ -2506,6 +2530,73 @@ export type Database = {
             columns: ["node_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ofc_cable_links: {
+        Row: {
+          cable_id_1: string
+          cable_id_2: string
+          created_at: string | null
+          description: string | null
+          id: string
+        }
+        Insert: {
+          cable_id_1: string
+          cable_id_2: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          cable_id_1?: string
+          cable_id_2?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_1_fkey"
+            columns: ["cable_id_1"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_1_fkey"
+            columns: ["cable_id_1"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_1_fkey"
+            columns: ["cable_id_1"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_2_fkey"
+            columns: ["cable_id_2"]
+            isOneToOne: false
+            referencedRelation: "ofc_cables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_2_fkey"
+            columns: ["cable_id_2"]
+            isOneToOne: false
+            referencedRelation: "v_cable_utilization"
+            referencedColumns: ["cable_id"]
+          },
+          {
+            foreignKeyName: "ofc_cable_links_cable_id_2_fkey"
+            columns: ["cable_id_2"]
+            isOneToOne: false
+            referencedRelation: "v_ofc_cables_complete"
             referencedColumns: ["id"]
           },
         ]
@@ -4664,6 +4755,7 @@ export type Database = {
           en_node_type_name: string | null
           id: string | null
           last_activity_at: string | null
+          linked_cables: Json | null
           maintenance_area_code: string | null
           maintenance_area_name: string | null
           maintenance_terminal_id: string | null

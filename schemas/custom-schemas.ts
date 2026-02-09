@@ -172,3 +172,19 @@ export const bsnlSearchFiltersSchema = z.object({
   priority: z.string().optional(),
 });
 export type BsnlSearchFilters = z.infer<typeof bsnlSearchFiltersSchema>;
+
+export const linkedCableSchema = z.object({
+  link_id: z.string(),
+  cable_id: z.string(),
+  route_name: z.string(),
+  description: z.string().nullable().optional(),
+});
+
+export type LinkedCable = z.infer<typeof linkedCableSchema>;
+
+// Extended Schema to include the JSONB aggregated column
+export const extendedOfcCableSchema = v_ofc_cables_completeRowSchema.extend({
+  linked_cables: z.array(linkedCableSchema).nullable().optional(),
+});
+
+export type ExtendedOfcCable = z.infer<typeof extendedOfcCableSchema>;

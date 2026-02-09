@@ -944,6 +944,30 @@ export const nodesUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
+export const ofc_cable_linksRowSchema = z.object({
+  cable_id_1: z.string(),
+  cable_id_2: z.string(),
+  created_at: z.iso.datetime().nullable(),
+  description: z.string().max(10000, "Text is too long").nullable(),
+  id: z.uuid(),
+});
+
+export const ofc_cable_linksInsertSchema = z.object({
+  cable_id_1: z.string(),
+  cable_id_2: z.string(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+});
+
+export const ofc_cable_linksUpdateSchema = z.object({
+  cable_id_1: z.string().optional(),
+  cable_id_2: z.string().optional(),
+  created_at: z.iso.datetime().nullable().optional(),
+  description: z.string().max(10000, "Text is too long").nullable().optional(),
+  id: z.uuid().optional(),
+});
+
 export const ofc_cablesRowSchema = z.object({
   asset_no: z.string().nullable(),
   capacity: z.number(),
@@ -1819,6 +1843,7 @@ export const v_ofc_cables_completeRowSchema = z.object({
   en_node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   id: z.uuid().nullable(),
   last_activity_at: z.iso.datetime().nullable(),
+  linked_cables: JsonSchema.nullable(),
   maintenance_area_code: z.string().nullable(),
   maintenance_area_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
@@ -2161,6 +2186,9 @@ export type Maintenance_areasUpdateSchema = z.infer<typeof maintenance_areasUpda
 export type NodesRowSchema = z.infer<typeof nodesRowSchema>;
 export type NodesInsertSchema = z.infer<typeof nodesInsertSchema>;
 export type NodesUpdateSchema = z.infer<typeof nodesUpdateSchema>;
+export type Ofc_cable_linksRowSchema = z.infer<typeof ofc_cable_linksRowSchema>;
+export type Ofc_cable_linksInsertSchema = z.infer<typeof ofc_cable_linksInsertSchema>;
+export type Ofc_cable_linksUpdateSchema = z.infer<typeof ofc_cable_linksUpdateSchema>;
 export type Ofc_cablesRowSchema = z.infer<typeof ofc_cablesRowSchema>;
 export type Ofc_cablesInsertSchema = z.infer<typeof ofc_cablesInsertSchema>;
 export type Ofc_cablesUpdateSchema = z.infer<typeof ofc_cablesUpdateSchema>;

@@ -714,6 +714,14 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: "updated_at",
   },
 
+  ofc_cable_links: {
+    cable_id_1: "cable_id_1",
+    cable_id_2: "cable_id_2",
+    created_at: "created_at",
+    description: "description",
+    id: "id",
+  },
+
   // ==================== Views ====================
   v_inventory_transactions_extended: {
     asset_no: 'asset_no',
@@ -782,6 +790,7 @@ const TABLE_COLUMN_OBJECTS = {
     ofc_type_id: 'ofc_type_id',
     ofc_owner_id: 'ofc_owner_id',
     maintenance_terminal_id: 'maintenance_terminal_id',
+    linked_cables: 'linked_cables',
   },
   v_nodes_complete: {
     id: 'id',

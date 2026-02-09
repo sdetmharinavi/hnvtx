@@ -2,14 +2,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { FiActivity, FiMapPin, FiLayers, FiDatabase, FiClock } from 'react-icons/fi';
+import { 
+  FiActivity, 
+  FiMapPin, 
+  FiLayers, 
+  FiDatabase, 
+  FiClock, 
+  FiLink, 
+  FiExternalLink,
+  FiUpload, 
+  FiDownload, 
+  FiRefreshCw, 
+  FiPlus, 
+  FiTrash2 
+} from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner, Button } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
 import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
@@ -26,7 +39,21 @@ import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
-import { StatProps } from '@/components/common/page-header/StatCard'; // Added import
+import { StatProps } from '@/components/common/page-header/StatCard';
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { toast } from 'sonner';
+import { buildUploadConfig } from '@/constants/table-column-keys';
+import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload'; // (Used generic logic, import corrected in previous steps)
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { PERMISSIONS } from '@/config/permissions';
+import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas'; // IMPORTED
+import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks'; // IMPORTED
+import { CableLinkingModal } from '@/components/ofc/CableLinkingModal'; // IMPORTED
+
+// Use Generic Upload for OFC since explicit hook wasn't provided in previous context, 
+// but we'll assume standard bulk upload pattern is used.
+import { useTableBulkOperations } from '@/hooks/database'; 
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -51,7 +78,17 @@ export default function OfcPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const { isSuperAdmin, role } = useUser();
+  const { sync: syncData, isSyncing } = useDataSync();
+  const isOnline = useOnlineStatus();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // New State for Linking
+  const [linkingCable, setLinkingCable] = useState<ExtendedOfcCable | null>(null);
+  const [cableToUnlink, setCableToUnlink] = useState<{ parent: ExtendedOfcCable; link: LinkedCable } | null>(null);
+
+  const { mutate: unlinkCable, isPending: isUnlinking } = useUnlinkCable();
+
+  // Explicit type assertion for the CrudManager to use Extended schema
   const {
     data: ofcData,
     totalCount,
@@ -69,13 +106,13 @@ export default function OfcPage() {
     bulkActions,
     deleteModal,
     actions: crudActions,
-  } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
+  } = useCrudManager<'ofc_cables', ExtendedOfcCable>({
     tableName: 'ofc_cables',
     localTableName: 'v_ofc_cables_complete',
-    dataQueryHook: useOfcData,
+    dataQueryHook: useOfcData as any, // Cast due to type extension
     displayNameField: 'route_name',
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
-    syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization'],
+    syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'], // Added ofc_cable_links
   });
 
   const isInitialLoad = isLoading && ofcData.length === 0;
@@ -131,18 +168,23 @@ export default function OfcPage() {
   const columns = OfcTableColumns(ofcData);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_ofc_cables_complete]);
 
+  const handleRefresh = async () => {
+    if(isOnline) {
+      await syncData(['ofc_cables', 'v_ofc_cables_complete', 'ofc_cable_links']);
+    }
+    refetch();
+    toast.success('Cables refreshed!');
+  };
+
   const headerActions = useStandardHeaderActions({
     data: ofcData as Ofc_cablesRowSchema[],
-    onRefresh: async () => {
-      await refetch();
-    },
+    onRefresh: handleRefresh,
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
-    isFetching: isFetching,
+    isFetching: isFetching || isSyncing,
     exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
   });
 
-  // --- INTERACTIVE STATS ---
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
@@ -151,7 +193,6 @@ export default function OfcPage() {
         value: totalCount,
         label: 'Total Cables',
         color: 'default',
-        // Click clears the status filter
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -175,14 +216,23 @@ export default function OfcPage() {
         isActive: currentStatus === 'false',
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
+  // Handle Unlink Confirmation
+  const confirmUnlink = () => {
+    if (cableToUnlink) {
+      unlinkCable(cableToUnlink.link.link_id, {
+        onSuccess: () => setCableToUnlink(null)
+      });
+    }
+  };
+
   const renderItem = useCallback(
-    (cable: V_ofc_cables_completeRowSchema) => {
+    (cable: ExtendedOfcCable) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lastActivity = (cable as any).last_activity_at || cable.updated_at;
       const timeAgo = formatUpdatedAt(lastActivity);
+      const linkedCables = cable.linked_cables || [];
 
       return (
         <GenericEntityCard
@@ -214,18 +264,74 @@ export default function OfcPage() {
             },
           ]}
           customFooter={
-            <>
+            <div className='space-y-3 w-full'>
               <GenericRemarks remark={cable.remark || ''} />
-              <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full'>
+              
+              {/* LINKED CABLES SECTION */}
+              {linkedCables.length > 0 && (
+                 <div className='bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800'>
+                   <div className='flex items-center justify-between mb-1'>
+                      <div className='text-[10px] text-blue-600 font-bold uppercase flex items-center gap-1'>
+                        <FiLink className='w-3 h-3' /> Linked Routes
+                      </div>
+                   </div>
+                   <div className='flex flex-wrap gap-1'>
+                     {linkedCables.map((link) => (
+                       <div 
+                         key={link.link_id} 
+                         className='group flex items-center gap-1.5 text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700'
+                       >
+                         <span 
+                            className="cursor-pointer hover:underline truncate max-w-[120px]"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/dashboard/ofc/${link.cable_id}`);
+                            }}
+                            title={link.description || link.route_name}
+                         >
+                            {link.route_name}
+                         </span>
+                         {canEdit && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCableToUnlink({ parent: cable, link });
+                                }}
+                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Unlink"
+                            >
+                                <FiTrash2 className="w-2.5 h-2.5" />
+                            </button>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+              )}
+
+              <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full pt-2 border-t border-gray-100 dark:border-gray-700/50'>
                 <div className='flex items-center gap-1.5'>
                   <FiClock className='w-3.5 h-3.5' />
                   <span>Activity {timeAgo}</span>
                 </div>
-                <span className='font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950'>
+                <span className='font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-blue-950 dark:text-blue-100'>
                   {cable.current_rkm} km
                 </span>
               </div>
-            </>
+            </div>
+          }
+          extraActions={
+             canEdit ? (
+                <Button
+                    size='xs'
+                    variant='secondary'
+                    onClick={() => setLinkingCable(cable)}
+                    title='Link to another cable'
+                    className='font-medium'
+                >
+                    <FiLink className='w-4 h-4' />
+                </Button>
+             ) : undefined
           }
           onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
           onEdit={editModal.openEdit}
@@ -235,7 +341,7 @@ export default function OfcPage() {
         />
       );
     },
-    [router, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
+    [router, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, setLinkingCable, setCableToUnlink],
   );
 
   const renderGrid = useCallback(
@@ -268,10 +374,10 @@ export default function OfcPage() {
         title: 'OFC Cable Management',
         description: 'Manage OFC cables and their related information.',
         icon: <AiFillMerge />,
-        stats: headerStats, // Interactive Stats
+        stats: headerStats,
         actions: headerActions,
         isLoading: isInitialLoad,
-        isFetching: isFetching,
+        isFetching: isFetching || isSyncing,
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
@@ -326,6 +432,13 @@ export default function OfcPage() {
       isEmpty={ofcData.length === 0 && !isLoading}
       modals={
         <>
+          <input
+            type='file'
+            ref={fileInputRef}
+            className='hidden'
+            accept='.xlsx, .xls, .csv'
+          />
+
           {editModal.isOpen && (
             <OfcForm
               isOpen={editModal.isOpen}
@@ -336,6 +449,14 @@ export default function OfcPage() {
             />
           )}
 
+          {linkingCable && (
+             <CableLinkingModal 
+                isOpen={!!linkingCable}
+                onClose={() => setLinkingCable(null)}
+                sourceCable={linkingCable}
+             />
+          )}
+
           <ConfirmModal
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
@@ -344,6 +465,22 @@ export default function OfcPage() {
             message={deleteModal.message}
             type='danger'
             loading={deleteModal.loading}
+          />
+
+          <ConfirmModal
+            isOpen={!!cableToUnlink}
+            onConfirm={confirmUnlink}
+            onCancel={() => setCableToUnlink(null)}
+            title="Unlink Cable"
+            message={
+                <span>
+                   Are you sure you want to unlink <strong>{cableToUnlink?.link.route_name}</strong> from 
+                   <strong>{cableToUnlink?.parent.route_name}</strong>?
+                </span>
+            }
+            type="danger"
+            confirmText="Unlink"
+            loading={isUnlinking}
           />
         </>
       }
