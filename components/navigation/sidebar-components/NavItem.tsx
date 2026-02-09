@@ -69,8 +69,8 @@ export const NavItem = ({
       : 'text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800',
     // Collapsed vs Expanded spacing
     isCollapsed
-      ? 'justify-center py-1.5 px-1 mx-0.5 mb-1.5'
-      : `justify-between py-1.5 px-2 mx-1 mb-1.5 ${depth > 0 ? 'pl-2' : ''}`,
+      ? 'justify-center py-1 px-1 mx-0.5 mb-1.5'
+      : `justify-between py-1 px-1 mx-0.5 mb-1.5 ${depth > 0 ? 'pl-2' : ''}`,
   );
 
   const renderContent = () => (
