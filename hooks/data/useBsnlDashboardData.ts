@@ -7,12 +7,13 @@ import { LatLngBounds } from 'leaflet';
 import { BsnlSearchFilters } from '@/schemas/custom-schemas';
 import { localDb } from '@/hooks/data/localDb';
 import { BsnlNode, BsnlCable, BsnlSystem } from '@/components/bsnl/types';
+import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface BsnlDashboardData {
   nodes: BsnlNode[];
-  ofcCables: BsnlCable[];
+  ofcCables: ExtendedOfcCable[];
   systems: BsnlSystem[];
 }
 
@@ -34,6 +35,33 @@ const matchesFilter = (
     return filter.includes(value);
   }
   return value === filter;
+};
+
+// Helper to transform cable data to match ExtendedOfcCable type
+const transformCableData = (cables: any[]): ExtendedOfcCable[] => {
+  return cables.map(item => {
+    const linkedCables = item.linked_cables;
+    // Parse JSON if it's a string, otherwise use as-is
+    let parsedLinkedCables: LinkedCable[] | null = null;
+    
+    if (linkedCables) {
+      if (typeof linkedCables === 'string') {
+        try {
+          parsedLinkedCables = JSON.parse(linkedCables);
+        } catch (e) {
+          console.warn('Failed to parse linked_cables JSON:', linkedCables);
+          parsedLinkedCables = null;
+        }
+      } else if (Array.isArray(linkedCables)) {
+        parsedLinkedCables = linkedCables;
+      }
+    }
+    
+    return {
+      ...item,
+      linked_cables: parsedLinkedCables
+    };
+  });
 };
 
 export function useBsnlDashboardData(
@@ -241,7 +269,7 @@ export function useBsnlDashboardData(
 
     return {
       nodes: visibleNodes,
-      ofcCables: visibleCables,
+      ofcCables: transformCableData(visibleCables),
       systems: visibleSystems,
     };
   }, [allNodes, allCables, allSystems, filters, mapBounds, isLocalLoading]);
