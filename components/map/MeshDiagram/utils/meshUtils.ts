@@ -15,8 +15,17 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
   const RING_RADIUS = 400;
   const SPUR_LENGTH = 200;
 
-  // Sorting ensures deterministic layout
-  const sortedNodes = [...nodes].sort((a, b) => (a.order_in_ring || 0) - (b.order_in_ring || 0));
+  // FIX: Stable sort with tie-breaker
+  // This ensures co-located systems (same order) don't get the exact same index
+  const sortedNodes = [...nodes].sort((a, b) => {
+    const orderDiff = (a.order_in_ring || 0) - (b.order_in_ring || 0);
+    if (Math.abs(orderDiff) > 0.001) return orderDiff;
+    
+    // Tie-breaker: Name or ID
+    const nameA = a.system_node_name || a.name || '';
+    const nameB = b.system_node_name || b.name || '';
+    return nameA.localeCompare(nameB);
+  });
 
   const backboneNodes: RingMapNode[] = [];
   const spurNodes: RingMapNode[] = [];
@@ -31,7 +40,7 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
     }
   });
 
-  // Fallback: If everything is a spur or everything is a hub (rare edge cases)
+  // Fallback: If everything is a spur or everything is a hub
   if (backboneNodes.length === 0 && spurNodes.length === 0) {
     backboneNodes.push(...nodes);
   }
@@ -84,7 +93,6 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
   const lats = Array.from(positions.values()).map((p) => p.lat);
   const lngs = Array.from(positions.values()).map((p) => p.lng);
 
-  // Default bounds if no nodes
   if (lats.length === 0) {
     return {
       nodePositions: positions,
@@ -109,7 +117,5 @@ export const computeMeshLayout = (nodes: RingMapNode[]): MeshLayoutResult => {
 };
 
 export const useMeshLayout = (nodes: RingMapNode[]) => {
-  // THE FIX: Memoize the calculation based on the nodes input.
-  // Since 'nodes' comes from a React Query / Memoized parent source, this reference check is stable.
   return useMemo(() => computeMeshLayout(nodes), [nodes]);
 };

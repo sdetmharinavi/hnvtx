@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link'; // ADDED: Import Link
 import {
   FiActivity,
   FiMapPin,
@@ -38,9 +39,9 @@ import { StatProps } from '@/components/common/page-header/StatCard';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
-import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas'; // IMPORTED
-import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks'; // IMPORTED
-import { CableLinkingModal } from '@/components/ofc/CableLinkingModal'; // IMPORTED
+import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
+import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks';
+import { CableLinkingModal } from '@/components/ofc/CableLinkingModal';
 
 const OfcForm = dynamic(
   () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
@@ -297,16 +298,17 @@ export default function OfcPage() {
                         key={link.link_id}
                         className='group flex items-center gap-1.5 text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700'
                       >
-                        <span
+                        {/* CHANGED: Use Link component with target="_blank" */}
+                        <Link
+                          href={`/dashboard/ofc/${link.cable_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className='cursor-pointer hover:underline truncate max-w-[120px]'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/dashboard/ofc/${link.cable_id}`);
-                          }}
+                          onClick={(e) => e.stopPropagation()}
                           title={link.description || link.route_name}
                         >
                           {link.route_name}
-                        </span>
+                        </Link>
                         {canEdit && (
                           <button
                             onClick={(e) => {

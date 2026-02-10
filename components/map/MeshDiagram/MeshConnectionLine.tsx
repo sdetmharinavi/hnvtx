@@ -2,15 +2,16 @@
 'use client';
 
 import { Polyline, Popup } from 'react-leaflet';
-import { getCurvedPath } from '@/utils/mapUtils';
+import { getCurvedPath, getLoopPath } from '@/utils/mapUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MeshConnectionLineProps } from './types';
 import { PopupFiberRow } from '@/components/map/PopupFiberRow';
 import { toast } from 'sonner';
 import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
-import useIsMobile from '@/hooks/useIsMobile'; // ADDED
+import useIsMobile from '@/hooks/useIsMobile';
+import L from 'leaflet';
 
 type LogicalPath = {
   id: string;
@@ -38,13 +39,10 @@ export const MeshConnectionLine = ({
   const queryClient = useQueryClient();
   const [isInteracted, setIsInteracted] = useState(false);
   const shouldFetch = isInteracted;
-
-  // ADDED: Mobile check
   const isMobile = useIsMobile();
 
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
-
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
@@ -156,23 +154,43 @@ export const MeshConnectionLine = ({
     config &&
     (config.source || (config.fiberMetrics && config.fiberMetrics.length > 0) || config.cableName);
 
-  // CURVE LOGIC
-  let positions;
-  if (curveOffset !== 0) {
-    positions = getCurvedPath(startPos, endPos, curveOffset);
-  } else if (isSpur || nodesLength !== 2) {
-    positions = [startPos, endPos];
-  } else {
-    positions = getCurvedPath(startPos, endPos, 0.15);
-  }
+  // --- PATH CALCULATION ---
+  const positions = useMemo(() => {
+    // 1. Check distance in Schematic Pixels
+    // In CRS.Simple, these are abstract units.
+    // If distance is very small (e.g., overlapping or adjacent due to sort), treat as loop.
+    const dist = startPos.distanceTo(endPos);
+    const isSelf = start.id === end.id;
 
-  // ADDED: Hit box weight based on device
+    if (dist < 50 || isSelf) {
+      // Use loop path for self-connections or very close nodes
+      // Map curveOffset to an integer index to stack multiple loops if needed
+      const loopIndex = Math.round(curveOffset * 10); 
+      return getLoopPath(startPos, loopIndex, 120);
+    } 
+    
+    if (curveOffset !== 0) {
+      // Explicit curve (parallel lines)
+      return getCurvedPath(startPos, endPos, curveOffset);
+    } 
+    
+    if (isSpur || nodesLength !== 2) {
+      // Default: If it's a spur or complex ring, use straight line
+      return [startPos, endPos];
+    }
+    
+    // Default: If simple 2-node ring, use slight curve for aesthetics
+    return getCurvedPath(startPos, endPos, 0.15);
+
+  }, [startPos, endPos, start.id, end.id, curveOffset, isSpur, nodesLength]);
+
   const hitWeight = isMobile ? 30 : 5;
 
   return (
     <>
-      {/* 1. VISUAL LINE (Non-Interactive) */}
+      {/* 1. VISUAL LINE */}
       <Polyline
+        key={`visual-${start.id}-${end.id}-${curveOffset}`}
         positions={positions}
         pathOptions={{
           color: color,
@@ -181,12 +199,13 @@ export const MeshConnectionLine = ({
           lineCap: 'round',
           lineJoin: 'round',
           dashArray: isSpur ? '10, 10' : undefined,
-          interactive: false, // Clicks pass through
+          interactive: false,
         }}
       />
 
-      {/* 2. HIT BOX LINE (Interactive, Invisible) */}
+      {/* 2. HIT BOX LINE (Interactive) */}
       <Polyline
+        key={`hitbox-${start.id}-${end.id}-${curveOffset}`}
         positions={positions}
         pathOptions={{
           color: 'transparent',

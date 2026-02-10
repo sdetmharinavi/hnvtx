@@ -33,8 +33,11 @@ export function useOfcRoutesForSelection() {
         try {
           const { data, error } = await supabase
             .from('ofc_cables')
-            .select('id, route_name, capacity, ofc_connections!inner(id)')
-            .order('route_name', { ascending: true });
+            // CHANGED: Removed '!inner' to allow cables without connections to appear
+            // CHANGED: Added explicit .limit(5000) to fetch more than the default 1000
+            .select('id, route_name, capacity, ofc_connections(id)')
+            .order('route_name', { ascending: true })
+            .limit(5000);
 
           if (error) throw error;
 
@@ -46,18 +49,21 @@ export function useOfcRoutesForSelection() {
       }
 
       // 2. Local Fallback
-      // We iterate local cables and only keep those that have connections (imitating !inner join)
+      // We iterate local cables. We map mock connections to satisfy the schema since
+      // for simple selection/linking, the deep connection data isn't strictly required
+      // beyond existence checks.
       const cables = await localDb.ofc_cables.orderBy('route_name').toArray();
-      // Optimization: In a real scenario, we might assume all cables are valid or check connections count
-      // For speed in offline mode, we just return the cables.
+      
       return cables.map((c) => ({
         id: c.id,
         route_name: c.route_name,
         capacity: c.capacity,
-        ofc_connections: [{ id: 'placeholder' }], // Mock to satisfy schema validation
+        // Mock to satisfy schema validation which expects an array
+        ofc_connections: [], 
       }));
     },
-    staleTime: 60 * 60 * 1000,
+    // CHANGED: Reduced staleTime from 1 hour to 5 minutes to reflect new creations faster
+    staleTime: 5 * 60 * 1000, 
   });
 }
 
@@ -73,7 +79,6 @@ export function useRouteDetails(routeId: string | null) {
       // 1. Try API
       if (isOnline) {
         try {
-          // THE FIX: Add cache: 'no-store' to ensure we get fresh data after a mutation
           const res = await fetch(`/api/route/${routeId}`, {
             cache: 'no-store'
           });
@@ -361,7 +366,8 @@ export function useSyncPathFromTrace() {
 export function useReverseFiberPath() {
   const queryClient = useQueryClient();
   const isOnline = useOnlineStatus();
-  const supabase = createClient(); // Ensure supabase client is available
+  // We need a fresh supabase client inside the hook/callback if not using the closure one for stability
+  // but using the module-level 'supabase' is standard in this project structure.
 
   return useMutation({
     mutationFn: async (connectionId: string) => {

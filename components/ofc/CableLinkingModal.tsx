@@ -1,7 +1,7 @@
 // components/ofc/CableLinkingModal.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Modal } from '@/components/common/ui';
 import { FormCard, FormSearchableSelect, FormTextarea } from '@/components/common/form';
 import { useForm } from 'react-hook-form';
