@@ -146,7 +146,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
                 </div>
               ) : (
                 <div className='bg-white dark:bg-gray-800 rounded-lg border-2 border-blue-100 dark:border-blue-900/50 shadow-sm overflow-hidden'>
-                  <div className='p-3'>
+                  <div className='p-1'>
                     <PathDisplay systemConnectionId={connectionId || null} />
                   </div>
                 </div>

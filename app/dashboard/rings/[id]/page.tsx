@@ -731,7 +731,7 @@ export default function RingMapPage() {
               return (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600"
+                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600"
                 >
                   <div className="flex flex-col">
                     <span className="font-medium text-sm text-gray-800 dark:text-gray-200">

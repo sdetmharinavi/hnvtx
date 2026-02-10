@@ -13,7 +13,7 @@ const GenericRemarks = ({ remark, maxLines = 2, renderAsHtml = true }: GenericRe
 
   return (
     <div
-      className='flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800/30 w-full'
+      className='flex gap-2 items-start text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-200 dark:border-amber-800/30 w-full'
       role='note'
       aria-label='Remark'
     >

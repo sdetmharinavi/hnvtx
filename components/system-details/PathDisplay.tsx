@@ -20,7 +20,7 @@ export const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string
   const renderPath = (label: string, path: string | undefined, colorClass: string) => {
     if (!path) return null;
     return (
-      <div className="flex items-start gap-2 text-xs">
+      <div className="flex items-start gap-1 text-xs">
         <span className={`font-bold whitespace-nowrap min-w-[40px] ${colorClass}`}>{label}:</span>
         <TruncateTooltip text={path} className="text-gray-700 dark:text-gray-300 font-mono" />
       </div>
@@ -28,7 +28,7 @@ export const PathDisplay = ({ systemConnectionId }: { systemConnectionId: string
   };
 
   return (
-    <div className="space-y-1.5 w-full max-w-md p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-100 dark:border-gray-800">
+    <div className="space-y-1.5 w-full max-w-md p-1 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-100 dark:border-gray-800">
       {renderPath('W-Tx', pathData.working_tx, 'text-blue-600 dark:text-blue-400')}
       {renderPath('W-Rx', pathData.working_rx, 'text-green-600 dark:text-green-400')}
       {renderPath('P-Tx', pathData.protection_tx, 'text-purple-600 dark:text-purple-400')}
