@@ -158,7 +158,7 @@ export const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                 key={option.value}
                 title={option.label}
                 onClick={(e) => handleToggleOption(e, option.value)}
-                className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-xs text-wrap outline-none transition-colors ${
+                className={`relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-xs text-wrap outline-none transition-colors ${
                   isSelected
                     ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100'
                     : 'text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700'
