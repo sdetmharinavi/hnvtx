@@ -24,9 +24,14 @@ const RouteSelection: React.FC<RouteSelectionProps> = ({
 
   const routeOptions = useMemo((): Option[] => {
     if (!routesForSelection) return [];
+    
     return routesForSelection
       .filter(r => r.id !== null && r.route_name !== null)
-      .map((r) => ({ value: r.id as string, label: r.route_name as string }));
+      .map((r) => {
+        const capacity = r.capacity;
+        const routeName = r.route_name;
+        const displayLabel = `${routeName}(${capacity}F)`
+        return ({ value: r.id as string, label: displayLabel as string })});
   }, [routesForSelection]);
 
   const handleRouteChange = useCallback((value: string | null) => {

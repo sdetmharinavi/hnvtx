@@ -294,7 +294,7 @@ export const ConnectionLine = ({
   // ADDED: Hit box weight based on device
   const hitWeight = isMobile ? 30 : 5;
 
-  console.log('config', config);
+  // console.log('config', config);
 
   return (
     <>
