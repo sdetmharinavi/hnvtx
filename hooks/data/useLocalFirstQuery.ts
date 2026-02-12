@@ -102,7 +102,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
     refetchOnReconnect: false,
     staleTime,
     retry: 1,
-    // THE FIX: Use cached data if available while fetching new data
+    // Use cached data if available while fetching new data
     placeholderData: (previousData) => previousData,
   });
 
@@ -110,6 +110,7 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   useEffect(() => {
     if (skipSync) return;
 
+    // Wait until both network and local data are available to perform a smart merge
     if (networkData && !isSyncingRef.current && localData !== 'loading') {
       const syncToLocal = async () => {
         try {
@@ -134,23 +135,66 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
             }
           });
 
-          // B. Filter and UPSERT (Update/Insert) from Network
           const primaryKey = dexieTable.schema.primKey.name;
 
-          const dataToSave = (networkData as unknown as TLocal[]).filter((item) => {
+          // Map local data for quick lookup during merge
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const localMap = new Map<string, any>();
+          if (Array.isArray(localData)) {
+            localData.forEach((item) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pk = (item as any)[primaryKey];
+              if (pk) localMap.set(String(pk), item);
+            });
+          }
+
+          // B. Smart Merge: Filter and prepare data for UPSERT
+          const dataToSave: TLocal[] = [];
+
+          (networkData as unknown as TLocal[]).forEach((serverItem) => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const pkValue = (item as any)[primaryKey];
-            if (pkValue === null || pkValue === undefined) return false;
+            const pkValue = (serverItem as any)[primaryKey];
+            if (pkValue === null || pkValue === undefined) return;
             const pkStr = String(pkValue);
-            return !dirtyIds.has(pkStr);
+
+            // 1. Skip if pending offline mutation exists for this ID
+            if (dirtyIds.has(pkStr)) return;
+
+            // 2. Race Condition Check: Compare updated_at timestamps
+            const localItem = localMap.get(pkStr);
+            if (localItem) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const serverTime = (serverItem as any).updated_at
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ? new Date((serverItem as any).updated_at).getTime()
+                : 0;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const localTime = (localItem as any).updated_at
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ? new Date((localItem as any).updated_at).getTime()
+                : 0;
+
+              // If local item is NEWER than server item (e.g. from optimistic update),
+              // preserve the local item and ignore the stale server data.
+              // Note: We use a small buffer (e.g. 0ms) just direct comparison.
+              // Since optimistic updates set local time to Date.now(), it should be > server time
+              // until the server record is actually updated and returned.
+              if (localTime > serverTime) {
+                // Skip overwriting
+                return;
+              }
+
+              // Optimization: If they are identical in content, skip write to save cycles
+              if (isEqual(localItem, serverItem)) {
+                return;
+              }
+            }
+
+            dataToSave.push(serverItem);
           });
 
           if (dataToSave.length > 0) {
-            // Optimization: Deep compare to avoid unnecessary writes
-            const shouldWrite = !isEqual(dataToSave, localData);
-            if (shouldWrite) {
-              await dexieTable.bulkPut(dataToSave);
-            }
+            await dexieTable.bulkPut(dataToSave);
           }
         } catch (e) {
           console.error(`[useLocalFirstQuery] Sync failed for ${dexieTable.name}`, e);
@@ -164,28 +208,19 @@ export function useLocalFirstQuery<T extends PublicTableOrViewName, TRow = Row<T
   }, [networkData, dexieTable, tableName, localData, skipSync]);
 
   // 4. Data Resolution Strategy
-  // If we have cached network data (from React Query), use it first as it's the fastest source on navigation.
-  // Fallback to local Dexie data.
-  // If neither, return empty array.
-  
   const cachedData = queryClient.getQueryData<TRow[]>(queryKey);
-  
+
   const resolvedData =
     preferNetwork && networkData
       ? networkData
       : Array.isArray(localData)
-      ? localData
-      : cachedData // Fallback to React Query cache if Dexie is still loading
-      ? (cachedData as unknown as TLocal[])
-      : [];
+        ? localData
+        : cachedData
+          ? (cachedData as unknown as TLocal[])
+          : [];
 
-  // 5. Loading State Logic (Optimized)
-  // Only "loading" if we have absolutely NO data (no local, no network cache, no active network fetch result)
-  const isHardLoading = 
-    localData === 'loading' && 
-    !hasInitialLocalLoad && 
-    !networkData && 
-    !cachedData;
+  const isHardLoading =
+    localData === 'loading' && !hasInitialLocalLoad && !networkData && !cachedData;
 
   const isError = isNetworkError && !hasInitialLocalLoad;
   const error = isError ? networkError : null;

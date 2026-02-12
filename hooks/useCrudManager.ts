@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // hooks/useCrudManager.ts
 'use client';
 
@@ -61,7 +60,6 @@ export interface DataQueryHookReturn<V> {
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
 
-
 type BaseRecord = { id: string | number | null; [key: string]: any };
 
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
@@ -76,7 +74,6 @@ export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRec
   syncTables?: PublicTableOrViewName[];
 }
 
-// THE FIX: Export the return interface
 export interface UseCrudManagerReturn<V> {
   data: V[];
   totalCount: number;
@@ -163,9 +160,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const [currentPage, _setCurrentPage] = useState(1);
   const [pageLimit, _setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
 
-  // This state is now populated by DebouncedInput components, so it's ready to use immediately
   const [searchQuery, _setSearchQuery] = useState('');
-
   const [filters, _setFilters] = useState<Filters>(initialFilters);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -213,14 +208,13 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   } = dataQueryHook({
     currentPage,
     pageLimit,
-    searchQuery, // Use raw query here as it is pre-debounced by UI
+    searchQuery,
     filters: combinedFilters,
   });
 
   const handleRefresh = useCallback(async () => {
     if (isOnline && syncTables && syncTables.length > 0) {
       await syncData(syncTables);
-      // Note: syncData invalidates queries, so refetch happens automatically via React Query
     } else {
       refetch();
     }
@@ -241,7 +235,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
         if (error) throw error;
 
-        
         const records = (result as any)?.data || [];
         if (records.length > 0) {
           const record = records[0];
@@ -250,6 +243,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         }
       } catch (err) {
         console.error('[useCrudManager] Failed to sync single record:', err);
+        // Fallback to full refetch if single sync fails
         refetch();
       }
     },
@@ -258,14 +252,15 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const { mutate: insertItem, isPending: isInserting } = useTableInsert(supabase, tableName, {
     optimisticUpdate: false,
+    invalidateQueries: false, // FIX: Disable auto invalidation to prevent race with syncSingleRecord
     onSuccess: async (data) => {
       toast.success('Record created successfully.');
       closeModal();
       if (data && data.length > 0) {
-        
         const newId = (data[0] as any).id;
         await syncSingleRecord(newId);
       } else {
+        // Fallback if no data returned
         refetch();
       }
     },
@@ -274,11 +269,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const { mutate: updateItem, isPending: isUpdating } = useTableUpdate(supabase, tableName, {
     optimisticUpdate: false,
+    invalidateQueries: false, // FIX: Disable auto invalidation
     onSuccess: async (data) => {
       toast.success('Record updated successfully.');
       closeModal();
       if (data && data.length > 0) {
-        
         const updatedId = (data[0] as any).id;
         await syncSingleRecord(updatedId);
       } else {
@@ -290,10 +285,10 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const { mutate: toggleStatus } = useToggleStatus(supabase, tableName, {
     optimisticUpdate: false,
+    invalidateQueries: false, // FIX: Disable auto invalidation
     onSuccess: async (data) => {
       toast.success('Status updated successfully.');
       if (data) {
-        
         const id = (data as any).id;
         await syncSingleRecord(id);
       } else {
@@ -311,7 +306,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         const table = getTable(targetTable);
         const idsToDelete =
           idType === 'number' ? deletedIds.map(Number).filter((n) => !isNaN(n)) : deletedIds;
-        
+
         await table.bulkDelete(idsToDelete as any);
       } catch (e) {
         console.error(`[useCrudManager] Failed to cleanup local data for ${targetTable}:`, e);
@@ -326,6 +321,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
     tableName,
     onSuccess: async (deletedIds) => {
       await handleLocalCleanup(deletedIds);
+      // For deletes, invalidation is fine as we are removing, not updating view-dependent data
       QueryClient.invalidateQueries({ queryKey: [`${localTableName || tableName}-data`] });
       handleClearSelection();
     },
@@ -373,27 +369,47 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
 
   const handleSave = useCallback(
     async (formData: TableInsertWithDates<T>) => {
+      // 1. Process data for server
       const processedData = processDataForSave
         ? processDataForSave(formData)
         : (formData as TableInsert<T>);
 
+      // 2. Identify Target Local Table (View or Table)
+      const targetTable = getTable(localTableName || tableName);
+
       if (isOnline) {
         if (editingRecord && 'id' in editingRecord && editingRecord.id) {
-          updateItem({ id: String(editingRecord.id), data: processedData as TableUpdate<T> });
+          const idToUpdate = String(editingRecord.id);
+
+          // --- OPTIMISTIC LOCAL UPDATE (CRITICAL FIX) ---
+          try {
+            const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
+            
+            // Merge existing record with new data and current timestamp
+            await (targetTable.update as any)(idKey, {
+              ...editingRecord,
+              ...processedData,
+              updated_at: new Date().toISOString()
+            });
+          } catch (e) {
+            console.warn("[useCrudManager] Optimistic local update failed", e);
+          }
+          // ----------------------------------------------
+
+          updateItem({ id: idToUpdate, data: processedData as TableUpdate<T> });
         } else {
+          // For Inserts, we can't easily do optimistic updates locally because we need the real ID/Calculated fields from server.
+          // We rely on the insertItem onSuccess -> syncSingleRecord flow.
           insertItem(processedData as TableInsert<T>);
         }
       } else {
+        // --- OFFLINE MODE ---
         try {
-          const targetTable = getTable(localTableName || tableName);
-
           if (editingRecord && 'id' in editingRecord && editingRecord.id) {
             const idToUpdate = String(editingRecord.id);
+            const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
             
-            await (targetTable.update as any)(
-              idType === 'number' ? Number(idToUpdate) : idToUpdate,
-              processedData
-            );
+            await (targetTable.update as any)(idKey, processedData);
 
             await addMutationToQueue({
               tableName,
@@ -408,10 +424,9 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
             const newRecord = { ...processedData, id: tempId };
 
             if (idType === 'number') {
-              console.warn('Offline creation for integer ID tables is risky.');
+              console.warn('Offline creation for integer ID tables is risky/unsupported for sync queue currently.');
             }
 
-            
             await targetTable.add(newRecord as any);
 
             await addMutationToQueue({
@@ -423,7 +438,7 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
               icon: React.createElement(FiWifiOff),
             });
           }
-          refetch();
+          refetch(); // Refresh list from Dexie
           closeModal();
         } catch (err) {
           toast.error(`Offline operation failed: ${(err as Error).message}`);
@@ -461,7 +476,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(ids[0]) : ids[0];
 
-          
           await targetTable.delete(idKey as any);
 
           await addMutationToQueue({
@@ -505,11 +519,12 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         try {
           const targetTable = getTable(localTableName || tableName);
           const idsKey = idType === 'number' ? selectedRowIds.map(Number) : selectedRowIds;
+          
           await targetTable
             .where('id')
             .anyOf(idsKey)
-            
             .modify({ status: newStatus } as any);
+
           for (const id of selectedRowIds) {
             await addMutationToQueue({
               tableName,
@@ -560,7 +575,6 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
         const targetTable = getTable(localTableName || tableName);
         const idsKey = idType === 'number' ? ids.map(Number) : ids;
 
-        
         await targetTable.bulkDelete(idsKey as any);
 
         await addMutationToQueue({
@@ -599,12 +613,21 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       const newStatus = !(record.status ?? false);
 
       if (isOnline) {
+        // Optimistic update for Toggle Status as well
+        try {
+            const targetTable = getTable(localTableName || tableName);
+            const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
+            await (targetTable.update as any)(idKey, { status: newStatus });
+        } catch(e) {
+            console.warn("Optimistic status update failed", e);
+        }
+
         toggleStatus({ id: idToUpdate, status: newStatus });
       } else {
         try {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(idToUpdate) : idToUpdate;
-          
+
           await (targetTable.update as any)(idKey, { status: newStatus });
 
           await addMutationToQueue({
@@ -629,16 +652,25 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
       if (!record.id) return;
       const id = String(record.id);
       const key = column.dataIndex;
-      
+
       const updateData = { [key]: newValue } as any;
 
       if (isOnline) {
+         // Optimistic Update
+         try {
+            const targetTable = getTable(localTableName || tableName);
+            const idKey = idType === 'number' ? Number(id) : id;
+            await (targetTable.update as any)(idKey, updateData);
+        } catch(e) {
+            console.warn("Optimistic edit failed", e);
+        }
+
         updateItem({ id, data: updateData });
       } else {
         try {
           const targetTable = getTable(localTableName || tableName);
           const idKey = idType === 'number' ? Number(id) : id;
-          
+
           await (targetTable.update as any)(idKey, updateData);
           await addMutationToQueue({
             tableName,
