@@ -169,14 +169,6 @@ function NavItems() {
             roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
           },
           {
-            id: 'logical-fiber-paths',
-            label: 'Logical Fiber Paths',
-            href: '/dashboard/logical-paths',
-            icon: <GiPathDistance className='h-5 w-5' />,
-            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
-          },
-
-          {
             id: 'route-manager',
             label: 'RouteManager',
             icon: <FaRoute className='h-5 w-5' />,
@@ -211,6 +203,13 @@ function NavItems() {
             icon: <GoServer className='h-5 w-5' />,
             href: '/dashboard/ring-manager',
             roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
+          },
+          {
+            id: 'logical-paths',
+            label: 'Logical Service Paths',
+            href: '/dashboard/logical-paths',
+            icon: <GiPathDistance className='h-5 w-5' />,
+            roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageRoutes
           },
         ],
       },
