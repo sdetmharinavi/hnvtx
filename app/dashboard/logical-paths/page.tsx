@@ -21,7 +21,7 @@ import { V_end_to_end_pathsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
 import { useUser } from '@/providers/UserProvider';
 import { PERMISSIONS } from '@/config/permissions';
-import { StatProps } from '@/components/common/page-header/StatCard'; // Added
+import { StatProps } from '@/components/common/page-header/StatCard';
 import { Filters } from '@/hooks/database/queries-type-helpers';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
@@ -30,7 +30,7 @@ const useLogicalPathsData = (params: {
   currentPage: number;
   pageLimit: number;
   searchQuery: string;
-  statusFilter?: string; // Added filter support
+  statusFilter?: string;
 }): DataQueryHookReturn<LogicalPathView> => {
   const { currentPage, pageLimit, searchQuery, statusFilter } = params;
   const supabase = createClient();
@@ -38,8 +38,11 @@ const useLogicalPathsData = (params: {
   const searchFilters = useMemo(() => {
     const filters: Filters = {};
 
-    if (searchQuery) {
-      const searchString = `(path_name.ilike.%${searchQuery}%,route_names.ilike.%${searchQuery}%)`;
+    // FIX: Use standard SQL syntax for the 'or' filter passed to the RPC
+    if (searchQuery && searchQuery.trim() !== '') {
+      const term = searchQuery.trim().replace(/'/g, "''"); // Basic SQL escape
+      // The RPC's build_where_clause expects a string that fits inside `AND (...)`
+      const searchString = `path_name ILIKE '%${term}%' OR route_names ILIKE '%${term}%'`;
       filters.or = searchString;
     }
 
@@ -186,9 +189,6 @@ export default function LogicalPathsPage() {
     exportConfig: canEdit ? { tableName: 'v_end_to_end_paths' } : undefined,
   });
 
-  // --- INTERACTIVE STATS ---
-  // The backend view doesn't return generic active/inactive counts easily if we are filtering on specific status text.
-  // We'll rely on the filter prop.
   const headerStats = useMemo<StatProps[]>(() => {
     return [
       {
@@ -198,7 +198,7 @@ export default function LogicalPathsPage() {
         isActive: !statusFilter,
       },
       {
-        value: null, // Dynamic count not available without specific query
+        value: null, 
         label: 'Configured',
         color: 'success',
         onClick: () => setStatusFilter('configured'),
@@ -229,7 +229,7 @@ export default function LogicalPathsPage() {
         title='Logical Fiber Paths'
         description='View and manage all provisioned end-to-end service paths.'
         icon={<FiGitBranch />}
-        stats={headerStats} // Interactive Stats
+        stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}
@@ -265,7 +265,6 @@ export default function LogicalPathsPage() {
             activeFilterCount={statusFilter ? 1 : 0}
             searchPlaceholder='Search by path or route name...'
           >
-            {/* Add a select dropdown for status in the filter panel too */}
             <div className='flex flex-col gap-1'>
               <label className='text-xs font-medium text-gray-700 dark:text-gray-300'>Status</label>
               <select

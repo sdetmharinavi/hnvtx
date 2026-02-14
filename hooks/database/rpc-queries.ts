@@ -1,4 +1,4 @@
-// path: hooks/database/rpc-queries.ts
+// hooks/database/rpc-queries.ts
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase-types';
@@ -14,11 +14,8 @@ import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
 import { DEFAULTS } from '@/constants/constants';
 import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb for fallback logic
 
-// =================================================================
-// Section 1: Generic & Specific RPC Hooks (Non-Paginated)
-// =================================================================
+// ... (Section 1 Generic RPC Hooks remains unchanged) ...
 
-// Generic RPC query hook
 export function useRpcQuery<T extends RpcFunctionName, TData = RpcFunctionReturns<T>>(
   supabase: SupabaseClient<Database>,
   functionName: T,
@@ -39,7 +36,6 @@ export function useRpcQuery<T extends RpcFunctionName, TData = RpcFunctionReturn
   });
 }
 
-// Generic RPC mutation hook
 export function useRpcMutation<T extends RpcFunctionName>(
   supabase: SupabaseClient<Database>,
   functionName: T,
@@ -67,7 +63,6 @@ export function useRpcMutation<T extends RpcFunctionName>(
   });
 }
 
-// Specific hook for the dashboard overview
 export function useDashboardOverview(
   supabase: SupabaseClient<Database>,
   options?: UseRpcQueryOptions<'get_dashboard_overview'>
@@ -146,7 +141,7 @@ export function usePagedData<T>(
     });
 
     if (error) {
-      console.error(`Error fetching paginated data for '${viewName}':`, error);
+      console.error(`Error fetching paginated data for '${viewName}':`, error.message, error.details, error.hint);
       throw new Error(error.message);
     }
 
@@ -167,7 +162,7 @@ export function usePagedData<T>(
   });
 }
 
-// THE FIX: Define the stats interface
+// ... (Rest of file including RingManagerStats logic remains unchanged) ...
 export interface RingManagerStats {
   total_rings: number;
   spec_issued: number;
@@ -179,7 +174,6 @@ export interface RingManagerStats {
   configured_in_maan: number;
 }
 
-// THE FIX: Offline-Capable Stats Hook
 export function useRingManagerStats(supabase: SupabaseClient<Database>) {
   return useQuery({
     queryKey: ['ring-manager-stats'],
