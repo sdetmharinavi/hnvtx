@@ -30,7 +30,21 @@ JOIN public.junction_closures jcs ON (cs.start_node_type = 'jc' AND cs.start_nod
 
 
 -- View showing end-to-end logical path summaries.
+-- path: data/migrations/04_advanced_ofc/02_views.sql
+
+DROP VIEW IF EXISTS public.v_end_to_end_paths;
+
 CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_invoker = true) AS
+WITH path_ordering AS (
+    -- Subquery to ensure we get the distinct routes in the correct physical order
+    -- before aggregation to avoid STRING_AGG issues with GROUP BY
+    SELECT 
+        lps.logical_path_id,
+        oc.route_name,
+        lps.path_order
+    FROM public.logical_path_segments lps
+    JOIN public.ofc_cables oc ON lps.ofc_cable_id = oc.id
+)
 SELECT
   lfp.id AS path_id,
   lfp.path_name,
@@ -40,14 +54,21 @@ SELECT
   lfp.total_loss_db,
   lt_status.name AS operational_status,
   COUNT(lps.id) AS segment_count,
-  STRING_AGG(DISTINCT oc.route_name, ' -> ' ORDER BY oc.route_name) AS route_names
+  -- THE FIX: Order the aggregation by the sequence defined in path_segments
+  (
+    SELECT STRING_AGG(po.route_name, ' -> ' ORDER BY po.path_order)
+    FROM path_ordering po
+    WHERE po.logical_path_id = lfp.id
+  ) AS route_names
 FROM public.logical_fiber_paths lfp
 LEFT JOIN public.lookup_types lt_status ON lfp.operational_status_id = lt_status.id
 LEFT JOIN public.logical_path_segments lps ON lfp.id = lps.logical_path_id
-LEFT JOIN public.ofc_cables oc ON lps.ofc_cable_id = oc.id
 GROUP BY
   lfp.id,
   lt_status.name;
+
+-- Re-grant permissions
+GRANT SELECT ON public.v_end_to_end_paths TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
 -- View for calculating fiber utilization per cable.
 CREATE OR REPLACE VIEW public.v_cable_utilization WITH (security_invoker = true) AS

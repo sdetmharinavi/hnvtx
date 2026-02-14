@@ -19,7 +19,8 @@ DECLARE
     v_active_status_id UUID;
     v_logical_path_id UUID;
     v_link_type_id UUID;
-    
+    v_ofc_id UUID;
+
     -- Names & Ports
     v_path_name TEXT;
     v_sn_interface TEXT;
@@ -29,26 +30,23 @@ DECLARE
     v_column_name TEXT;
 BEGIN
     -- 1. Validation: Get Connection Full Details
-    SELECT 
-        sc.system_id, 
+    SELECT
+        sc.system_id,
         sc.en_id,
-        COALESCE(sc.service_name, sc.connected_system_name, 'Path'), -- Robust name fallback
+        COALESCE(sc.service_name, sc.connected_system_name, 'Path'),
         svc.link_type_id,
-        -- Working Interfaces
         COALESCE(sc.sn_interface, sc.system_working_interface),
         sc.en_interface,
-        -- Protection Interfaces
         COALESCE(sc.system_protection_interface, sc.sn_interface, sc.system_working_interface),
         COALESCE(sc.en_protection_interface, sc.en_interface)
-    INTO 
-        v_system_id, 
-        v_en_id, 
-        v_path_name, 
+    INTO
+        v_system_id,
+        v_en_id,
+        v_path_name,
         v_link_type_id,
-        v_sn_interface, 
+        v_sn_interface,
         v_en_interface,
-        -- Use temp variables for protection ports logic
-        v_target_sn_port, -- reusing var name locally logic below
+        v_target_sn_port,
         v_target_en_port
     FROM public.v_system_connections_complete sc
     LEFT JOIN public.services svc ON sc.service_id = svc.id
@@ -58,13 +56,11 @@ BEGIN
         RAISE EXCEPTION 'System Connection not found.';
     END IF;
 
+    -- Get the parent cable ID for the fiber
+    SELECT ofc_id INTO v_ofc_id FROM public.ofc_connections WHERE id = p_fiber_id;
+
     -- Determine correct ports based on role
-    IF p_role = 'protection' THEN
-         -- v_target_sn_port/en_port already populated with protection logic above in SELECT
-         -- Actually, let's fix the assignment logic:
-         NULL; -- Logic handled in SELECT via COALESCE priority
-    ELSE
-         -- If working, override the protection vars (which held protection logic) with working logic
+    IF p_role = 'working' THEN
          v_target_sn_port := v_sn_interface;
          v_target_en_port := v_en_interface;
     END IF;
@@ -91,41 +87,49 @@ BEGIN
     LIMIT 1;
 
     IF v_logical_path_id IS NULL THEN
-        -- Check if we need to link to a working path (if creating protection)
-        DECLARE 
+        DECLARE
             v_working_parent_id UUID;
         BEGIN
             IF p_role = 'protection' THEN
-                SELECT id INTO v_working_parent_id FROM public.logical_fiber_paths 
+                SELECT id INTO v_working_parent_id FROM public.logical_fiber_paths
                 WHERE system_connection_id = p_connection_id AND path_role = 'working' LIMIT 1;
             END IF;
 
             INSERT INTO public.logical_fiber_paths (
-                path_name, 
-                source_system_id, 
-                destination_system_id, -- Fill Dest
-                source_port,           -- Fill Source Port
-                destination_port,      -- Fill Dest Port
-                path_type_id,          -- Fill Type
-                path_role, 
-                operational_status_id, 
+                path_name,
+                source_system_id,
+                destination_system_id,
+                source_port,
+                destination_port,
+                path_type_id,
+                path_role,
+                operational_status_id,
                 system_connection_id,
-                working_path_id        -- Link to parent if protection
+                working_path_id
             )
             VALUES (
                 v_path_name || ' (' || INITCAP(p_role) || ')',
-                v_system_id, 
+                v_system_id,
                 v_en_id,
                 v_target_sn_port,
                 v_target_en_port,
                 v_link_type_id,
-                p_role, 
-                v_active_status_id, 
+                p_role,
+                v_active_status_id,
                 p_connection_id,
                 v_working_parent_id
             )
             RETURNING id INTO v_logical_path_id;
         END;
+    END IF;
+
+    -- [THE FIX]: Check if segment exists before inserting to avoid constraint errors
+    IF NOT EXISTS (
+        SELECT 1 FROM public.logical_path_segments 
+        WHERE logical_path_id = v_logical_path_id AND ofc_cable_id = v_ofc_id
+    ) THEN
+        INSERT INTO public.logical_path_segments (logical_path_id, ofc_cable_id, path_order)
+        VALUES (v_logical_path_id, v_ofc_id, 1);
     END IF;
 
     -- 4. Update the Fiber Record (ofc_connections)
