@@ -123,13 +123,17 @@ BEGIN
         END;
     END IF;
 
-    -- [THE FIX]: Check if segment exists before inserting to avoid constraint errors
+    -- [THE FIX]: Intelligent Segment Insertion
+    -- 1. Check if this cable is already part of this path (e.g. adding the Rx fiber to a cable that already has the Tx fiber)
+    -- 2. If it's a NEW cable for this path, calculate the next sequence number (MAX + 1)
     IF NOT EXISTS (
         SELECT 1 FROM public.logical_path_segments 
         WHERE logical_path_id = v_logical_path_id AND ofc_cable_id = v_ofc_id
     ) THEN
         INSERT INTO public.logical_path_segments (logical_path_id, ofc_cable_id, path_order)
-        VALUES (v_logical_path_id, v_ofc_id, 1);
+        SELECT v_logical_path_id, v_ofc_id, COALESCE(MAX(path_order), 0) + 1
+        FROM public.logical_path_segments
+        WHERE logical_path_id = v_logical_path_id;
     END IF;
 
     -- 4. Update the Fiber Record (ofc_connections)
