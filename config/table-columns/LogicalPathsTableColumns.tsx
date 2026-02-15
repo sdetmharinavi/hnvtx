@@ -11,7 +11,7 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
       path_name: {
         title: 'Path Name',
         render: (value) => (
-          <TruncateTooltip text={(value as string) ?? 'N/A'} className="font-semibold" />
+          <TruncateTooltip text={(value as string) ?? 'N/A'} className='font-semibold max-w-64' />
         ),
       },
       operational_status: {
@@ -20,7 +20,7 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
       },
       segment_count: {
         title: 'Segments',
-        render: (value) => <span className="font-mono text-sm">{(value as number) ?? 0}</span>,
+        render: (value) => <span className='font-mono text-sm'>{(value as number) ?? 0}</span>,
       },
       route_names: {
         title: 'Route',
@@ -29,7 +29,7 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
       total_distance_km: {
         title: 'Distance (km)',
         render: (value) => (
-          <span className="font-mono text-sm">{(value as number)?.toFixed(2) ?? '0.00'}</span>
+          <span className='font-mono text-sm'>{(value as number)?.toFixed(2) ?? '0.00'}</span>
         ),
       },
     },
