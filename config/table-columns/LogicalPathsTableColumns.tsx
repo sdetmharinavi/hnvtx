@@ -1,3 +1,4 @@
+// config/table-columns/LogicalPathsTableColumns.tsx
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { TruncateTooltip } from '@/components/common/TruncateTooltip';
@@ -10,26 +11,40 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
     overrides: {
       path_name: {
         title: 'Path Name',
+        width: 350, // Explicit width to prevent early truncation
+        sortable: true,
+        searchable: true,
         render: (value) => (
-          <TruncateTooltip text={(value as string) ?? 'N/A'} className='font-semibold max-w-64' />
+          <TruncateTooltip 
+            text={(value as string) ?? 'N/A'} 
+            className="font-semibold text-gray-900 dark:text-gray-100" 
+          />
         ),
       },
       operational_status: {
         title: 'Status',
+        width: 120,
+        sortable: true,
         render: (value) => <StatusBadge status={(value as string) || 'Unknown'} />,
       },
       segment_count: {
         title: 'Segments',
-        render: (value) => <span className='font-mono text-sm'>{(value as number) ?? 0}</span>,
+        width: 100,
+        sortable: true,
+        render: (value) => <span className="font-mono text-sm">{(value as number) ?? 0}</span>,
       },
       route_names: {
-        title: 'Route',
+        title: 'Route Path',
+        width: 400, // Wide column for route chains
+        searchable: true,
         render: (value) => <TruncateTooltip text={(value as string) ?? 'N/A'} />,
       },
       total_distance_km: {
         title: 'Distance (km)',
+        width: 120,
+        sortable: true,
         render: (value) => (
-          <span className='font-mono text-sm'>{(value as number)?.toFixed(2) ?? '0.00'}</span>
+          <span className="font-mono text-sm font-medium">{(value as number)?.toFixed(2) ?? '0.00'}</span>
         ),
       },
     },
