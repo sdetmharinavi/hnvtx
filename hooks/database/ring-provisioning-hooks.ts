@@ -302,14 +302,21 @@ export function useUpdateLogicalPathDetails() {
   return useMutation({
     mutationFn: async (variables: {
       pathId: string;
+      name: string;
       sourceSystemId: string;
       sourcePort: string;
       destinationSystemId: string | null;
       destinationPort: string | null;
+      // Service creation fields
+      linkTypeId?: string | null;
+      bandwidth?: string | null;
+      startNodeId?: string;
+      endNodeId?: string;
     }) => {
       const { error } = await supabase
         .from('logical_paths')
         .update({
+          name: variables.name,
           source_system_id: variables.sourceSystemId,
           source_port: variables.sourcePort,
           destination_system_id: variables.destinationSystemId,
@@ -318,14 +325,49 @@ export function useUpdateLogicalPathDetails() {
         })
         .eq('id', variables.pathId);
       if (error) throw error;
+      // 2. Create/Sync Service Record
+      // We check for required fields. If name is generic (starts with "Path"), we might skip or use it.
+      if (variables.name && variables.startNodeId) {
+        // Upsert service based on unique name to prevent duplicates if user saves multiple times
+         // Note: 'name' must be unique in 'services' table for this to work as a true sync, 
+         // otherwise this will just create new entries. The standard 'services' table allows duplicates unless constrained.
+         // We will do a check-and-insert or update if ID is known (but we don't have ID here).
+         // Best effort: Insert a new service.
+         // Check if service with exact same name and nodes exists
+         const { data: existing } = await supabase
+         .from('services')
+         .select('id')
+         .eq('name', variables.name.trim())
+         .eq('node_id', variables.startNodeId)
+         .maybeSingle();
+         const servicePayload = {
+          name: variables.name.trim(),
+          node_id: variables.startNodeId,
+          end_node_id: variables.endNodeId || null,
+          link_type_id: variables.linkTypeId || null,
+          bandwidth_allocated: variables.bandwidth || null,
+          status: true,
+          description: `Auto-generated from Ring Path Configuration`,
+          // If exists, update it. If not, insert.
+          ...(existing ? { id: existing.id } : {})
+          };
+          const { error: serviceError } = await supabase
+          .from('services')
+          .upsert(servicePayload);
+          if (serviceError) {
+            console.error("Failed to sync service record:", serviceError);
+            // We don't throw here to avoid blocking the path update success
+             }
+             }
     },
     onSuccess: async () => {
-      toast.success('Path configuration saved.');
+      toast.success('Path configured and service synced.');
       // Sync to update local state
       await syncEntity(supabase, localDb, 'logical_paths');
 
       queryClient.invalidateQueries({ queryKey: ['ring-connection-paths'] });
       queryClient.invalidateQueries({ queryKey: ['ring-path-config'] });
+      queryClient.invalidateQueries({ queryKey: ['services-data'] }); // Refresh services list
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
   });

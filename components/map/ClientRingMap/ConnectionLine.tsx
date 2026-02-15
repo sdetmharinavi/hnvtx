@@ -13,7 +13,7 @@ import { PathConfig, RingMapNode } from './types';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
-import useIsMobile from '@/hooks/useIsMobile'; // ADDED
+import useIsMobile from '@/hooks/useIsMobile';
 
 interface ConnectionLineProps {
   start: RingMapNode;
@@ -30,15 +30,6 @@ interface ConnectionLineProps {
   hasReverse?: boolean;
   rotation?: number;
 }
-
-type LogicalPath = {
-  id: string;
-  path_name: string;
-  path_role: string | null;
-  system_connection_id: string | null;
-  bandwidth_gbps: number | null;
-  remark: string | null;
-};
 
 export const ConnectionLine = ({
   start,
@@ -57,9 +48,7 @@ export const ConnectionLine = ({
   const map = useMap();
   const [manualPos, setManualPos] = useState<L.LatLng | null>(null);
 
-  // ADDED: Mobile check for dynamic hit box sizing
   const isMobile = useIsMobile();
-
   const shouldFetch = showPopup || !!manualPos;
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -147,31 +136,20 @@ export const ConnectionLine = ({
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
 
-  const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
-    queryKey: [
-      'logical_fiber_paths',
-      'segment',
-      start.id,
-      end.id,
-      config?.sourcePort,
-      config?.destPort,
-    ],
+  // ---------------------------------------------------------------------------
+  // QUERY 1: CONFIGURATION (logical_paths) - Used for Header/Service Name
+  // ---------------------------------------------------------------------------
+  const { data: configuredPaths = [], refetch: refetchConfig } = useQuery({
+    queryKey: ['logical_paths', 'segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-      const srcPort = config?.sourcePort;
-      const dstPort = config?.destPort;
-      let filter = '';
-      if (srcPort && dstPort) {
-        const dir1 = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id},source_port.eq.${srcPort},destination_port.eq.${dstPort})`;
-        const dir2 = `and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id},source_port.eq.${dstPort},destination_port.eq.${srcPort})`;
-        filter = `${dir1},${dir2}`;
-      } else {
-        filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
-      }
+      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
       const { data, error } = await supabase
-        .from('logical_fiber_paths')
-        .select('id, path_name, path_role, system_connection_id, bandwidth_gbps, remark')
+        .from('logical_paths')
+        .select('id, name, status, remark')
         .or(filter);
+
       if (error) throw error;
       return data;
     },
@@ -179,37 +157,65 @@ export const ConnectionLine = ({
     staleTime: 1000 * 60 * 5,
   });
 
+  // ---------------------------------------------------------------------------
+  // QUERY 2: PROVISIONING (logical_fiber_paths) - Used for Accordion Details
+  // ---------------------------------------------------------------------------
+  const { data: provisionedPaths = [] } = useQuery({
+    queryKey: ['logical_fiber_paths', 'segment', start.id, end.id],
+    queryFn: async () => {
+      if (!start.id || !end.id) return [];
+      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
+      const { data, error } = await supabase
+        .from('logical_fiber_paths')
+        .select('id, system_connection_id, remark')
+        .or(filter);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: shouldFetch,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Combine Results
   useEffect(() => {
-    if (logicalPaths.length > 0) {
-      const path = logicalPaths[0];
-      setConnectionId(path.system_connection_id || undefined);
-      setAllotedService(path.path_name || undefined);
-      if (!isEditingRemark) {
-        setRemarkText(path.remark || '');
-      }
-    } else if (config?.connectionId) {
-      setConnectionId(config.connectionId);
+    // 1. Get Name from Configuration (Primary)
+    const configPath = configuredPaths[0];
+    // 2. Get Connection ID from Provisioning (If exists)
+    const provPath = provisionedPaths[0];
+
+    // Priority: Display configured name. If not configured but somehow provisioned (legacy), use manual logic.
+    const serviceName = configPath?.name;
+    const sysConnectionId = provPath?.system_connection_id || undefined;
+    const remark = configPath?.remark || provPath?.remark || '';
+
+    setAllotedService(serviceName || config?.cableName);
+    setConnectionId(sysConnectionId || config?.connectionId);
+
+    if (!isEditingRemark) {
+      setRemarkText(remark);
     }
-  }, [logicalPaths, config?.connectionId, isEditingRemark]);
+  }, [configuredPaths, provisionedPaths, config, isEditingRemark]);
 
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
-      const existingPath = logicalPaths[0];
+      // Upsert into logical_paths (Configuration)
+      const existingPath = configuredPaths[0];
       if (existingPath) {
         const { error } = await supabase
-          .from('logical_fiber_paths')
+          .from('logical_paths')
           .update({ remark: text })
           .eq('id', existingPath.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('logical_fiber_paths').insert({
+        // Create manual entry if it doesn't exist
+        const { error } = await supabase.from('logical_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
-          source_port: config?.sourcePort || null,
-          destination_port: config?.destPort || null,
           remark: text,
-          path_name: `Manual Link: ${start.name} - ${end.name}`,
-          path_role: 'working',
+          name: `Manual Link: ${start.name} - ${end.name}`,
+          status: 'manual',
         });
         if (error) throw error;
       }
@@ -217,8 +223,8 @@ export const ConnectionLine = ({
     onSuccess: () => {
       toast.success('Remark saved successfully');
       setIsEditingRemark(false);
-      refetch();
-      queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
+      refetchConfig();
+      queryClient.invalidateQueries({ queryKey: ['logical_paths'] });
     },
     onError: (err: Error) => {
       toast.error(`Failed to save remark: ${err.message}`);
@@ -232,7 +238,7 @@ export const ConnectionLine = ({
   const handleCancelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(false);
-    setRemarkText(logicalPaths[0]?.remark || '');
+    setRemarkText(configuredPaths[0]?.remark || '');
   };
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -264,12 +270,15 @@ export const ConnectionLine = ({
     'N/A'
   );
 
+  // Has Config if EITHER configured OR provisioned
   const hasConfig =
-    config &&
-    (config.source ||
-      (config.fiberMetrics && config.fiberMetrics.length > 0) ||
-      config.cableName ||
-      config.fiberInfo);
+    (config &&
+      (config.source ||
+        (config.fiberMetrics && config.fiberMetrics.length > 0) ||
+        config.cableName ||
+        config.fiberInfo)) ||
+    configuredPaths.length > 0 ||
+    provisionedPaths.length > 0;
 
   // --- Rotated Click Handler ---
   const handlePolylineClick = (e: L.LeafletMouseEvent) => {
@@ -291,19 +300,10 @@ export const ConnectionLine = ({
     setManualPos(correctedLatLng);
   };
 
-  // ADDED: Hit box weight based on device
   const hitWeight = isMobile ? 30 : 5;
-
-  // console.log('config', config);
 
   return (
     <>
-      {/* 1. VISUAL LINE (Thinner, non-interactive to let clicks pass to hitbox if needed, or handled by group) */}
-      {/* Note: interactive={false} allows clicks to pass through to the HitBox if it is underneath.
-          However, Leaflet layers are usually SVG/Canvas z-indexed.
-          To ensure the HitBox captures the click, we render the HitBox *with* handlers
-          and the Visual line purely for display.
-      */}
       <Polyline
         positions={positions}
         pathOptions={{
@@ -311,16 +311,15 @@ export const ConnectionLine = ({
           weight: type === 'solid' ? 4 : 2.5,
           opacity: type === 'solid' ? 1 : 0.7,
           dashArray: type === 'dashed' ? '20, 20' : undefined,
-          interactive: false, // Visual line ignores clicks
+          interactive: false,
         }}
       />
 
-      {/* 2. HIT BOX LINE (Thick, Transparent, Handles Clicks) */}
       <Polyline
         positions={positions}
         pathOptions={{
           color: 'transparent',
-          weight: hitWeight, // 30px on mobile, 15px on desktop
+          weight: hitWeight,
           opacity: 0,
         }}
         eventHandlers={{ click: handlePolylineClick }}
@@ -355,10 +354,8 @@ export const ConnectionLine = ({
             {hasConfig ? (
               <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>
                 <div className='divide-y divide-gray-100 dark:divide-gray-700'>
-                  <PopupFiberRow
-                    connectionId={connectionId || config?.connectionId}
-                    allotedService={allotedService}
-                  />
+                  {/* Passes the Name from logical_paths and the ID from logical_fiber_paths */}
+                  <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
                 </div>
               </div>
             ) : (

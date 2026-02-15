@@ -11,16 +11,6 @@ import { PopupFiberRow } from '@/components/map/PopupFiberRow';
 import { toast } from 'sonner';
 import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
 import useIsMobile from '@/hooks/useIsMobile';
-import L from 'leaflet';
-
-type LogicalPath = {
-  id: string;
-  path_name: string;
-  path_role: string | null;
-  system_connection_id: string | null;
-  bandwidth_gbps: number | null;
-  remark: string | null;
-};
 
 export const MeshConnectionLine = ({
   startPos,
@@ -46,33 +36,49 @@ export const MeshConnectionLine = ({
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
-  const { data: logicalPaths = [], refetch } = useQuery<LogicalPath[]>({
+  // ---------------------------------------------------------------------------
+  // QUERY 1: CONFIGURATION (logical_paths) - Header
+  // ---------------------------------------------------------------------------
+  const { data: configuredPaths = [], refetch: refetchConfig } = useQuery({
+    queryKey: [
+      'logical_paths',
+      'mesh-segment',
+      start.id,
+      end.id,
+    ],
+    queryFn: async () => {
+      if (!start.id || !end.id) return [];
+      // Use standard bidirectional filter
+      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+      const { data, error } = await supabase
+        .from('logical_paths')
+        .select('id, name, status, remark')
+        .or(filter);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: shouldFetch && !!start.id && !!end.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // ---------------------------------------------------------------------------
+  // QUERY 2: PROVISIONING (logical_fiber_paths) - Details
+  // ---------------------------------------------------------------------------
+  const { data: provisionedPaths = []} = useQuery({
     queryKey: [
       'logical_fiber_paths',
       'mesh-segment',
       start.id,
       end.id,
-      config?.sourcePort,
-      config?.destPort,
     ],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-
-      const srcPort = config?.sourcePort;
-      const dstPort = config?.destPort;
-      let filter = '';
-
-      if (srcPort && dstPort) {
-        const dir1 = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id},source_port.eq.${srcPort},destination_port.eq.${dstPort})`;
-        const dir2 = `and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id},source_port.eq.${dstPort},destination_port.eq.${srcPort})`;
-        filter = `${dir1},${dir2}`;
-      } else {
-        filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
-      }
-
+      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+      
       const { data, error } = await supabase
         .from('logical_fiber_paths')
-        .select('id, path_name, path_role, system_connection_id, bandwidth_gbps, remark')
+        .select('id, system_connection_id, remark')
         .or(filter);
 
       if (error) throw error;
@@ -83,37 +89,41 @@ export const MeshConnectionLine = ({
   });
 
   useEffect(() => {
-    if (logicalPaths.length > 0) {
-      setConnectionId(logicalPaths[0].system_connection_id || undefined);
-      setAllotedService(logicalPaths[0].path_name || undefined);
+    // 1. Get Name from Configuration (Primary)
+    const configPath = configuredPaths[0];
+    // 2. Get Connection ID from Provisioning (If exists)
+    const provPath = provisionedPaths[0];
 
-      if (!isEditingRemark) {
-        setRemarkText(logicalPaths[0].remark || '');
-      }
-    } else if (config?.connectionId) {
-      setConnectionId(config.connectionId);
+    // Priority: Display configured name. If not configured but somehow provisioned, use fallback.
+    const serviceName = configPath?.name;
+    const sysConnectionId = provPath?.system_connection_id || undefined;
+    const remark = configPath?.remark || provPath?.remark || '';
+
+    setAllotedService(serviceName || config?.cableName);
+    setConnectionId(sysConnectionId || config?.connectionId);
+
+    if (!isEditingRemark) {
+      setRemarkText(remark);
     }
-  }, [logicalPaths, config?.connectionId, isEditingRemark]);
+  }, [configuredPaths, provisionedPaths, config, isEditingRemark]);
 
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
-      const existingPath = logicalPaths[0];
+      const existingPath = configuredPaths[0];
 
       if (existingPath) {
         const { error } = await supabase
-          .from('logical_fiber_paths')
+          .from('logical_paths')
           .update({ remark: text })
           .eq('id', existingPath.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('logical_fiber_paths').insert({
+        const { error } = await supabase.from('logical_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
-          source_port: config?.sourcePort || null,
-          destination_port: config?.destPort || null,
           remark: text,
-          path_name: `Manual Link: ${start.name} - ${end.name}`,
-          path_role: 'working',
+          name: `Manual Link: ${start.name} - ${end.name}`,
+          status: 'manual',
         });
         if (error) throw error;
       }
@@ -121,8 +131,8 @@ export const MeshConnectionLine = ({
     onSuccess: () => {
       toast.success('Remark saved successfully');
       setIsEditingRemark(false);
-      refetch();
-      queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
+      refetchConfig();
+      queryClient.invalidateQueries({ queryKey: ['logical_paths'] });
     },
     onError: (err: Error) => {
       toast.error(`Failed to save remark: ${err.message}`);
@@ -137,7 +147,7 @@ export const MeshConnectionLine = ({
   const handleCancelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(false);
-    setRemarkText(logicalPaths[0]?.remark || '');
+    setRemarkText(configuredPaths[0]?.remark || '');
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -150,36 +160,31 @@ export const MeshConnectionLine = ({
     color = customColor;
   }
 
+  // Count as configured if logical path exists (Configured OR Provisioned)
   const hasConfig =
-    config &&
-    (config.source || (config.fiberMetrics && config.fiberMetrics.length > 0) || config.cableName);
+    (config &&
+      (config.source || (config.fiberMetrics && config.fiberMetrics.length > 0) || config.cableName)) ||
+    configuredPaths.length > 0 || 
+    provisionedPaths.length > 0;
 
   // --- PATH CALCULATION ---
   const positions = useMemo(() => {
-    // 1. Check distance in Schematic Pixels
-    // In CRS.Simple, these are abstract units.
-    // If distance is very small (e.g., overlapping or adjacent due to sort), treat as loop.
     const dist = startPos.distanceTo(endPos);
     const isSelf = start.id === end.id;
 
     if (dist < 50 || isSelf) {
-      // Use loop path for self-connections or very close nodes
-      // Map curveOffset to an integer index to stack multiple loops if needed
-      const loopIndex = Math.round(curveOffset * 10); 
+      const loopIndex = Math.round(curveOffset * 10);
       return getLoopPath(startPos, loopIndex, 120);
-    } 
-    
+    }
+
     if (curveOffset !== 0) {
-      // Explicit curve (parallel lines)
       return getCurvedPath(startPos, endPos, curveOffset);
-    } 
-    
+    }
+
     if (isSpur || nodesLength !== 2) {
-      // Default: If it's a spur or complex ring, use straight line
       return [startPos, endPos];
     }
-    
-    // Default: If simple 2-node ring, use slight curve for aesthetics
+
     return getCurvedPath(startPos, endPos, 0.15);
 
   }, [startPos, endPos, start.id, end.id, curveOffset, isSpur, nodesLength]);
@@ -222,6 +227,7 @@ export const MeshConnectionLine = ({
             {hasConfig ? (
               <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>
                 <div className='divide-y divide-gray-100 dark:divide-gray-700'>
+                   {/* Passes the Name from logical_paths and the ID from logical_fiber_paths */}
                   <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
                 </div>
               </div>
