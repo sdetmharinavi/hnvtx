@@ -40,6 +40,7 @@ import { useAllSystemConnectionsData } from '@/hooks/data/useAllSystemConnection
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard'; // Added
+import { useUpsertSystemConnection } from '@/hooks/database/system-connection-hooks';
 
 // Dynamic Imports
 const SystemConnectionFormModal = dynamic(
@@ -117,6 +118,9 @@ export default function GlobalConnectionsPage() {
   const { canAccess } = useUser();
   const canEdit = canAccess(PERMISSIONS.canManage);
   const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+
+  const { mutate: upsertConnection, isPending: isUpserting } = useUpsertSystemConnection();
+  
 
   // Dropdown Options
   const { options: mediaOptions, isLoading: loadingMedia } = useLookupTypeOptions('MEDIA_TYPES');
@@ -261,6 +265,16 @@ export default function GlobalConnectionsPage() {
     isLoading: isBusy,
     isFetching: isFetching,
   });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSave = (data: any) => {
+    upsertConnection(data, {
+      onSuccess: () => {
+        editModal.close();
+        refetch(); // Reload list
+      },
+    });
+  };
 
   if (canEdit) {
     headerActions.push({
@@ -425,8 +439,8 @@ export default function GlobalConnectionsPage() {
                 } as V_systems_completeRowSchema
               }
               editingConnection={editModal.record}
-              onSubmit={crudActions.handleSave}
-              isLoading={isMutating}
+              onSubmit={handleSave}
+              isLoading={isMutating || isUpserting}
             />
           )}
 
