@@ -23,6 +23,7 @@ import { useUser } from '@/providers/UserProvider';
 import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
 import { Filters } from '@/hooks/database/queries-type-helpers';
+import { useQuery } from '@tanstack/react-query';
 
 type LogicalPathView = Row<'v_end_to_end_paths'> & { id: string | null };
 
@@ -40,7 +41,7 @@ const useLogicalPathsData = (params: {
 
     // FIX: Use standard SQL syntax for the 'or' filter passed to the RPC
     if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''"); // Basic SQL escape
+      const term = searchQuery.trim().replace(/'/g, "''");
       // The RPC's build_where_clause expects a string that fits inside `AND (...)`
       const searchString = `path_name ILIKE '%${term}%' OR route_names ILIKE '%${term}%'`;
       filters.or = searchString;
@@ -82,6 +83,27 @@ const useLogicalPathsData = (params: {
     error,
     refetch,
   };
+};
+
+// NEW HOOK: Fetch specific status counts
+const usePathStats = () => {
+  const supabase = createClient();
+  return useQuery({
+    queryKey: ['logical-path-stats'],
+    queryFn: async () => {
+      // Run counts in parallel
+      const [active, provisioned] = await Promise.all([
+        supabase.from('v_end_to_end_paths').select('*', { count: 'exact', head: true }).ilike('operational_status', 'Active'),
+        supabase.from('v_end_to_end_paths').select('*', { count: 'exact', head: true }).ilike('operational_status', 'Provisioned'),
+      ]);
+      
+      return {
+        active: active.count || 0,
+        provisioned: provisioned.count || 0
+      };
+    },
+    staleTime: 60 * 1000 // 1 minute
+  });
 };
 
 export default function LogicalPathsPage() {
@@ -178,6 +200,8 @@ export default function LogicalPathsPage() {
     return actions;
   }, [canDelete, handleDeletePath, router]);
 
+const { data: stats } = usePathStats();
+
   const headerActions = useStandardHeaderActions<'v_end_to_end_paths'>({
     data: logicalPaths,
     onRefresh: async () => {
@@ -189,7 +213,7 @@ export default function LogicalPathsPage() {
     exportConfig: canEdit ? { tableName: 'v_end_to_end_paths' } : undefined,
   });
 
-  const headerStats = useMemo<StatProps[]>(() => {
+    const headerStats = useMemo<StatProps[]>(() => {
     return [
       {
         value: totalCount,
@@ -198,21 +222,21 @@ export default function LogicalPathsPage() {
         isActive: !statusFilter,
       },
       {
-        value: null, 
-        label: 'Configured',
+        value: stats?.active ?? '-', // Use fetched stats or '-' if loading
+        label: 'Active',
         color: 'success',
-        onClick: () => setStatusFilter('configured'),
-        isActive: statusFilter === 'configured',
+        onClick: () => setStatusFilter('Active'),
+        isActive: statusFilter === 'Active',
       },
       {
-        value: null,
+        value: stats?.provisioned ?? '-', // Use fetched stats or '-' if loading
         label: 'Provisioned',
         color: 'primary',
-        onClick: () => setStatusFilter('provisioned'),
-        isActive: statusFilter === 'provisioned',
+        onClick: () => setStatusFilter('Provisioned'),
+        isActive: statusFilter === 'Provisioned',
       },
     ];
-  }, [totalCount, statusFilter]);
+  }, [totalCount, statusFilter, stats]);
 
   if (error) {
     return (
@@ -273,9 +297,9 @@ export default function LogicalPathsPage() {
                 className='px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
               >
                 <option value=''>All</option>
-                <option value='configured'>Configured</option>
-                <option value='provisioned'>Provisioned</option>
-                <option value='unprovisioned'>Unprovisioned</option>
+                <option value='Active'>Active</option>
+                <option value='Provisioned'>Provisioned</option>
+                <option value='Unprovisioned'>Unprovisioned</option>
               </select>
             </div>
           </SearchAndFilters>
