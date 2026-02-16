@@ -156,7 +156,10 @@ export default function RingPathsPage() {
         sortable: true,
         width: 250,
         render: (val) => (
-          <span className="font-semibold text-gray-800 dark:text-gray-200">{val as string}</span>
+          <TruncateTooltip
+            className='font-semibold text-gray-800 dark:text-gray-200'
+            text={val as string}
+          />
         ),
       },
       {
@@ -165,14 +168,16 @@ export default function RingPathsPage() {
         dataIndex: 'start_node',
         width: 200,
         render: (_, record) => (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              {record.start_node?.name || 'Unknown'}
-            </span>
-            <span className="text-gray-400">→</span>
-            <span className="text-gray-600 dark:text-gray-400">
-              {record.end_node?.name || 'Unknown'}
-            </span>
+          <div className='flex items-center gap-2 text-sm'>
+            <TruncateTooltip
+              className='text-gray-600 dark:text-gray-400'
+              text={record.start_node?.name || 'Unknown'}
+            />
+            <span className='text-gray-400'>→</span>
+            <TruncateTooltip
+              className='text-gray-600 dark:text-gray-400'
+              text={record.end_node?.name || 'Unknown'}
+            />
           </div>
         ),
       },

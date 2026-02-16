@@ -34,6 +34,8 @@ export function useAssignFiberToConnection() {
     onSuccess: () => {
       toast.success('Fiber assigned successfully!');
       // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['v_ofc_connections_complete-data'] });
+      queryClient.invalidateQueries({ queryKey: ['v_system_connections_complete-data'] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
@@ -59,6 +61,8 @@ export function useReleaseFiber() {
     },
     onSuccess: () => {
       toast.success('Fiber unlinked successfully!');
+      queryClient.invalidateQueries({ queryKey: ['v_ofc_connections_complete-data'] });
+      queryClient.invalidateQueries({ queryKey: ['v_system_connections_complete-data'] });
       queryClient.invalidateQueries({ queryKey: ['ofc_connections-data'] });
       queryClient.invalidateQueries({ queryKey: ['all-ofc-connections'] });
       queryClient.invalidateQueries({ queryKey: ['v_cable_utilization'] });
