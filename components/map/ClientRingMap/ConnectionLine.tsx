@@ -79,45 +79,34 @@ export const ConnectionLine = ({
 
   const activePopupPos = manualPos || (showPopup ? centerPos : null);
 
-  // --- Dynamic Offset Calculation for Visual "Up" ---
   const popupOffset = useMemo(() => {
-    const distance = 20; // Pixel distance from line
+    const distance = 20;
     const rad = (rotation * Math.PI) / 180;
-
     const x = -distance * Math.sin(rad);
     const y = -distance * Math.cos(rad);
-
     return L.point(x, y);
   }, [rotation]);
 
   const popupRef = useRef<L.Popup>(null);
 
-  // Apply counter-rotation to popup content
   useEffect(() => {
     if (activePopupPos && popupRef.current) {
       const timer = setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const popup = popupRef.current as any;
         if (!popup || !popup._container) return;
-
         const wrapper = popup._container.querySelector(
           '.leaflet-popup-content-wrapper',
         ) as HTMLElement;
         const tip = popup._container.querySelector('.leaflet-popup-tip-container') as HTMLElement;
-        const shadow = popup._container.querySelector('.leaflet-popup-shadow') as HTMLElement;
-
         if (wrapper) {
-          wrapper.style.transition = 'transform 0.3s ease-out';
           wrapper.style.transformOrigin = 'center bottom';
-
           if (rotation !== 0) {
             wrapper.style.transform = `rotate(${-rotation}deg)`;
             if (tip) tip.style.opacity = '0';
-            if (shadow) shadow.style.opacity = '0';
           } else {
             wrapper.style.transform = '';
             if (tip) tip.style.opacity = '1';
-            if (shadow) shadow.style.opacity = '1';
           }
         }
       }, 10);
@@ -125,7 +114,6 @@ export const ConnectionLine = ({
     }
   }, [rotation, activePopupPos]);
 
-  // Data Fetching & Mutations
   const { data, isLoading, isError } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
@@ -136,20 +124,15 @@ export const ConnectionLine = ({
   const [connectionId, setConnectionId] = useState<string | undefined>(undefined);
   const [allotedService, setAllotedService] = useState<string | undefined>(undefined);
 
-  // ---------------------------------------------------------------------------
-  // QUERY 1: CONFIGURATION (logical_paths) - Used for Header/Service Name
-  // ---------------------------------------------------------------------------
   const { data: configuredPaths = [], refetch: refetchConfig } = useQuery({
     queryKey: ['logical_paths', 'segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
       const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
-
       const { data, error } = await supabase
         .from('logical_paths')
         .select('id, name, status, remark')
         .or(filter);
-
       if (error) throw error;
       return data;
     },
@@ -157,20 +140,15 @@ export const ConnectionLine = ({
     staleTime: 1000 * 60 * 5,
   });
 
-  // ---------------------------------------------------------------------------
-  // QUERY 2: PROVISIONING (logical_fiber_paths) - Used for Accordion Details
-  // ---------------------------------------------------------------------------
   const { data: provisionedPaths = [] } = useQuery({
     queryKey: ['logical_fiber_paths', 'segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
       const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
-
       const { data, error } = await supabase
         .from('logical_fiber_paths')
         .select('id, system_connection_id, remark')
         .or(filter);
-
       if (error) throw error;
       return data;
     },
@@ -178,44 +156,35 @@ export const ConnectionLine = ({
     staleTime: 1000 * 60 * 5,
   });
 
-  // Combine Results
   useEffect(() => {
-    // 1. Get Name from Configuration (Primary)
     const configPath = configuredPaths[0];
-    // 2. Get Connection ID from Provisioning (If exists)
     const provPath = provisionedPaths[0];
-
-    // Priority: Display configured name. If not configured but somehow provisioned (legacy), use manual logic.
     const serviceName = configPath?.name;
     const sysConnectionId = provPath?.system_connection_id || undefined;
-    const remark = configPath?.remark || provPath?.remark || '';
-
+    const remark = provPath?.remark || configPath?.remark || '';
     setAllotedService(serviceName || config?.cableName);
     setConnectionId(sysConnectionId || config?.connectionId);
-
-    if (!isEditingRemark) {
-      setRemarkText(remark);
-    }
+    if (!isEditingRemark) setRemarkText(remark);
   }, [configuredPaths, provisionedPaths, config, isEditingRemark]);
 
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
-      // Upsert into logical_paths (Configuration)
-      const existingPath = configuredPaths[0];
+      // THE FIX: Target logical_fiber_paths for remark updates
+      const existingPath = provisionedPaths[0];
       if (existingPath) {
         const { error } = await supabase
-          .from('logical_paths')
+          .from('logical_fiber_paths')
           .update({ remark: text })
           .eq('id', existingPath.id);
         if (error) throw error;
       } else {
-        // Create manual entry if it doesn't exist
-        const { error } = await supabase.from('logical_paths').insert({
+        // Create a minimal logical_fiber_path if none exists, to store the remark
+        const { error } = await supabase.from('logical_fiber_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
           remark: text,
-          name: `Manual Link: ${start.name} - ${end.name}`,
-          status: 'manual',
+          path_name: `Remark for Link: ${start.name} - ${end.name}`,
+          path_role: 'working', // Default role
         });
         if (error) throw error;
       }
@@ -223,12 +192,11 @@ export const ConnectionLine = ({
     onSuccess: () => {
       toast.success('Remark saved successfully');
       setIsEditingRemark(false);
+      // Invalidate both queries to be safe
       refetchConfig();
-      queryClient.invalidateQueries({ queryKey: ['logical_paths'] });
+      queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
     },
-    onError: (err: Error) => {
-      toast.error(`Failed to save remark: ${err.message}`);
-    },
+    onError: (err: Error) => toast.error(`Failed to save remark: ${err.message}`),
   });
 
   const handleSaveClick = (e: React.MouseEvent) => {
@@ -238,15 +206,13 @@ export const ConnectionLine = ({
   const handleCancelClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(false);
-    setRemarkText(configuredPaths[0]?.remark || '');
+    setRemarkText(provisionedPaths[0]?.remark || configuredPaths[0]?.remark || '');
   };
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditingRemark(true);
   };
-  const handleClosePopup = () => {
-    setManualPos(null);
-  };
+  const handleClosePopup = () => setManualPos(null);
 
   const defaultColor =
     type === 'solid'
@@ -269,18 +235,14 @@ export const ConnectionLine = ({
   ) : (
     'N/A'
   );
-
-  // Has Config if EITHER configured OR provisioned
   const hasConfig =
     (config &&
       (config.source ||
         (config.fiberMetrics && config.fiberMetrics.length > 0) ||
-        config.cableName ||
-        config.fiberInfo)) ||
+        config.cableName)) ||
     configuredPaths.length > 0 ||
     provisionedPaths.length > 0;
 
-  // --- Rotated Click Handler ---
   const handlePolylineClick = (e: L.LeafletMouseEvent) => {
     L.DomEvent.stopPropagation(e);
     if (rotation === 0) {
@@ -314,18 +276,12 @@ export const ConnectionLine = ({
           interactive: false,
         }}
       />
-
       <Polyline
         positions={positions}
-        pathOptions={{
-          color: 'transparent',
-          weight: hitWeight,
-          opacity: 0,
-        }}
+        pathOptions={{ color: 'transparent', weight: hitWeight, opacity: 0 }}
         eventHandlers={{ click: handlePolylineClick }}
         ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
       />
-
       {activePopupPos && (
         <Popup
           position={activePopupPos}
@@ -350,22 +306,17 @@ export const ConnectionLine = ({
             >
               <X size={14} />
             </button>
-
             {hasConfig ? (
               <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>
                 <div className='divide-y divide-gray-100 dark:divide-gray-700'>
-                  {/* Passes the Name from logical_paths and the ID from logical_fiber_paths */}
                   <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
                 </div>
               </div>
-            ) : (
-              type === 'solid' && (
-                <div className='mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center'>
-                  Physical link not provisioned
-                </div>
-              )
-            )}
-
+            ) : type === 'solid' ? (
+              <div className='mb-2 text-xs text-gray-400 dark:text-gray-500 italic border border-dashed border-gray-300 dark:border-gray-600 p-2 rounded text-center'>
+                Physical link not provisioned
+              </div>
+            ) : null}
             <PopupRemarksRow
               remark={remarkText}
               isEditing={isEditingRemark}
@@ -376,7 +327,6 @@ export const ConnectionLine = ({
               onCancelClick={handleCancelClick}
               onTextChange={setRemarkText}
             />
-
             <div className='flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2'>
               <div className='mt-1 flex justify-between items-center px-1'>
                 <span className='font-medium flex items-center gap-1'>
