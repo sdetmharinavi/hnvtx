@@ -1706,6 +1706,7 @@ export const v_expenses_completeRowSchema = z.object({
   expense_date: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
   invoice_no: z.string().nullable(),
+  spender_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   spent_by_employee_id: z.uuid().nullable(),
   terminal_location: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),

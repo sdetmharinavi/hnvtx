@@ -4282,6 +4282,7 @@ export type Database = {
           expense_date: string | null
           id: string | null
           invoice_no: string | null
+          spender_name: string | null
           spent_by_employee_id: string | null
           terminal_location: string | null
           updated_at: string | null
@@ -6392,6 +6393,10 @@ export type Database = {
           p_movement_id: string
           p_remarks: string
         }
+        Returns: undefined
+      }
+      update_path_operational_status: {
+        Args: { p_path_id: string; p_status_name: string }
         Returns: undefined
       }
       update_ring_system_associations: {

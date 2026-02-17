@@ -1686,6 +1686,7 @@ export type V_expenses_completeRow = {
     expense_date: string | null;
     id: string | null;
     invoice_no: string | null;
+    spender_name: string | null;
     spent_by_employee_id: string | null;
     terminal_location: string | null;
     updated_at: string | null;
