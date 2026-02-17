@@ -13,6 +13,7 @@ import { Maximize, Minimize, Printer, RotateCw, RotateCcw, Plus, Minus, Camera }
 import useIsMobile from '@/hooks/useIsMobile';
 import { calculateGeoJsonLength } from '@/utils/distance';
 import { toast } from 'sonner';
+import { MeasureController } from './MeasureController'; // IMPORTED
 
 interface KmlMapProps {
   kmlUrl: string | null;
@@ -164,6 +165,9 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   const [rotation, setRotation] = useState(0); 
   const isMobile = useIsMobile();
   
+  // NEW STATE: Measurement Tool
+  const [isMeasureMode, setIsMeasureMode] = useState(false);
+
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -197,10 +201,15 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
   }, [isFullScreen]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullScreen(false); };
+    const handleEsc = (e: KeyboardEvent) => { 
+        if (e.key === 'Escape') {
+            if (isMeasureMode) setIsMeasureMode(false);
+            else setIsFullScreen(false);
+        } 
+    };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
+  }, [isMeasureMode]); // Add dependency
 
   useEffect(() => {
     if (!kmlUrl) { setGeoJsonData(null); setKmlStyles({}); setErrorMsg(null); return; }
@@ -255,6 +264,12 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onEachFeature = (feature: any, layer: L.Layer) => {
+    // Disable popup interactions if in measure mode to prevent clicks being captured
+    if (isMeasureMode) {
+        layer.unbindPopup();
+        return;
+    }
+
     if (feature.properties) {
       const { name, description } = feature.properties;
       let extraContent = "";
@@ -393,6 +408,22 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
       {/* Map Controls */}
       <div className="absolute bottom-6 right-4 z-1000 flex flex-col gap-2 no-print">
         
+        {/* Tool Group */}
+        <div className="flex flex-col gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+           {/* MEASURE BUTTON */}
+           <button
+            onClick={() => setIsMeasureMode(!isMeasureMode)}
+            className={`p-2 transition-colors ${
+              isMeasureMode 
+              ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" 
+              : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+            }`}
+            title="Measure Distance"
+           >
+             <Ruler size={18} />
+           </button>
+        </div>
+
         {/* Zoom Controls */}
         <div className="flex flex-col gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-600">
            <button 
@@ -506,6 +537,13 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
               <MapController data={geoJsonData} isFullScreen={isFullScreen} rotation={rotation} />
             </>
           )}
+
+          {/* New Measurement Controller */}
+          <MeasureController 
+             isActive={isMeasureMode} 
+             onClose={() => setIsMeasureMode(false)} 
+          />
+
         </MapContainer>
       </div>
     </div>
