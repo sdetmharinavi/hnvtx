@@ -352,13 +352,29 @@ export const FiberAllocationModal: FC<FiberAllocationModalProps> = ({
   ]);
 
   const provisionMutation = useProvisionServicePath();
-  const startNode = useMemo(
-    () =>
-      parentSystem && allNodesResult?.data
-        ? allNodesResult.data.find((n) => n.id === parentSystem.node_id)
-        : null,
-    [parentSystem, allNodesResult]
-  );
+
+  // FIX: Robustly determine the Start Node
+  const startNode = useMemo(() => {
+    // Priority 1: Use parentSystem (System Details Context)
+    if (parentSystem && allNodesResult?.data) {
+      const found = allNodesResult.data.find((n) => n.id === parentSystem.node_id);
+      if (found) return { id: found.id!, name: found.name! };
+    }
+
+    // Priority 2: Use connection details (Global Connections Context)
+    // We try to find the node ID in our loaded list, or fallback to the name in the connection object
+    if (connection?.sn_node_id) {
+       const found = allNodesResult?.data?.find(n => n.id === connection.sn_node_id);
+       if (found) return { id: found.id!, name: found.name! };
+       
+       if (connection.sn_node_name) {
+           return { id: connection.sn_node_id, name: connection.sn_node_name };
+       }
+    }
+    
+    return null;
+  }, [parentSystem, connection, allNodesResult]);
+
   const endNode = useMemo(
     () =>
       connection && allNodesResult?.data
