@@ -9,7 +9,7 @@ import JSZip from 'jszip';
 import { toPng } from 'html-to-image'; // THE FIX: Replaced html2canvas
 import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
-import { Maximize, Minimize, Printer, RotateCw, RotateCcw, Plus, Minus, Camera } from 'lucide-react';
+import { Maximize, Minimize, Printer, RotateCw, RotateCcw, Plus, Minus, Camera, Ruler } from 'lucide-react';
 import useIsMobile from '@/hooks/useIsMobile';
 import { calculateGeoJsonLength } from '@/utils/distance';
 import { toast } from 'sonner';
