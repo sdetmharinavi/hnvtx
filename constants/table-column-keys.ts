@@ -1033,6 +1033,7 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_area_name: 'maintenance_area_name',
     is_closed_loop: 'is_closed_loop',
     topology_config: 'topology_config',
+    associated_system_names: 'associated_system_names',
     bts_status: 'bts_status',
     ofc_status: 'ofc_status',
     spec_status: 'spec_status',

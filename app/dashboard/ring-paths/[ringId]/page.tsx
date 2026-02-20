@@ -162,25 +162,25 @@ export default function RingPathsPage() {
           />
         ),
       },
-      {
-        key: 'topology',
-        title: 'Topology',
-        dataIndex: 'start_node',
-        width: 200,
-        render: (_, record) => (
-          <div className='flex items-center gap-2 text-sm'>
-            <TruncateTooltip
-              className='text-gray-600 dark:text-gray-400'
-              text={record.start_node?.name || 'Unknown'}
-            />
-            <span className='text-gray-400'>→</span>
-            <TruncateTooltip
-              className='text-gray-600 dark:text-gray-400'
-              text={record.end_node?.name || 'Unknown'}
-            />
-          </div>
-        ),
-      },
+      // {
+      //   key: 'topology',
+      //   title: 'Topology',
+      //   dataIndex: 'start_node',
+      //   width: 200,
+      //   render: (_, record) => (
+      //     <div className='flex items-center gap-2 text-sm'>
+      //       <TruncateTooltip
+      //         className='text-gray-600 dark:text-gray-400'
+      //         text={record.start_node?.name || 'Unknown'}
+      //       />
+      //       <span className='text-gray-400'>→</span>
+      //       <TruncateTooltip
+      //         className='text-gray-600 dark:text-gray-400'
+      //         text={record.end_node?.name || 'Unknown'}
+      //       />
+      //     </div>
+      //   ),
+      // },
       {
         key: 'source_config',
         title: 'Source System',

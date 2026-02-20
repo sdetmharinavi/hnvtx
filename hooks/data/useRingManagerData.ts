@@ -33,6 +33,7 @@ export const useRingManagerData = (params: DataQueryHookParams): RingManagerData
         `description ILIKE '%${term}%' OR ` +
         `ring_type_name ILIKE '%${term}%' OR ` +
         `maintenance_area_name ILIKE '%${term}%'` +
+`associated_system_names ILIKE '%${term}%'` +
         `)`;
     }
 
@@ -96,7 +97,8 @@ export const useRingManagerData = (params: DataQueryHookParams): RingManagerData
           ring.name?.toLowerCase().includes(lowerQuery) ||
           ring.description?.toLowerCase().includes(lowerQuery) ||
           ring.ring_type_name?.toLowerCase().includes(lowerQuery) ||
-          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery)
+          ring.maintenance_area_name?.toLowerCase().includes(lowerQuery) ||
+associated_system_names?.toLowerCase().includes(lowerQuery) 
       );
     }
 

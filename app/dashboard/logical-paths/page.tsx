@@ -115,7 +115,7 @@ export default function LogicalPathsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>(''); // Local filter state
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -148,6 +148,20 @@ export default function LogicalPathsPage() {
     });
     setDeleteModalOpen(true);
   }, []);
+
+  const handleToggleStatus = useCallback((record: Row<'v_end_to_end_paths'>) => {
+    if (!record.path_id) return;
+    
+    const currentStatus = record.operational_status || 'Provisioned';
+    const newStatus = currentStatus === 'Active' ? 'Provisioned' : 'Active';
+    
+    statusMutation.mutate({ pathId: record.path_id, status: newStatus }, {
+      onSuccess: () => {
+        refetch();
+        refetchStats();
+      }
+    });
+  }, [statusMutation, refetch, refetchStats]);
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
@@ -222,15 +236,15 @@ const { data: stats } = usePathStats();
         isActive: !statusFilter,
       },
       {
-        value: stats?.active ?? '-', // Use fetched stats or '-' if loading
-        label: 'Active',
+        value: stats?.active ?? '-',
+        label: 'Active (Live)',
         color: 'success',
         onClick: () => setStatusFilter('Active'),
         isActive: statusFilter === 'Active',
       },
       {
-        value: stats?.provisioned ?? '-', // Use fetched stats or '-' if loading
-        label: 'Provisioned',
+        value: stats?.provisioned ?? '-',
+        label: 'Provisioned (Planned)',
         color: 'primary',
         onClick: () => setStatusFilter('Provisioned'),
         isActive: statusFilter === 'Provisioned',
@@ -299,7 +313,7 @@ const { data: stats } = usePathStats();
                 <option value=''>All</option>
                 <option value='Active'>Active</option>
                 <option value='Provisioned'>Provisioned</option>
-                <option value='Unprovisioned'>Unprovisioned</option>
+                <option value='Faulty'>Faulty</option>
               </select>
             </div>
           </SearchAndFilters>

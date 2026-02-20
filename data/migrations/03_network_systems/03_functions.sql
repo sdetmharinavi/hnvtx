@@ -338,6 +338,8 @@ DECLARE
     parent_hub_id UUID;
     parent_node_id UUID;
     parent_node_name TEXT;
+    parent_hub_system_name TEXT;
+    parent_hub_ip INET;
 
     -- Track valid SYSTEM pairs (not node pairs)
     valid_system_pairs TEXT[] := ARRAY[]::TEXT[];
@@ -355,7 +357,7 @@ BEGIN
     first_hub := NULL;
 
     FOR hub_nodes IN
-        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name, s.ip_address
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -368,14 +370,16 @@ BEGIN
 
         IF prev_hub IS NOT NULL THEN
             -- Connect Previous Hub System to Current Hub System
+            -- Name Format: RingName: SysName:IP -> SysName:IP
             INSERT INTO public.logical_paths (
                 name, ring_id, 
                 start_node_id, end_node_id, 
                 source_system_id, destination_system_id
             )
             VALUES (
-                -- Naming includes System Names now to be specific
-                ring_info.name || ': ' || prev_hub.system_name || ' -> ' || hub_nodes.system_name, 
+                ring_info.name || ': ' || 
+                prev_hub.system_name || ':' || COALESCE(host(prev_hub.ip_address), '') || ' -> ' || 
+                hub_nodes.system_name || ':' || COALESCE(host(hub_nodes.ip_address), ''), 
                 p_ring_id, 
                 prev_hub.node_id, hub_nodes.node_id,
                 prev_hub.system_id, hub_nodes.system_id
@@ -399,7 +403,9 @@ BEGIN
             source_system_id, destination_system_id
         )
         VALUES (
-            ring_info.name || ': ' || prev_hub.system_name || ' -> ' || first_hub.system_name, 
+            ring_info.name || ': ' || 
+            prev_hub.system_name || ':' || COALESCE(host(prev_hub.ip_address), '') || ' -> ' || 
+            first_hub.system_name || ':' || COALESCE(host(first_hub.ip_address), ''), 
             p_ring_id, 
             prev_hub.node_id, first_hub.node_id,
             prev_hub.system_id, first_hub.system_id
@@ -413,7 +419,7 @@ BEGIN
     -- PHASE 2: GENERATE SPURS (Parent -> Spur)
     -- ==========================================
     FOR spur_rec IN
-        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name
+        SELECT s.id as system_id, n.id as node_id, n.name as node_name, rbs.order_in_ring, s.system_name, s.ip_address
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -422,7 +428,8 @@ BEGIN
         -- Find the parent hub (The hub with order = floor(spur.order))
         parent_hub_id := NULL; 
         
-        SELECT s.id, n.id, s.system_name INTO parent_hub_id, parent_node_id, parent_node_name
+        SELECT s.id, n.id, s.system_name, s.ip_address 
+        INTO parent_hub_id, parent_node_id, parent_hub_system_name, parent_hub_ip
         FROM public.ring_based_systems rbs
         JOIN public.systems s ON rbs.system_id = s.id
         JOIN public.nodes n ON s.node_id = n.id
@@ -439,7 +446,9 @@ BEGIN
                 source_system_id, destination_system_id
             )
             VALUES (
-                ring_info.name || ' (Spur): ' || parent_node_name || ' -> ' || spur_rec.system_name, 
+                ring_info.name || ' (Spur): ' || 
+                parent_hub_system_name || ':' || COALESCE(host(parent_hub_ip), '') || ' -> ' || 
+                spur_rec.system_name || ':' || COALESCE(host(spur_rec.ip_address), ''), 
                 p_ring_id, 
                 parent_node_id, spur_rec.node_id,
                 parent_hub_id, spur_rec.system_id
@@ -459,7 +468,7 @@ BEGIN
     DELETE FROM public.logical_paths
     WHERE ring_id = p_ring_id
       AND (source_system_id || '_' || destination_system_id) != ALL(valid_system_pairs)
-      -- Important: Only delete if not actively provisioned (safety check)
+      -- Important: Only delete if not actively provisioned
       AND (status IS NULL OR status = 'unprovisioned');
 
     RETURN QUERY SELECT * FROM public.logical_paths WHERE ring_id = p_ring_id;

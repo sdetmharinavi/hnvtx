@@ -11,13 +11,13 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
     overrides: {
       path_name: {
         title: 'Path Name',
-        width: 350, // Explicit width to prevent early truncation
+        width: 250, // Explicit width to prevent early truncation
         sortable: true,
         searchable: true,
         render: (value) => (
           <TruncateTooltip 
             text={(value as string) ?? 'N/A'} 
-            className="font-semibold text-gray-900 dark:text-gray-100" 
+            className="font-semibold text-gray-900 dark:text-gray-100 max-w-60 wrap-break-word" 
           />
         ),
       },
@@ -35,9 +35,9 @@ export const LogicalPathsTableColumns = (data: Row<'v_end_to_end_paths'>[]) => {
       },
       route_names: {
         title: 'Route Path',
-        width: 400, // Wide column for route chains
+        width: 250, // Wide column for route chains
         searchable: true,
-        render: (value) => <TruncateTooltip text={(value as string) ?? 'N/A'} />,
+        render: (value) => <TruncateTooltip className='max-w-60 wrap-break-word' text={(value as string) ?? 'N/A'} />,
       },
       total_distance_km: {
         title: 'Distance (km)',

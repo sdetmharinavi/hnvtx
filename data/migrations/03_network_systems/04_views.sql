@@ -282,7 +282,14 @@ SELECT
   (SELECT COUNT(s.node_id) FROM public.ring_based_systems rbs JOIN public.systems s ON rbs.system_id = s.id WHERE rbs.ring_id = r.id) as total_nodes,
   lt_ring.name AS ring_type_name,
   lt_ring.code AS ring_type_code,
-  ma.name AS maintenance_area_name
+  ma.name AS maintenance_area_name,
+  -- NEW COLUMN: Aggregated system names for search
+  (
+    SELECT string_agg(s.system_name, ', ')
+    FROM public.ring_based_systems rbs
+    JOIN public.systems s ON rbs.system_id = s.id
+    WHERE rbs.ring_id = r.id
+  ) as associated_system_names
 FROM public.rings r
 LEFT JOIN public.lookup_types lt_ring ON r.ring_type_id = lt_ring.id
 LEFT JOIN public.maintenance_areas ma ON r.maintenance_terminal_id = ma.id;
