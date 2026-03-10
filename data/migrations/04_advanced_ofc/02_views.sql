@@ -31,9 +31,6 @@ JOIN public.junction_closures jcs ON (cs.start_node_type = 'jc' AND cs.start_nod
 
 -- View showing end-to-end logical path summaries.
 -- path: data/migrations/04_advanced_ofc/02_views.sql
-
-DROP VIEW IF EXISTS public.v_end_to_end_paths;
-
 CREATE OR REPLACE VIEW public.v_end_to_end_paths WITH (security_invoker = true) AS
 WITH path_ordering AS (
     -- Subquery to ensure we get the distinct routes in the correct physical order

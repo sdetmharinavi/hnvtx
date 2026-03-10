@@ -1,6 +1,6 @@
 // components/common/entity-management/EntityDetailsPanel.tsx
 import React, { useState } from 'react';
-import { FiEdit3, FiTrash2, FiEye, FiLoader } from 'react-icons/fi';
+import { FiEye, FiLoader } from 'react-icons/fi';
 import { BaseEntity, EntityConfig } from '@/components/common/entity-management/types';
 import { DetailItem } from '@/components/common/entity-management/DetailItem';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
@@ -8,32 +8,21 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 interface EntityDetailsPanelProps<T extends BaseEntity> {
   entity: T | null;
   config: EntityConfig<T>;
-  onEdit?: () => void;
-  onDelete?: (entity: { id: string; name: string }) => void;
   onViewDetails?: () => void;
 }
 
 export function EntityDetailsPanel<T extends BaseEntity>({
   entity,
   config,
-  onEdit,
-  onDelete,
   onViewDetails,
 }: EntityDetailsPanelProps<T>) {
-  // Local state to track navigation action
   const [isNavigating, setIsNavigating] = useState(false);
 
   const handleViewDetails = async () => {
     if (onViewDetails && !isNavigating) {
       setIsNavigating(true);
-      // Execute the callback (usually router.push)
       onViewDetails();
-
-      // Safety timeout: if navigation fails or is cancelled, reset state after 2s
-      // Short enough to not annoy, long enough to cover page transition
-      setTimeout(() => {
-        setIsNavigating(false);
-      }, 5000);
+      setTimeout(() => setIsNavigating(false), 5000);
     }
   };
 
@@ -49,7 +38,6 @@ export function EntityDetailsPanel<T extends BaseEntity>({
 
   return (
     <div className='p-4 space-y-4 relative'>
-      {/* Optional Overlay if action is critical */}
       {isNavigating && (
         <div className='absolute inset-0 z-50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-[1px] rounded-lg flex items-center justify-center'>
           <LoadingSpinner size='md' />
@@ -62,36 +50,13 @@ export function EntityDetailsPanel<T extends BaseEntity>({
             <button
               onClick={handleViewDetails}
               disabled={isNavigating}
-              className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-70 disabled:cursor-wait transition-all shadow-sm'
-            >
+              className='flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-70 disabled:cursor-wait transition-all shadow-sm'>
               {isNavigating ? (
                 <FiLoader className='h-4 w-4 animate-spin' />
               ) : (
                 <FiEye className='h-4 w-4' />
               )}
               {isNavigating ? 'Opening...' : `Open ${config.entityDisplayName}`}
-            </button>
-          )}
-
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              disabled={isNavigating}
-              className='flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors'
-              title='Edit'
-            >
-              <FiEdit3 className='h-4 w-4' />
-            </button>
-          )}
-
-          {onDelete && (
-            <button
-              onClick={() => onDelete({ id: entity.id ?? '', name: entity.name })}
-              disabled={isNavigating}
-              className='flex items-center justify-center gap-2 rounded-lg border border-red-300 dark:border-red-700 px-4 py-2 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 transition-colors'
-              title='Delete'
-            >
-              <FiTrash2 className='h-4 w-4' />
             </button>
           )}
         </div>
@@ -105,8 +70,7 @@ export function EntityDetailsPanel<T extends BaseEntity>({
             entity.status
               ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
               : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-          }`}
-        >
+          }`}>
           {entity.status ? 'Active' : 'Inactive'}
         </span>
       </div>

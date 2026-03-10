@@ -1,6 +1,5 @@
-// @/components/table/TableBody.tsx
-import React, { useRef, useEffect } from 'react';
-import { FiEdit3, FiCheck, FiX } from 'react-icons/fi';
+// components/table/TableBody.tsx
+import React from 'react';
 import { DataTableProps, TableAction } from '@/components/table/datatable-types';
 import { TableOrViewName, Row } from '@/hooks/database';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -9,7 +8,6 @@ import { TableSkeleton } from '@/components/common/ui/table/TableSkeleton';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { cn } from '@/lib/utils';
 
-// Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
 
 interface TableBodyProps<T extends TableOrViewName> extends Pick<
@@ -28,14 +26,7 @@ interface TableBodyProps<T extends TableOrViewName> extends Pick<
   visibleColumns: Column<Row<T>>[];
   hasActions: boolean;
   selectedRows: DataRow<T>[];
-  editingCell: { rowIndex: number; columnKey: string } | null;
-  editValue: string;
-  setEditValue: (value: string) => void;
-  onRowSelect: (record: DataRow<T>, selected: boolean) => void;
-  onCellEdit: (record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => void;
-  saveCellEdit: () => void;
-  cancelCellEdit: () => void;
-  isLoading: boolean;
+  onRowSelect?: (record: DataRow<T>, selected: boolean) => void;
 }
 
 interface TableRowProps<T extends TableOrViewName> extends Omit<
@@ -49,7 +40,6 @@ interface TableRowProps<T extends TableOrViewName> extends Omit<
 
 const densityClasses = { compact: 'py-1 px-3', default: 'py-3 px-4', comfortable: 'py-4 px-6' };
 
-// Base Table Row component (generic). We'll memoize it below with a type assertion to preserve generics.
 function TableRowBase<T extends TableOrViewName>({
   record,
   rowIndex,
@@ -62,31 +52,9 @@ function TableRowBase<T extends TableOrViewName>({
   hasActions,
   striped,
   hoverable,
-  editingCell,
-  editValue,
-  setEditValue,
   onRowSelect,
-  onCellEdit,
-  saveCellEdit,
-  cancelCellEdit,
-}: // isLoading,
-TableRowProps<T>) {
-  const editInputRef = useRef<HTMLInputElement>(null);
-  const editSelectRef = useRef<HTMLSelectElement>(null);
-
-  useEffect(() => {
-    if (editingCell && editingCell.rowIndex === rowIndex) {
-      if (editInputRef.current) {
-        editInputRef.current.focus();
-        editInputRef.current.select();
-      } else if (editSelectRef.current) {
-        editSelectRef.current.focus();
-      }
-    }
-  }, [editingCell, rowIndex]);
-
+}: TableRowProps<T>) {
   const isStriped = striped && rowIndex % 2 === 1;
-
   const trClasses = cn(
     'group transition-colors',
     hoverable && 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
@@ -95,21 +63,15 @@ TableRowProps<T>) {
   );
 
   const stickyTdClasses = cn(
-    'sticky right-0 z-10',
+    'sticky right-0 z-10 text-center whitespace-nowrap transition-colors',
     densityClasses[density ?? 'default'],
-    'text-center whitespace-nowrap',
-    'transition-colors',
-    // Background logic - order matters for override
     isSelected
       ? 'bg-blue-50 dark:bg-blue-900/20'
       : isStriped
         ? 'bg-gray-50 dark:bg-gray-700/25'
         : 'bg-white dark:bg-gray-800',
-    // Hover state needs to be separate and use group-hover
     hoverable && 'group-hover:bg-gray-100 dark:group-hover:bg-gray-700',
-    // Special override for when it's selected AND hovered
     isSelected && hoverable && 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40',
-    // Border logic
     bordered
       ? 'border-b border-l border-gray-200 dark:border-gray-700'
       : 'shadow-[inset_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.05)]',
@@ -120,8 +82,7 @@ TableRowProps<T>) {
       {selectable && (
         <td
           className={cn(
-            'sticky left-0 z-10 w-12 px-4 py-3 whitespace-nowrap overflow-hidden',
-            'transition-colors',
+            'sticky left-0 z-10 w-12 px-4 py-3 whitespace-nowrap overflow-hidden transition-colors',
             isSelected
               ? 'bg-blue-50 dark:bg-blue-900/20'
               : isStriped
@@ -131,21 +92,17 @@ TableRowProps<T>) {
             isSelected && hoverable && 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40',
             bordered ? `border-b border-r border-gray-200 dark:border-gray-700` : '',
           )}
-          style={{ width: 48, minWidth: 48, maxWidth: 48 }}
-        >
+          style={{ width: 48, minWidth: 48, maxWidth: 48 }}>
           <input
             type='checkbox'
             checked={isSelected}
-            onChange={(e) => onRowSelect(record, e.target.checked)}
+            onChange={(e) => onRowSelect?.(record, e.target.checked)}
             className='rounded border-gray-300 text-blue-600 focus:ring-blue-500'
             aria-label={`Select row ${rowIndex + 1}`}
           />
         </td>
       )}
       {visibleColumns.map((column, colIndex) => {
-        const isEditing =
-          editingCell?.rowIndex === rowIndex && editingCell?.columnKey === column.key;
-
         return (
           <td
             key={column.key}
@@ -157,96 +114,25 @@ TableRowProps<T>) {
                 : column.align === 'right'
                   ? 'text-right'
                   : '',
-              column.editable && 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600/50',
               bordered
-                ? `border-b ${
-                    colIndex < visibleColumns.length - 1 || hasActions ? 'border-r' : ''
-                  } border-gray-200 dark:border-gray-700`
+                ? `border-b ${colIndex < visibleColumns.length - 1 || hasActions ? 'border-r' : ''} border-gray-200 dark:border-gray-700`
                 : '',
             )}
             style={{
               width: column.width,
               minWidth: column.width ? undefined : '100px',
               maxWidth: '350px',
-            }}
-            onClick={() => column.editable && onCellEdit(record, column, rowIndex)}
-          >
-            {isEditing ? (
-              <div
-                className='absolute inset-y-0 left-0 z-50 flex items-center gap-1 bg-white dark:bg-gray-800 px-2 shadow-xl ring-2 ring-blue-500/20 dark:ring-blue-500/40'
-                style={{ width: 'auto', minWidth: '100%', minHeight: '100%' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {column.editOptions ? (
-                  <select
-                    ref={editSelectRef}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveCellEdit();
-                      if (e.key === 'Escape') cancelCellEdit();
-                    }}
-                    className='min-w-[120px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
-                  >
-                    {column.editOptions.map((opt) => (
-                      <option key={String(opt.value)} value={String(opt.value)}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    ref={editInputRef}
-                    type='text'
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveCellEdit();
-                      if (e.key === 'Escape') cancelCellEdit();
-                    }}
-                    className='min-w-[80px] flex-1 px-2 py-1 text-sm border border-blue-500 rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
-                  />
-                )}
-
-                <div className='flex items-center gap-1 shrink-0'>
-                  <button
-                    type='button'
-                    onClick={saveCellEdit}
-                    className='p-1.5 text-green-600 hover:text-green-700 bg-green-50 dark:bg-green-900/30 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors'
-                    aria-label='Save'
-                    title='Save (Enter)'
-                  >
-                    <FiCheck size={14} />
-                  </button>
-                  <button
-                    type='button'
-                    onClick={cancelCellEdit}
-                    className='p-1.5 text-red-600 hover:text-red-700 bg-red-50 dark:bg-red-900/30 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors'
-                    aria-label='Cancel'
-                    title='Cancel (Esc)'
-                  >
-                    <FiX size={14} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className='flex items-center gap-2 group min-w-0 overflow-hidden max-w-full'>
-                {column.render ? (
-                  column.render(record[column.dataIndex as keyof DataRow<T>], record, rowIndex)
-                ) : (
-                  <TruncateTooltip
-                    text={String(record[column.dataIndex as keyof DataRow<T>] ?? '—')}
-                    className='text-sm'
-                  />
-                )}
-                {column.editable && (
-                  <FiEdit3
-                    size={12}
-                    className='opacity-0 group-hover:opacity-50 text-gray-400 shrink-0'
-                  />
-                )}
-              </div>
-            )}
+            }}>
+            <div className='flex items-center gap-2 group min-w-0 overflow-hidden max-w-full'>
+              {column.render ? (
+                column.render(record[column.dataIndex as keyof DataRow<T>], record, rowIndex)
+              ) : (
+                <TruncateTooltip
+                  text={String(record[column.dataIndex as keyof DataRow<T>] ?? '—')}
+                  className='text-sm'
+                />
+              )}
+            </div>
           </td>
         );
       })}
@@ -257,39 +143,25 @@ TableRowProps<T>) {
               const isHidden =
                 typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
               if (isHidden) return null;
-
               const isDisabled =
                 typeof action.disabled === 'function' ? action.disabled(record) : action.disabled;
               const variants = {
-                primary:
-                  'text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300',
-                secondary:
-                  'text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300',
-                danger: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
-                success:
-                  'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300',
+                primary: 'text-blue-600 hover:bg-gray-200',
+                secondary: 'text-gray-600 hover:bg-gray-200',
+                danger: 'text-red-600 hover:bg-gray-200',
+                success: 'text-green-600 hover:bg-gray-200',
               };
-
               const icon = action.getIcon ? action.getIcon(record) : action.icon;
-              const variant = action.variant || 'secondary';
-
               return (
                 <button
                   key={action.key}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isDisabled) {
-                      action.onClick(record, rowIndex);
-                    }
+                    if (!isDisabled) action.onClick(record, rowIndex);
                   }}
                   disabled={isDisabled}
-                  className={`p-1 rounded transition-colors ${
-                    isDisabled
-                      ? 'opacity-50 cursor-not-allowed'
-                      : `hover:bg-gray-200 dark:hover:bg-gray-600 ${variants[variant]}`
-                  }`}
-                  title={action.label}
-                >
+                  className={`p-1 rounded transition-colors ${isDisabled ? 'opacity-50 cursor-not-allowed' : variants[action.variant || 'secondary']}`}
+                  title={action.label}>
                   {icon}
                 </button>
               );
@@ -301,12 +173,10 @@ TableRowProps<T>) {
   );
 }
 
-// Memoized Table Row component for performance optimization (preserve generics via assertion)
 const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>(
   props: TableRowProps<T>,
 ) => React.ReactElement;
 
-// Base TableBody component (generic). We'll memoize with a type assertion below to preserve generics.
 function TableBodyBase<T extends TableOrViewName>({
   processedData,
   visibleColumns,
@@ -320,8 +190,7 @@ function TableBodyBase<T extends TableOrViewName>({
         <tr>
           <td
             colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)}
-            className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}
-          >
+            className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}>
             <div className='py-6'>
               <TableSkeleton
                 rows={processedData.length || 5}
@@ -336,15 +205,13 @@ function TableBodyBase<T extends TableOrViewName>({
       </tbody>
     );
   }
-
   if (processedData.length === 0) {
     return (
       <tbody>
         <tr>
           <td
             colSpan={visibleColumns.length + (rest.selectable ? 1 : 0) + (rest.hasActions ? 1 : 0)}
-            className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}
-          >
+            className={rest.bordered ? 'border-b border-gray-200 dark:border-gray-700' : ''}>
             <FancyEmptyState
               title='No Data Found'
               description={emptyText || 'Try adjusting your search or filters.'}
@@ -354,15 +221,10 @@ function TableBodyBase<T extends TableOrViewName>({
       </tbody>
     );
   }
-
   const selectedRowIds = new Set(rest.selectedRows.map((r) => (r as DataRow<T>).id));
-
   return (
     <tbody
-      className={`bg-white dark:bg-gray-800 ${
-        rest.striped && !rest.bordered ? 'divide-y divide-gray-200 dark:divide-gray-700' : ''
-      }`}
-    >
+      className={`bg-white dark:bg-gray-800 ${rest.striped && !rest.bordered ? 'divide-y divide-gray-200 dark:divide-gray-700' : ''}`}>
       {processedData.map((record, rowIndex) => (
         <MemoizedTableRow
           key={`${record.id} + ${rowIndex}`}

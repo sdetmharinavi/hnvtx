@@ -1,5 +1,6 @@
+// components/common/entity-management/EntityTreeItem.tsx
 import { BaseEntity, EntityTreeItemProps } from '@/components/common/entity-management/types';
-import { FiChevronDown, FiChevronRight, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
 
 export function EntityTreeItem<T extends BaseEntity>({
   entity,
@@ -9,10 +10,7 @@ export function EntityTreeItem<T extends BaseEntity>({
   expandedEntities,
   onSelect,
   onToggleExpand,
-  onToggleStatus,
-  isLoading,
-  showStatusToggle,
-}: EntityTreeItemProps<T> & { showStatusToggle?: boolean }) {
+}: EntityTreeItemProps<T>) {
   const IconComponent = config.icon;
   const hasChildren = entity.children.length > 0;
   const isSelected = entity.id === selectedEntityId;
@@ -27,8 +25,7 @@ export function EntityTreeItem<T extends BaseEntity>({
             : 'border-l-4 border-l-transparent'
         }`}
         style={{ paddingLeft: `${16 + level * 24}px` }}
-        onClick={() => onSelect(entity.id ?? '')}
-      >
+        onClick={() => onSelect(entity.id ?? '')}>
         <div className='flex flex-1 items-center gap-2 truncate'>
           {hasChildren ? (
             <button
@@ -36,8 +33,7 @@ export function EntityTreeItem<T extends BaseEntity>({
                 e.stopPropagation();
                 onToggleExpand(entity.id ?? '');
               }}
-              className='rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700'
-            >
+              className='rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700'>
               {isExpanded ? (
                 <FiChevronDown className='h-4 w-4 text-gray-400 dark:text-gray-500' />
               ) : (
@@ -52,19 +48,6 @@ export function EntityTreeItem<T extends BaseEntity>({
             <h3 className='font-medium text-gray-900 dark:text-gray-100 truncate'>{entity.name}</h3>
           </div>
         </div>
-        {showStatusToggle !== false && (
-          <button
-            onClick={(e) => onToggleStatus?.(e, entity)}
-            disabled={isLoading || !onToggleStatus}
-            className='ml-auto'
-          >
-            {entity.status ? (
-              <FiToggleRight className='h-5 w-5 text-green-500 dark:text-green-400' />
-            ) : (
-              <FiToggleLeft className='h-5 w-5 text-gray-400 dark:text-gray-500' />
-            )}
-          </button>
-        )}
       </div>
       {isExpanded && hasChildren && (
         <div>
@@ -78,9 +61,7 @@ export function EntityTreeItem<T extends BaseEntity>({
               expandedEntities={expandedEntities}
               onSelect={onSelect}
               onToggleExpand={onToggleExpand}
-              onToggleStatus={onToggleStatus}
-              showStatusToggle={showStatusToggle}
-              isLoading={isLoading}
+              isLoading={false}
             />
           ))}
         </div>

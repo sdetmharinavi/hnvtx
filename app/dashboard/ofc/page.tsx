@@ -2,9 +2,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
-import Link from 'next/link'; // ADDED: Import Link
+import { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   FiActivity,
   FiMapPin,
@@ -12,25 +11,24 @@ import {
   FiDatabase,
   FiClock,
   FiLink,
-  FiTrash2,
+  FiRefreshCw,
+  FiDownload,
 } from 'react-icons/fi';
 import { AiFillMerge } from 'react-icons/ai';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { ConfirmModal, ErrorDisplay, PageSpinner, Button } from '@/components/common/ui';
+import { ErrorDisplay } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { OfcTableColumns } from '@/config/table-columns/OfcTableColumns';
-import { Ofc_cablesRowSchema, V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
+import { V_ofc_cables_completeRowSchema } from '@/schemas/zod-schemas';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
-import { useUser } from '@/providers/UserProvider';
+import { TABLE_COLUMN_KEYS, buildColumnConfig } from '@/constants/table-column-keys';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
-import { Row } from '@/hooks/database';
-import { UserRole } from '@/types/user-roles';
+import { Row, TableOrViewName } from '@/hooks/database';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { useStandardHeaderActions } from '@/components/common/page-header';
+import { ActionButton, useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
@@ -40,13 +38,11 @@ import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
 import { ExtendedOfcCable, LinkedCable } from '@/schemas/custom-schemas';
-import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks';
-import { CableLinkingModal } from '@/components/ofc/CableLinkingModal';
-
-const OfcForm = dynamic(
-  () => import('@/components/ofc/OfcForm/OfcForm').then((mod) => mod.default),
-  { loading: () => <PageSpinner text='Loading OFC Form...' /> },
-);
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { createClient } from '@/utils/supabase/client';
+import { formatDate } from '@/utils/formatters';
+import { buildRpcFilters } from '@/hooks/database/utility-functions';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 const formatUpdatedAt = (timestamp: string | null | undefined) => {
   if (!timestamp) return null;
@@ -64,20 +60,10 @@ const formatUpdatedAt = (timestamp: string | null | undefined) => {
 
 export default function OfcPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const { isSuperAdmin, role } = useUser();
   const { sync: syncData, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // New State for Linking
-  const [linkingCable, setLinkingCable] = useState<ExtendedOfcCable | null>(null);
-  const [cableToUnlink, setCableToUnlink] = useState<{
-    parent: ExtendedOfcCable;
-    link: LinkedCable;
-  } | null>(null);
-
-  const { mutate: unlinkCable, isPending: isUnlinking } = useUnlinkCable();
 
   // Explicit type assertion for the CrudManager to use Extended schema
   const {
@@ -86,57 +72,46 @@ export default function OfcPage() {
     activeCount,
     inactiveCount,
     isLoading,
-    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
-    editModal,
-    bulkActions,
-    deleteModal,
-    actions: crudActions,
   } = useCrudManager<'ofc_cables', V_ofc_cables_completeRowSchema>({
     tableName: 'ofc_cables',
     localTableName: 'v_ofc_cables_complete',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    dataQueryHook: useOfcData as any, // Cast due to type extension
+    dataQueryHook: useOfcData as any,
     displayNameField: 'route_name',
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
-    syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'], // Added ofc_cable_links
+    syncTables:['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'],
   });
+
+  const { mutate: exportCables, isPending: isExporting } = useRPCExcelDownload(supabase);
 
   // Transform the data to match ExtendedOfcCable type
   const transformedOfcData: ExtendedOfcCable[] = useMemo(() => {
     return ofcData.map((item) => {
       const raw = item.linked_cables;
-
       let parsed: LinkedCable[] | null;
 
       if (typeof raw === 'string') {
-        // handle empty string or invalid JSON defensively if you want
         parsed = raw.trim() ? (JSON.parse(raw) as LinkedCable[]) : null;
       } else if (Array.isArray(raw)) {
         parsed = raw as LinkedCable[];
       } else {
-        // covers undefined and any other falsy/non-array value
         parsed = null;
       }
 
       return {
         ...item,
-        linked_cables: parsed, // now: LinkedCable[] | null
+        linked_cables: parsed,
       };
     });
   }, [ofcData]);
 
   const isInitialLoad = isLoading && transformedOfcData.length === 0;
-
-  const canEdit =
-    !!isSuperAdmin ||
-    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.OFCADMIN].includes(role as UserRole);
-  const canDelete = !!isSuperAdmin || role === UserRole.ADMINPRO;
 
   const { options: ofcTypeOptions, isLoading: loadingTypes } = useLookupTypeOptions(
     'OFC_TYPES',
@@ -146,12 +121,12 @@ export default function OfcPage() {
   const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
 
   const filterConfigs = useMemo<FilterConfig[]>(
-    () => [
+    () =>[
       {
         key: 'sortBy',
         type: 'native-select' as const,
         placeholder: 'Sort By',
-        options: [
+        options:[
           { value: 'name', label: 'Name (A-Z)' },
           { value: 'last_activity', label: 'Last Activity' },
         ],
@@ -192,19 +167,46 @@ export default function OfcPage() {
     toast.success('Cables refreshed!');
   };
 
-  const headerActions = useStandardHeaderActions({
-    data: ofcData as Ofc_cablesRowSchema[],
-    onRefresh: handleRefresh,
-    onAddNew: canEdit ? editModal.openAdd : undefined,
-    isLoading: isLoading,
-    isFetching: isFetching || isSyncing,
-    exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
-  });
+  const handleExport = useCallback(() => {
+    exportCables({
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-ofc-cables-export.xlsx`,
+      sheetName: 'OFC Cables',
+      columns: buildColumnConfig('v_ofc_cables_complete') as Column<Row<TableOrViewName>>[],
+      rpcConfig: {
+        functionName: 'get_paged_data',
+        parameters: {
+          p_view_name: 'v_ofc_cables_complete',
+          p_limit: 50000,
+          p_offset: 0,
+          p_filters: buildRpcFilters(filters.filters),
+        },
+      },
+    });
+  }, [exportCables, filters.filters]);
+
+  const headerActions = useMemo((): ActionButton[] =>[
+    {
+      label: 'Refresh',
+      onClick: handleRefresh,
+      variant: 'outline',
+      leftIcon: <FiRefreshCw className={isSyncing || isFetching ? 'animate-spin' : ''} />,
+      disabled: isSyncing || isFetching,
+    },
+    {
+      label: isExporting ? 'Exporting...' : 'Export',
+      onClick: handleExport,
+      variant: 'outline',
+      leftIcon: <FiDownload />,
+      disabled: isExporting || isFetching,
+      hideTextOnMobile: true,
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [isSyncing, isFetching, isExporting, handleExport]);
 
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
-    return [
+    return[
       {
         value: totalCount,
         label: 'Total Cables',
@@ -232,24 +234,14 @@ export default function OfcPage() {
         isActive: currentStatus === 'false',
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
-
-  // Handle Unlink Confirmation
-  const confirmUnlink = () => {
-    if (cableToUnlink) {
-      unlinkCable(cableToUnlink.link.link_id, {
-        onSuccess: () => setCableToUnlink(null),
-      });
-    }
-  };
+  },[totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const renderItem = useCallback(
     (cable: ExtendedOfcCable) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lastActivity = (cable as any).last_activity_at || cable.updated_at;
       const timeAgo = formatUpdatedAt(lastActivity);
-      const linkedCables = cable.linked_cables || [];
+      const linkedCables = cable.linked_cables ||[];
 
       return (
         <GenericEntityCard
@@ -283,8 +275,6 @@ export default function OfcPage() {
           customFooter={
             <div className='space-y-3 w-full'>
               <GenericRemarks remark={cable.remark || ''} />
-
-              {/* LINKED CABLES SECTION */}
               {linkedCables.length > 0 && (
                 <div className='bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800'>
                   <div className='flex items-center justify-between mb-1'>
@@ -298,7 +288,6 @@ export default function OfcPage() {
                         key={link.link_id}
                         className='group flex items-center gap-1.5 text-[10px] bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700'
                       >
-                        {/* CHANGED: Use Link component with target="_blank" */}
                         <Link
                           href={`/dashboard/ofc/${link.cable_id}`}
                           target="_blank"
@@ -309,24 +298,11 @@ export default function OfcPage() {
                         >
                           {link.route_name}
                         </Link>
-                        {canEdit && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCableToUnlink({ parent: cable, link });
-                            }}
-                            className='text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity'
-                            title='Unlink'
-                          >
-                            <FiTrash2 className='w-2.5 h-2.5' />
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
               <div className='flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 w-full pt-2 border-t border-gray-100 dark:border-gray-700/50'>
                 <div className='flex items-center gap-1.5'>
                   <FiClock className='w-3.5 h-3.5' />
@@ -338,37 +314,11 @@ export default function OfcPage() {
               </div>
             </div>
           }
-          extraActions={
-            canEdit ? (
-              <Button
-                size='xs'
-                variant='secondary'
-                onClick={() => setLinkingCable(cable)}
-                title='Link to another cable'
-                className='font-medium'
-              >
-                <FiLink className='w-4 h-4' />
-              </Button>
-            ) : undefined
-          }
           onView={(r) => router.push(`/dashboard/ofc/${r.id}`)}
-          onEdit={(record) => editModal.openEdit(record as V_ofc_cables_completeRowSchema)}
-          onDelete={crudActions.handleDelete}
-          canEdit={canEdit}
-          canDelete={canDelete}
         />
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      router,
-      editModal.openEdit,
-      crudActions.handleDelete,
-      canEdit,
-      canDelete,
-      setLinkingCable,
-      setCableToUnlink,
-    ],
+    [router],
   );
 
   const renderGrid = useCallback(
@@ -388,9 +338,7 @@ export default function OfcPage() {
           },
         }}
       />
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ofcData, renderItem, isLoading, totalCount, pagination],
+    ),[transformedOfcData, renderItem, isLoading, totalCount, pagination],
   );
 
   if (error)
@@ -399,8 +347,8 @@ export default function OfcPage() {
   return (
     <DashboardPageLayout
       header={{
-        title: 'OFC Cable Management',
-        description: 'Manage OFC cables and their related information.',
+        title: 'OFC Cable Explorer',
+        description: 'Read-only view of optical fiber cables and their logical links.',
         icon: <AiFillMerge />,
         stats: headerStats,
         actions: headerActions,
@@ -416,35 +364,17 @@ export default function OfcPage() {
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      bulkActions={{
-        selectedCount: bulkActions.selectedCount,
-        isOperationLoading: isMutating,
-        onBulkDelete: bulkActions.handleBulkDelete,
-        onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
-        onClearSelection: bulkActions.handleClearSelection,
-        entityName: 'ofc cable',
-        showStatusUpdate: true,
-        canDelete: () => canDelete,
-      }}
       renderGrid={renderGrid}
       tableProps={{
         tableName: 'v_ofc_cables_complete',
         data: ofcData,
         columns: orderedColumns,
         loading: isLoading,
-        isFetching: isFetching || isMutating,
+        isFetching: isFetching,
         actions: createStandardActions({
-          onEdit: canEdit ? editModal.openEdit : undefined,
           onView: (record) => router.push(`/dashboard/ofc/${record.id}`),
-          onDelete: canDelete ? crudActions.handleDelete : undefined,
         }),
-        selectable: canDelete,
-        onRowSelect: (rows) => {
-          const validRows = rows.filter(
-            (row): row is Row<'v_ofc_cables_complete'> & { id: string } => !!row.id,
-          );
-          bulkActions.handleRowSelect(validRows);
-        },
+        selectable: false,
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -458,56 +388,6 @@ export default function OfcPage() {
         customToolbar: <></>,
       }}
       isEmpty={transformedOfcData.length === 0 && !isLoading}
-      modals={
-        <>
-          <input type='file' ref={fileInputRef} className='hidden' accept='.xlsx, .xls, .csv' />
-
-          {editModal.isOpen && (
-            <OfcForm
-              isOpen={editModal.isOpen}
-              onClose={editModal.close}
-              ofcCable={editModal.record as Ofc_cablesRowSchema}
-              onSubmit={crudActions.handleSave}
-              pageLoading={isMutating}
-            />
-          )}
-
-          {linkingCable && (
-            <CableLinkingModal
-              isOpen={!!linkingCable}
-              onClose={() => setLinkingCable(null)}
-              sourceCable={linkingCable}
-            />
-          )}
-
-          <ConfirmModal
-            isOpen={deleteModal.isOpen}
-            onConfirm={deleteModal.onConfirm}
-            onCancel={deleteModal.onCancel}
-            title='Confirm Deletion'
-            message={deleteModal.message}
-            type='danger'
-            loading={deleteModal.loading}
-          />
-
-          <ConfirmModal
-            isOpen={!!cableToUnlink}
-            onConfirm={confirmUnlink}
-            onCancel={() => setCableToUnlink(null)}
-            title='Unlink Cable'
-            message={
-              <span>
-                Are you sure you want to unlink <strong>{cableToUnlink?.link.route_name}</strong>{' '}
-                from
-                <strong>{cableToUnlink?.parent.route_name}</strong>?
-              </span>
-            }
-            type='danger'
-            confirmText='Unlink'
-            loading={isUnlinking}
-          />
-        </>
-      }
     />
   );
 }

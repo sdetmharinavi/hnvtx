@@ -1,6 +1,6 @@
-// @/components/table/types.ts
-import { TableOrViewName, Row, Filters } from "@/hooks/database";
-import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries/excel-helpers";
+// components/table/datatable-types.ts
+import { TableOrViewName, Row, Filters } from '@/hooks/database';
+import { Column, RPCConfig, ExcelStyles } from '@/hooks/database/excel-queries/excel-helpers';
 
 export interface TableAction<T extends TableOrViewName> {
   key: string;
@@ -8,7 +8,7 @@ export interface TableAction<T extends TableOrViewName> {
   icon?: React.ReactNode;
   getIcon?: (record: Row<T>) => React.ReactNode;
   onClick: (record: Row<T>, index?: number) => void;
-  variant?: "primary" | "secondary" | "danger" | "success";
+  variant?: 'primary' | 'secondary' | 'danger' | 'success';
   disabled?: boolean | ((record: Row<T>) => boolean);
   hidden?: boolean | ((record: Row<T>) => boolean);
   [key: string]: unknown;
@@ -48,7 +48,7 @@ export interface DataTableProps<T extends TableOrViewName> {
   selectable?: boolean;
   exportable?: boolean;
   refreshable?: boolean;
-  density?: "compact" | "default" | "comfortable";
+  density?: 'compact' | 'default' | 'comfortable';
   bordered?: boolean;
   striped?: boolean;
   hoverable?: boolean;
@@ -59,7 +59,6 @@ export interface DataTableProps<T extends TableOrViewName> {
   onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
-  onCellEdit?: (record: Row<T>, column: Column<Row<T>>, newValue: string) => void;
   customToolbar?: React.ReactNode;
   exportOptions?: {
     fileName?: string;
@@ -68,14 +67,12 @@ export interface DataTableProps<T extends TableOrViewName> {
     maxRows?: number;
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
-  } & Omit<DownloadOptions<T>, "rpcConfig">;
+  } & Omit<DownloadOptions<T>, 'rpcConfig'>;
   renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
-  
-  // NEW PROP
-  autoHideEmptyColumns?: boolean; 
+  autoHideEmptyColumns?: boolean;
 }
 
-export type SortDirection = "asc" | "desc";
+export type SortDirection = 'asc' | 'desc';
 export interface SortConfig<T> {
   key: keyof T & string;
   direction: SortDirection;

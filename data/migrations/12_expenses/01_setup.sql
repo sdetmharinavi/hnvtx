@@ -54,6 +54,8 @@ CREATE TRIGGER expenses_log_trigger AFTER INSERT OR UPDATE OR DELETE ON public.e
 -- 8. Views
 
 -- View: Expenses with Advance Context
+DROP VIEW IF EXISTS public.v_expenses_complete;
+
 CREATE OR REPLACE VIEW public.v_expenses_complete WITH (security_invoker = true) AS
 SELECT
     e.id,
@@ -70,15 +72,16 @@ SELECT
     e.spent_by_employee_id,
     a.req_no as advance_req_no,
     holder.employee_name as advance_holder_name,
+    spender.employee_name as spender_name,
     
-    -- LOGIC: If 'spent_by' is set, show that name. Otherwise, fallback to the advance holder's name.
-    COALESCE(spender.employee_name, holder.employee_name) as used_by
+    -- LOGIC: Prioritize the explicit spender. If null, fallback to the advance holder.
+    COALESCE(spender.employee_name, holder.employee_name, 'Unknown') as used_by
 FROM public.expenses e
 LEFT JOIN public.advances a ON e.advance_id = a.id
 LEFT JOIN public.employees holder ON a.employee_id = holder.id
 LEFT JOIN public.employees spender ON e.spent_by_employee_id = spender.id;
 
--- Re-grant permissions to be safe
+-- Grant permissions again to be safe
 GRANT SELECT ON public.v_expenses_complete TO authenticated;
 GRANT SELECT ON public.v_expenses_complete TO admin, admin_pro, viewer;
 

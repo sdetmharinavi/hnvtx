@@ -1,53 +1,32 @@
 // app/dashboard/route-manager/page.tsx
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouteDetails } from '@/hooks/database/route-manager-hooks';
-import { PageSpinner, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common/ui/tabs';
 import RouteVisualization from '@/components/route-manager/ui/RouteVisualization';
 import { FiberSpliceManager } from '@/components/route-manager/FiberSpliceManager';
 import { JointBox } from '@/schemas/custom-schemas';
-import { useDeleteManager } from '@/hooks/useDeleteManager';
 import RouteSelection from '@/components/route-manager/RouteSelection';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
-import { FiUpload, FiDownload, FiPlus, FiRefreshCw, FiGitMerge, FiMap } from 'react-icons/fi';
+import { FiDownload, FiRefreshCw, FiGitMerge, FiMap } from 'react-icons/fi';
 import { Map } from 'lucide-react';
-import {
-  useExportRouteTopology,
-  useImportRouteTopology,
-} from '@/hooks/database/excel-queries/useRouteTopologyExcel';
+import { useExportRouteTopology } from '@/hooks/database/excel-queries/useRouteTopologyExcel';
 import { ActionButton } from '@/components/common/page-header';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
-import { useUser } from '@/providers/UserProvider';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { PERMISSIONS } from '@/config/permissions';
-
-const JcFormModal = dynamic(
-  () => import('@/components/route-manager/JcFormModal').then((mod) => mod.JcFormModal),
-  { loading: () => <PageSpinner text='Loading JC Form...' /> },
-);
 
 export default function RouteManagerPage() {
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const[selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedJc, setSelectedJc] = useState<JointBox | null>(null);
-  const [editingJc, setEditingJc] = useState<JointBox | null>(null);
-  const [isJcFormModalOpen, setIsJcFormModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('visualization');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
-  // --- SYNC HOOKS ---
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
-
-  // Permissions
-  const { canAccess } = useUser();
-  const canEdit = canAccess(PERMISSIONS.canManage);
-  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const {
     data: routeDetails,
@@ -58,20 +37,7 @@ export default function RouteManagerPage() {
     isFetching: isFetchingRouteDetails,
   } = useRouteDetails(selectedRouteId as string);
 
-  const deleteManager = useDeleteManager({
-    tableName: 'junction_closures',
-    onSuccess: () => {
-      refetchRouteDetails();
-      // If the deleted JC was the currently selected one, clear selection and go back to visualization
-      if (selectedJc && deleteManager.itemToDelete?.id === selectedJc.id) {
-        setSelectedJc(null);
-        setActiveTab('visualization');
-      }
-    },
-  });
-
   const { mutate: exportTopology, isPending: isExporting } = useExportRouteTopology(supabase);
-  const { mutate: importTopology, isPending: isUploading } = useImportRouteTopology(supabase);
 
   const allJointBoxesOnRoute = useMemo(() => routeDetails?.jointBoxes || [], [routeDetails]);
   const currentSegments = useMemo(() => routeDetails?.segments || [], [routeDetails]);
@@ -80,26 +46,7 @@ export default function RouteManagerPage() {
     setSelectedRouteId(routeId);
     setSelectedJc(null);
     setActiveTab('visualization');
-  }, []);
-
-  const handleAddJunctionClosure = useCallback(() => {
-    setEditingJc(null);
-    setIsJcFormModalOpen(true);
-  }, []);
-
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && selectedRouteId) {
-      importTopology({ file, routeId: selectedRouteId });
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  },[]);
 
   const handleExportClick = useCallback(() => {
     if (selectedRouteId && routeDetails?.route?.route_name) {
@@ -107,37 +54,21 @@ export default function RouteManagerPage() {
     } else {
       toast.error('Please select a route to export.');
     }
-  }, [selectedRouteId, routeDetails?.route?.route_name, exportTopology]);
-
-  const handleOpenEditJcModal = useCallback((jc: JointBox) => {
-    setEditingJc(jc);
-    setIsJcFormModalOpen(true);
-  }, []);
+  },[selectedRouteId, routeDetails?.route?.route_name, exportTopology]);
 
   const handleJcClick = useCallback((jc: JointBox) => {
     setSelectedJc(jc);
     setActiveTab('splicing');
-  }, []);
-
-  const handleRemoveJc = useCallback(
-    (jcId: string) => {
-      const jcToRemove = allJointBoxesOnRoute.find((jc) => jc.id === jcId);
-      if (!jcToRemove) return;
-      const name = jcToRemove.attributes?.name || jcToRemove.node?.name || `JC ${jcId.slice(-4)}`;
-      deleteManager.deleteSingle({ id: jcId, name });
-    },
-    [allJointBoxesOnRoute, deleteManager],
-  );
+  },[]);
 
   const isBusy = isLoadingRouteDetails || isSyncingData || isFetchingRouteDetails;
 
   const headerActions = useMemo((): ActionButton[] => {
-    const actions: ActionButton[] = [
+    const actions: ActionButton[] =[
       {
         label: 'Refresh',
         onClick: async () => {
           if (isOnline) {
-            // Explicitly sync all tables relevant to the Route Manager view
             await syncData([
               'ofc_cables',
               'v_ofc_cables_complete',
@@ -145,7 +76,7 @@ export default function RouteManagerPage() {
               'v_junction_closures_complete',
               'cable_segments',
               'fiber_splices',
-              'nodes', // Often JCs rely on node data so good to sync
+              'nodes',
               'v_nodes_complete',
             ]);
           }
@@ -165,59 +96,26 @@ export default function RouteManagerPage() {
         hideTextOnMobile: true,
       },
     ];
-
-    if (canEdit) {
-      actions.push({
-        label: isUploading ? 'Importing...' : 'Import Topology',
-        onClick: handleUploadClick,
-        variant: 'outline',
-        leftIcon: <FiUpload />,
-        disabled: isUploading || !selectedRouteId || isBusy,
-        hideTextOnMobile: true,
-      });
-
-      actions.push({
-        label: 'Add Junction Closure',
-        onClick: handleAddJunctionClosure,
-        variant: 'primary',
-        leftIcon: <FiPlus />,
-        disabled: !selectedRouteId || isBusy,
-      });
-    }
     return actions;
-  }, [
+  },[
     isBusy,
     isExporting,
-    isUploading,
     selectedRouteId,
-    handleAddJunctionClosure,
     refetchRouteDetails,
     handleExportClick,
-    handleUploadClick,
-    canEdit,
     isOnline,
     syncData,
   ]);
 
   return (
     <div className='p-4 md:p-6 space-y-6 min-h-[calc(100vh-64px)] flex flex-col'>
-      <input
-        type='file'
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className='hidden'
-        accept='.xlsx, .xls'
-      />
-
-      {/* Route Selection Header */}
       <RouteSelection
         selectedRouteId={selectedRouteId}
         onRouteChange={handleRouteChange}
-        isLoadingRouteDetails={isBusy} // Show loading spinner on selection if syncing
+        isLoadingRouteDetails={isBusy}
         actions={headerActions}
       />
 
-      {/* Main Content Area */}
       <div className='flex-1 flex flex-col'>
         {routeDetailsIsError ? (
           <ErrorDisplay
@@ -234,12 +132,11 @@ export default function RouteManagerPage() {
             <FancyEmptyState
               icon={Map}
               title='No Route Selected'
-              description='Please select an Optical Fiber Cable route from the dropdown above to manage its topology, junction closures, and splicing.'
+              description='Please select an Optical Fiber Cable route from the dropdown above to view its topology.'
             />
           </div>
         ) : (
           <div className='flex-1 flex flex-col space-y-4'>
-            {/* If route is selected but no data returned (unlikely due to schema validation, but safe to handle) */}
             {!routeDetails ? (
               <ErrorDisplay error='Route data is empty or invalid.' />
             ) : (
@@ -262,7 +159,7 @@ export default function RouteManagerPage() {
                       className='data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none px-4 py-2 disabled:opacity-50'
                     >
                       <FiGitMerge className='mr-2' />
-                      Splice Management {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
+                      Splice Details {selectedJc && `(${selectedJc.node?.name || 'JC'})`}
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -279,17 +176,12 @@ export default function RouteManagerPage() {
                         segments: currentSegments,
                       }}
                       onJcClick={handleJcClick}
-                      onEditJc={handleOpenEditJcModal}
-                      onDeleteJc={handleRemoveJc}
-                      canEdit={canEdit}
-                      canDelete={canDelete}
                     />
                   </TabsContent>
 
                   <TabsContent value='splicing' className='h-full mt-0 focus-visible:outline-none'>
                     <FiberSpliceManager
                       junctionClosureId={selectedJc?.id ?? null}
-                      canEdit={canEdit}
                     />
                   </TabsContent>
                 </div>
@@ -298,30 +190,6 @@ export default function RouteManagerPage() {
           </div>
         )}
       </div>
-
-      {isJcFormModalOpen && (
-        <JcFormModal
-          isOpen={isJcFormModalOpen}
-          onClose={() => {
-            setEditingJc(null);
-            setIsJcFormModalOpen(false);
-          }}
-          onSave={() => refetchRouteDetails()}
-          routeId={selectedRouteId}
-          editingJc={editingJc}
-          rkm={routeDetails?.route.current_rkm ?? null}
-        />
-      )}
-
-      <ConfirmModal
-        isOpen={deleteManager.isConfirmModalOpen}
-        onConfirm={deleteManager.handleConfirm}
-        onCancel={deleteManager.handleCancel}
-        title='Confirm Deletion'
-        message={deleteManager.confirmationMessage}
-        loading={deleteManager.isPending}
-        type='danger'
-      />
     </div>
   );
 }

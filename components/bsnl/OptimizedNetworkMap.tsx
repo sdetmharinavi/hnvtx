@@ -16,12 +16,13 @@ import { LatLngBounds, LatLngExpression } from 'leaflet';
 import { BsnlNode, BsnlSystem } from './types';
 import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 import 'leaflet/dist/leaflet.css';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, Ruler } from 'lucide-react'; // Added Ruler
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
 import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { useDebounce } from 'use-debounce';
+import { MeasureController } from '@/components/kml/MeasureController'; // Reuse existing component
 
 // --- CONTROLLER: Auto Fit ---
 const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: string }) => {
@@ -121,6 +122,7 @@ const MapContent = ({
   setZoom,
   filteredNodes,
   filterKey,
+  isMeasureMode, // Receive measure mode prop
 }: {
   cables: ExtendedOfcCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
@@ -135,6 +137,7 @@ const MapContent = ({
   setZoom: (zoom: number) => void;
   filteredNodes: BsnlNode[];
   filterKey?: string;
+  isMeasureMode: boolean;
 }) => {
   // Determine Rendering Mode (LOD)
   // Simple: Canvas CircleMarkers (Fast, supports thousands)
@@ -200,6 +203,8 @@ const MapContent = ({
                 weight: renderMode === 'simple' ? 1.5 : 3, // Thinner lines at low zoom
                 opacity: 0.7,
               }}
+              // IMPORTANT: Disable interaction when measuring so clicks fall through to map
+              interactive={!isMeasureMode}
             >
               <Popup>
                 <div className="min-w-48 max-w-72">
@@ -249,6 +254,8 @@ const MapContent = ({
                 fillColor: node.status ? '#16a34a' : '#dc2626', // Green/Red
                 fillOpacity: 0.9,
               }}
+              // IMPORTANT: Disable interaction when measuring
+              interactive={!isMeasureMode}
             >
               <Popup>{PopupContent}</Popup>
             </CircleMarker>
@@ -266,6 +273,8 @@ const MapContent = ({
             icon={icon}
             riseOnHover={true}
             zIndexOffset={10}
+            // IMPORTANT: Disable interaction when measuring
+            interactive={!isMeasureMode}
           >
             <Popup>{PopupContent}</Popup>
           </Marker>
@@ -302,6 +311,7 @@ export function OptimizedNetworkMap({
   filterKey,
 }: OptimizedNetworkMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isMeasureMode, setIsMeasureMode] = useState(false); // New State
   const [debouncedBounds] = useDebounce(mapBounds, 100);
 
   useEffect(() => {
@@ -316,6 +326,18 @@ export function OptimizedNetworkMap({
       };
     }
   }, [isFullScreen]);
+
+  // Handle ESC key to exit modes
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isMeasureMode) setIsMeasureMode(false);
+        else if (isFullScreen) setIsFullScreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isMeasureMode, isFullScreen]);
 
   const initialBounds = useMemo(() => {
     if (nodes.length === 0) return null;
@@ -373,6 +395,33 @@ export function OptimizedNetworkMap({
   const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const mapAttribution = '&copy; OpenStreetMap contributors';
 
+  // Floating Controls UI (Top Right)
+  const ControlsGroup = () => (
+    <div className="absolute top-4 right-4 z-1000 flex flex-col gap-2">
+      {/* Measure Button */}
+      <button
+        onClick={() => setIsMeasureMode(!isMeasureMode)}
+        className={`p-2.5 rounded-full shadow-lg transition-all duration-200 border ${
+          isMeasureMode
+            ? 'bg-blue-600 text-white border-blue-700'
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+        }`}
+        title="Measure Distance (Click points on map)"
+      >
+        <Ruler className="h-5 w-5" />
+      </button>
+
+      {/* Fullscreen Button */}
+      <button
+        onClick={() => setIsFullScreen(!isFullScreen)}
+        className="p-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+        title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
+      >
+        {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+      </button>
+    </div>
+  );
+
   return (
     <>
       <div
@@ -381,6 +430,7 @@ export function OptimizedNetworkMap({
         }`}
       >
         <MapLegend />
+        <ControlsGroup />
 
         <MapContainer
           key="normal"
@@ -388,7 +438,11 @@ export function OptimizedNetworkMap({
           className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800"
           // ENABLE CANVAS RENDERER FOR PERFORMANCE
           preferCanvas={true}
+          // If in measure mode, change cursor style
+          style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
         >
+          <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
+
           <MapContent
             cables={cables}
             visibleLayers={visibleLayers}
@@ -403,26 +457,32 @@ export function OptimizedNetworkMap({
             setZoom={onZoomChange}
             filteredNodes={nodes}
             filterKey={filterKey}
+            isMeasureMode={isMeasureMode}
           />
         </MapContainer>
-        <button
+        {/* <button
           onClick={() => setIsFullScreen(true)}
           className="absolute top-4 right-4 z-1000 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Enter Full Screen"
         >
           <Maximize className="h-5 w-5" />
-        </button>
+        </button> */}
       </div>
       {isFullScreen && (
         <div className="fixed inset-0 z-9999 bg-white dark:bg-gray-900">
           <MapLegend />
+          <ControlsGroup />
+          
           <MapContainer
             key="fullscreen"
             bounds={initialBounds!}
             className="h-full w-full bg-gray-200 dark:bg-gray-800"
             // ENABLE CANVAS RENDERER FOR PERFORMANCE
             preferCanvas={true}
+            style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
           >
+            <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
+
             <MapContent
               cables={cables}
               visibleLayers={visibleLayers}
@@ -437,15 +497,16 @@ export function OptimizedNetworkMap({
               setZoom={onZoomChange}
               filteredNodes={nodes}
               filterKey={filterKey}
+              isMeasureMode={isMeasureMode}
             />
           </MapContainer>
-          <button
+          {/* <button
             onClick={() => setIsFullScreen(false)}
             className="absolute top-4 right-4 z-10000 p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Exit Full Screen"
           >
             <Minimize className="h-6 w-6" />
-          </button>
+          </button> */}
         </div>
       )}
     </>

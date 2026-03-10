@@ -1,6 +1,5 @@
 // hooks/data/localDb.ts
 import Dexie, { Table } from 'dexie';
-
 import {
   Lookup_typesRowSchema as Lookup_typesRow,
   Maintenance_areasRowSchema as Maintenance_areasRow,
@@ -18,7 +17,6 @@ import {
   FilesRowSchema,
   FoldersRowSchema,
   V_nodes_completeRowSchema,
-  // V_ofc_cables_completeRowSchema, // REPLACED by ExtendedOfcCable
   V_systems_completeRowSchema,
   V_ringsRowSchema,
   V_employeesRowSchema,
@@ -60,8 +58,6 @@ import {
 } from '@/schemas/zod-schemas';
 import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
-
-// ADDED: Import the extended schema for OFC Cables
 import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 export type StoredUserProfiles = {
@@ -132,7 +128,6 @@ export type StoredVUserProfilesExtended = {
   raw_user_meta_data: Json | null;
 };
 
-// ADDED: Manual type definition for the new link table until codegen runs
 export interface OfcCableLinkRow {
   id: string;
   cable_id_1: string;
@@ -147,19 +142,6 @@ export interface SyncStatus {
   status: 'pending' | 'syncing' | 'success' | 'error';
   error?: string;
   count?: number;
-}
-
-export interface MutationTask {
-  id?: number;
-  tableName: PublicTableName;
-  type: 'insert' | 'update' | 'delete' | 'bulk_upsert';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any;
-  timestamp: string;
-  status: 'pending' | 'processing' | 'success' | 'failed';
-  attempts: number;
-  lastAttempt?: string;
-  error?: string;
 }
 
 export interface RouteDistanceCache {
@@ -190,29 +172,20 @@ export class HNVTMDatabase extends Dexie {
   services!: Table<ServicesRowSchema, string>;
   inventory_transactions!: Table<V_inventory_transactions_extendedRowSchema, string>;
   logical_fiber_paths!: Table<Logical_fiber_pathsRowSchema, string>;
-
   logical_paths!: Table<Logical_pathsRowSchema, string>;
   ofc_connections!: Table<Ofc_connectionsRowSchema, string>;
-
-  // ADDED: Link table
   ofc_cable_links!: Table<OfcCableLinkRow, string>;
-
   files!: Table<FilesRowSchema, string>;
   folders!: Table<FoldersRowSchema, string>;
   advances!: Table<AdvancesInsertSchema, string>;
   expenses!: Table<ExpensesInsertSchema, string>;
-
-
   technical_notes!: Table<Technical_notesRowSchema, string>;
+
   v_technical_notes!: Table<V_technical_notesRowSchema, string>;
   v_advances_complete!: Table<V_advances_completeRowSchema, string>;
   v_expenses_complete!: Table<V_expenses_completeRowSchema, string>;
-
   v_nodes_complete!: Table<V_nodes_completeRowSchema, string>;
-  
-  // UPDATED: Use ExtendedOfcCable type for the view to support linked_cables
   v_ofc_cables_complete!: Table<ExtendedOfcCable, string>;
-  
   v_systems_complete!: Table<V_systems_completeRowSchema, string>;
   v_rings!: Table<V_ringsRowSchema, string>;
   v_employees!: Table<V_employeesRowSchema, string>;
@@ -229,12 +202,10 @@ export class HNVTMDatabase extends Dexie {
   v_services!: Table<V_servicesRowSchema, string>;
   v_end_to_end_paths!: Table<V_end_to_end_pathsRowSchema, string>;
   v_inventory_transactions_extended!: Table<V_inventory_transactions_extendedRowSchema, string>;
-
   e_files!: Table<E_filesRowSchema, string>;
   file_movements!: Table<File_movementsRowSchema, string>;
   v_e_files_extended!: Table<V_e_files_extendedRowSchema, string>;
   v_file_movements_extended!: Table<V_file_movements_extendedRowSchema, string>;
-
   user_activity_logs!: Table<User_activity_logsRowSchema, number>;
   v_lookup_types!: Table<V_lookup_typesRowSchema, string>;
   logical_path_segments!: Table<Logical_path_segmentsRowSchema, string>;
@@ -243,105 +214,77 @@ export class HNVTMDatabase extends Dexie {
   v_cable_segments_at_jc!: Table<V_cable_segments_at_jcRowSchema, string>;
 
   sync_status!: Table<SyncStatus, string>;
-  mutation_queue!: Table<MutationTask, number>;
   route_distances!: Table<RouteDistanceCache, string>;
 
   constructor() {
     super('HNVTMDatabase');
-    // Bumped version to 43 to apply schema changes
-    this.version(43).stores({
+    // Bumped to version 44, setting mutation_queue to null destroys it securely
+    this.version(44).stores({
+      mutation_queue: null, // explicitly delete deprecated table
       lookup_types: '&id, category, name, sort_order, status',
       v_lookup_types: '&id, category, name',
-
       maintenance_areas: '&id, name, parent_id, area_type_id, status',
       v_maintenance_areas: '&id, name, area_type_id, status',
-
       employee_designations: '&id, name, parent_id',
       v_employee_designations: '&id, name, status',
-
       employees: '&id, employee_name, employee_pers_no, status',
       v_employees: '&id, employee_name, employee_designation_id, maintenance_terminal_id, status',
-
       nodes: '&id, name, node_type_id, status',
       v_nodes_complete: '&id, name, node_type_id, maintenance_terminal_id, status',
-
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
-      
-      // ADDED: New link table store
       ofc_cable_links: '&id, cable_id_1, cable_id_2',
-
       ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status, updated_at',
       v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name, status, updated_at',
-
       cable_segments: '&id, original_cable_id',
       junction_closures: '&id, node_id, ofc_cable_id',
       fiber_splices: '&id, jc_id',
-
       v_cable_utilization: 'cable_id',
       v_junction_closures_complete: '&id, node_id, ofc_cable_id',
       v_cable_segments_at_jc: '&id, original_cable_id',
-
       rings: '&id, name, ring_type_id, status',
       v_rings: '&id, name, ring_type_id, maintenance_terminal_id, status',
       ring_based_systems: '&[system_id+ring_id], ring_id, system_id',
       v_ring_nodes: '&[id+ring_id], ring_id, node_id',
-
       systems: '&id, system_name, node_id, status, updated_at',
       v_systems_complete:
         '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address], updated_at',
-
       system_connections: '&id, system_id, status, updated_at',
       v_system_connections_complete:
         '&id, system_id, en_id, connected_system_name, service_name, created_at, status, updated_at',
-
       ports_management: '&id, [system_id+port], system_id, updated_at',
       v_ports_management_complete:
         '&id, system_id, port, port_admin_status, port_utilization, updated_at',
-
       services: '&id, name, updated_at',
       v_services: '&id, name, node_name, link_type_id, status, updated_at',
-
       logical_fiber_paths: '&id, path_name, system_connection_id',
       logical_path_segments: '&id, logical_path_id',
       logical_paths: '&id, ring_id, start_node_id, end_node_id',
       v_end_to_end_paths: '&path_id, path_name',
-
       sdh_connections: '&system_connection_id',
-
       inventory_items: '&id, asset_no, name',
       v_inventory_items: '&id, asset_no, name, category_id, location_id',
-
       inventory_transactions: '&id, inventory_item_id, created_at',
       v_inventory_transactions_extended: '&id, inventory_item_id, transaction_type, created_at',
-
       e_files: '&id, file_number, current_holder_employee_id, status',
       v_e_files_extended: '&id, file_number, status, current_holder_name, updated_at',
-
       file_movements: '&id, file_id, created_at',
       v_file_movements_extended: '&id, file_id, created_at',
-
       user_profiles: '&id, first_name, last_name, role, status',
       v_user_profiles_extended: '&id, email, full_name, role, status',
       diary_notes: '&id, &[user_id+note_date], note_date',
-
       files: '&id, folder_id, user_id, file_name, uploaded_at',
       folders: '&id, user_id, name',
-
       technical_notes: '&id, title, is_published, created_at, updated_at',
       v_technical_notes: '&id, title, is_published, author_id, created_at, updated_at',
-
       user_activity_logs: '&id, action_type, table_name, created_at',
       v_audit_logs: '&id, action_type, table_name, created_at',
-
       advances: '&id, req_no, employee_id, status, advance_date',
       expenses: '&id, advance_id, expense_date, category, vendor',
-
       v_advances_complete: '&id, req_no, employee_name, status, advance_date, created_at',
-      v_expenses_complete: '&id, advance_id, expense_date, category, vendor, invoice_no, advance_req_no, created_at',
-
+      v_expenses_complete:
+        '&id, advance_id, expense_date, category, vendor, invoice_no, advance_req_no, created_at',
       sync_status: 'tableName',
-      mutation_queue: '++id, timestamp, status, tableName',
       route_distances: 'id, timestamp',
     });
   }
@@ -355,9 +298,7 @@ export function getTable<T extends PublicTableOrViewName>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const table = (localDb as any)[tableName];
   if (!table) {
-    console.warn(`Table ${tableName} not defined in localDb class.`);
     throw new Error(`Table ${tableName} does not exist in localDb`);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return table as Table<Row<T>, any>;
 }

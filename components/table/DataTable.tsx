@@ -1,7 +1,7 @@
-// @/components/table/DataTable.tsx
+// components/table/DataTable.tsx
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { TableToolbar, TableHeader, TableBody, TablePagination, TableFilterPanel } from './';
 import { DataTableProps, DownloadOptions, SortConfig } from '@/components/table/datatable-types';
 import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
@@ -17,8 +17,6 @@ type TableState<T extends PublicTableOrViewName> = {
   filters: Filters;
   selectedRows: DataRow<T>[];
   visibleColumns: string[];
-  editingCell: { rowIndex: number; columnKey: string } | null;
-  editValue: string;
   showColumnSelector: boolean;
   showFilters: boolean;
 };
@@ -27,12 +25,6 @@ type BaseTableAction<R> =
   | { type: 'SET_SEARCH_QUERY'; payload: string }
   | { type: 'SET_SELECTED_ROWS'; payload: R[] }
   | { type: 'SET_VISIBLE_COLUMNS'; payload: string[] }
-  | {
-      type: 'START_EDIT_CELL';
-      payload: { rowIndex: number; columnKey: string; value: string };
-    }
-  | { type: 'SET_EDIT_VALUE'; payload: string }
-  | { type: 'CANCEL_EDIT' }
   | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
   | { type: 'TOGGLE_FILTERS'; payload?: boolean };
 
@@ -43,7 +35,7 @@ type TableActionReducer<T extends PublicTableOrViewName> =
 
 function tableReducer<T extends PublicTableOrViewName>(
   state: TableState<T>,
-  action: TableActionReducer<T> | BaseTableAction<DataRow<T>>
+  action: TableActionReducer<T> | BaseTableAction<DataRow<T>>,
 ): TableState<T> {
   switch (action.type) {
     case 'SET_SEARCH_QUERY':
@@ -56,24 +48,8 @@ function tableReducer<T extends PublicTableOrViewName>(
       return { ...state, selectedRows: action.payload };
     case 'SET_VISIBLE_COLUMNS':
       return { ...state, visibleColumns: action.payload };
-    case 'START_EDIT_CELL':
-      return {
-        ...state,
-        editingCell: {
-          rowIndex: action.payload.rowIndex,
-          columnKey: action.payload.columnKey,
-        },
-        editValue: action.payload.value,
-      };
-    case 'SET_EDIT_VALUE':
-      return { ...state, editValue: action.payload };
-    case 'CANCEL_EDIT':
-      return { ...state, editingCell: null, editValue: '' };
     case 'TOGGLE_COLUMN_SELECTOR':
-      return {
-        ...state,
-        showColumnSelector: action.payload ?? !state.showColumnSelector,
-      };
+      return { ...state, showColumnSelector: action.payload ?? !state.showColumnSelector };
     case 'TOGGLE_FILTERS':
       return { ...state, showFilters: action.payload ?? !state.showFilters };
     default:
@@ -105,7 +81,6 @@ export function DataTable<T extends PublicTableOrViewName>({
   onRefresh,
   onExport,
   onRowSelect,
-  onCellEdit,
   customToolbar,
   showColumnSelector: showColumnSelectorProp,
   showColumnsToggle,
@@ -120,8 +95,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     filters: {},
     selectedRows: [],
     visibleColumns: columns.map((col) => col.key),
-    editingCell: null,
-    editValue: '',
     showColumnSelector: !!showColumnSelectorProp,
     showFilters: false,
   };
@@ -133,8 +106,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     filters,
     selectedRows,
     visibleColumns,
-    editingCell,
-    editValue,
     showColumnSelector,
     showFilters,
   } = state;
@@ -143,10 +114,7 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   useEffect(() => {
     if (typeof showColumnSelectorProp === 'boolean') {
-      dispatch({
-        type: 'TOGGLE_COLUMN_SELECTOR',
-        payload: showColumnSelectorProp,
-      });
+      dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: showColumnSelectorProp });
     }
   }, [showColumnSelectorProp]);
 
@@ -156,12 +124,7 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
   }, [filterable]);
 
-  const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
-    showToasts: true,
-  });
-  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
-    showToasts: true,
-  });
+  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, { showToasts: true });
 
   const processedData = useMemo(() => {
     let filteredData = [...data] as DataRow<T>[];
@@ -175,7 +138,7 @@ export function DataTable<T extends PublicTableOrViewName>({
           return String(value ?? '')
             .toLowerCase()
             .includes(q);
-        })
+        }),
       );
     }
 
@@ -185,7 +148,7 @@ export function DataTable<T extends PublicTableOrViewName>({
           filteredData = filteredData.filter((item) =>
             String(item[key as keyof DataRow<T>] ?? '')
               .toLowerCase()
-              .includes(String(value).toLowerCase())
+              .includes(String(value).toLowerCase()),
           );
         }
       });
@@ -194,7 +157,6 @@ export function DataTable<T extends PublicTableOrViewName>({
     if (sortConfig && sortable) {
       const sortColumn = columns.find((c) => c.key === sortConfig.key);
       const useNaturalSort = !!sortColumn?.naturalSort;
-
       const collator = useNaturalSort
         ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
         : null;
@@ -202,28 +164,24 @@ export function DataTable<T extends PublicTableOrViewName>({
       filteredData.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
-
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
-
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           if (useNaturalSort && collator) {
             const result = collator.compare(aValue, bValue);
             return sortConfig.direction === 'asc' ? result : -result;
           }
-
           return sortConfig.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
-
         return sortConfig.direction === 'asc'
           ? aValue > bValue
             ? 1
             : -1
           : aValue < bValue
-          ? 1
-          : -1;
+            ? 1
+            : -1;
       });
     }
     return filteredData;
@@ -247,13 +205,10 @@ export function DataTable<T extends PublicTableOrViewName>({
       if (sortConfig?.key === columnKey && sortConfig.direction === 'desc') {
         dispatch({ type: 'SET_SORT_CONFIG', payload: null });
       } else {
-        dispatch({
-          type: 'SET_SORT_CONFIG',
-          payload: { key: columnKey, direction },
-        });
+        dispatch({ type: 'SET_SORT_CONFIG', payload: { key: columnKey, direction } });
       }
     },
-    [sortable, sortConfig]
+    [sortable, sortConfig],
   );
 
   const handleRowSelect = useCallback(
@@ -264,7 +219,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
       onRowSelect?.(newSelection);
     },
-    [selectedRows, onRowSelect]
+    [selectedRows, onRowSelect],
   );
 
   const handleSelectAll = useCallback(
@@ -273,46 +228,17 @@ export function DataTable<T extends PublicTableOrViewName>({
       dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
       onRowSelect?.(newSelection);
     },
-    [processedData, onRowSelect]
+    [processedData, onRowSelect],
   );
-
-  const handleCellEdit = useCallback(
-    (record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => {
-      if (!column.editable) return;
-      dispatch({
-        type: 'START_EDIT_CELL',
-        payload: {
-          rowIndex,
-          columnKey: column.key,
-          value: String(record[column.dataIndex as keyof DataRow<T>] ?? ''),
-        },
-      });
-    },
-    []
-  );
-
-  const saveCellEdit = useCallback(() => {
-    if (!editingCell) return;
-    const record = processedData[editingCell.rowIndex];
-    const column = columns.find((col) => col.key === editingCell.columnKey);
-    if (column && onCellEdit) {
-      onCellEdit(record, column, editValue);
-    }
-    dispatch({ type: 'CANCEL_EDIT' });
-  }, [editingCell, processedData, columns, onCellEdit, editValue]);
-
-  const cancelCellEdit = useCallback(() => dispatch({ type: 'CANCEL_EDIT' }), []);
 
   const emptyColumnKeys = useMemo(() => {
     if (!autoHideEmptyColumns || processedData.length === 0) return new Set<string>();
     const nonEmptyKeys = new Set<string>();
     columns.forEach((col) => {
-      // THE FIX: Check for alwaysVisible flag
       if (col.alwaysVisible) {
         nonEmptyKeys.add(col.key);
         return;
       }
-
       const hasValue = processedData.some((row) => {
         const val = row[col.dataIndex as keyof typeof row];
         if (val === null || val === undefined) return false;
@@ -328,9 +254,9 @@ export function DataTable<T extends PublicTableOrViewName>({
   const visibleColumnsData = useMemo<Column<Row<T>>[]>(
     () =>
       columns.filter(
-        (col) => visibleColumns.includes(col.key) && !col.hidden && !emptyColumnKeys.has(col.key)
+        (col) => visibleColumns.includes(col.key) && !col.hidden && !emptyColumnKeys.has(col.key),
       ),
-    [columns, visibleColumns, emptyColumnKeys]
+    [columns, visibleColumns, emptyColumnKeys],
   );
 
   const setSearchQueryCb = useCallback((query: string) => {
@@ -363,58 +289,19 @@ export function DataTable<T extends PublicTableOrViewName>({
           rpcConfig: exportOptions.rpcConfig,
         };
         await rpcExcelDownload.mutateAsync(rpcOptions);
-      } else {
-        await tableExcelDownload.mutateAsync(baseOptions);
       }
     } catch (err) {
-      if (exportOptions?.fallbackToCsv) {
-        try {
-          const headers = columnsToExport.map((c) => c.title).join(',');
-          const keys = columnsToExport.map((c) => c.dataIndex as keyof Row<T> & string);
-          const rows = (processedData as Row<T>[])?.map((r) =>
-            keys
-              .map((k) => {
-                const v = (r as Row<T>)[k] as unknown;
-                if (v === null || v === undefined) return '';
-                const s = String(v).replace(/"/g, '""');
-                return `"${s}"`;
-              })
-              .join(',')
-          );
-          const csv = [headers, ...(rows || [])].join('\n');
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement('a');
-          const csvName = (exportOptions?.fileName?.replace(/\.xlsx$/i, '') || 'export') + '.csv';
-          link.href = URL.createObjectURL(blob);
-          link.download = csvName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(link.href);
-        } catch {
-          throw err;
-        }
-      } else {
-        throw err;
-      }
+      toast.error('Export Failed');
     }
-  }, [
-    onExport,
-    processedData,
-    visibleColumnsData,
-    exportOptions,
-    filters,
-    tableExcelDownload,
-    rpcExcelDownload,
-  ]);
+  }, [onExport, processedData, visibleColumnsData, exportOptions, filters, rpcExcelDownload]);
 
   const hasActions = actions.length > 0;
-  const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
+  const isExporting = rpcExcelDownload.isPending;
 
   const renderActions = (record: DataRow<T>, index: number) => {
     if (!hasActions) return null;
     return (
-      <div className="flex gap-1 justify-end">
+      <div className='flex gap-1 justify-end'>
         {actions.map((action) => {
           const isHidden =
             typeof action.hidden === 'function' ? action.hidden(record) : action.hidden;
@@ -429,12 +316,7 @@ export function DataTable<T extends PublicTableOrViewName>({
                 if (!isDisabled) action.onClick(record, index);
               }}
               disabled={isDisabled}
-              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                isDisabled ? 'opacity-50' : ''
-              } ${
-                action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
-              }`}
-            >
+              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'}`}>
               {action.getIcon ? action.getIcon(record) : action.icon}
             </button>
           );
@@ -448,10 +330,9 @@ export function DataTable<T extends PublicTableOrViewName>({
       className={cn(
         'flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-100px)] relative shadow-md',
         bordered ? 'border border-gray-200 dark:border-gray-700' : '',
-        className
-      )}
-    >
-      <div className="shrink-0 z-20 relative bg-white dark:bg-gray-800 rounded-t-lg">
+        className,
+      )}>
+      <div className='shrink-0 z-20 relative bg-white dark:bg-gray-800 rounded-t-lg'>
         <TableToolbar
           title={title}
           searchable={searchable}
@@ -479,45 +360,43 @@ export function DataTable<T extends PublicTableOrViewName>({
           loading={loading}
           isExporting={isExporting}
         />
-
         <TableFilterPanel
           columns={columns}
           filters={filters}
+          showFilters={showFilters}
+          filterable={filterable}
           setFilters={(f) =>
             dispatch({
               type: 'SET_FILTERS',
               payload: typeof f === 'function' ? (f as (prev: Filters) => Filters)(filters) : f,
             })
           }
-          showFilters={showFilters}
-          filterable={filterable}
         />
       </div>
 
-      <div className="flex-1 w-full overflow-auto min-h-0 relative isolate">
+      <div className='flex-1 w-full overflow-auto min-h-0 relative isolate'>
         {renderMobileItem && (
-          <div className="block sm:hidden p-1 space-y-4">
+          <div className='block sm:hidden p-1 space-y-4'>
             {loading ? (
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-32 bg-gray-100 animate-pulse rounded-lg" />
+                  <div key={i} className='h-32 bg-gray-100 animate-pulse rounded-lg' />
                 ))}
               </div>
             ) : processedData.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">{emptyText}</div>
+              <div className='text-center py-8 text-gray-500'>{emptyText}</div>
             ) : (
               processedData.map((record, idx) => (
                 <Card
                   key={`${record.id}-${idx}`}
-                  className="p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative"
-                >
+                  className='p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative'>
                   {selectable && (
-                    <div className="absolute top-4 left-4">
+                    <div className='absolute top-4 left-4'>
                       <input
-                        type="checkbox"
+                        type='checkbox'
                         checked={selectedRows.some((r) => r.id === record.id)}
                         onChange={(e) => handleRowSelect(record, e.target.checked)}
-                        className="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        className='rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500'
                       />
                     </div>
                   )}
@@ -531,10 +410,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         )}
 
         <table
-          className={`min-w-full w-full table-auto sm:table-fixed ${
-            bordered ? 'border-separate border-spacing-0' : ''
-          } ${renderMobileItem ? 'hidden sm:table' : ''}`}
-        >
+          className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? 'border-separate border-spacing-0' : ''} ${renderMobileItem ? 'hidden sm:table' : ''}`}>
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}
@@ -564,19 +440,12 @@ export function DataTable<T extends PublicTableOrViewName>({
             loading={loading}
             emptyText={emptyText}
             selectedRows={selectedRows}
-            editingCell={editingCell}
-            editValue={editValue}
-            setEditValue={(value) => dispatch({ type: 'SET_EDIT_VALUE', payload: value })}
             onRowSelect={handleRowSelect}
-            onCellEdit={handleCellEdit}
-            saveCellEdit={saveCellEdit}
-            cancelCellEdit={cancelCellEdit}
-            isLoading={loading}
           />
         </table>
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg">
+      <div className='shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-lg'>
         <TablePagination pagination={pagination} bordered={false} />
       </div>
     </div>

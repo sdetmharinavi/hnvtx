@@ -5,9 +5,8 @@ import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GiLinkedRings } from 'react-icons/gi';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
-import { RingModal } from '@/components/rings/RingModal';
-import { DataTable, TableAction } from '@/components/table';
+import { ErrorDisplay } from '@/components/common/ui';
+import { DataTable } from '@/components/table';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { createStandardActions } from '@/components/table/action-helpers';
@@ -15,8 +14,6 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useRingsData } from '@/hooks/data/useRingsData';
 import {
   V_ringsRowSchema,
-  RingsRowSchema,
-  RingsInsertSchema,
   Lookup_typesRowSchema,
   Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
@@ -24,23 +21,21 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
-import { useUser } from '@/providers/UserProvider';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
-import { PERMISSIONS } from '@/config/permissions';
-import { StatProps } from '@/components/common/page-header/StatCard'; // Added
+import { StatProps } from '@/components/common/page-header/StatCard';
 
 const STATUS_OPTIONS = {
-  OFC: [
+  OFC:[
     { value: 'Pending', label: 'Pending' },
     { value: 'Partial Ready', label: 'Partial Ready' },
     { value: 'Ready', label: 'Ready' },
   ],
-  SPEC: [
+  SPEC:[
     { value: 'Pending', label: 'Pending' },
     { value: 'Survey', label: 'Survey' },
     { value: 'Issued', label: 'Issued' },
   ],
-  BTS: [
+  BTS:[
     { value: 'Pending', label: 'Pending' },
     { value: 'Configured', label: 'Configured' },
     { value: 'On-Air', label: 'On-Air' },
@@ -55,29 +50,20 @@ export default function RingsPage() {
     data: rings,
     totalCount,
     isLoading,
-    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
-    editModal,
-    deleteModal,
-    actions: crudActions,
   } = useCrudManager<'rings', V_ringsRowSchema>({
     tableName: 'rings',
+    localTableName: 'v_rings',
     dataQueryHook: useRingsData,
     displayNameField: 'name',
-    searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
+    searchColumn:['name', 'description', 'ring_type_name', 'maintenance_area_name'],
     syncTables: ['rings', 'v_rings', 'ring_based_systems'],
   });
-
-  const { canAccess } = useUser();
-  const canEdit = canAccess(PERMISSIONS.canManage);
-  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
-
-  // --- DATA FETCHING FOR MODALS ---
 
   const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
     useLookupTypeOptions('RING_TYPES');
@@ -85,13 +71,11 @@ export default function RingsPage() {
   const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
     useMaintenanceAreaOptions();
 
-  const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[], [ringTypesRaw]);
+  const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[],[ringTypesRaw]);
   const maintenanceAreas = useMemo(
-    () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
-    [maintenanceAreasRaw],
+    () => (maintenanceAreasRaw ||[]) as Maintenance_areasRowSchema[],
+    [maintenanceAreasRaw]
   );
-
-  const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
   const ringTypeFilterOptions = useMemo(
     () =>
@@ -99,7 +83,7 @@ export default function RingsPage() {
         value: t.id,
         label: t.name,
       })),
-    [ringTypes],
+    [ringTypes]
   );
 
   const maintenanceAreaFilterOptions = useMemo(
@@ -107,11 +91,9 @@ export default function RingsPage() {
       maintenanceAreas.map((a) => ({
         value: a.id,
         label: a.name,
-      })),
-    [maintenanceAreas],
+      })),[maintenanceAreas]
   );
 
-  // --- REFACTOR: Calculate stats and provide onClick handlers ---
   const headerStats = useMemo<StatProps[]>(() => {
     const s = {
       spec: { issued: 0, pending: 0 },
@@ -120,8 +102,6 @@ export default function RingsPage() {
     };
     let nodesSum = 0;
 
-    // Calculate based on CURRENTLY LOADED data (usually appropriate for stats on the list)
-    // If you wanted global stats, you'd need a separate hook or aggregation query.
     rings.forEach((r) => {
       nodesSum += r.total_nodes || 0;
       if (r.spec_status === 'Issued') s.spec.issued++;
@@ -143,12 +123,11 @@ export default function RingsPage() {
     const currentSpecFilter = filters.filters.spec_status;
     const currentBtsFilter = filters.filters.bts_status;
 
-    return [
+    return[
       {
         value: `${nodesSum} / ${totalCount}`,
         label: 'Total Nodes / Rings',
         color: 'default',
-        // Click clears specific status filters
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -181,46 +160,35 @@ export default function RingsPage() {
         isActive: currentOfcFilter === 'Ready',
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    rings,
-    totalCount,
-    filters.filters.ofc_status,
-    filters.filters.spec_status,
-    filters.filters.bts_status,
-    filters.setFilters,
-  ]);
+  },[rings, totalCount, filters.filters.ofc_status, filters.filters.spec_status, filters.filters.bts_status, filters.setFilters]);
 
-  const columns = RingsColumns(rings, STATUS_OPTIONS);
-  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
+  // Disable inline cell editing by overriding the editable property inside RingsColumns
+  // We can just pass standard actions without editing
+  const columns = RingsColumns(rings, STATUS_OPTIONS).map(col => ({ ...col, editable: false }));
+  const orderedColumns = useOrderedColumns(columns,[...TABLE_COLUMN_KEYS.v_rings]);
 
   const handleView = useCallback(
     (record: V_ringsRowSchema) => {
       if (record.id) router.push(`/dashboard/rings/${record.id}`);
     },
-    [router],
+    [router]
   );
 
-  const tableActions = useMemo((): TableAction<'v_rings'>[] => {
-    const standardActions = createStandardActions<V_ringsRowSchema>({
-      onEdit: canEdit ? editModal.openEdit : undefined,
+  const tableActions = useMemo(() => {
+    return createStandardActions<V_ringsRowSchema>({
       onView: handleView,
-      onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
-    return standardActions;
-  }, [editModal.openEdit, handleView, crudActions.handleDelete, canEdit, canDelete]);
+  }, [handleView]);
 
   const isInitialLoad = isLoading && rings.length === 0;
 
   const headerActions = useStandardHeaderActions({
-    data: rings as RingsRowSchema[],
+    data: rings,
     onRefresh: async () => {
       await refetch();
     },
-    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'rings' } : undefined,
   });
 
   const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
@@ -237,7 +205,7 @@ export default function RingsPage() {
         </div>
       </div>
     );
-  }, []);
+  },[]);
 
   if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
@@ -246,10 +214,10 @@ export default function RingsPage() {
   return (
     <div className='mx-auto space-y-4 p-6'>
       <PageHeader
-        title='Ring Management'
-        description='Manage network rings, assign systems, and track phase progress.'
+        title='Ring Directory'
+        description='View network rings and track phase progress.'
         icon={<GiLinkedRings />}
-        stats={headerStats} // Interactive Stats
+        stats={headerStats}
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
@@ -263,10 +231,9 @@ export default function RingsPage() {
         columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
-        isFetching={isFetching || isMutating}
+        isFetching={isFetching}
         renderMobileItem={renderMobileItem}
-        // Enable cell editing
-        onCellEdit={canEdit ? crudActions.handleCellEdit : undefined}
+        selectable={false}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -336,31 +303,6 @@ export default function RingsPage() {
             />
           </SearchAndFilters>
         }
-      />
-
-      <RingModal
-        isOpen={editModal.isOpen}
-        onClose={editModal.close}
-        onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
-        editingRing={editModal.record}
-        // Pass the full objects as required by RingModalProps
-        ringTypes={ringTypes || []}
-        maintenanceAreas={maintenanceAreas || []}
-        isLoading={isMutating}
-        isLoadingDropdowns={isLoadingDropdowns}
-      />
-
-      <ConfirmModal
-        isOpen={deleteModal.isOpen}
-        onConfirm={deleteModal.onConfirm}
-        onCancel={deleteModal.onCancel}
-        title='Confirm Deletion'
-        message={deleteModal.message}
-        confirmText='Delete'
-        cancelText='Cancel'
-        type='danger'
-        showIcon
-        loading={deleteModal.loading}
       />
     </div>
   );

@@ -1,39 +1,22 @@
-// path: app/dashboard/ring-paths/[ringId]/page.tsx
+// app/dashboard/ring-paths/[ringId]/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  FiArrowLeft,
-  FiRefreshCw,
-  FiGitBranch,
-  FiEdit2,
-  FiZap,
-  FiTrash2,
-  FiMinusCircle,
-} from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEye } from 'react-icons/fi';
 
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
-import { PageSpinner, ErrorDisplay, Button, ConfirmModal } from '@/components/common/ui';
-import {
-  useRingConnectionPaths,
-  useGenerateRingPaths,
-  useDeleteRingLogicalPath,
-  useDeprovisionRingLogicalPath,
-} from '@/hooks/database/ring-provisioning-hooks';
+import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
+import { useRingConnectionPaths } from '@/hooks/database/ring-provisioning-hooks';
 import { useTableRecord } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
-import { RingPathManagerModal } from '@/components/rings/RingPathManagerModal';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
 
-// Define the shape of the data returned by useRingConnectionPaths
 interface LogicalPathData {
   id: string;
   name: string;
@@ -46,7 +29,6 @@ interface LogicalPathData {
   destination_port: string | null;
   created_at: string | null;
   updated_at: string | null;
-  // Joined fields
   start_node?: { name: string } | null;
   end_node?: { name: string } | null;
   source_system?: { system_name: string } | null;
@@ -58,26 +40,11 @@ export default function RingPathsPage() {
   const router = useRouter();
   const ringId = params.ringId as string;
   const supabase = createClient();
-  const { isSuperAdmin, role } = useUser();
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
-  // Modal states for delete vs deprovision
-  const [modalType, setModalType] = useState<'delete' | 'deprovision' | null>(null);
-  const [selectedPath, setSelectedPath] = useState<LogicalPathData | null>(null);
-
-  // --- PERMISSIONS ---
-  const canEdit =
-    !!isSuperAdmin ||
-    role === UserRole.ADMIN ||
-    role === UserRole.ADMINPRO ||
-    role === UserRole.MAANADMIN ||
-    role === UserRole.CPANADMIN;
-
-  // 1. Fetch Ring Details (for header)
+  // 1. Fetch Ring Details
   const { data: ringData, isLoading: isLoadingRing } = useTableRecord<'v_rings'>(
     supabase,
     'v_rings',
@@ -86,69 +53,15 @@ export default function RingPathsPage() {
 
   // 2. Fetch Paths
   const {
-    data: paths = [],
+    data: paths =[],
     isLoading: isLoadingPaths,
     isFetching,
     refetch,
   } = useRingConnectionPaths(ringId);
 
-  // 3. Mutations
-  const generateMutation = useGenerateRingPaths();
-  const deleteMutation = useDeleteRingLogicalPath();
-  const deprovisionMutation = useDeprovisionRingLogicalPath();
-
-  // --- HANDLERS ---
-
-  const handleGeneratePaths = () => {
-    generateMutation.mutate(ringId);
-  };
-
-  const handleEditPath = (path: LogicalPathData) => {
-    setSelectedPath(path);
-    setIsEditModalOpen(true);
-  };
-
-  const handleDeletePath = (path: LogicalPathData) => {
-    setSelectedPath(path);
-    setModalType('delete');
-  };
-
-  const handleDeprovisionPath = (path: LogicalPathData) => {
-    setSelectedPath(path);
-    setModalType('deprovision');
-  };
-
-  const confirmAction = () => {
-    if (!selectedPath) return;
-
-    if (modalType === 'delete') {
-      deleteMutation.mutate(selectedPath.id, {
-        onSuccess: () => {
-          setModalType(null);
-          setSelectedPath(null);
-          refetch();
-        },
-      });
-    } else if (modalType === 'deprovision') {
-      deprovisionMutation.mutate(selectedPath.id, {
-        onSuccess: () => {
-          setModalType(null);
-          setSelectedPath(null);
-          refetch();
-        },
-      });
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsEditModalOpen(false);
-    setSelectedPath(null);
-    refetch(); // Refresh list to show new system assignments
-  };
-
   // --- COLUMNS ---
   const columns = useMemo(
-    (): Column<LogicalPathData>[] => [
+    (): Column<LogicalPathData>[] =>[
       {
         key: 'name',
         title: 'Path Name',
@@ -162,25 +75,6 @@ export default function RingPathsPage() {
           />
         ),
       },
-      // {
-      //   key: 'topology',
-      //   title: 'Topology',
-      //   dataIndex: 'start_node',
-      //   width: 200,
-      //   render: (_, record) => (
-      //     <div className='flex items-center gap-2 text-sm'>
-      //       <TruncateTooltip
-      //         className='text-gray-600 dark:text-gray-400'
-      //         text={record.start_node?.name || 'Unknown'}
-      //       />
-      //       <span className='text-gray-400'>→</span>
-      //       <TruncateTooltip
-      //         className='text-gray-600 dark:text-gray-400'
-      //         text={record.end_node?.name || 'Unknown'}
-      //       />
-      //     </div>
-      //   ),
-      // },
       {
         key: 'source_config',
         title: 'Source System',
@@ -245,50 +139,31 @@ export default function RingPathsPage() {
           );
         },
       },
-    ],
-    []
+    ],[]
   );
 
   const tableActions = useMemo(
-    (): TableAction<'logical_paths'>[] => [
+    (): TableAction<'logical_paths'>[] =>[
       {
-        key: 'edit',
-        label: 'Configure',
-        icon: <FiEdit2 />,
-        onClick: (record) => handleEditPath(record as unknown as LogicalPathData),
+        key: 'view',
+        label: 'View System',
+        icon: <FiEye />,
+        onClick: (record) => {
+            const path = record as unknown as LogicalPathData;
+            if (path.source_system_id) router.push(`/dashboard/systems/${path.source_system_id}`);
+        },
         variant: 'secondary',
-        disabled: !canEdit,
-      },
-      {
-        key: 'deprovision',
-        label: 'Deprovision',
-        icon: <FiMinusCircle />,
-        onClick: (record) => handleDeprovisionPath(record as unknown as LogicalPathData),
-        variant: 'secondary',
-        // Only show deprovision if it is actually configured
-        hidden: (record) =>
-          !canEdit ||
-          (record as unknown as LogicalPathData).status === 'unprovisioned' ||
-          !(record as unknown as LogicalPathData).source_system_id,
-      },
-      {
-        key: 'delete',
-        label: 'Delete Path',
-        icon: <FiTrash2 />,
-        onClick: (record) => handleDeletePath(record as unknown as LogicalPathData),
-        variant: 'danger',
-        disabled: !canEdit,
+        hidden: (record) => !(record as unknown as LogicalPathData).source_system_id,
       },
     ],
-    [canEdit]
+    [router]
   );
 
   const isBusy = isFetching || isSyncingData;
 
-  const customHeaderActions = [
+  const customHeaderActions =[
     {
       label: 'Refresh',
-      // CHANGED: Update refresh handler
       onClick: async () => {
         if (isOnline) {
           await syncData([
@@ -303,21 +178,9 @@ export default function RingPathsPage() {
         toast.success('Logical paths refreshed!');
       },
       variant: 'outline' as const,
-      // THE FIX: Use isBusy for spinner
       leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
       disabled: isBusy,
     },
-    ...(canEdit
-      ? [
-          {
-            label: generateMutation.isPending ? 'Generating...' : 'Generate Paths',
-            onClick: handleGeneratePaths,
-            variant: 'primary' as const,
-            leftIcon: <FiZap />,
-            disabled: generateMutation.isPending || isLoadingPaths,
-          },
-        ]
-      : []),
     {
       label: 'Back',
       onClick: () => router.back(),
@@ -326,7 +189,7 @@ export default function RingPathsPage() {
     },
   ];
 
-  const headerStats = [
+  const headerStats =[
     { value: paths.length, label: 'Total Paths' },
     {
       value: paths.filter((p) => p.status === 'configured' || p.status === 'provisioned').length,
@@ -347,7 +210,7 @@ export default function RingPathsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <PageHeader
         title={`Logical Paths: ${ringData.name}`}
-        description="Manage logical connectivity between ring nodes. Generate paths based on topology and assign systems."
+        description="View logical connectivity between ring nodes."
         icon={<FiGitBranch />}
         stats={headerStats}
         actions={customHeaderActions}
@@ -359,38 +222,26 @@ export default function RingPathsPage() {
         {paths.length === 0 && !isLoadingPaths ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4">
-              <FiZap className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <FiGitBranch className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               No Logical Paths Found
             </h3>
             <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-              It seems this ring doesn&apos;t have any logical paths defined yet. Click{' '}
-              <strong>Generate Paths</strong> to automatically create paths based on the Ring
-              Topology (Hub-to-Hub and Hub-to-Spur).
+              It seems this ring doesn&apos;t have any logical paths defined.
             </p>
-            {canEdit && (
-              <Button
-                onClick={handleGeneratePaths}
-                disabled={generateMutation.isPending}
-                leftIcon={<FiZap />}
-              >
-                {generateMutation.isPending ? 'Generating...' : 'Generate Paths'}
-              </Button>
-            )}
           </div>
         ) : (
           <DataTable
             autoHideEmptyColumns={true}
             tableName="logical_paths"
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data={paths as any}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             columns={columns as any}
             actions={tableActions}
             loading={isLoadingPaths}
-            isFetching={isFetching || generateMutation.isPending}
+            isFetching={isFetching}
             searchable={true}
+            selectable={false}
             pagination={{
               current: 1,
               pageSize: 50,
@@ -400,34 +251,6 @@ export default function RingPathsPage() {
           />
         )}
       </div>
-
-      {selectedPath && (
-        <RingPathManagerModal
-          isOpen={isEditModalOpen}
-          onClose={handleCloseModal}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          path={selectedPath as any}
-        />
-      )}
-
-      {/* Unified Confirmation Modal */}
-      <ConfirmModal
-        isOpen={!!modalType}
-        onConfirm={confirmAction}
-        onCancel={() => {
-          setModalType(null);
-          setSelectedPath(null);
-        }}
-        title={modalType === 'delete' ? 'Delete Logical Path' : 'Deprovision Path'}
-        message={
-          modalType === 'delete'
-            ? `Are you sure you want to delete path "${selectedPath?.name}"? This action cannot be undone.`
-            : `Are you sure you want to deprovision "${selectedPath?.name}"? This will clear the system assignments but keep the path definition.`
-        }
-        type={modalType === 'delete' ? 'danger' : 'warning'}
-        confirmText={modalType === 'delete' ? 'Delete Path' : 'Deprovision'}
-        loading={deleteMutation.isPending || deprovisionMutation.isPending}
-      />
     </div>
   );
 }

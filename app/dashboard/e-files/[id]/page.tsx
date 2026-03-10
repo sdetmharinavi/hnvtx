@@ -1,16 +1,13 @@
+// app/dashboard/e-files/[id]/page.tsx
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEFileDetails, useCloseFile } from '@/hooks/data/useEFilesData';
-import { PageSpinner, ErrorDisplay, Button, Card, ConfirmModal } from '@/components/common/ui';
+import { useEFileDetails } from '@/hooks/data/useEFilesData';
+import { PageSpinner, ErrorDisplay, Button, Card } from '@/components/common/ui';
 import { EFileTimeline } from '@/components/efile/EFileTimeline';
-import { ForwardFileModal } from '@/components/efile/ActionModals';
-import { useState } from 'react';
-import { ArrowLeft, Send, Archive, FileText, User } from 'lucide-react';
+import { ArrowLeft, FileText, User } from 'lucide-react';
 import { HtmlContent } from '@/components/common/ui/HtmlContent';
 import { EFileMovementRow } from '@/schemas/efile-schemas';
-import { useUser } from '@/providers/UserProvider'; // THE FIX: Import useUser
-import { UserRole } from '@/types/user-roles'; // THE FIX: Import UserRole
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { FiRefreshCw } from 'react-icons/fi';
@@ -19,18 +16,10 @@ import { toast } from 'sonner';
 export default function EFileDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
-  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-
-  // THE FIX: Get user role for permission checks
-  const { isSuperAdmin, role } = useUser();
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
   const { data, isLoading, isError, error, refetch } = useEFileDetails(id as string);
-  const closeMutation = useCloseFile();
-
   const { sync: syncData, isSyncing } = useDataSync();
-  const isOnline = useOnlineStatus(); //
+  const isOnline = useOnlineStatus();
 
   if (isLoading) return <PageSpinner text="Loading file details..." />;
   if (isError || !data) return <ErrorDisplay error={error?.message || 'File not found'} />;
@@ -41,39 +30,13 @@ export default function EFileDetailsPage() {
     return <ErrorDisplay error="Invalid file record: Missing ID" />;
   }
 
-  const isActive = file.status === 'active';
-
   return (
-    <div className="p-4 md:p-6 max-w-11/12 mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          leftIcon={<ArrowLeft className="w-4 h-4" />}
-          size="sm"
-        >
+        <Button variant="ghost" onClick={() => router.back()} leftIcon={<ArrowLeft className="w-4 h-4" />} size="sm">
           Back
         </Button>
-        <Button
-          variant="ghost"
-          onClick={async () => {
-            if (isOnline) {
-              await syncData([
-                'e_files',
-                'v_e_files_extended',
-                'file_movements',
-                'v_file_movements_extended',
-              ]);
-              // THE FIX: No explicit refetch() here
-            } else {
-              refetch();
-            }
-            toast.success('File details refreshed.');
-          }}
-          disabled={isSyncing}
-          leftIcon={<FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />}
-          size="sm"
-        >
+        <Button variant="ghost" onClick={async () => { if (isOnline) { await syncData(['e_files', 'v_e_files_extended', 'file_movements', 'v_file_movements_extended']); } else { refetch(); } toast.success('File details refreshed.'); }} disabled={isSyncing} leftIcon={<FiRefreshCw className={isSyncing ? 'animate-spin' : ''} />} size="sm">
           Refresh
         </Button>
         {file.status === 'closed' && (
@@ -99,26 +62,6 @@ export default function EFileDetailsPage() {
             </div>
           </div>
         </div>
-
-        {/* THE FIX: Wrap action buttons in canEdit check */}
-        {isActive && canEdit && (
-          <div className="flex gap-2 shrink-0">
-            <Button
-              variant="danger"
-              onClick={() => setIsCloseModalOpen(true)}
-              leftIcon={<Archive className="w-4 h-4" />}
-            >
-              Close File
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => setIsForwardModalOpen(true)}
-              leftIcon={<Send className="w-4 h-4" />}
-            >
-              Update Movement
-            </Button>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-11 gap-6">
@@ -131,18 +74,12 @@ export default function EFileDetailsPage() {
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                  Held By
-                </span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Held By</span>
                 <div className="flex items-start gap-2 mt-1">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mt-2 shrink-0"></div>
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white wrap-break-word leading-tight">
-                      {file.current_holder_name}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 wrap-break-word">
-                      {file.current_holder_designation}
-                    </p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white wrap-break-word leading-tight">{file.current_holder_name}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5 wrap-break-word">{file.current_holder_designation}</p>
                   </div>
                 </div>
                 {file.current_holder_area && (
@@ -152,81 +89,25 @@ export default function EFileDetailsPage() {
                   </p>
                 )}
               </div>
-
               <div className="grid grid-cols-2 gap-4 pt-4 border-t dark:border-gray-700">
-                <div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    Initiator
-                  </span>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1 wrap-break-word">
-                    {file.initiator_name}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    Category
-                  </span>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1 wrap-break-word">
-                    {file.category}
-                  </p>
-                </div>
+                <div><span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Initiator</span><p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1 wrap-break-word">{file.initiator_name}</p></div>
+                <div><span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Category</span><p className="text-sm font-medium text-gray-800 dark:text-gray-200 mt-1 wrap-break-word">{file.category}</p></div>
               </div>
-
-              <div className="pt-2">
-                <span
-                  className={`inline-block px-2.5 py-1 rounded text-xs font-bold uppercase ${
-                    file.priority === 'immediate'
-                      ? 'bg-red-100 text-red-800'
-                      : file.priority === 'urgent'
-                        ? 'bg-orange-100 text-orange-800'
-                        : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {file.priority} Priority
-                </span>
-              </div>
+              <div className="pt-2"><span className={`inline-block px-2.5 py-1 rounded text-xs font-bold uppercase ${file.priority === 'immediate' ? 'bg-red-100 text-red-800' : file.priority === 'urgent' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>{file.priority} Priority</span></div>
             </div>
           </Card>
-
           <Card className="p-6">
-            <h3 className="font-semibold mb-3 text-gray-900 dark:text-white border-b dark:border-gray-700 pb-2">
-              Description
-            </h3>
-            <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border dark:border-gray-700 whitespace-pre-wrap wrap-break-word">
-              <HtmlContent content={file.description} />
-            </div>
+            <h3 className="font-semibold mb-3 text-gray-900 dark:text-white border-b dark:border-gray-700 pb-2">Description</h3>
+            <div className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border dark:border-gray-700 whitespace-pre-wrap wrap-break-word"><HtmlContent content={file.description} /></div>
           </Card>
         </div>
-
         <div className="xl:col-span-5">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 h-full">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 border-b dark:border-gray-700 pb-2">
-              Movement History
-            </h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 border-b dark:border-gray-700 pb-2">Movement History</h3>
             <EFileTimeline history={history as EFileMovementRow[]} />
           </div>
         </div>
       </div>
-
-      {/* Modals */}
-      <ForwardFileModal
-        isOpen={isForwardModalOpen}
-        onClose={() => setIsForwardModalOpen(false)}
-        fileId={file.id}
-      />
-
-      <ConfirmModal
-        isOpen={isCloseModalOpen}
-        onCancel={() => setIsCloseModalOpen(false)}
-        onConfirm={() => {
-          closeMutation.mutate({ fileId: file.id || '', remarks: 'File parted/closed.' });
-          setIsCloseModalOpen(false);
-        }}
-        title="Close File"
-        message="Are you sure you want to close this file? This indicates the work is complete."
-        confirmText="Close File"
-        type="danger"
-      />
     </div>
   );
 }

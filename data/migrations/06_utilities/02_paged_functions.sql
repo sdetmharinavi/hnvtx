@@ -5,10 +5,6 @@
 -- These functions build dynamic SQL. They are constructed to be secure
 -- using format() with %I for identifiers and %L for literals.
 
--- ** The helper functions (column_exists, build_where_clause) have been moved to 01_generic_functions.sql to resolve dependency errors.**
-
--- THE DEFINITIVE FIX: The count query now explicitly casts the status column to text before comparison.
--- This resolves the "operator does not exist: text = boolean" error.
 CREATE OR REPLACE FUNCTION public.get_paged_data(
     p_view_name TEXT,
     p_limit INT,
@@ -16,7 +12,6 @@ CREATE OR REPLACE FUNCTION public.get_paged_data(
     p_order_by TEXT DEFAULT 'name',
     p_order_dir TEXT DEFAULT 'asc',
     p_filters JSONB DEFAULT '{}',
-    -- THE FIX: Added a new optional parameter for the status column name
     p_status_column_name TEXT DEFAULT 'status',
     row_limit INT DEFAULT NULL
 )
@@ -26,6 +21,7 @@ DECLARE
     count_query TEXT;
     where_clause TEXT;
     order_by_column TEXT;
+    safe_order_dir TEXT;
     result_data JSONB;
     total_records BIGINT;
     active_records BIGINT := 0;
@@ -35,7 +31,14 @@ DECLARE
 BEGIN
     effective_limit := COALESCE(p_limit, row_limit, 1000);
 
-    -- THE FIX: Use the provided status column name to check for existence
+    -- THE FIX: CRITICAL SECURITY PATCH
+    -- Sanitize p_order_dir to prevent SQL injection via %s format string
+    IF upper(p_order_dir) = 'DESC' THEN
+        safe_order_dir := 'DESC';
+    ELSE
+        safe_order_dir := 'ASC';
+    END IF;
+
     status_column_exists := public.column_exists('public', p_view_name, p_status_column_name);
     where_clause := public.build_where_clause(p_filters, p_view_name);
 
@@ -51,13 +54,13 @@ BEGIN
         END IF;
     END IF;
 
+    -- Using safe_order_dir securely prevents arbitrary SQL execution
     data_query := format(
         'SELECT jsonb_agg(v) FROM (SELECT * FROM public.%I v %s ORDER BY v.%I %s LIMIT %L OFFSET %L) v',
-        p_view_name, where_clause, order_by_column, p_order_dir, effective_limit, p_offset
+        p_view_name, where_clause, order_by_column, safe_order_dir, effective_limit, p_offset
     );
 
     IF status_column_exists THEN
-        -- THE FIX: Dynamically use the provided status column name in the count query.
         count_query := format(
             'SELECT count(*), count(*) FILTER (WHERE v.%I::text = ''true''), count(*) FILTER (WHERE v.%I::text = ''false'')
              FROM public.%I v %s', p_status_column_name, p_status_column_name, p_view_name, where_clause

@@ -20,7 +20,7 @@ export type EntityWithChildren<T extends BaseEntity> = T & {
 };
 
 export function isHierarchicalEntity<T extends BaseEntity>(
-  entity: T
+  entity: T,
 ): entity is T & HierarchicalEntity {
   return 'parent_id' in entity || 'parent' in entity;
 }
@@ -47,26 +47,13 @@ export interface EntityConfig<T extends BaseEntity> {
   }>;
 }
 
-export interface UseEntityManagementProps<T extends BaseEntity> {
-  entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
-  config: EntityConfig<T>;
-  // THE FIX: Made onDelete optional here
-  onDelete?: (entity: { id: string; name: string }) => void;
-  onEdit: (entity: T) => void;
-  onToggleStatus: (e: React.MouseEvent, entity: T) => void;
-  onCreateNew: () => void;
-  selectedEntityId: string | null;
-  onSelect: (id: string | null) => void;
-}
-
 export interface EntityTreeItemProps<T extends BaseEntity> {
-    entity: EntityWithChildren<T>;
-    config: EntityConfig<T>;
-    level: number;
-    selectedEntityId: string | null;
-    expandedEntities: Set<string>;
-    onSelect: (id: string) => void;
-    onToggleExpand: (id: string) => void;
-    onToggleStatus?: (e: React.MouseEvent, entity: T) => void;
-    isLoading: boolean;
+  entity: EntityWithChildren<T>;
+  config: EntityConfig<T>;
+  level: number;
+  selectedEntityId: string | null;
+  expandedEntities: Set<string>;
+  onSelect: (id: string) => void;
+  onToggleExpand: (id: string) => void;
+  isLoading: boolean;
 }

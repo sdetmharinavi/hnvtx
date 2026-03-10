@@ -2,30 +2,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Trash2, Edit } from 'lucide-react';
 import { RouteDetailsPayload, JointBox } from '@/schemas/custom-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 interface RouteVisualizationProps {
   routeDetails: RouteDetailsPayload;
   onJcClick: (jc: JointBox) => void;
-  onEditJc: (jc: JointBox) => void;
-  onDeleteJc: (jcId: string) => void;
-  canEdit: boolean;
-  canDelete: boolean;
 }
 
 export default function RouteVisualization({
   routeDetails,
   onJcClick,
-  onEditJc,
-  onDeleteJc,
-  canEdit,
-  canDelete,
 }: RouteVisualizationProps) {
   const { route, jointBoxes, segments } = routeDetails;
 
-  const allPoints = [
+  const allPoints =[
     {
       id: route.sn_id,
       name: route.sn_name || route.start_site?.name || 'Start Node',
@@ -61,7 +52,7 @@ export default function RouteVisualization({
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-green-600"></div>
-            <span className="text-gray-600 dark:text-gray-400">Existing JC</span>
+            <span className="text-gray-600 dark:text-gray-400">Junction Closures</span>
           </div>
         </div>
       </div>
@@ -79,8 +70,6 @@ export default function RouteVisualization({
                 const km = ((point.position / 100) * (route.current_rkm || 0)).toFixed(2);
                 const isFirst = index === 0;
 
-                // FIX: Generate a composite unique key using ID + Type + Index
-                // This handles cases where Start Node == End Node (Loop) or JC is at a Site
                 const uniqueKey = `${point.type}-${point.id}-${index}`;
 
                 return (
@@ -93,11 +82,7 @@ export default function RouteVisualization({
                     }}
                     initial={{ opacity: 0, scale: 0.5, y: -20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{
-                      duration: 0.6,
-                      delay: index * 0.1,
-                      ease: 'easeOut',
-                    }}
+                    transition={{ duration: 0.6, delay: index * 0.1, ease: 'easeOut' }}
                   >
                     <div className="absolute -top-16 text-center min-w-max max-w-40">
                       <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 px-2 py-1.5 bg-white dark:bg-gray-700 rounded-lg shadow-md border dark:border-gray-600 whitespace-nowrap">
@@ -111,15 +96,13 @@ export default function RouteVisualization({
                       className={`relative w-6 h-6 rounded-full border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-lg ${
                         point.type === 'site'
                           ? 'bg-blue-600 border-blue-200 hover:bg-blue-700 hover:border-blue-300'
-                          : point.status === 'existing'
-                          ? 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300'
-                          : 'bg-yellow-500 border-yellow-200 hover:bg-yellow-600 hover:border-yellow-300'
+                          : 'bg-green-600 border-green-200 hover:bg-green-700 hover:border-green-300'
                       } ${
                         point.type === 'jointBox'
                           ? 'cursor-pointer hover:scale-125 hover:shadow-xl'
                           : 'hover:scale-110'
                       }`}
-                      title={`${point.name} at ${km} km`}
+                      title={point.type === 'jointBox' ? "Click to view Splice Matrix" : `${point.name} at ${km} km`}
                     >
                       <span className="text-white font-bold text-xs">
                         {point.type === 'site' ? (isFirst ? 'S' : 'E') : 'J'}
@@ -131,35 +114,6 @@ export default function RouteVisualization({
                         {km} km
                       </p>
                     </div>
-
-                    {point.type === 'jointBox' && (
-                      <div className="absolute top-20 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                        {canEdit && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEditJc(point.raw as JointBox);
-                            }}
-                            className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                            title="Edit JC"
-                          >
-                            <Edit size={14} />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteJc((point.raw as JointBox).id!);
-                            }}
-                            className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                            title="Delete JC"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    )}
                   </motion.div>
                 );
               })}
@@ -204,18 +158,8 @@ export default function RouteVisualization({
                           <TruncateTooltip text={start?.name || 'Unknown'} />
                         </span>
                         <span className="mx-3 text-gray-400">
-                          <svg
-                            className="w-4 h-4 inline"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 7l5 5m0 0l-5 5m5-5H6"
-                            />
+                          <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                           </svg>
                         </span>
                         <span className="font-medium text-gray-800 dark:text-gray-200">
@@ -236,35 +180,8 @@ export default function RouteVisualization({
         ) : (
           <motion.div
             className="text-center py-12 bg-gray-50 dark:bg-gray-700/30 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
           >
-            <div className="flex flex-col items-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  No cable segments found
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  Segments will appear here once they are configured
-                </p>
-              </div>
-            </div>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No cable segments found</p>
           </motion.div>
         )}
       </div>

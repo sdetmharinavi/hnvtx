@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, HNVTMDatabase, getTable, MutationTask } from '@/hooks/data/localDb';
+import { localDb, HNVTMDatabase, getTable } from '@/hooks/data/localDb';
 import { PublicTableOrViewName, PublicTableName } from '@/hooks/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { useCallback } from 'react';
@@ -20,16 +20,13 @@ interface EntitySyncConfig {
   relatedTable?: PublicTableName;
 }
 
-// Configuration Map for Sync Strategies
 const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
-  // --- All Tables Set to Full Sync ---
   v_audit_logs: { strategy: 'full', relatedTable: 'user_activity_logs' },
   user_activity_logs: { strategy: 'full' },
   v_inventory_transactions_extended: { strategy: 'full', relatedTable: 'inventory_transactions' },
   inventory_transactions: { strategy: 'full' },
   v_file_movements_extended: { strategy: 'full', relatedTable: 'file_movements' },
   file_movements: { strategy: 'full' },
-
   systems: { strategy: 'full' },
   system_connections: { strategy: 'full' },
   ports_management: { strategy: 'full' },
@@ -38,10 +35,7 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   nodes: { strategy: 'full' },
   rings: { strategy: 'full' },
   ofc_cables: { strategy: 'full' },
-  
-  // ADDED: Link table
   ofc_cable_links: { strategy: 'full' },
-
   lookup_types: { strategy: 'full' },
   employee_designations: { strategy: 'full' },
   user_profiles: { strategy: 'full' },
@@ -88,69 +82,17 @@ const SYNC_CONFIG: Record<PublicTableOrViewName, EntitySyncConfig> = {
   v_technical_notes: { strategy: 'full', relatedTable: 'technical_notes' },
 };
 
-// ... (Rest of file remains unchanged)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mergePendingMutations(serverData: any[], pendingTasks: MutationTask[]) {
-  const merged = [...serverData];
-  const serverIdMap = new Map(merged.map((item, index) => [String(item.id), index]));
-
-  pendingTasks.forEach((task) => {
-    if (task.type === 'insert') {
-      if (!serverIdMap.has(String(task.payload.id))) {
-        merged.push(task.payload);
-      }
-    } else if (task.type === 'update') {
-      const targetId = String(task.payload.id);
-      const index = serverIdMap.get(targetId);
-      if (index !== undefined) {
-        merged[index] = { ...merged[index], ...task.payload.data };
-      }
-    } else if (task.type === 'delete') {
-      const idsToDelete = new Set((task.payload.ids || []).map(String));
-      for (let i = merged.length - 1; i >= 0; i--) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (idsToDelete.has(String((merged[i] as any).id))) {
-          merged.splice(i, 1);
-        }
-      }
-    }
-  });
-  return merged;
-}
-
 async function performFullSync(
   supabase: SupabaseClient,
   db: HNVTMDatabase,
   entityName: PublicTableOrViewName,
-  config: EntitySyncConfig,
 ) {
-  // Use 'as any' to bypass the PublicTableOrViewName type check for now since
-  // 'ofc_cable_links' is not yet in the generated types union.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const table = getTable(entityName as any);
   let offset = 0;
   let hasMore = true;
   let totalSynced = 0;
   let fetchSuccessful = true;
-
-  let pendingTasks: MutationTask[] = [];
-  const targetTableForMutations = config.relatedTable || entityName;
-
-  if (targetTableForMutations) {
-    pendingTasks = await db.mutation_queue
-      .where('tableName')
-      .equals(targetTableForMutations as string)
-      .toArray();
-    pendingTasks = pendingTasks.filter((t) => t.status === 'pending' || t.status === 'processing');
-  }
-
-  const pendingInsertIds = new Set(
-    pendingTasks
-      .filter((t) => t.type === 'insert')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((t) => String((t.payload as any).id)),
-  );
-
   const serverIdsSeen = new Set<string>();
 
   while (hasMore) {
@@ -165,7 +107,7 @@ async function performFullSync(
       if (rpcError) throw rpcError;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let batchData = (rpcResponse as { data: any[] })?.data || [];
+      const batchData = (rpcResponse as { data: any[] })?.data || [];
       const validDataCount = batchData.length;
 
       if (validDataCount > 0) {
@@ -174,16 +116,12 @@ async function performFullSync(
             serverIdsSeen.add(String(item.id));
           }
           if (entityName === 'ring_based_systems' && item.system_id && item.ring_id) {
-             serverIdsSeen.add(`${item.system_id}+${item.ring_id}`);
+            serverIdsSeen.add(`${item.system_id}+${item.ring_id}`);
           }
-           if (entityName === 'v_ring_nodes' && item.id && item.ring_id) {
-             serverIdsSeen.add(`${item.id}+${item.ring_id}`);
-           }
+          if (entityName === 'v_ring_nodes' && item.id && item.ring_id) {
+            serverIdsSeen.add(`${item.id}+${item.ring_id}`);
+          }
         });
-
-        if (pendingTasks.length > 0) {
-          batchData = mergePendingMutations(batchData, pendingTasks);
-        }
 
         await db.transaction('rw', table, async () => {
           await table.bulkPut(batchData);
@@ -205,29 +143,15 @@ async function performFullSync(
     }
   }
 
-  if (pendingTasks.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const inserts = pendingTasks.filter((t) => t.type === 'insert').map((t) => t.payload as any);
-    if (inserts.length > 0) {
-      await db.transaction('rw', table, async () => {
-        await table.bulkPut(inserts);
-      });
-      inserts.forEach((item) => {
-        if (item.id) serverIdsSeen.add(String(item.id));
-      });
-      totalSynced += inserts.length;
-    }
-  }
-
   if (fetchSuccessful) {
     const allLocalKeys = await table.toCollection().primaryKeys();
     const keysToDelete = allLocalKeys.filter((key) => {
       if (Array.isArray(key)) {
-         const compositeKey = key.join('+');
-         return !serverIdsSeen.has(compositeKey);
+        const compositeKey = key.join('+');
+        return !serverIdsSeen.has(compositeKey);
       }
       const keyStr = String(key);
-      return !serverIdsSeen.has(keyStr) && !pendingInsertIds.has(keyStr);
+      return !serverIdsSeen.has(keyStr);
     });
 
     if (keysToDelete.length > 0) {
@@ -305,11 +229,13 @@ export async function syncEntity(
 
   addActiveSync(entityName);
 
-  db.sync_status.put({
-    tableName: entityName,
-    status: 'syncing',
-    lastSynced: new Date().toISOString(),
-  }).catch(console.error);
+  db.sync_status
+    .put({
+      tableName: entityName,
+      status: 'syncing',
+      lastSynced: new Date().toISOString(),
+    })
+    .catch(console.error);
 
   try {
     let count = 0;
@@ -319,7 +245,7 @@ export async function syncEntity(
     if (safeConfig.strategy === 'incremental' && safeConfig.timestampColumn) {
       count = await performIncrementalSync(supabase, db, entityName, safeConfig.timestampColumn);
     } else {
-      count = await performFullSync(supabase, db, entityName, safeConfig);
+      count = await performFullSync(supabase, db, entityName);
     }
 
     await db.sync_status.put({
@@ -371,12 +297,11 @@ export function useDataSync() {
         const isPartial = entitiesToSync.length < Object.keys(SYNC_CONFIG).length;
 
         if (!isPartial) {
-          toast.info('Starting full sync...');
+          toast.info('Downloading latest read-only data...');
         }
 
         for (const entity of entitiesToSync) {
           try {
-            // Cast to PublicTableOrViewName to satisfy TS in the loop
             await syncEntity(supabase, localDb, entity as PublicTableOrViewName);
           } catch (e) {
             failures.push(`${entity} (${(e as Error).message})`);
@@ -408,13 +333,8 @@ export function useDataSync() {
             predicate: (query) => query.queryKey[0] !== 'data-sync-all',
           });
         }
-
-        if (failures.length > 0) {
-          console.error('Sync Failures:', failures);
-        }
-
       } catch (err) {
-        console.error("Critical Sync Error", err);
+        console.error('Critical Sync Error', err);
         toast.error('Sync process failed.');
         throw err;
       } finally {

@@ -1,0 +1,3 @@
+"Sr. No.","Enquiry ID","State","District","Agency Name","List of LatLong","Excavator Name","Excavator Mobile","Enquiry Type","Enquiry Status","Excavation Start Date","Excavation End Date","Purpose of Excavation","Record Inserted On","Total Asset Owners in District","Count of Acknowledgement"
+"1","ENQ/DIG/WESTBENGAL/Kolkata/215649","WEST BENGAL","Kolkata","BSNL","88.356175 22.513293 ,88.356298 22.513294","MANOJIT DEBNATH","9432000445","Normal Enquiry","Pending","05-03-2026","06-03-2026","Fault Repair","03-03-2026","1","0"
+"2","ENQ/DIG/WESTBENGAL/South24Parganas/215009","WEST BENGAL","South 24 Parganas","BSNL","88.193477 22.486985 ,88.230362 22.498908","MANOJIT DEBNATH","9432000445","Normal Enquiry","Pending","05-03-2026","30-03-2026","Fault Repair","02-03-2026","1","0"

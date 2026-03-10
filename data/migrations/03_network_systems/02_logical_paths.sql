@@ -1,6 +1,4 @@
 
--- path: data/migrations/03_network_systems/02_logical_paths.sql
-
 CREATE TABLE IF NOT EXISTS public.logical_paths (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -11,10 +9,9 @@ CREATE TABLE IF NOT EXISTS public.logical_paths (
     source_port TEXT,
     destination_system_id UUID REFERENCES public.systems(id) ON DELETE SET NULL,
     destination_port TEXT,
-    status TEXT DEFAULT 'unprovisioned',
+    status TEXT DEFAULT 'unprovisioned', -- e.g., unprovisioned, partially, provisioned
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    -- FIXED: Removed semicolon from inside parentheses
     CONSTRAINT uq_ring_system_path UNIQUE (ring_id, source_system_id, destination_system_id)
 );
 
