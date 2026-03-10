@@ -20,7 +20,8 @@ export type RecordWithId = {
   name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
-  employee_name?: string | null;[key: string]: unknown;
+  employee_name?: string | null;
+  [key: string]: unknown;
 };
 
 export interface DataQueryHookParams {
@@ -43,7 +44,7 @@ export interface DataQueryHookReturn<V> {
 }
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
-type BaseRecord = { id: string | number | null; [key: string]: any };
+type BaseRecord = { id: string | number | null; [key: string]: unknown };
 
 export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
@@ -102,11 +103,11 @@ export function useCrudManager<T extends PublicTableName, V extends BaseRecord>(
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
 
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
-  const[currentPage, setCurrentPage] = useState(1);
-  const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(1);
+  const[pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const[filters, setFilters] = useState<Filters>(initialFilters);
+  const [filters, setFilters] = useState<Filters>(initialFilters);
   const[isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const combinedFilters = useMemo(() => {

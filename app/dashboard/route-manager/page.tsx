@@ -10,20 +10,17 @@ import { FiberSpliceManager } from '@/components/route-manager/FiberSpliceManage
 import { JointBox } from '@/schemas/custom-schemas';
 import RouteSelection from '@/components/route-manager/RouteSelection';
 import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
-import { FiDownload, FiRefreshCw, FiGitMerge, FiMap } from 'react-icons/fi';
+import { FiRefreshCw, FiGitMerge, FiMap } from 'react-icons/fi';
 import { Map } from 'lucide-react';
-import { useExportRouteTopology } from '@/hooks/database/excel-queries/useRouteTopologyExcel';
 import { ActionButton } from '@/components/common/page-header';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 export default function RouteManagerPage() {
-  const[selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedJc, setSelectedJc] = useState<JointBox | null>(null);
   const [activeTab, setActiveTab] = useState('visualization');
-  const supabase = createClient();
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -37,8 +34,6 @@ export default function RouteManagerPage() {
     isFetching: isFetchingRouteDetails,
   } = useRouteDetails(selectedRouteId as string);
 
-  const { mutate: exportTopology, isPending: isExporting } = useExportRouteTopology(supabase);
-
   const allJointBoxesOnRoute = useMemo(() => routeDetails?.jointBoxes || [], [routeDetails]);
   const currentSegments = useMemo(() => routeDetails?.segments || [], [routeDetails]);
 
@@ -46,25 +41,17 @@ export default function RouteManagerPage() {
     setSelectedRouteId(routeId);
     setSelectedJc(null);
     setActiveTab('visualization');
-  },[]);
-
-  const handleExportClick = useCallback(() => {
-    if (selectedRouteId && routeDetails?.route?.route_name) {
-      exportTopology({ routeId: selectedRouteId, routeName: routeDetails.route.route_name });
-    } else {
-      toast.error('Please select a route to export.');
-    }
-  },[selectedRouteId, routeDetails?.route?.route_name, exportTopology]);
+  }, []);
 
   const handleJcClick = useCallback((jc: JointBox) => {
     setSelectedJc(jc);
     setActiveTab('splicing');
-  },[]);
+  }, []);
 
   const isBusy = isLoadingRouteDetails || isSyncingData || isFetchingRouteDetails;
 
   const headerActions = useMemo((): ActionButton[] => {
-    const actions: ActionButton[] =[
+    const actions: ActionButton[] = [
       {
         label: 'Refresh',
         onClick: async () => {
@@ -87,25 +74,9 @@ export default function RouteManagerPage() {
         leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
         disabled: isBusy,
       },
-      {
-        label: isExporting ? 'Exporting...' : 'Export Topology',
-        onClick: handleExportClick,
-        variant: 'outline',
-        leftIcon: <FiDownload />,
-        disabled: isExporting || !selectedRouteId || isBusy,
-        hideTextOnMobile: true,
-      },
     ];
     return actions;
-  },[
-    isBusy,
-    isExporting,
-    selectedRouteId,
-    refetchRouteDetails,
-    handleExportClick,
-    isOnline,
-    syncData,
-  ]);
+  }, [isBusy, refetchRouteDetails, isOnline, syncData]);
 
   return (
     <div className='p-4 md:p-6 space-y-6 min-h-[calc(100vh-64px)] flex flex-col'>
@@ -180,9 +151,7 @@ export default function RouteManagerPage() {
                   </TabsContent>
 
                   <TabsContent value='splicing' className='h-full mt-0 focus-visible:outline-none'>
-                    <FiberSpliceManager
-                      junctionClosureId={selectedJc?.id ?? null}
-                    />
+                    <FiberSpliceManager junctionClosureId={selectedJc?.id ?? null} />
                   </TabsContent>
                 </div>
               </Tabs>

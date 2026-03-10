@@ -1,12 +1,8 @@
-import React, { useMemo, useState } from 'react';
+// components/efile/EFileTimeline.tsx
+import React, { useMemo } from 'react';
 import { formatDate } from '@/utils/formatters';
-import { CheckCircle, CornerUpLeft, FilePlus, Edit3, ArrowDown } from 'lucide-react';
+import { CheckCircle, CornerUpLeft, FilePlus, ArrowDown } from 'lucide-react';
 import { EFileMovementRow } from '@/schemas/efile-schemas';
-import { useUser } from '@/providers/UserProvider';
-import { UserRole } from '@/types/user-roles';
-import { Button } from '@/components/common/ui/Button';
-import { EditMovementModal } from './ActionModals';
-import { V_file_movements_extendedRowSchema } from '@/schemas/zod-schemas';
 import GenericRemarks from '@/components/common/GenericRemarks';
 
 interface Props {
@@ -14,13 +10,7 @@ interface Props {
 }
 
 export const EFileTimeline: React.FC<Props> = ({ history }) => {
-  const { isSuperAdmin, role } = useUser();
-  const canEdit = !!isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
-
-  const [editingMovement, setEditingMovement] = useState<EFileMovementRow | null>(null);
-
   // Sort history chronologically: Oldest (Initiated) at Top -> Newest (Current) at Bottom
-  // Using action_date first, then created_at for tie-breaking
   const chronologicalHistory = useMemo(() => {
     return [...history].sort((a, b) => {
       const dateA = new Date(a.action_date || a.created_at).getTime();
@@ -134,17 +124,6 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
                       Op: {move.performed_by_name.split(' ')[0]}
                     </span>
                   )}
-                  {canEdit && (
-                    <Button
-                      size='xs'
-                      variant='ghost'
-                      className='h-6 w-6 p-0 text-gray-400 hover:text-blue-600'
-                      onClick={() => setEditingMovement(move)}
-                      title='Edit log'
-                    >
-                      <Edit3 className='w-3 h-3' />
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -153,15 +132,6 @@ export const EFileTimeline: React.FC<Props> = ({ history }) => {
           </div>
         );
       })}
-
-      {editingMovement && (
-        <EditMovementModal
-          isOpen={!!editingMovement}
-          onClose={() => setEditingMovement(null)}
-          movement={editingMovement as unknown as V_file_movements_extendedRowSchema}
-          fileId={editingMovement.file_id}
-        />
-      )}
     </div>
   );
 };
