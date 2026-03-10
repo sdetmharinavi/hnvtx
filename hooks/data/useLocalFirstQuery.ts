@@ -20,7 +20,7 @@ interface UseLocalFirstQueryOptions<
   dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
-  autoSync?: boolean;
+  autoSync?: boolean; // Kept for interface compatibility, but ignored internally
   refetchOnMount?: boolean | "always";
   tableName?: string;
   preferNetwork?: boolean;
@@ -35,18 +35,15 @@ export function useLocalFirstQuery<
   queryKey,
   onlineQueryFn,
   localQueryFn,
-  localQueryDeps = [],
+  localQueryDeps =[],
   dexieTable,
-  enabled = true,
   staleTime = Infinity,
-  autoSync = false,
-  refetchOnMount = false,
   preferNetwork = false,
   skipSync = false,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
   const isSyncingRef = useRef(false);
-  const [hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
+  const[hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
   const queryClient = useQueryClient();
 
   // 1. Fetch Local Data (Dexie)
@@ -64,31 +61,25 @@ export function useLocalFirstQuery<
     }
   }, [localData]);
 
-  // 2. Network Query Configuration
-  const shouldFetchOnMount = enabled && isOnline && autoSync;
-
+  // 2. STRICT MANUAL SYNC: Network query is DISABLED by default. 
+  // It will ONLY run when refetch() is explicitly called by the Sync/Refresh buttons.
   const {
     data: networkData,
     isFetching: isNetworkFetching,
     isError: isNetworkError,
     error: networkError,
     refetch,
-    status: networkQueryStatus,
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: async () => {
-      if (!isOnline) {
-        throw new Error("Offline");
-      }
+      if (!isOnline) throw new Error("Offline");
       return onlineQueryFn();
     },
-    enabled: shouldFetchOnMount,
+    enabled: false, // <-- THE FIX: Disables automatic background fetching
     refetchOnWindowFocus: false,
-    refetchOnMount: refetchOnMount,
+    refetchOnMount: false,
     refetchOnReconnect: false,
     staleTime,
-    retry: 1,
-    placeholderData: (previousData) => previousData,
   });
 
   // 3. Fast Sync Network Data to Local DB (Pure Read-Only Mode)
@@ -101,7 +92,6 @@ export function useLocalFirstQuery<
           isSyncingRef.current = true;
           const primaryKey = dexieTable.schema.primKey.name;
 
-          // Map local data for quick lookup to prevent unnecessary writes
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const localMap = new Map<string, any>();
           if (Array.isArray(localData)) {
@@ -122,11 +112,7 @@ export function useLocalFirstQuery<
             const pkStr = String(pkValue);
             const localItem = localMap.get(pkStr);
 
-            // Optimization: If the local item is identical to the server item, skip the DB write
-            if (localItem && isEqual(localItem, serverItem)) {
-              return;
-            }
-
+            if (localItem && isEqual(localItem, serverItem)) return;
             dataToSave.push(serverItem);
           });
 
@@ -134,20 +120,15 @@ export function useLocalFirstQuery<
             await dexieTable.bulkPut(dataToSave);
           }
         } catch (e) {
-          console.error(
-            `[useLocalFirstQuery] Sync failed for ${dexieTable.name}`,
-            e,
-          );
+          console.error(`[useLocalFirstQuery] Sync failed for ${dexieTable.name}`, e);
         } finally {
           isSyncingRef.current = false;
         }
       };
-
       syncToLocal();
     }
-  }, [networkData, dexieTable, localData, skipSync]);
+  },[networkData, dexieTable, localData, skipSync]);
 
-  // 4. Data Resolution Strategy
   const cachedData = queryClient.getQueryData<TRow[]>(queryKey);
 
   const resolvedData =
@@ -157,13 +138,7 @@ export function useLocalFirstQuery<
         ? localData
         : cachedData
           ? (cachedData as unknown as TLocal[])
-          : [];
-
-  const isHardLoading =
-    localData === "loading" &&
-    !hasInitialLocalLoad &&
-    !networkData &&
-    !cachedData;
+          :[];
 
   const isError = isNetworkError && !hasInitialLocalLoad;
   const error = isError ? networkError : null;
@@ -171,5 +146,9 @@ export function useLocalFirstQuery<
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: resolvedData as any,
+    isLoading: localData === "loading" && !hasInitialLocalLoad,
+    isFetching: isNetworkFetching,
+    error,
+    refetch
   };
 }
