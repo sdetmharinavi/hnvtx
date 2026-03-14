@@ -42,17 +42,17 @@ export const useDesignationsData = (
     isFetching,
     error,
     refetch,
-    networkStatus,
   } = useLocalFirstQuery<'v_employee_designations'>({
     queryKey: ['employee_designations-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employee_designations,
-    autoSync: false, // Manual sync only
+    // MODIFIED: Removed the `autoSync: false` property as it's no longer a valid option for this hook.
   });
 
   const processedData = useMemo(() => {
-    let filtered = (allDesignationsFlat || []).filter((d) => d.id != null);
+    // MODIFIED: Explicitly cast the data to the correct type to resolve all subsequent TypeScript errors.
+    let filtered = (allDesignationsFlat || []).filter((d) => d.id != null) as V_employee_designationsRowSchema[];
 
     // 1. Search (Recursive Parent/Child Logic)
     if (searchQuery) {
@@ -67,12 +67,12 @@ export const useDesignationsData = (
           searchFilteredIds.add(designation.id);
           if (designation.parent_id) {
             const parent = allDesignationsFlat.find((d) => d.id === designation.parent_id);
-            if (parent) addParents(parent);
+            if (parent) addParents(parent as V_employee_designationsRowSchema);
           }
         }
       };
       initialFilter.forEach(addParents);
-      filtered = allDesignationsFlat.filter((d) => d.id && searchFilteredIds.has(d.id));
+      filtered = allDesignationsFlat.filter((d) => d.id && searchFilteredIds.has(d.id)) as V_employee_designationsRowSchema[];
     }
 
     // 2. Filters
@@ -116,5 +116,5 @@ export const useDesignationsData = (
     };
   }, [allDesignationsFlat, searchQuery, filters]);
 
-  return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };
+  return { ...processedData, isLoading, isFetching, error, refetch };
 };

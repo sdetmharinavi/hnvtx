@@ -89,7 +89,8 @@ export default function ExpensesPage() {
         isActive: currentStatus === 'active',
       },
     ];
-  }, [advanceCrud.data, advanceCrud.totalCount, advanceCrud.filters.filters]);
+    // MODIFIED: Added `advanceCrud.filters` to the dependency array to fix the ESLint warning.
+  }, [advanceCrud.data, advanceCrud.totalCount, advanceCrud.filters]);
 
   const handleExportAdvances = useCallback(() => {
     const columns = buildColumnConfig('v_advances_complete');

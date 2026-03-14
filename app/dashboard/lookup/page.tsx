@@ -244,7 +244,7 @@ export default function LookupTypesPage() {
   }
 
   return (
-    <DashboardPageLayout
+    <DashboardPageLayout<'lookup_types', Lookup_typesRowSchema>
       crud={crud}
       header={{
         title: 'Lookup Types Viewer',

@@ -30,7 +30,9 @@ export default function EFilesPage() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<Record<string, string | null>>({ status: 'active' });
+  // MODIFIED: Changed the initial state from { status: 'active' } to an empty object.
+  // This removes the default filter, causing the page to load all files (active and closed) initially.
+  const [filters, setFilters] = useState<Record<string, string | null>>({});
 
   const {
     data: files = [] as V_e_files_extendedRowSchema[],
@@ -38,7 +40,7 @@ export default function EFilesPage() {
     refetch,
     error,
     isFetching,
-  } = useEFiles({ status: filters.status || 'active' });
+  } = useEFiles({ status: filters.status || undefined });
 
   const { mutate: exportList, isPending: isExportingList } = useRPCExcelDownload(supabase);
 
@@ -57,6 +59,8 @@ export default function EFilesPage() {
     }
     if (filters.priority) result = result.filter((f) => f.priority === filters.priority);
     if (filters.category) result = result.filter((f) => f.category === filters.category);
+    // MODIFIED: Added a filter for status to align with the new UI state.
+    if (filters.status) result = result.filter((f) => f.status === filters.status);
     return result;
   }, [files, searchQuery, filters]);
 
@@ -188,6 +192,7 @@ export default function EFilesPage() {
         data: filteredFiles as unknown as Row<'v_e_files_extended'>[],
         columns,
         loading: isLoading,
+        // MODIFIED: Removed all modification actions (edit, delete) to make it read-only.
         actions: createStandardActions({
           onView: (rec) => router.push(`/dashboard/e-files/${rec.id}`),
         }),

@@ -32,8 +32,8 @@ export default function NotesPage() {
     search,
     filters,
     viewModal,
-  } = useCrudManager<'technical_notes', V_technical_notesRowSchema>({
-    tableName: 'technical_notes',
+  } = useCrudManager<'v_technical_notes', V_technical_notesRowSchema>({
+    tableName: 'v_technical_notes',
     localTableName: 'v_technical_notes',
     dataQueryHook: useNotesData,
     displayNameField: 'title',
@@ -216,7 +216,7 @@ export default function NotesPage() {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <DashboardPageLayout
+    <DashboardPageLayout<'v_technical_notes'>
       header={{
         title: 'Technical Notes Reader',
         description:

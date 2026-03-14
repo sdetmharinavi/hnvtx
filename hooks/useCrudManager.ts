@@ -27,7 +27,7 @@ export interface DataQueryHookReturn<V> {
 }
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
-type BaseRecord = { id: string | number | null; [key: string]: unknown };
+export type BaseRecord = { id: string | number | null; [key: string]: unknown };
 
 export interface ViewManagerOptions<T extends PublicTableOrViewName, V extends BaseRecord> {
   tableName: T;

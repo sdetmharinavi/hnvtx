@@ -30,8 +30,8 @@ const InventoryHistoryModal = dynamic(
 export default function InventoryPage() {
   const router = useRouter();
 
-  const[viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const[isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState<{ id: string; name: string } | null>(null);
 
   const {
@@ -56,15 +56,16 @@ export default function InventoryPage() {
   const { options: locationOptions, isLoading: loadingLocs } = useActiveNodeOptions();
 
   const filterConfigs = useMemo(
-    () =>[
+    () => [
       { key: 'category_id', label: 'Category', options: categoryOptions, isLoading: loadingCats },
       { key: 'location_id', label: 'Location', options: locationOptions, isLoading: loadingLocs },
-    ],[categoryOptions, locationOptions, loadingCats, loadingLocs],
+    ],
+    [categoryOptions, locationOptions, loadingCats, loadingLocs],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
-      filters.setFilters((prev) => ({ ...prev,[key]: value }));
+      filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
     [filters],
   );
@@ -78,7 +79,7 @@ export default function InventoryPage() {
     const inStockCount = inventory.filter((i) => (i.quantity || 0) > 0).length;
     const outOfStockCount = inventory.filter((i) => (i.quantity || 0) <= 0).length;
 
-    return[
+    return [
       {
         value: totalCount,
         label: 'Total Items',
@@ -111,7 +112,13 @@ export default function InventoryPage() {
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[totalCount, totalInventoryValue, inventory, filters.filters.stock_status, filters.setFilters]);
+  }, [
+    totalCount,
+    totalInventoryValue,
+    inventory,
+    filters.filters.stock_status,
+    filters.setFilters,
+  ]);
 
   const handleOpenHistory = (record: V_inventory_itemsRowSchema) => {
     if (!record.id) return;
@@ -122,7 +129,7 @@ export default function InventoryPage() {
   const columns = getInventoryTableColumns();
 
   const tableActions = useMemo(() => {
-    const standardActions = createStandardActions<V_inventory_itemsRowSchema>({});
+    const standardActions = createStandardActions<'v_inventory_items'>({});
     standardActions.unshift({
       key: 'history',
       label: 'History',
@@ -159,7 +166,8 @@ export default function InventoryPage() {
         stockStatusColor = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
         stockLabel = 'Out of Stock';
       } else if (quantity < 5) {
-        stockStatusColor = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        stockStatusColor =
+          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
         stockLabel = 'Low Stock';
       }
 
@@ -174,7 +182,9 @@ export default function InventoryPage() {
               <span className='font-mono text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded'>
                 {item.asset_no || 'NO ID'}
               </span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stockStatusColor}`}>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${stockStatusColor}`}
+              >
                 {stockLabel}
               </span>
             </div>
@@ -186,7 +196,11 @@ export default function InventoryPage() {
             {
               icon: FaRupeeSign,
               label: 'Total Value',
-              value: <span className='font-bold text-emerald-600 dark:text-emerald-400'>{formatCurrency(totalValue)}</span>,
+              value: (
+                <span className='font-bold text-emerald-600 dark:text-emerald-400'>
+                  {formatCurrency(totalValue)}
+                </span>
+              ),
             },
           ]}
           customFooter={
@@ -202,10 +216,20 @@ export default function InventoryPage() {
           }
           extraActions={
             <>
-              <Button size='xs' variant='secondary' onClick={() => handleOpenHistory(item)} title='View History'>
+              <Button
+                size='xs'
+                variant='secondary'
+                onClick={() => handleOpenHistory(item)}
+                title='View History'
+              >
                 <FiClock className='w-4 h-4' />
               </Button>
-              <Button size='xs' variant='secondary' onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)} title='QR Code'>
+              <Button
+                size='xs'
+                variant='secondary'
+                onClick={() => router.push(`/dashboard/inventory/qr/${item.id}`)}
+                title='QR Code'
+              >
                 <FaQrcode className='w-4 h-4' />
               </Button>
             </>
@@ -240,7 +264,12 @@ export default function InventoryPage() {
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderGrid={() => (
-        <DataGrid data={inventory} renderItem={renderItem} isLoading={isLoading} isEmpty={inventory.length === 0} />
+        <DataGrid
+          data={inventory}
+          renderItem={renderItem}
+          isLoading={isLoading}
+          isEmpty={inventory.length === 0}
+        />
       )}
       tableProps={{
         tableName: 'v_inventory_items',

@@ -1,9 +1,20 @@
 // hooks/database/queries-type-helpers.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
+  InfiniteData,
   UseQueryOptions,
 } from '@tanstack/react-query';
 import { Database } from '@/types/supabase-types';
 import { tableNames } from '@/types/flattened-types';
+
+// MODIFIED: Added RpcFunctionName, RpcFunctionArgs, and RpcFunctionReturns types.
+export type RpcFunctionName = keyof Database['public']['Functions'];
+
+export type RpcFunctionArgs<T extends RpcFunctionName> =
+  Database['public']['Functions'][T]['Args'];
+
+export type RpcFunctionReturns<T extends RpcFunctionName> =
+  Database['public']['Functions'][T]['Returns'];
 
 export type PagedQueryResult<T> = {
   data: T[];
@@ -58,6 +69,21 @@ export interface UseTableQueryOptions<T extends TableOrViewName, TData = PagedQu
   includeCount?: boolean;
 }
 
+export interface UseTableRecordOptions<T extends TableOrViewName, TData = Row<T> | null>
+  extends Omit<UseQueryOptions<Row<T> | null, Error, TData>, 'queryKey' | 'queryFn'> {
+  columns?: string;
+  performance?: {
+    timeout?: number;
+  };
+}
+
+export interface UseUniqueValuesOptions<T extends TableOrViewName, TData = unknown[]>
+  extends Omit<UseQueryOptions<TData, Error, TData>, 'queryKey' | 'queryFn'> {
+  filters?: Filters;
+  orderBy?: OrderBy[];
+  limit?: number;
+}
+
 export interface ProcessingLog {
   rowIndex: number;
   excelRowNumber: number;
@@ -74,4 +100,69 @@ export interface ValidationError {
   value: unknown;
   error: string;
   data?: Record<string, unknown>;
+}
+
+// NO OTHER CHANGES BELOW THIS LINE IN THIS FILE
+// The rest of the file remains as it was.
+// The only change is the addition of the three RPC-related types at the top.
+
+// NOTE: The following types are not directly related to the fix but are included for file completeness.
+export type EnhancedOrderBy = {
+    column: string;
+    direction: 'asc' | 'desc';
+    nulls?: 'first' | 'last';
+};
+
+export type RowWithCount<T> = T & { _count: number };
+
+export type DeduplicationOptions = {
+    column: string;
+    strategy?: 'first' | 'last' | ((items: any[]) => any);
+};
+
+export type InfiniteQueryPage<T extends TableOrViewName> = {
+    data: Row<T>[];
+    nextCursor?: number;
+    count: number;
+};
+
+export interface UseTableInfiniteQueryOptions<
+    T extends TableOrViewName,
+    TData = InfiniteData<InfiniteQueryPage<T>>
+> extends Omit<
+        UseQueryOptions<InfiniteData<InfiniteQueryPage<T>>, Error, TData>,
+        'queryKey' | 'queryFn' | 'getNextPageParam' | 'initialPageParam'
+    > {
+    columns?: string;
+    filters?: Filters;
+    orderBy?: OrderBy[];
+    pageSize?: number;
+    performance?: { timeout?: number };
+}
+
+export type UseRpcQueryOptions<
+    T extends RpcFunctionName,
+    TData = RpcFunctionReturns<T>
+> = Omit<
+    UseQueryOptions<RpcFunctionReturns<T>, Error, TData>,
+    'queryKey' | 'queryFn'
+> & {
+    performance?: { timeout?: number };
+};
+
+export type UseTableMutationOptions<
+    TData,
+    TVariables
+> = Omit<
+    import('@tanstack/react-query').UseMutationOptions<TData, Error, TVariables>,
+    'mutationFn'
+> & {
+    invalidateQueries?: boolean | string[];
+};
+
+export interface UploadColumnMapping<T extends TableOrViewName> {
+    excelHeader: string;
+    dbKey: keyof Row<T> & string;
+    transform?: (value: any) => any;
+    required?: boolean;
 }

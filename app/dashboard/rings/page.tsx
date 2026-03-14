@@ -176,7 +176,7 @@ export default function RingsPage() {
   );
 
   const tableActions = useMemo(() => {
-    return createStandardActions<V_ringsRowSchema>({
+    return createStandardActions<'v_rings'>({
       onView: handleView,
     });
   }, [handleView]);

@@ -349,7 +349,7 @@ export default function OfcPage() {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <DashboardPageLayout
+    <DashboardPageLayout<'v_ofc_cables_complete'>
       header={{
         title: 'OFC Cable Explorer',
         description: 'Read-only view of optical fiber cables and their logical links.',
