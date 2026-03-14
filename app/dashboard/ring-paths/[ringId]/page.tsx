@@ -1,4 +1,4 @@
-// app/dashboard/ring-paths/[ringId]/page.tsx
+// path: app/dashboard/ring-paths/[ringId]/page.tsx
 'use client';
 
 import { useMemo } from 'react';
@@ -8,32 +8,18 @@ import { FiArrowLeft, FiRefreshCw, FiGitBranch, FiEye } from 'react-icons/fi';
 import { PageHeader } from '@/components/common/page-header';
 import { DataTable, TableAction } from '@/components/table';
 import { PageSpinner, ErrorDisplay } from '@/components/common/ui';
-import { useRingConnectionPaths } from '@/hooks/database/ring-provisioning-hooks';
-import { useTableRecord } from '@/hooks/database';
+import {
+  useRingConnectionPaths,
+  RingConnectionPath,
+} from '@/hooks/database/ring-provisioning-hooks';
+import { useTableRecord, Row } from '@/hooks/database';
 import { createClient } from '@/utils/supabase/client';
+import { Database } from '@/types/supabase-types';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { toast } from 'sonner';
-
-interface LogicalPathData {
-  id: string;
-  name: string;
-  status: string | null;
-  start_node_id: string | null;
-  end_node_id: string | null;
-  source_system_id: string | null;
-  destination_system_id: string | null;
-  source_port: string | null;
-  destination_port: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  start_node?: { name: string } | null;
-  end_node?: { name: string } | null;
-  source_system?: { system_name: string } | null;
-  destination_system?: { system_name: string } | null;
-}
 
 export default function RingPathsPage() {
   const params = useParams();
@@ -48,12 +34,12 @@ export default function RingPathsPage() {
   const { data: ringData, isLoading: isLoadingRing } = useTableRecord<'v_rings'>(
     supabase,
     'v_rings',
-    ringId
-  );
+    ringId,
+  ) as { data: Database['public']['Views']['v_rings']['Row'] | null; isLoading: boolean };
 
   // 2. Fetch Paths
   const {
-    data: paths =[],
+    data: paths = [],
     isLoading: isLoadingPaths,
     isFetching,
     refetch,
@@ -61,7 +47,7 @@ export default function RingPathsPage() {
 
   // --- COLUMNS ---
   const columns = useMemo(
-    (): Column<LogicalPathData>[] =>[
+    (): Column<RingConnectionPath>[] => [
       {
         key: 'name',
         title: 'Path Name',
@@ -81,19 +67,19 @@ export default function RingPathsPage() {
         dataIndex: 'source_system_id',
         width: 220,
         render: (_, record) => (
-          <div className="flex flex-col">
+          <div className='flex flex-col'>
             {record.source_system ? (
               <>
                 <TruncateTooltip
                   text={record.source_system.system_name}
-                  className="font-medium text-blue-700 dark:text-blue-300"
+                  className='font-medium text-blue-700 dark:text-blue-300'
                 />
-                <span className="text-xs text-gray-500 font-mono">
+                <span className='text-xs text-gray-500 font-mono'>
                   {record.source_port || 'No Port'}
                 </span>
               </>
             ) : (
-              <span className="text-xs text-gray-400 italic">Not Configured</span>
+              <span className='text-xs text-gray-400 italic'>Not Configured</span>
             )}
           </div>
         ),
@@ -104,19 +90,19 @@ export default function RingPathsPage() {
         dataIndex: 'destination_system_id',
         width: 220,
         render: (_, record) => (
-          <div className="flex flex-col">
+          <div className='flex flex-col'>
             {record.destination_system ? (
               <>
                 <TruncateTooltip
                   text={record.destination_system.system_name}
-                  className="font-medium text-purple-700 dark:text-purple-300"
+                  className='font-medium text-purple-700 dark:text-purple-300'
                 />
-                <span className="text-xs text-gray-500 font-mono">
+                <span className='text-xs text-gray-500 font-mono'>
                   {record.destination_port || 'No Port'}
                 </span>
               </>
             ) : (
-              <span className="text-xs text-gray-400 italic">Not Configured</span>
+              <span className='text-xs text-gray-400 italic'>Not Configured</span>
             )}
           </div>
         ),
@@ -139,29 +125,30 @@ export default function RingPathsPage() {
           );
         },
       },
-    ],[]
+    ],
+    [],
   );
 
   const tableActions = useMemo(
-    (): TableAction<'logical_paths'>[] =>[
+    (): TableAction<'logical_paths'>[] => [
       {
         key: 'view',
         label: 'View System',
         icon: <FiEye />,
         onClick: (record) => {
-            const path = record as unknown as LogicalPathData;
-            if (path.source_system_id) router.push(`/dashboard/systems/${path.source_system_id}`);
+          const path = record as unknown as RingConnectionPath;
+          if (path.source_system_id) router.push(`/dashboard/systems/${path.source_system_id}`);
         },
         variant: 'secondary',
-        hidden: (record) => !(record as unknown as LogicalPathData).source_system_id,
+        hidden: (record) => !(record as unknown as RingConnectionPath).source_system_id,
       },
     ],
-    [router]
+    [router],
   );
 
   const isBusy = isFetching || isSyncingData;
 
-  const customHeaderActions =[
+  const customHeaderActions = [
     {
       label: 'Refresh',
       onClick: async () => {
@@ -189,7 +176,7 @@ export default function RingPathsPage() {
     },
   ];
 
-  const headerStats =[
+  const headerStats = [
     { value: paths.length, label: 'Total Paths' },
     {
       value: paths.filter((p) => p.status === 'configured' || p.status === 'provisioned').length,
@@ -203,14 +190,14 @@ export default function RingPathsPage() {
     },
   ];
 
-  if (isLoadingRing) return <PageSpinner text="Loading Ring Context..." />;
-  if (!ringData) return <ErrorDisplay error="Ring not found." />;
+  if (isLoadingRing) return <PageSpinner text='Loading Ring Context...' />;
+  if (!ringData) return <ErrorDisplay error='Ring not found.' />;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className='p-4 md:p-6 space-y-6'>
       <PageHeader
         title={`Logical Paths: ${ringData.name}`}
-        description="View logical connectivity between ring nodes."
+        description='View logical connectivity between ring nodes.'
         icon={<FiGitBranch />}
         stats={headerStats}
         actions={customHeaderActions}
@@ -218,25 +205,25 @@ export default function RingPathsPage() {
         isFetching={isFetching}
       />
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700'>
         {paths.length === 0 && !isLoadingPaths ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4">
-              <FiGitBranch className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <div className='flex flex-col items-center justify-center py-16 text-center px-4'>
+            <div className='bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4'>
+              <FiGitBranch className='w-8 h-8 text-blue-600 dark:text-blue-400' />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className='text-lg font-semibold text-gray-900 dark:text-white mb-2'>
               No Logical Paths Found
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
+            <p className='text-gray-500 dark:text-gray-400 max-w-md mb-6'>
               It seems this ring doesn&apos;t have any logical paths defined.
             </p>
           </div>
         ) : (
           <DataTable
             autoHideEmptyColumns={true}
-            tableName="logical_paths"
-            data={paths as any}
-            columns={columns as any}
+            tableName='logical_paths'
+            data={paths as unknown as Row<'logical_paths'>[]}
+            columns={columns as unknown as Column<Row<'logical_paths'>>[]}
             actions={tableActions}
             loading={isLoadingPaths}
             isFetching={isFetching}

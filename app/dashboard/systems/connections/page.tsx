@@ -7,7 +7,7 @@ import { FiDatabase } from 'react-icons/fi';
 import { toast } from 'sonner';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { ErrorDisplay } from '@/components/common/ui';
 import { ConnectionCard } from '@/components/system-details/connections/ConnectionCard';
 import { SystemConnectionsTableColumns } from '@/config/table-columns/SystemConnectionsTableColumns';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
@@ -20,8 +20,7 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { createClient } from '@/utils/supabase/client';
-import { Row } from '@/hooks/database';
-import { useTracePath } from '@/hooks/database/trace-hooks';
+import { useTracePath, TraceRoutes } from '@/hooks/database/trace-hooks';
 import dynamic from 'next/dynamic';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
@@ -49,13 +48,13 @@ export default function GlobalConnectionsPage() {
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
-  const[viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  const[isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  const [traceModalData, setTraceModalData] = useState<any>(null); 
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
   const [isTracing, setIsTracing] = useState(false);
-  const[isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const[detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
   const tracePath = useTracePath(supabase);
 
@@ -65,7 +64,7 @@ export default function GlobalConnectionsPage() {
     localTableName: 'v_system_connections_complete',
     dataQueryHook: useAllSystemConnectionsData,
     displayNameField: 'service_name',
-    syncTables:[
+    syncTables: [
       'system_connections',
       'v_system_connections_complete',
       'systems',
@@ -91,7 +90,7 @@ export default function GlobalConnectionsPage() {
   const { options: linkOptions, isLoading: loadingLink } = useLookupTypeOptions('LINK_TYPES');
 
   const filterConfigs = useMemo<FilterConfig[]>(
-    () =>[
+    () => [
       {
         key: 'connected_link_type_id',
         type: 'multi-select',
@@ -109,41 +108,51 @@ export default function GlobalConnectionsPage() {
       {
         key: 'status',
         type: 'native-select',
-        options:[
+        options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
         ],
         placeholder: 'All Status',
       },
-    ],[linkOptions, mediaOptions, loadingLink, loadingMedia],
+    ],
+    [linkOptions, mediaOptions, loadingLink, loadingMedia],
   );
 
   const columns = SystemConnectionsTableColumns(connections);
-  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+  const orderedColumns = useOrderedColumns(columns, [
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
 
-  const handleTrace = async (record: V_system_connections_completeRowSchema) => {
-    setIsTracing(true);
-    setIsTraceModalOpen(true);
-    setTraceModalData(null);
-    try {
-      const data = await tracePath(record);
-      setTraceModalData(data);
-    } catch (err: any) {
-      toast.error(err.message || 'Trace failed');
-      setIsTraceModalOpen(false);
-    } finally {
-      setIsTracing(false);
-    }
-  };
+  const handleTrace = useCallback(
+    async (record: V_system_connections_completeRowSchema) => {
+      setIsTracing(true);
+      setIsTraceModalOpen(true);
+      setTraceModalData(null);
+      try {
+        const data = await tracePath(record);
+        setTraceModalData(data);
+      } catch (err: unknown) {
+        const error = err as Error;
+        toast.error(error.message || 'Trace failed');
+        setIsTraceModalOpen(false);
+      } finally {
+        setIsTracing(false);
+      }
+    },
+    [tracePath],
+  );
 
   const handleViewDetails = (record: V_system_connections_completeRowSchema) => {
     setDetailsConnectionId(record.id);
     setIsDetailsModalOpen(true);
   };
 
-  const handleGoToSystem = (record: V_system_connections_completeRowSchema) => {
-    if (record.system_id) router.push(`/dashboard/systems/${record.system_id}`);
-  };
+  const handleGoToSystem = useCallback(
+    (record: V_system_connections_completeRowSchema) => {
+      if (record.system_id) router.push(`/dashboard/systems/${record.system_id}`);
+    },
+    [router],
+  );
 
   const renderItem = useCallback(
     (conn: V_system_connections_completeRowSchema) => (
@@ -156,7 +165,8 @@ export default function GlobalConnectionsPage() {
         canEdit={false} // Strictly read-only
         canDelete={false}
       />
-    ),[handleTrace, handleGoToSystem]
+    ),
+    [handleTrace, handleGoToSystem],
   );
 
   const isBusy = isLoading || isFetching || isSyncingData;
@@ -178,7 +188,7 @@ export default function GlobalConnectionsPage() {
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
-    return[
+    return [
       {
         value: totalCount,
         label: 'Total Connections',
@@ -206,7 +216,7 @@ export default function GlobalConnectionsPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  },[totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
+  }, [totalCount, activeCount, inactiveCount, filters]);
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
@@ -216,29 +226,29 @@ export default function GlobalConnectionsPage() {
   );
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
-    const standard = createStandardActions<V_system_connections_completeRowSchema>({});
+    const standard = createStandardActions<'v_system_connections_complete'>({});
     const isProvisioned = (record: V_system_connections_completeRowSchema) =>
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
 
-    return[
+    return [
       {
         key: 'view-details',
         label: 'Full Details',
-        icon: <Monitor className="w-4 h-4" />,
+        icon: <Monitor className='w-4 h-4' />,
         onClick: handleViewDetails,
         variant: 'primary',
       },
       {
         key: 'view-path',
         label: 'View Path',
-        icon: <Eye className="w-4 h-4" />,
+        icon: <Eye className='w-4 h-4' />,
         onClick: handleTrace,
         variant: 'secondary',
         hidden: (record) => !isProvisioned(record),
       },
       ...standard,
     ];
-  },[handleTrace]);
+  }, [handleTrace]);
 
   if (error)
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
@@ -254,7 +264,6 @@ export default function GlobalConnectionsPage() {
         isLoading: isLoading && connections.length === 0,
         isFetching: isBusy,
       }}
-      crud={crud}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
       searchPlaceholder='Search service, system, or ID...'

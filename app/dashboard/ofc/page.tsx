@@ -28,7 +28,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useOfcData } from '@/hooks/data/useOfcData';
 import { Row, TableOrViewName } from '@/hooks/database';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
-import { ActionButton, useStandardHeaderActions } from '@/components/common/page-header';
+import { ActionButton } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
@@ -85,7 +85,7 @@ export default function OfcPage() {
     dataQueryHook: useOfcData as any,
     displayNameField: 'route_name',
     initialFilters: { ofc_owner_id: 'ad3477d5-de78-4b9f-9302-a4b5db326e9f' },
-    syncTables:['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'],
+    syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'],
   });
 
   const { mutate: exportCables, isPending: isExporting } = useRPCExcelDownload(supabase);
@@ -121,12 +121,12 @@ export default function OfcPage() {
   const { options: ofcOwnerOptions, isLoading: loadingOwners } = useLookupTypeOptions('OFC_OWNER');
 
   const filterConfigs = useMemo<FilterConfig[]>(
-    () =>[
+    () => [
       {
         key: 'sortBy',
         type: 'native-select' as const,
         placeholder: 'Sort By',
-        options:[
+        options: [
           { value: 'name', label: 'Name (A-Z)' },
           { value: 'last_activity', label: 'Last Activity' },
         ],
@@ -184,29 +184,32 @@ export default function OfcPage() {
     });
   }, [exportCables, filters.filters]);
 
-  const headerActions = useMemo((): ActionButton[] =>[
-    {
-      label: 'Refresh',
-      onClick: handleRefresh,
-      variant: 'outline',
-      leftIcon: <FiRefreshCw className={isSyncing || isFetching ? 'animate-spin' : ''} />,
-      disabled: isSyncing || isFetching,
-    },
-    {
-      label: isExporting ? 'Exporting...' : 'Export',
-      onClick: handleExport,
-      variant: 'outline',
-      leftIcon: <FiDownload />,
-      disabled: isExporting || isFetching,
-      hideTextOnMobile: true,
-    },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [isSyncing, isFetching, isExporting, handleExport]);
+  const headerActions = useMemo(
+    (): ActionButton[] => [
+      {
+        label: 'Refresh',
+        onClick: handleRefresh,
+        variant: 'outline',
+        leftIcon: <FiRefreshCw className={isSyncing || isFetching ? 'animate-spin' : ''} />,
+        disabled: isSyncing || isFetching,
+      },
+      {
+        label: isExporting ? 'Exporting...' : 'Export',
+        onClick: handleExport,
+        variant: 'outline',
+        leftIcon: <FiDownload />,
+        disabled: isExporting || isFetching,
+        hideTextOnMobile: true,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSyncing, isFetching, isExporting, handleExport],
+  );
 
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
-    return[
+    return [
       {
         value: totalCount,
         label: 'Total Cables',
@@ -234,14 +237,14 @@ export default function OfcPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  },[totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
+  }, [totalCount, activeCount, inactiveCount, filters]);
 
   const renderItem = useCallback(
     (cable: ExtendedOfcCable) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const lastActivity = (cable as any).last_activity_at || cable.updated_at;
       const timeAgo = formatUpdatedAt(lastActivity);
-      const linkedCables = cable.linked_cables ||[];
+      const linkedCables = cable.linked_cables || [];
 
       return (
         <GenericEntityCard
@@ -290,8 +293,8 @@ export default function OfcPage() {
                       >
                         <Link
                           href={`/dashboard/ofc/${link.cable_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          target='_blank'
+                          rel='noopener noreferrer'
                           className='cursor-pointer hover:underline truncate max-w-[120px]'
                           onClick={(e) => e.stopPropagation()}
                           title={link.description || link.route_name}
@@ -338,7 +341,8 @@ export default function OfcPage() {
           },
         }}
       />
-    ),[transformedOfcData, renderItem, isLoading, totalCount, pagination],
+    ),
+    [transformedOfcData, renderItem, isLoading, totalCount, pagination],
   );
 
   if (error)

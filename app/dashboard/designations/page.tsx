@@ -1,27 +1,19 @@
 // app/dashboard/designations/page.tsx
-"use client";
+'use client';
 
-import { EntityManagementComponent } from "@/components/common/entity-management/EntityManagementComponent";
-import {
-  PageHeader,
-  useStandardHeaderActions,
-} from "@/components/common/page-header";
-import { ErrorDisplay } from "@/components/common/ui";
-import {
-  designationConfig,
-  DesignationWithRelations,
-} from "@/config/designations";
-import { Filters, Row } from "@/hooks/database";
-import { useMemo, useState } from "react";
-import { ImUserTie } from "react-icons/im";
-import { useCrudManager } from "@/hooks/useCrudManager";
-import { useDesignationsData } from "@/hooks/data/useDesignationsData";
-import { StatProps } from "@/components/common/page-header/StatCard";
+import { EntityManagementComponent } from '@/components/common/entity-management/EntityManagementComponent';
+import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { designationConfig, DesignationWithRelations } from '@/config/designations';
+import { Filters, Row } from '@/hooks/database';
+import { useMemo, useState } from 'react';
+import { ImUserTie } from 'react-icons/im';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useDesignationsData } from '@/hooks/data/useDesignationsData';
+import { StatProps } from '@/components/common/page-header/StatCard';
 
 export default function DesignationManagerPage() {
-  const [selectedDesignationId, setSelectedDesignationId] = useState<
-    string | null
-  >(null);
+  const [selectedDesignationId, setSelectedDesignationId] = useState<string | null>(null);
 
   const {
     data: allDesignations,
@@ -35,23 +27,22 @@ export default function DesignationManagerPage() {
     search,
     filters,
     queryResult,
-  } = useCrudManager<"employee_designations", DesignationWithRelations>({
-    tableName: "employee_designations",
+  } = useCrudManager<'employee_designations', DesignationWithRelations>({
+    tableName: 'employee_designations',
     dataQueryHook: useDesignationsData,
-    displayNameField: "name",
-    searchColumn: "name",
-    syncTables: ["employee_designations", "v_employee_designations"],
+    searchColumn: 'name',
+    syncTables: ['employee_designations', 'v_employee_designations'],
   });
 
   const isInitialLoad = isLoading && allDesignations.length === 0;
 
   const headerActions = useStandardHeaderActions({
-    data: allDesignations as Row<"employee_designations">[],
+    data: allDesignations as Row<'employee_designations'>[],
     onRefresh: async () => {
       await refetch();
     },
     isLoading: isLoading,
-    exportConfig: { tableName: "employee_designations" },
+    exportConfig: { tableName: 'employee_designations' },
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
@@ -59,8 +50,8 @@ export default function DesignationManagerPage() {
     return [
       {
         value: totalCount,
-        label: "Total Designations",
-        color: "default",
+        label: 'Total Designations',
+        color: 'default',
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -71,51 +62,41 @@ export default function DesignationManagerPage() {
       },
       {
         value: activeCount,
-        label: "Active",
-        color: "success",
-        onClick: () =>
-          filters.setFilters((prev) => ({ ...prev, status: "true" })),
-        isActive: currentStatus === "true",
+        label: 'Active',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'true' })),
+        isActive: currentStatus === 'true',
       },
       {
         value: inactiveCount,
-        label: "Inactive",
-        color: "danger",
-        onClick: () =>
-          filters.setFilters((prev) => ({ ...prev, status: "false" })),
-        isActive: currentStatus === "false",
+        label: 'Inactive',
+        color: 'danger',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, status: 'false' })),
+        isActive: currentStatus === 'false',
       },
     ];
-  }, [
-    totalCount,
-    activeCount,
-    inactiveCount,
-    filters.filters.status,
-    filters.setFilters,
-  ]);
+  }, [totalCount, activeCount, inactiveCount, filters]);
 
   if (error && isInitialLoad) {
     return (
       <ErrorDisplay
         error={error.message}
-        actions={[
-          { label: "Retry", onClick: () => refetch(), variant: "primary" },
-        ]}
+        actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]}
       />
     );
   }
 
   return (
-    <div className="p-4 md:p-6 dark:bg-gray-900 min-h-screen">
+    <div className='p-4 md:p-6 dark:bg-gray-900 min-h-screen'>
       <PageHeader
-        title="Designation Viewer"
-        description="View company designations and hierarchies."
+        title='Designation Viewer'
+        description='View company designations and hierarchies.'
         icon={<ImUserTie />}
         stats={headerStats}
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
-        className="mb-4"
+        className='mb-4'
       />
 
       <EntityManagementComponent<DesignationWithRelations>
@@ -129,7 +110,7 @@ export default function DesignationManagerPage() {
         filters={filters.filters as Record<string, string>}
         onFilterChange={(f) => filters.setFilters(f as Filters)}
         onClearFilters={() => {
-          search.setSearchQuery("");
+          search.setSearchQuery('');
           filters.setFilters({});
         }}
       />

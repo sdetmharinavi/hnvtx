@@ -25,17 +25,17 @@ import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/us
 import { StatProps } from '@/components/common/page-header/StatCard';
 
 const STATUS_OPTIONS = {
-  OFC:[
+  OFC: [
     { value: 'Pending', label: 'Pending' },
     { value: 'Partial Ready', label: 'Partial Ready' },
     { value: 'Ready', label: 'Ready' },
   ],
-  SPEC:[
+  SPEC: [
     { value: 'Pending', label: 'Pending' },
     { value: 'Survey', label: 'Survey' },
     { value: 'Issued', label: 'Issued' },
   ],
-  BTS:[
+  BTS: [
     { value: 'Pending', label: 'Pending' },
     { value: 'Configured', label: 'Configured' },
     { value: 'On-Air', label: 'On-Air' },
@@ -61,7 +61,7 @@ export default function RingsPage() {
     localTableName: 'v_rings',
     dataQueryHook: useRingsData,
     displayNameField: 'name',
-    searchColumn:['name', 'description', 'ring_type_name', 'maintenance_area_name'],
+    searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
     syncTables: ['rings', 'v_rings', 'ring_based_systems'],
   });
 
@@ -71,10 +71,10 @@ export default function RingsPage() {
   const { originalData: maintenanceAreasRaw, isLoading: isLoadingAreas } =
     useMaintenanceAreaOptions();
 
-  const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[],[ringTypesRaw]);
+  const ringTypes = useMemo(() => (ringTypesRaw || []) as Lookup_typesRowSchema[], [ringTypesRaw]);
   const maintenanceAreas = useMemo(
-    () => (maintenanceAreasRaw ||[]) as Maintenance_areasRowSchema[],
-    [maintenanceAreasRaw]
+    () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
+    [maintenanceAreasRaw],
   );
 
   const ringTypeFilterOptions = useMemo(
@@ -83,7 +83,7 @@ export default function RingsPage() {
         value: t.id,
         label: t.name,
       })),
-    [ringTypes]
+    [ringTypes],
   );
 
   const maintenanceAreaFilterOptions = useMemo(
@@ -91,7 +91,8 @@ export default function RingsPage() {
       maintenanceAreas.map((a) => ({
         value: a.id,
         label: a.name,
-      })),[maintenanceAreas]
+      })),
+    [maintenanceAreas],
   );
 
   const headerStats = useMemo<StatProps[]>(() => {
@@ -123,7 +124,7 @@ export default function RingsPage() {
     const currentSpecFilter = filters.filters.spec_status;
     const currentBtsFilter = filters.filters.bts_status;
 
-    return[
+    return [
       {
         value: `${nodesSum} / ${totalCount}`,
         label: 'Total Nodes / Rings',
@@ -160,18 +161,18 @@ export default function RingsPage() {
         isActive: currentOfcFilter === 'Ready',
       },
     ];
-  },[rings, totalCount, filters.filters.ofc_status, filters.filters.spec_status, filters.filters.bts_status, filters.setFilters]);
+  }, [rings, totalCount, filters]);
 
   // Disable inline cell editing by overriding the editable property inside RingsColumns
   // We can just pass standard actions without editing
-  const columns = RingsColumns(rings, STATUS_OPTIONS).map(col => ({ ...col, editable: false }));
-  const orderedColumns = useOrderedColumns(columns,[...TABLE_COLUMN_KEYS.v_rings]);
+  const columns = RingsColumns(rings, STATUS_OPTIONS).map((col) => ({ ...col, editable: false }));
+  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
 
   const handleView = useCallback(
     (record: V_ringsRowSchema) => {
       if (record.id) router.push(`/dashboard/rings/${record.id}`);
     },
-    [router]
+    [router],
   );
 
   const tableActions = useMemo(() => {
@@ -205,7 +206,7 @@ export default function RingsPage() {
         </div>
       </div>
     );
-  },[]);
+  }, []);
 
   if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;

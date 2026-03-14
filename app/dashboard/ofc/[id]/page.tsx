@@ -12,7 +12,7 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { GitBranch, GitCommit, RefreshCw } from 'lucide-react';
+import { GitBranch, GitCommit } from 'lucide-react';
 import { useRouteDetails } from '@/hooks/database/route-manager-hooks';
 import CableNotFound from '@/components/ofc-details/CableNotFound';
 import OfcDetailsHeader from '@/components/ofc-details/OfcDetailsHeader';
@@ -21,7 +21,6 @@ import {
   V_ofc_cables_completeRowSchema,
   V_ofc_connections_completeRowSchema,
   V_cable_utilizationRowSchema,
-  Cable_segmentsRowSchema,
 } from '@/schemas/zod-schemas';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
 import { StatProps } from '@/components/common/page-header/StatCard';
@@ -29,7 +28,6 @@ import { useOfcConnectionsData } from '@/hooks/data/useOfcConnectionsData';
 import { FiberConnectionCard } from '@/components/ofc-details/FiberConnectionCard';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { FilterConfig, GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
-import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/common/ui';
 
@@ -48,8 +46,8 @@ export default function OfcCableDetailsPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const[viewMode, setViewMode] = useState<'grid' | 'table'>('table');
-  const[hasInitializedView, setHasInitializedView] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [hasInitializedView, setHasInitializedView] = useState(false);
 
   const [tracingFiber, setTracingFiber] = useState<{
     record: V_ofc_connections_completeRowSchema;
@@ -67,17 +65,17 @@ export default function OfcCableDetailsPage() {
     tableName: 'ofc_connections',
     localTableName: 'v_ofc_connections_complete',
     dataQueryHook: useOfcConnectionsData(cableId as string),
-    displayNameField: ['system_name', 'ofc_route_name'],
+    displayNameField: 'system_name',
   });
 
   const filterConfigs = useMemo<FilterConfig[]>(
-    () =>[
+    () => [
       {
         key: 'allocation_status',
         label: 'Allocation',
         type: 'native-select',
         placeholder: 'All Statuses',
-        options:[
+        options: [
           { value: 'available', label: 'Spare (Available)' },
           { value: 'allocated', label: 'Utilized' },
           { value: 'faulty', label: 'Faulty' },
@@ -88,12 +86,13 @@ export default function OfcCableDetailsPage() {
         label: 'Status',
         type: 'native-select',
         placeholder: 'All Active/Inactive',
-        options:[
+        options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
         ],
       },
-    ],[],
+    ],
+    [],
   );
 
   const handleFilterChange = useCallback(
@@ -121,10 +120,10 @@ export default function OfcCableDetailsPage() {
 
   const { data: cableSegmentsResult } = useTableQuery(supabase, 'cable_segments', {
     filters: { original_cable_id: cableId as string },
-    orderBy:[{ column: 'segment_order', ascending: true }],
+    orderBy: [{ column: 'segment_order', ascending: true }],
     enabled: !!cableId,
   });
-  const cableSegments = cableSegmentsResult?.data ||[];
+  const cableSegments = cableSegmentsResult?.data || [];
 
   useEffect(() => {
     if (!isLoading && cableConnectionsData.length > 0 && !hasInitializedView) {
@@ -136,7 +135,7 @@ export default function OfcCableDetailsPage() {
 
   const handleTraceClick = useCallback((record: V_ofc_connections_completeRowSchema) => {
     setTracingFiber({ record });
-  },[]);
+  }, []);
 
   const getCardActions = useCallback(
     (record: V_ofc_connections_completeRowSchema) => {
@@ -157,13 +156,16 @@ export default function OfcCableDetailsPage() {
   );
 
   // Disable cell editing globally
-  const columns = OfcDetailsTableColumns(cableConnectionsData).map(col => ({ ...col, editable: false }));
-  const orderedColumns = useOrderedColumns(columns,[
+  const columns = OfcDetailsTableColumns(cableConnectionsData).map((col) => ({
+    ...col,
+    editable: false,
+  }));
+  const orderedColumns = useOrderedColumns(columns, [
     ...TABLE_COLUMN_KEYS.v_ofc_connections_complete,
   ]);
 
   const tableActions = useMemo(
-    () =>[
+    () => [
       {
         key: 'trace',
         label: 'Trace Path',
@@ -189,7 +191,7 @@ export default function OfcCableDetailsPage() {
       fileName: `${routeDetails?.route.route_name}_fibers`,
       useRpc: true,
       filters: { ofc_id: cableId as string },
-      orderBy:[{ column: 'fiber_no_sn', ascending: true }],
+      orderBy: [{ column: 'fiber_no_sn', ascending: true }],
     },
   });
 
@@ -197,7 +199,7 @@ export default function OfcCableDetailsPage() {
     const utilPercent = utilization?.utilization_percent ?? 0;
     const healthyUtilPercent = utilization?.healthy_utilization_percent ?? 0;
 
-    return[
+    return [
       { value: utilization?.capacity ?? 0, label: 'Total Capacity', color: 'default' },
       { value: utilization?.used_fibers ?? 0, label: 'Utilized', color: 'primary' },
       { value: utilization?.available_fibers ?? 0, label: 'Available', color: 'success' },
@@ -222,7 +224,8 @@ export default function OfcCableDetailsPage() {
           actions={actions}
         />
       );
-    },[],
+    },
+    [],
   );
 
   if (isLoading || isLoadingRouteDetails || isLoadingUtil) return <PageSpinner />;
@@ -310,7 +313,7 @@ export default function OfcCableDetailsPage() {
           segments={cableSegments}
           fiberNoSn={tracingFiber.record.fiber_no_sn}
           fiberNoEn={tracingFiber.record.fiber_no_en}
-          allCables={undefined} 
+          allCables={undefined}
           record={tracingFiber.record}
           refetch={refetch}
           cableName={tracingFiber.record.ofc_route_name || undefined}

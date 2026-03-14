@@ -10,6 +10,7 @@ import { useFoldersList } from '@/hooks/database/file-queries';
 import { PageHeader } from '@/components/common/page-header';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useDataSync } from '@/hooks/data/useDataSync';
+import { FoldersRowSchema } from '@/schemas/zod-schemas';
 
 export default function DiagramsPage() {
   const queryClient = useQueryClient();
@@ -19,6 +20,12 @@ export default function DiagramsPage() {
   const { sync: syncData, isSyncing } = useDataSync();
 
   const { folders, isLoading: isLoadingFolders, refetch: refetchFolders } = useFoldersList();
+
+  // Transform folders to match FileTable's expected interface
+  const transformedFolders = (folders as FoldersRowSchema[]).map((folder) => ({
+    id: folder.id,
+    name: folder.name,
+  }));
 
   const handlePageRefresh = useCallback(async () => {
     if (isOnline) {
@@ -52,7 +59,7 @@ export default function DiagramsPage() {
       />
 
       <FileTable
-        folders={folders}
+        folders={transformedFolders}
         folderId={folderId}
         onFolderSelect={setFolderId}
         isLoading={isLoadingFolders}

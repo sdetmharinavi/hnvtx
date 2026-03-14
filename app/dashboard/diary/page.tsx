@@ -10,19 +10,19 @@ import { ErrorDisplay, Button } from '@/components/common/ui';
 import { DiaryEntryCard } from '@/components/diary/DiaryEntryCard';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
 import { useDiaryData } from '@/hooks/data/useDiaryData';
-import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar'; 
+import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
 
 type ViewMode = 'day' | 'feed';
 
 export default function DiaryPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const[viewMode, setViewMode] = useState<ViewMode>('day');
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch] = useDebounce(searchQuery, 300);
 
   const {
-    data: allNotesForMonth =[],
+    data: allNotesForMonth = [],
     isLoading,
     isFetching,
     error,
@@ -49,14 +49,14 @@ export default function DiaryPage() {
     }
 
     return notes;
-  },[allNotesForMonth, debouncedSearch, viewMode, selectedDate]);
+  }, [allNotesForMonth, debouncedSearch, viewMode, selectedDate]);
 
   const highlightedDates = useMemo(() => {
-    return (allNotesForMonth ||[]).map((note) => {
+    return (allNotesForMonth || []).map((note) => {
       const [y, m, d] = note.note_date!.split('-').map(Number);
       return new Date(y, m - 1, d);
     });
-  },[allNotesForMonth]);
+  }, [allNotesForMonth]);
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
@@ -71,7 +71,7 @@ export default function DiaryPage() {
 
   const handleMonthChange = useCallback((date: Date) => {
     setCurrentDate(date);
-  },[]);
+  }, []);
 
   const jumpToToday = () => {
     const now = new Date();
@@ -96,7 +96,10 @@ export default function DiaryPage() {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   const selectedDateString = selectedDate.toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 
   const handleViewModeChange = (mode: 'grid' | 'table') => {
@@ -143,7 +146,7 @@ export default function DiaryPage() {
                 <FiCalendar /> Usage Tips
               </h4>
               <p className='text-sm text-gray-600 dark:text-gray-400'>
-                Use the calendar to filter entries by specific dates. Switch to "Feed"
+                Use the calendar to filter entries by specific dates. Switch to &quot;Feed&quot;
                 view to see all activities for the current month in chronological order.
               </p>
             </div>
@@ -155,14 +158,20 @@ export default function DiaryPage() {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               searchPlaceholder='Search logs or tags...'
-              filters={{}} 
+              filters={{}}
               onFilterChange={() => {}}
-              filterConfigs={[]} 
+              filterConfigs={[]}
               viewMode={genericViewMode}
               onViewModeChange={handleViewModeChange}
               extraActions={
                 viewMode === 'feed' ? (
-                  <Button size='sm' variant='outline' onClick={handlePrintFeed} leftIcon={<FiPrinter className='w-4 h-4' />} title="Print this month's feed">
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    onClick={handlePrintFeed}
+                    leftIcon={<FiPrinter className='w-4 h-4' />}
+                    title="Print this month's feed"
+                  >
                     Print
                   </Button>
                 ) : null
@@ -177,7 +186,10 @@ export default function DiaryPage() {
                   ) : viewMode === 'day' ? (
                     <>{selectedDateString}</>
                   ) : (
-                    <>Activity Feed for {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</>
+                    <>
+                      Activity Feed for{' '}
+                      {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </>
                   )}
                 </h2>
                 {!debouncedSearch && viewMode === 'day' && (

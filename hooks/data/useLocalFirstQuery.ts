@@ -1,4 +1,6 @@
 // hooks/data/useLocalFirstQuery.ts
+'use client';
+
 import { useQuery, type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
@@ -16,17 +18,19 @@ interface UseLocalFirstQueryOptions<
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
   localQueryDeps?: unknown[];
+  // Fix: Removed 'string | number' constraint to support composite keys transparently
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dexieTable: Table<TLocal, any>;
+  dexieTable: Table<TLocal, any>; 
   enabled?: boolean;
   staleTime?: number;
-  autoSync?: boolean; // Kept for interface compatibility, but ignored internally
-  refetchOnMount?: boolean | "always";
-  tableName?: string;
   preferNetwork?: boolean;
   skipSync?: boolean;
 }
 
+/**
+ * useLocalFirstQuery (Viewer Version)
+ * Provides instant data from local storage and strictly manual sync for server updates.
+ */
 export function useLocalFirstQuery<
   T extends PublicTableOrViewName,
   TRow = Row<T>,
@@ -43,16 +47,14 @@ export function useLocalFirstQuery<
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
   const isOnline = useOnlineStatus();
   const isSyncingRef = useRef(false);
-  const[hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
+  const [hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
   const queryClient = useQueryClient();
 
-  // 1. Fetch Local Data (Dexie)
+  // 1. Local Database Observation
   const localData = useLiveQuery(
-    () => {
-      return Promise.resolve(localQueryFn()).finally(() => {});
-    },
+    () => Promise.resolve(localQueryFn()),
     localQueryDeps,
-    "loading",
+    "loading" as const,
   );
 
   useEffect(() => {
@@ -61,8 +63,7 @@ export function useLocalFirstQuery<
     }
   }, [localData]);
 
-  // 2. STRICT MANUAL SYNC: Network query is DISABLED by default. 
-  // It will ONLY run when refetch() is explicitly called by the Sync/Refresh buttons.
+  // 2. Manual Network Query (Sync only)
   const {
     data: networkData,
     isFetching: isNetworkFetching,
@@ -72,62 +73,55 @@ export function useLocalFirstQuery<
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: async () => {
-      if (!isOnline) throw new Error("Offline");
+      if (!isOnline) throw new Error("Currently offline. Sync unavailable.");
       return onlineQueryFn();
     },
-    enabled: false, // <-- THE FIX: Disables automatic background fetching
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
+    enabled: false, // STOPS AUTOMATIC FETCHING
     staleTime,
   });
 
-  // 3. Fast Sync Network Data to Local DB (Pure Read-Only Mode)
+  // 3. One-way Sync (Server -> Local)
   useEffect(() => {
-    if (skipSync) return;
+    if (skipSync || !networkData || isSyncingRef.current || localData === "loading") return;
 
-    if (networkData && !isSyncingRef.current && localData !== "loading") {
-      const syncToLocal = async () => {
-        try {
-          isSyncingRef.current = true;
-          const primaryKey = dexieTable.schema.primKey.name;
+    const syncToLocal = async () => {
+      try {
+        isSyncingRef.current = true;
+        const primaryKeyName = dexieTable.schema.primKey.name;
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const localMap = new Map<string, any>();
-          if (Array.isArray(localData)) {
-            localData.forEach((item) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const pk = (item as any)[primaryKey];
-              if (pk) localMap.set(String(pk), item);
-            });
-          }
-
-          const dataToSave: TLocal[] = [];
-
-          (networkData as unknown as TLocal[]).forEach((serverItem) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const pkValue = (serverItem as any)[primaryKey];
-            if (pkValue === null || pkValue === undefined) return;
-
-            const pkStr = String(pkValue);
-            const localItem = localMap.get(pkStr);
-
-            if (localItem && isEqual(localItem, serverItem)) return;
-            dataToSave.push(serverItem);
+        const localMap = new Map<string | number, TLocal>();
+        if (Array.isArray(localData)) {
+          localData.forEach((item) => {
+            const pk = (item as Record<string, unknown>)[primaryKeyName];
+            if (pk !== undefined && pk !== null) localMap.set(pk as string | number, item);
           });
-
-          if (dataToSave.length > 0) {
-            await dexieTable.bulkPut(dataToSave);
-          }
-        } catch (e) {
-          console.error(`[useLocalFirstQuery] Sync failed for ${dexieTable.name}`, e);
-        } finally {
-          isSyncingRef.current = false;
         }
-      };
-      syncToLocal();
-    }
-  },[networkData, dexieTable, localData, skipSync]);
+
+        const dataToUpdate: TLocal[] = [];
+
+        (networkData as unknown as TLocal[]).forEach((serverItem) => {
+          const pk = (serverItem as Record<string, unknown>)[primaryKeyName];
+          if (pk === undefined || pk === null) return;
+
+          const localItem = localMap.get(pk as string | number);
+
+          // Only write if there's a difference to keep DB performance high
+          if (!localItem || !isEqual(localItem, serverItem)) {
+            dataToUpdate.push(serverItem);
+          }
+        });
+
+        if (dataToUpdate.length > 0) {
+          await dexieTable.bulkPut(dataToUpdate);
+        }
+      } catch (e) {
+        console.error(`[LocalFirstQuery] Sync failed for ${dexieTable.name}:`, e);
+      } finally {
+        isSyncingRef.current = false;
+      }
+    };
+    syncToLocal();
+  }, [networkData, dexieTable, localData, skipSync]);
 
   const cachedData = queryClient.getQueryData<TRow[]>(queryKey);
 
@@ -140,15 +134,11 @@ export function useLocalFirstQuery<
           ? (cachedData as unknown as TLocal[])
           :[];
 
-  const isError = isNetworkError && !hasInitialLocalLoad;
-  const error = isError ? networkError : null;
-
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: resolvedData as any,
+    data: resolvedData as TRow[],
     isLoading: localData === "loading" && !hasInitialLocalLoad,
     isFetching: isNetworkFetching,
-    error,
+    error: isNetworkError && !hasInitialLocalLoad ? networkError : null,
     refetch
   };
 }

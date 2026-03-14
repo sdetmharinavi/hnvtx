@@ -1,6 +1,5 @@
 import { parseJson, toPgBoolean, toPgDate, toTitleCase } from '@/config/helper-functions';
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from '@/config/helper-types';
-import type { UploadConfig } from '@/stores/useUploadConfigStore';
 import { PublicTableName, PublicTableOrViewName, Row, isTableName } from '@/hooks/database';
 import { removeSubnet } from '@/hooks/database/excel-queries/excel-helpers';
 
@@ -271,7 +270,7 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conflictColumn: conflictColumn as any,
     isUploadEnabled,
-  } satisfies UploadConfig<T>;
+  };
 }
 
 export type ValidatedColumnKeys = {
@@ -1042,6 +1041,7 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: 'updated_at',
     maintenance_terminal_id: 'maintenance_terminal_id',
     ring_type_id: 'ring_type_id',
+    associated_system_ips: 'associated_system_ips',
   },
   file_movements: {
     action_type: 'action_type',

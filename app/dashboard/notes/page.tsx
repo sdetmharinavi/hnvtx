@@ -1,26 +1,23 @@
 // app/dashboard/notes/page.tsx
-"use client";
+'use client';
 
-import { useMemo, useState, useCallback } from "react";
-import { useStandardHeaderActions } from "@/components/common/page-header";
-import { ErrorDisplay } from "@/components/common/ui";
-import {
-  GenericEntityCard,
-  EntityCardItem,
-} from "@/components/common/ui/GenericEntityCard";
-import { DashboardPageLayout } from "@/components/layouts/DashboardPageLayout";
-import { useCrudManager } from "@/hooks/useCrudManager";
-import { useNotesData } from "@/hooks/data/useNotesData";
-import { createStandardActions } from "@/components/table/action-helpers";
-import { FiBook, FiUser, FiCalendar } from "react-icons/fi";
-import { NoteViewModal } from "@/components/notes/NoteViewModal";
-import { V_technical_notesRowSchema } from "@/schemas/zod-schemas";
-import { Column } from "@/hooks/database/excel-queries/excel-helpers";
-import { DataGrid } from "@/components/common/DataGrid";
-import { StatProps } from "@/components/common/page-header/StatCard";
+import { useMemo, useState, useCallback } from 'react';
+import { useStandardHeaderActions } from '@/components/common/page-header';
+import { ErrorDisplay } from '@/components/common/ui';
+import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
+import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
+import { useCrudManager } from '@/hooks/useCrudManager';
+import { useNotesData } from '@/hooks/data/useNotesData';
+import { createStandardActions } from '@/components/table/action-helpers';
+import { FiBook, FiUser, FiCalendar } from 'react-icons/fi';
+import { NoteViewModal } from '@/components/notes/NoteViewModal';
+import { V_technical_notesRowSchema } from '@/schemas/zod-schemas';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { DataGrid } from '@/components/common/DataGrid';
+import { StatProps } from '@/components/common/page-header/StatCard';
 
 export default function NotesPage() {
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   const {
     data: notes,
@@ -35,57 +32,55 @@ export default function NotesPage() {
     search,
     filters,
     viewModal,
-  } = useCrudManager<"technical_notes", V_technical_notesRowSchema>({
-    tableName: "technical_notes",
-    localTableName: "v_technical_notes",
+  } = useCrudManager<'technical_notes', V_technical_notesRowSchema>({
+    tableName: 'technical_notes',
+    localTableName: 'v_technical_notes',
     dataQueryHook: useNotesData,
-    displayNameField: "title",
-    searchColumn: ["title", "content", "author_name"],
-    syncTables: ["technical_notes", "v_technical_notes"],
+    displayNameField: 'title',
+    searchColumn: ['title', 'content', 'author_name'],
+    syncTables: ['technical_notes', 'v_technical_notes'],
   });
 
   const columns = useMemo<Column<V_technical_notesRowSchema>[]>(
     () => [
       {
-        key: "title",
-        title: "Title",
-        dataIndex: "title",
+        key: 'title',
+        title: 'Title',
+        dataIndex: 'title',
         sortable: true,
         searchable: true,
       },
       {
-        key: "author_name",
-        title: "Author",
-        dataIndex: "author_name",
+        key: 'author_name',
+        title: 'Author',
+        dataIndex: 'author_name',
         sortable: true,
       },
       {
-        key: "is_published",
-        title: "Status",
-        dataIndex: "is_published",
+        key: 'is_published',
+        title: 'Status',
+        dataIndex: 'is_published',
         width: 100,
         render: (val) =>
           (val as boolean) ? (
-            <span className="text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded text-xs font-bold">
+            <span className='text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded text-xs font-bold'>
               Published
             </span>
           ) : (
-            <span className="text-gray-600 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs font-bold">
+            <span className='text-gray-600 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-xs font-bold'>
               Draft
             </span>
           ),
       },
       {
-        key: "created_at",
-        title: "Created",
-        dataIndex: "created_at",
+        key: 'created_at',
+        title: 'Created',
+        dataIndex: 'created_at',
         width: 150,
         render: (val) => {
-          if (!val) return "—";
+          if (!val) return '—';
           const dateValue = new Date(val as string | number | Date);
-          return isNaN(dateValue.getTime())
-            ? "—"
-            : dateValue.toLocaleDateString();
+          return isNaN(dateValue.getTime()) ? '—' : dateValue.toLocaleDateString();
         },
       },
     ],
@@ -95,12 +90,12 @@ export default function NotesPage() {
   const filterConfigs = useMemo(
     () => [
       {
-        key: "is_published",
-        label: "Status",
-        type: "native-select" as const,
+        key: 'is_published',
+        label: 'Status',
+        type: 'native-select' as const,
         options: [
-          { value: "true", label: "Published" },
-          { value: "false", label: "Draft" },
+          { value: 'true', label: 'Published' },
+          { value: 'false', label: 'Draft' },
         ],
       },
     ],
@@ -119,7 +114,7 @@ export default function NotesPage() {
     onRefresh: refetch,
     isLoading,
     isFetching,
-    exportConfig: { tableName: "v_technical_notes" },
+    exportConfig: { tableName: 'v_technical_notes' },
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
@@ -128,8 +123,8 @@ export default function NotesPage() {
     return [
       {
         value: totalCount,
-        label: "Total Notes",
-        color: "default",
+        label: 'Total Notes',
+        color: 'default',
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -140,65 +135,53 @@ export default function NotesPage() {
       },
       {
         value: activeCount,
-        label: "Published",
-        color: "success",
-        onClick: () =>
-          filters.setFilters((prev) => ({ ...prev, is_published: "true" })),
-        isActive: currentStatus === "true",
+        label: 'Published',
+        color: 'success',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, is_published: 'true' })),
+        isActive: currentStatus === 'true',
       },
       {
         value: inactiveCount,
-        label: "Drafts",
-        color: "warning",
-        onClick: () =>
-          filters.setFilters((prev) => ({ ...prev, is_published: "false" })),
-        isActive: currentStatus === "false",
+        label: 'Drafts',
+        color: 'warning',
+        onClick: () => filters.setFilters((prev) => ({ ...prev, is_published: 'false' })),
+        isActive: currentStatus === 'false',
       },
     ];
-  }, [
-    totalCount,
-    activeCount,
-    inactiveCount,
-    filters.filters.is_published,
-    filters.setFilters,
-  ]);
+  }, [totalCount, activeCount, inactiveCount, filters]);
 
   const renderItem = useCallback(
     (note: V_technical_notesRowSchema) => (
       <GenericEntityCard
         key={note.id}
         entity={note}
-        title={note.title || ""}
-        subtitle={note.author_name || "Unknown Author"}
-        status={note.is_published ? "Active" : "Inactive"}
+        title={note.title || ''}
+        subtitle={note.author_name || 'Unknown Author'}
+        status={note.is_published ? 'Active' : 'Inactive'}
         showStatusLabel={false}
-        headerIcon={<FiBook className="w-6 h-6 text-indigo-500" />}
+        headerIcon={<FiBook className='w-6 h-6 text-indigo-500' />}
         dataItems={[
-          { icon: FiUser, label: "Author", value: note.author_name },
+          { icon: FiUser, label: 'Author', value: note.author_name },
           {
             icon: FiCalendar,
-            label: "Date",
+            label: 'Date',
             value: new Date(note.created_at!).toLocaleDateString(),
           },
         ]}
         onView={viewModal.open}
-        canEdit={false}
-        canDelete={false}
         customFooter={
           note.tags && note.tags.length > 0 ? (
-            <div className="flex flex-wrap gap-1 mt-2">
+            <div className='flex flex-wrap gap-1 mt-2'>
               {note.tags.slice(0, 3).map((tag, i) => (
                 <span
                   key={i}
-                  className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300"
+                  className='text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300'
                 >
                   #{tag}
                 </span>
               ))}
               {note.tags.length > 3 && (
-                <span className="text-[10px] text-gray-500">
-                  +{note.tags.length - 3}
-                </span>
+                <span className='text-[10px] text-gray-500'>+{note.tags.length - 3}</span>
               )}
             </div>
           ) : undefined
@@ -230,19 +213,14 @@ export default function NotesPage() {
   );
 
   if (error)
-    return (
-      <ErrorDisplay
-        error={error.message}
-        actions={[{ label: "Retry", onClick: refetch }]}
-      />
-    );
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
     <DashboardPageLayout
       header={{
-        title: "Technical Notes Reader",
+        title: 'Technical Notes Reader',
         description:
-          "Read-only access to knowledge base, technical documentation, and team updates.",
+          'Read-only access to knowledge base, technical documentation, and team updates.',
         icon: <FiBook />,
         stats: headerStats,
         actions: headerActions,
@@ -251,7 +229,7 @@ export default function NotesPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder="Search notes..."
+      searchPlaceholder='Search notes...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
       filterConfigs={filterConfigs}
@@ -259,7 +237,7 @@ export default function NotesPage() {
       onViewModeChange={setViewMode}
       renderGrid={renderGrid}
       tableProps={{
-        tableName: "v_technical_notes",
+        tableName: 'v_technical_notes',
         data: notes,
         columns,
         loading: isLoading,

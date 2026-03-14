@@ -34,16 +34,16 @@ import dynamic from 'next/dynamic';
 
 const SystemFiberTraceModal = dynamic(
   () => import('@/components/system-details/SystemFiberTraceModal').then((mod) => mod.default),
-  { ssr: false }
+  { ssr: false },
 );
 
 // Note: Ensure this Details Modal component has been updated to remove edit/delete buttons
 const SystemConnectionDetailsModal = dynamic(
   () =>
     import('@/components/system-details/SystemConnectionDetailsModal').then(
-      (mod) => mod.SystemConnectionDetailsModal
+      (mod) => mod.SystemConnectionDetailsModal,
     ),
-  { ssr: false }
+  { ssr: false },
 );
 
 export default function SystemConnectionsPage() {
@@ -60,18 +60,18 @@ export default function SystemConnectionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Filters>({});
 
-  const[isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [traceModalData, setTraceModalData] = useState<TraceRoutes | null>(null);
   const [isTracing, setIsTracing] = useState(false);
-  
-  const[isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsConnectionId, setDetailsConnectionId] = useState<string | null>(null);
 
   const [isStatsConfigOpen, setIsStatsConfigOpen] = useState(false);
   const [statsFilters, setStatsFilters] = useState<StatsFilterState>({
     includeAdminDown: true,
     selectedCapacities: [],
-    selectedTypes:[],
+    selectedTypes: [],
   });
 
   const tracePath = useTracePath(supabase);
@@ -113,7 +113,7 @@ export default function SystemConnectionsPage() {
     });
   const parentSystem = systemData?.data?.[0];
 
-  const { data: ports =[] } = usePortsData(systemId)({
+  const { data: ports = [] } = usePortsData(systemId)({
     currentPage: 1,
     pageLimit: 5000,
     searchQuery: '',
@@ -122,7 +122,7 @@ export default function SystemConnectionsPage() {
 
   const headerStats: StatProps[] = useMemo(() => {
     if (!ports || ports.length === 0) {
-      return[{ label: 'Total Connections', value: totalConnections }];
+      return [{ label: 'Total Connections', value: totalConnections }];
     }
 
     const filteredPorts = ports.filter((p) => {
@@ -140,7 +140,7 @@ export default function SystemConnectionsPage() {
 
     const totalPorts = filteredPorts.length;
     const availablePorts = filteredPorts.filter(
-      (p) => !p.port_utilization && p.port_admin_status
+      (p) => !p.port_utilization && p.port_admin_status,
     ).length;
     const portsDown = filteredPorts.filter((p) => !p.port_admin_status).length;
     const utilPercent =
@@ -148,19 +148,22 @@ export default function SystemConnectionsPage() {
         ? Math.round((filteredPorts.filter((p) => p.port_utilization).length / totalPorts) * 100)
         : 0;
 
-    const typeStats = filteredPorts.reduce((acc, port) => {
-      const code =
-        port.port_type_code ||
-        (port.port_type_name
-          ? port.port_type_name.replace(/[^A-Z0-9]/gi, '').substring(0, 6)
-          : 'Other');
-      if (!acc[code]) acc[code] = { total: 0, used: 0 };
-      acc[code].total++;
-      if (port.port_utilization) {
-        acc[code].used++;
-      }
-      return acc;
-    }, {} as Record<string, { total: number; used: number }>);
+    const typeStats = filteredPorts.reduce(
+      (acc, port) => {
+        const code =
+          port.port_type_code ||
+          (port.port_type_name
+            ? port.port_type_name.replace(/[^A-Z0-9]/gi, '').substring(0, 6)
+            : 'Other');
+        if (!acc[code]) acc[code] = { total: 0, used: 0 };
+        acc[code].total++;
+        if (port.port_utilization) {
+          acc[code].used++;
+        }
+        return acc;
+      },
+      {} as Record<string, { total: number; used: number }>,
+    );
 
     const typeCards: StatProps[] = Object.entries(typeStats)
       .sort((a, b) => b[1].total - a[1].total)
@@ -173,7 +176,7 @@ export default function SystemConnectionsPage() {
         };
       });
 
-    return[
+    return [
       { label: 'Connections', value: totalConnections, color: 'default' },
       {
         label: `Utilization ${statsFilters.selectedCapacities.length ? '(Filtered)' : ''}`,
@@ -185,13 +188,17 @@ export default function SystemConnectionsPage() {
         value: availablePorts,
         color: availablePorts === 0 ? 'danger' : 'success',
       },
-      ...(portsDown > 0 ?[{ label: 'Ports Down', value: portsDown, color: 'danger' as const }] : []),
+      ...(portsDown > 0
+        ? [{ label: 'Ports Down', value: portsDown, color: 'danger' as const }]
+        : []),
       ...typeCards,
     ];
-  },[ports, totalConnections, statsFilters]);
+  }, [ports, totalConnections, statsFilters]);
 
   const columns = SystemConnectionsTableColumns(connections);
-  const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_system_connections_complete]);
+  const orderedColumns = useOrderedColumns(columns, [
+    ...TABLE_COLUMN_KEYS.v_system_connections_complete,
+  ]);
 
   const handleTracePath = useCallback(
     async (record: V_system_connections_completeRowSchema) => {
@@ -208,40 +215,40 @@ export default function SystemConnectionsPage() {
         setIsTracing(false);
       }
     },
-    [tracePath]
+    [tracePath],
   );
 
   const handleViewDetails = useCallback((record: V_system_connections_completeRowSchema) => {
     setDetailsConnectionId(record.id);
     setIsDetailsModalOpen(true);
-  },[]);
+  }, []);
 
   const tableActions = useMemo((): TableAction<'v_system_connections_complete'>[] => {
-    const standard = createStandardActions<V_system_connections_completeRowSchema>({
+    const standard = createStandardActions<'v_system_connections_complete'>({
       // Read only - NO edit/delete
     });
     const isProvisioned = (record: V_system_connections_completeRowSchema) =>
       Array.isArray(record.working_fiber_in_ids) && record.working_fiber_in_ids.length > 0;
 
-    return[
+    return [
       {
         key: 'view-details',
         label: 'Full Details',
-        icon: <Monitor className="w-4 h-4" />,
+        icon: <Monitor className='w-4 h-4' />,
         onClick: handleViewDetails,
         variant: 'primary',
       },
       {
         key: 'view-path',
         label: 'View Path',
-        icon: <Eye className="w-4 h-4" />,
+        icon: <Eye className='w-4 h-4' />,
         onClick: handleTracePath,
         variant: 'secondary',
         hidden: (record) => !isProvisioned(record),
       },
       ...standard,
     ];
-  },[handleTracePath, handleViewDetails]);
+  }, [handleTracePath, handleViewDetails]);
 
   const isBusy = isLoadingConnections || isSyncingData || isFetching;
 
@@ -276,7 +283,7 @@ export default function SystemConnectionsPage() {
   const renderMobileItem = useCallback(
     (record: Row<'v_system_connections_complete'>) => {
       return (
-        <div className="flex flex-col gap-3">
+        <div className='flex flex-col gap-3'>
           <ConnectionCard
             connection={record as V_system_connections_completeRowSchema}
             parentSystemId={systemId}
@@ -290,14 +297,14 @@ export default function SystemConnectionsPage() {
         </div>
       );
     },
-    [systemId, handleViewDetails, handleTracePath]
+    [systemId, handleViewDetails, handleTracePath],
   );
 
-  if (isLoadingSystem) return <PageSpinner text="Loading system details..." />;
-  if (!parentSystem) return <ErrorDisplay error="System not found." />;
+  if (isLoadingSystem) return <PageSpinner text='Loading system details...' />;
+  if (!parentSystem) return <ErrorDisplay error='System not found.' />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className='p-6 space-y-6'>
       <PageHeader
         title={`${parentSystem.system_name} (${parentSystem.ip_address?.split('/')[0] || 'N/A'})`}
         description={`Viewing connections for ${parentSystem.system_type_code} at ${parentSystem.node_name}`}
@@ -314,53 +321,53 @@ export default function SystemConnectionsPage() {
         onApply={setStatsFilters}
       />
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4">
-        <div className="w-full lg:w-96">
+      <div className='bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center sticky top-20 z-10 mb-4'>
+        <div className='w-full lg:w-96'>
           <Input
-            placeholder="Search service, customer..."
+            placeholder='Search service, customer...'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<FiSearch className="text-gray-400" />}
+            leftIcon={<FiSearch className='text-gray-400' />}
             fullWidth
             clearable
           />
         </div>
 
-        <div className="flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0">
-          <div className="min-w-[160px]">
+        <div className='flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0'>
+          <div className='min-w-[160px]'>
             <SelectFilter
-              label=""
-              filterKey="media_type_id"
+              label=''
+              filterKey='media_type_id'
               filters={filters}
               setFilters={setFilters}
               options={mediaOptions}
-              placeholder="All Media Types"
+              placeholder='All Media Types'
             />
           </div>
-          <div className="min-w-[160px]">
+          <div className='min-w-[160px]'>
             <SelectFilter
-              label=""
-              filterKey="connected_link_type_id"
+              label=''
+              filterKey='connected_link_type_id'
               filters={filters}
               setFilters={setFilters}
               options={linkTypeOptions}
-              placeholder="All Link Types"
+              placeholder='All Link Types'
             />
           </div>
-          <div className="min-w-[120px]">
+          <div className='min-w-[120px]'>
             <SelectFilter
-              label=""
-              filterKey="status"
+              label=''
+              filterKey='status'
               filters={filters}
               setFilters={setFilters}
               options={[
                 { value: 'true', label: 'Active' },
                 { value: 'false', label: 'Inactive' },
               ]}
-              placeholder="All Status"
+              placeholder='All Status'
             />
           </div>
-          <div className="hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end">
+          <div className='hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end'>
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-md transition-all ${
@@ -368,7 +375,7 @@ export default function SystemConnectionsPage() {
                   ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
-              title="Grid View"
+              title='Grid View'
             >
               <FiGrid size={16} />
             </button>
@@ -379,7 +386,7 @@ export default function SystemConnectionsPage() {
                   ? 'bg-white dark:bg-gray-600 shadow-sm text-blue-600 dark:text-blue-400'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
-              title="Table View"
+              title='Table View'
             >
               <FiList size={16} />
             </button>
@@ -388,9 +395,9 @@ export default function SystemConnectionsPage() {
       </div>
 
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6">
+        <div className='grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-6'>
           {sortedConnections.map((conn) => (
-            <div key={conn.id} className="h-full">
+            <div key={conn.id} className='h-full'>
               <ConnectionCard
                 connection={conn}
                 parentSystemId={systemId}
@@ -403,8 +410,8 @@ export default function SystemConnectionsPage() {
             </div>
           ))}
           {sortedConnections.length === 0 && !isLoadingConnections && (
-            <div className="col-span-full py-16 text-center text-gray-500">
-              <FiDatabase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <div className='col-span-full py-16 text-center text-gray-500'>
+              <FiDatabase className='w-12 h-12 mx-auto mb-3 text-gray-300' />
               <div>No connections found matching your criteria.</div>
             </div>
           )}
@@ -412,7 +419,7 @@ export default function SystemConnectionsPage() {
       ) : (
         <DataTable
           autoHideEmptyColumns={true}
-          tableName="v_system_connections_complete"
+          tableName='v_system_connections_complete'
           data={sortedConnections}
           columns={orderedColumns}
           loading={isLoadingConnections}

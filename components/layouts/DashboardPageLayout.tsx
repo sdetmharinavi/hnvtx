@@ -6,13 +6,16 @@ import { DataTable, DataTableProps } from '@/components/table';
 import { PublicTableOrViewName, Filters } from '@/hooks/database';
 import { UseCrudManagerReturn } from '@/hooks/useCrudManager';
 
+// THE FIX: Define a generic record type to replace `any` and satisfy the UseCrudManagerReturn constraint
+type DefaultRecord = Record<string, unknown> & { id: string | number | null };
+
 interface DashboardPageLayoutProps<T extends PublicTableOrViewName> {
   header: PageHeaderProps;
-  crud?: UseCrudManagerReturn<any>;
+  crud?: UseCrudManagerReturn<DefaultRecord>; // THE FIX: Replaced `any`
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>; // THE FIX: Replaced `any`
   onFilterChange?: (key: string, value: string | null) => void;
   setFilters?: React.Dispatch<React.SetStateAction<Filters>>;
   filterConfigs?: FilterConfig[];
@@ -36,7 +39,7 @@ export function DashboardPageLayout<T extends PublicTableOrViewName>({
   filters,
   onFilterChange,
   setFilters,
-  filterConfigs =[],
+  filterConfigs = [],
   viewMode,
   onViewModeChange,
   renderGrid,
@@ -48,11 +51,11 @@ export function DashboardPageLayout<T extends PublicTableOrViewName>({
   const effectiveSearchQuery = searchQuery ?? crud?.search.searchQuery ?? '';
   const effectiveOnSearchChange = onSearchChange ?? crud?.search.setSearchQuery ?? (() => {});
   const effectiveFilters = filters ?? crud?.filters.filters ?? {};
-  
+
   const effectiveOnFilterChange =
     onFilterChange ??
     ((key: string, value: string | null) => {
-      crud?.filters.setFilters((prev) => {
+      crud?.filters.setFilters((prev: Filters) => {
         const next = { ...prev };
         if (value === null || value === '') delete next[key];
         else next[key] = value;

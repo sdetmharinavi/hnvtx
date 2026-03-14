@@ -25,7 +25,7 @@ export const useAuth = () => {
     getUserId,
   } = useAuthStore();
 
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createClient(),[]);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,7 +56,7 @@ export const useAuth = () => {
         }
         if (session?.user && isMounted) setUser(session.user);
         else if (isMounted) setAuthState("unauthenticated");
-      } catch (error) {
+      } catch {
         if (isMounted) setAuthState("unauthenticated");
       }
     };
@@ -194,8 +194,7 @@ export const useAuth = () => {
       forgotPassword,
       resetPassword,
       syncSession,
-    }),
-    [
+    }),[
       user,
       authState,
       isLoading,
