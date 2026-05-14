@@ -1,4 +1,6 @@
-// path: components/common/entity-management/types.ts
+// components/common/entity-management/types.ts
+import { UseQueryResult } from '@tanstack/react-query';
+import { PagedQueryResult } from '@/hooks/database';
 
 export interface BaseEntity {
   id: string | null;

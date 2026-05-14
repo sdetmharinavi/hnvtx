@@ -4,21 +4,15 @@ import { PageHeader, PageHeaderProps } from '@/components/common/page-header';
 import { GenericFilterBar, FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { DataTable, DataTableProps } from '@/components/table';
 import { PublicTableOrViewName, Filters } from '@/hooks/database';
-import { UseViewManagerReturn, BaseRecord } from '@/hooks/useCrudManager';
+import { UseCrudManagerReturn } from '@/hooks/useCrudManager';
 
-// THE FIX: Define a generic record type to replace `any` and satisfy the UseCrudManagerReturn constraint
-type DefaultRecord = Record<string, unknown> & { id: string | number | null };
-
-interface DashboardPageLayoutProps<
-  T extends PublicTableOrViewName,
-  V extends BaseRecord = DefaultRecord,
-> {
+interface DashboardPageLayoutProps<T extends PublicTableOrViewName> {
   header: PageHeaderProps;
-  crud?: UseViewManagerReturn<V>;
+  crud?: UseCrudManagerReturn<any>;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
-  filters?: Record<string, unknown>;
+  filters?: Record<string, any>;
   onFilterChange?: (key: string, value: string | null) => void;
   setFilters?: React.Dispatch<React.SetStateAction<Filters>>;
   filterConfigs?: FilterConfig[];
@@ -33,10 +27,7 @@ interface DashboardPageLayoutProps<
   className?: string;
 }
 
-export function DashboardPageLayout<
-  T extends PublicTableOrViewName,
-  V extends BaseRecord = DefaultRecord,
->({
+export function DashboardPageLayout<T extends PublicTableOrViewName>({
   header,
   crud,
   searchQuery,
@@ -45,7 +36,7 @@ export function DashboardPageLayout<
   filters,
   onFilterChange,
   setFilters,
-  filterConfigs = [],
+  filterConfigs =[],
   viewMode,
   onViewModeChange,
   renderGrid,
@@ -53,15 +44,15 @@ export function DashboardPageLayout<
   tableProps,
   modals,
   className = 'p-4 md:p-6 space-y-6',
-}: DashboardPageLayoutProps<T, V>) {
+}: DashboardPageLayoutProps<T>) {
   const effectiveSearchQuery = searchQuery ?? crud?.search.searchQuery ?? '';
   const effectiveOnSearchChange = onSearchChange ?? crud?.search.setSearchQuery ?? (() => {});
   const effectiveFilters = filters ?? crud?.filters.filters ?? {};
-
+  
   const effectiveOnFilterChange =
     onFilterChange ??
     ((key: string, value: string | null) => {
-      crud?.filters.setFilters((prev: Filters) => {
+      crud?.filters.setFilters((prev) => {
         const next = { ...prev };
         if (value === null || value === '') delete next[key];
         else next[key] = value;

@@ -1,4 +1,4 @@
-// path: app/dashboard/services/page.tsx
+// app/dashboard/services/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { useCrudManager } from '@/hooks/useCrudManager';
 import { useServicesData } from '@/hooks/data/useServicesData';
 import { ServicesTableColumns } from '@/config/table-columns/ServicesTableColumns';
 import { createStandardActions } from '@/components/table/action-helpers';
+import { toast } from 'sonner';
 import {
   Copy,
   Database as DatabaseIcon,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { ErrorDisplay } from '@/components/common/ui';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
+import { Row } from '@/hooks/database';
 import { useDuplicateFinder } from '@/hooks/useDuplicateFinder';
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
@@ -33,7 +35,7 @@ interface AllocatedSystem {
 }
 
 export default function ServicesPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const[viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   const {
     data,
@@ -48,19 +50,19 @@ export default function ServicesPage() {
     search,
     filters,
     viewModal,
-  } = useCrudManager<'v_services', V_servicesRowSchema>({
-    tableName: 'v_services',
+  } = useCrudManager<'services', V_servicesRowSchema>({
+    tableName: 'services',
     localTableName: 'v_services',
     dataQueryHook: useServicesData,
     displayNameField: 'name',
-    syncTables: ['services', 'v_services', 'system_connections'],
+    syncTables:['services', 'v_services', 'system_connections'],
   });
 
   const duplicateIdentity = useCallback((item: V_servicesRowSchema) => {
     const name = item.name?.trim().toLowerCase() || '';
     const linkType = item.link_type_name?.trim().toLowerCase() || '';
     return `${name}|${linkType}`;
-  }, []);
+  },[]);
 
   const { showDuplicates, toggleDuplicates, duplicateSet } = useDuplicateFinder(
     data,
@@ -72,7 +74,7 @@ export default function ServicesPage() {
   const { options: linkTypeOptions, isLoading: loadingLinks } = useLookupTypeOptions('LINK_TYPES');
 
   const filterConfigs = useMemo(
-    () => [
+    () =>[
       {
         key: 'link_type_id',
         type: 'multi-select' as const,
@@ -82,7 +84,7 @@ export default function ServicesPage() {
       {
         key: 'allocation_status',
         type: 'native-select' as const,
-        options: [
+        options:[
           { value: 'allocated', label: 'Allocated' },
           { value: 'unallocated', label: 'Unallocated' },
         ],
@@ -90,13 +92,12 @@ export default function ServicesPage() {
       {
         key: 'status',
         type: 'native-select' as const,
-        options: [
+        options:[
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
         ],
       },
-    ],
-    [linkTypeOptions, loadingLinks],
+    ],[linkTypeOptions, loadingLinks],
   );
 
   const handleFilterChange = useCallback(
@@ -109,10 +110,10 @@ export default function ServicesPage() {
   const headerActions = useStandardHeaderActions({
     onRefresh: refetch,
     isLoading,
-    data: data,
+    data: data as Row<'v_services'>[],
   });
 
-  const enhancedHeaderActions = [
+  const enhancedHeaderActions =[
     ...headerActions,
     {
       label: showDuplicates ? 'Hide Duplicates' : 'Find Duplicates',
@@ -126,7 +127,7 @@ export default function ServicesPage() {
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
-    return [
+    return[
       {
         value: totalCount,
         label: 'Total Services',
@@ -154,16 +155,16 @@ export default function ServicesPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  }, [totalCount, activeCount, inactiveCount, filters]);
+  },[totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const renderItem = useCallback(
     (service: V_servicesRowSchema) => {
       const isDup = duplicateSet.has(
         `${service.name?.trim().toLowerCase()}|${service.link_type_name?.trim().toLowerCase()}`,
       );
-      const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) || [];
+      const allocatedSystems = (service.allocated_systems as unknown as AllocatedSystem[]) ||[];
 
-      const dataItems: EntityCardItem[] = [];
+      const dataItems: EntityCardItem[] =[];
       if (service.vlan) dataItems.push({ icon: Tag, label: 'VLAN', value: service.vlan });
       if (service.unique_id)
         dataItems.push({ icon: Hash, label: 'Unique ID', value: service.unique_id });
@@ -244,6 +245,8 @@ export default function ServicesPage() {
             </div>
           }
           onView={viewModal.open}
+          canEdit={false}
+          canDelete={false}
         />
       );
     },
@@ -275,7 +278,7 @@ export default function ServicesPage() {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <DashboardPageLayout<'v_services'>
+    <DashboardPageLayout
       header={{
         title: 'Services Catalog',
         description: 'View logical services, customers, and link definitions.',

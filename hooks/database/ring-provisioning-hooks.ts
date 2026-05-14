@@ -5,7 +5,6 @@ import { createClient } from "@/utils/supabase/client";
 import { ofc_cablesRowSchema } from "@/schemas/zod-schemas";
 import { z } from "zod";
 import { useLocalFirstQuery } from "@/hooks/data/useLocalFirstQuery";
-import { useOfflineQuery } from "@/hooks/data/useOfflineQuery";
 import { localDb } from "@/hooks/data/localDb";
 
 const supabase = createClient();
@@ -17,7 +16,7 @@ export function useRingsForSelection() {
       .select("*")
       .order("name");
     if (error) throw error;
-    return data ||[];
+    return data || [];
   };
 
   const localQueryFn = () => localDb.rings.orderBy("name").toArray();
@@ -30,28 +29,9 @@ export function useRingsForSelection() {
   });
 }
 
-export interface RingConnectionPath {
-    id: string;
-    name: string;
-    ring_id: string | null;
-    start_node_id: string | null;
-    end_node_id: string | null;
-    source_system_id: string | null;
-    destination_system_id: string | null;
-    source_port: string | null;
-    destination_port: string | null;
-    status: string | null;
-    created_at: string | null;
-    updated_at: string | null;
-    start_node: { name: string } | null;
-    end_node: { name: string } | null;
-    source_system: { system_name: string } | null;
-    destination_system: { system_name: string } | null;
-}
-
 export function useRingConnectionPaths(ringId: string | null) {
-  const onlineQueryFn = async (): Promise<RingConnectionPath[]> => {
-    if (!ringId) return[];
+  const onlineQueryFn = async () => {
+    if (!ringId) return [];
     const { data, error } = await supabase
       .from("logical_paths")
       .select(
@@ -67,17 +47,17 @@ export function useRingConnectionPaths(ringId: string | null) {
       .order("name");
     if (error) throw error;
 
-    return (data ||[]).map((row: Record<string, unknown>) => ({
+    return (data || []).map((row: any) => ({
       ...row,
-      start_node: row.start_node as { name: string } | null,
-      end_node: row.end_node as { name: string } | null,
-      source_system: row.source_system as { system_name: string } | null,
-      destination_system: row.destination_system as { system_name: string } | null,
-    })) as RingConnectionPath[];
+      start_node: row.start_node,
+      end_node: row.end_node,
+      source_system: row.source_system,
+      destination_system: row.destination_system,
+    }));
   };
 
-  const offlineQueryFn = async (): Promise<RingConnectionPath[]> => {
-    if (!ringId) return[];
+  const localQueryFn = async () => {
+    if (!ringId) return [];
     const paths = await localDb.logical_paths
       .where("ring_id")
       .equals(ringId)
@@ -128,12 +108,13 @@ export function useRingConnectionPaths(ringId: string | null) {
     }));
   };
 
-  return useOfflineQuery<RingConnectionPath[]>(
-    ["ring-connection-paths", ringId],
+  return useLocalFirstQuery({
+    queryKey: ["ring-connection-paths", ringId],
     onlineQueryFn,
-    offlineQueryFn,
-    { enabled: !!ringId },
-  );
+    localQueryFn,
+    dexieTable: localDb.logical_paths,
+    enabled: !!ringId,
+  });
 }
 
 const lenientCableSchema = ofc_cablesRowSchema.extend({
@@ -169,7 +150,7 @@ export function useAvailableCables(nodeId: string | null) {
   };
 
   return useLocalFirstQuery<"ofc_cables">({
-    queryKey:["available-cables", nodeId],
+    queryKey: ["available-cables", nodeId],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.ofc_cables,
@@ -187,7 +168,7 @@ export function useAvailableFibers(cableId: string | null) {
     return data as { fiber_no: number }[];
   };
 
-  const offlineQueryFn = async () => {
+  const localQueryFn = async () => {
     const fibers = await localDb.ofc_connections
       .where("ofc_id")
       .equals(cableId!)
@@ -196,10 +177,11 @@ export function useAvailableFibers(cableId: string | null) {
     return fibers.map((f) => ({ fiber_no: f.fiber_no_sn }));
   };
 
-  return useOfflineQuery(
-    ["available-fibers", cableId],
+  return useLocalFirstQuery<any, { fiber_no: number }, any>({
+    queryKey: ["available-fibers", cableId],
     onlineQueryFn,
-    offlineQueryFn,
-    { enabled: !!cableId },
-  );
+    localQueryFn,
+    dexieTable: localDb.ofc_connections,
+    enabled: !!cableId,
+  });
 }

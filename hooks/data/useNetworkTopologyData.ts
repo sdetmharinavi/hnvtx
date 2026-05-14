@@ -41,7 +41,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
   const {
     data: nodes = [],
     isLoading: isLoadingNodes,
-    // MODIFIED: Removed `isError: isNodesError` and aliased `error` to `nodesError`.
+    isError: isNodesError,
     error: nodesError,
     refetch: refetchNodes,
   } = useLocalFirstQuery<'v_nodes_complete'>({
@@ -49,6 +49,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     onlineQueryFn: nodesOnlineFn,
     localQueryFn: nodesLocalFn,
     dexieTable: localDb.v_nodes_complete,
+    autoSync: false,
     localQueryDeps: [maintenanceAreaId],
   });
 
@@ -83,7 +84,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
   const {
     data: cables = [],
     isLoading: isLoadingCables,
-    // MODIFIED: Removed `isError: isCablesError` and aliased `error` to `cablesError`.
+    isError: isCablesError,
     error: cablesError,
     refetch: refetchCables,
   } = useLocalFirstQuery<'v_ofc_cables_complete', V_ofc_cables_completeRowSchema, ExtendedOfcCable>({
@@ -91,6 +92,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     onlineQueryFn: cablesOnlineFn,
     localQueryFn: cablesLocalFn,
     dexieTable: localDb.v_ofc_cables_complete,
+    autoSync: false,
     localQueryDeps: [maintenanceAreaId],
   });
 
@@ -103,8 +105,7 @@ export function useNetworkTopologyData(maintenanceAreaId: string | null) {
     nodes,
     cables,
     isLoading: isLoadingNodes || isLoadingCables,
-    // MODIFIED: Derived `isError` from the presence of an error object.
-    isError: !!nodesError || !!cablesError,
+    isError: isNodesError || isCablesError,
     error: nodesError || cablesError,
     refetch,
   };

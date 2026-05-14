@@ -1,6 +1,4 @@
 // hooks/data/useLocalFirstQuery.ts
-'use client';
-
 import { useQuery, type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
@@ -18,19 +16,17 @@ interface UseLocalFirstQueryOptions<
   onlineQueryFn: () => Promise<TRow[]>;
   localQueryFn: () => Promise<TLocal[]> | PromiseExtended<TLocal[]>;
   localQueryDeps?: unknown[];
-  // Fix: Removed 'string | number' constraint to support composite keys transparently
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dexieTable: Table<TLocal, any>; 
+  dexieTable: Table<TLocal, any>;
   enabled?: boolean;
   staleTime?: number;
+  autoSync?: boolean;
+  refetchOnMount?: boolean | "always";
+  tableName?: string;
   preferNetwork?: boolean;
   skipSync?: boolean;
 }
 
-/**
- * useLocalFirstQuery (Viewer Version)
- * Provides instant data from local storage and strictly manual sync for server updates.
- */
 export function useLocalFirstQuery<
   T extends PublicTableOrViewName,
   TRow = Row<T>,
@@ -39,9 +35,12 @@ export function useLocalFirstQuery<
   queryKey,
   onlineQueryFn,
   localQueryFn,
-  localQueryDeps =[],
+  localQueryDeps = [],
   dexieTable,
+  enabled = true,
   staleTime = Infinity,
+  autoSync = false,
+  refetchOnMount = false,
   preferNetwork = false,
   skipSync = false,
 }: UseLocalFirstQueryOptions<T, TRow, TLocal>) {
@@ -50,11 +49,13 @@ export function useLocalFirstQuery<
   const [hasInitialLocalLoad, setHasInitialLocalLoad] = useState(false);
   const queryClient = useQueryClient();
 
-  // 1. Local Database Observation
+  // 1. Fetch Local Data (Dexie)
   const localData = useLiveQuery(
-    () => Promise.resolve(localQueryFn()),
+    () => {
+      return Promise.resolve(localQueryFn()).finally(() => {});
+    },
     localQueryDeps,
-    "loading" as const,
+    "loading",
   );
 
   useEffect(() => {
@@ -63,66 +64,90 @@ export function useLocalFirstQuery<
     }
   }, [localData]);
 
-  // 2. Manual Network Query (Sync only)
+  // 2. Network Query Configuration
+  const shouldFetchOnMount = enabled && isOnline && autoSync;
+
   const {
     data: networkData,
     isFetching: isNetworkFetching,
     isError: isNetworkError,
     error: networkError,
     refetch,
+    status: networkQueryStatus,
   } = useQuery<TRow[]>({
     queryKey,
     queryFn: async () => {
-      if (!isOnline) throw new Error("Currently offline. Sync unavailable.");
+      if (!isOnline) {
+        throw new Error("Offline");
+      }
       return onlineQueryFn();
     },
-    enabled: false, // STOPS AUTOMATIC FETCHING
+    enabled: shouldFetchOnMount,
+    refetchOnWindowFocus: false,
+    refetchOnMount: refetchOnMount,
+    refetchOnReconnect: false,
     staleTime,
+    retry: 1,
+    placeholderData: (previousData) => previousData,
   });
 
-  // 3. One-way Sync (Server -> Local)
+  // 3. Fast Sync Network Data to Local DB (Pure Read-Only Mode)
   useEffect(() => {
-    if (skipSync || !networkData || isSyncingRef.current || localData === "loading") return;
+    if (skipSync) return;
 
-    const syncToLocal = async () => {
-      try {
-        isSyncingRef.current = true;
-        const primaryKeyName = dexieTable.schema.primKey.name;
+    if (networkData && !isSyncingRef.current && localData !== "loading") {
+      const syncToLocal = async () => {
+        try {
+          isSyncingRef.current = true;
+          const primaryKey = dexieTable.schema.primKey.name;
 
-        const localMap = new Map<string | number, TLocal>();
-        if (Array.isArray(localData)) {
-          localData.forEach((item) => {
-            const pk = (item as Record<string, unknown>)[primaryKeyName];
-            if (pk !== undefined && pk !== null) localMap.set(pk as string | number, item);
-          });
-        }
-
-        const dataToUpdate: TLocal[] = [];
-
-        (networkData as unknown as TLocal[]).forEach((serverItem) => {
-          const pk = (serverItem as Record<string, unknown>)[primaryKeyName];
-          if (pk === undefined || pk === null) return;
-
-          const localItem = localMap.get(pk as string | number);
-
-          // Only write if there's a difference to keep DB performance high
-          if (!localItem || !isEqual(localItem, serverItem)) {
-            dataToUpdate.push(serverItem);
+          // Map local data for quick lookup to prevent unnecessary writes
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const localMap = new Map<string, any>();
+          if (Array.isArray(localData)) {
+            localData.forEach((item) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const pk = (item as any)[primaryKey];
+              if (pk) localMap.set(String(pk), item);
+            });
           }
-        });
 
-        if (dataToUpdate.length > 0) {
-          await dexieTable.bulkPut(dataToUpdate);
+          const dataToSave: TLocal[] = [];
+
+          (networkData as unknown as TLocal[]).forEach((serverItem) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const pkValue = (serverItem as any)[primaryKey];
+            if (pkValue === null || pkValue === undefined) return;
+
+            const pkStr = String(pkValue);
+            const localItem = localMap.get(pkStr);
+
+            // Optimization: If the local item is identical to the server item, skip the DB write
+            if (localItem && isEqual(localItem, serverItem)) {
+              return;
+            }
+
+            dataToSave.push(serverItem);
+          });
+
+          if (dataToSave.length > 0) {
+            await dexieTable.bulkPut(dataToSave);
+          }
+        } catch (e) {
+          console.error(
+            `[useLocalFirstQuery] Sync failed for ${dexieTable.name}`,
+            e,
+          );
+        } finally {
+          isSyncingRef.current = false;
         }
-      } catch (e) {
-        console.error(`[LocalFirstQuery] Sync failed for ${dexieTable.name}:`, e);
-      } finally {
-        isSyncingRef.current = false;
-      }
-    };
-    syncToLocal();
+      };
+
+      syncToLocal();
+    }
   }, [networkData, dexieTable, localData, skipSync]);
 
+  // 4. Data Resolution Strategy
   const cachedData = queryClient.getQueryData<TRow[]>(queryKey);
 
   const resolvedData =
@@ -132,13 +157,19 @@ export function useLocalFirstQuery<
         ? localData
         : cachedData
           ? (cachedData as unknown as TLocal[])
-          :[];
+          : [];
+
+  const isHardLoading =
+    localData === "loading" &&
+    !hasInitialLocalLoad &&
+    !networkData &&
+    !cachedData;
+
+  const isError = isNetworkError && !hasInitialLocalLoad;
+  const error = isError ? networkError : null;
 
   return {
-    data: resolvedData as TRow[],
-    isLoading: localData === "loading" && !hasInitialLocalLoad,
-    isFetching: isNetworkFetching,
-    error: isNetworkError && !hasInitialLocalLoad ? networkError : null,
-    refetch
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: resolvedData as any,
   };
 }

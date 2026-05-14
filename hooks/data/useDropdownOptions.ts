@@ -1,3 +1,4 @@
+
 // hooks/data/useDropdownOptions.ts
 'use client';
 
@@ -114,7 +115,7 @@ export function useDropdownOptions({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dexieTable: localDb.table(tableName) as any,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
-    // MODIFIED: Removed the `autoSync: true` property as it is no longer valid.
+    autoSync: true, // Ensure we fetch if missing locally
   });
 
   const options: Option[] = useMemo(() => {
@@ -216,7 +217,7 @@ export function useEmployeeOptions() {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_employees,
-    // MODIFIED: Removed the `autoSync: true` property.
+    autoSync: true,
   });
 
   const options: Option[] = useMemo(() => {
@@ -257,7 +258,7 @@ export function useSystemOptions() {
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.v_systems_complete,
-    // MODIFIED: Removed the `autoSync: true` property.
+    autoSync: true,
   });
 
   return { data: data || [], isLoading };

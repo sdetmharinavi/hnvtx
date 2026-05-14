@@ -25,7 +25,7 @@ export const useAuth = () => {
     getUserId,
   } = useAuthStore();
 
-  const supabase = useMemo(() => createClient(),[]);
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,7 +56,7 @@ export const useAuth = () => {
         }
         if (session?.user && isMounted) setUser(session.user);
         else if (isMounted) setAuthState("unauthenticated");
-      } catch {
+      } catch (error) {
         if (isMounted) setAuthState("unauthenticated");
       }
     };
@@ -181,38 +181,6 @@ export const useAuth = () => {
     }
   }, [supabase.auth, setUser]);
 
-  const signUp = useCallback(
-    async (userData: {
-      email: string;
-      password: string;
-      firstName: string;
-      lastName: string;
-    }): Promise<AuthActionResult> => {
-      return executeWithLoading(async () => {
-        try {
-          const { error } = await supabase.auth.signUp({
-            email: userData.email,
-            password: userData.password,
-            options: {
-              data: {
-                first_name: userData.firstName,
-                last_name: userData.lastName,
-              },
-            },
-          });
-          if (error) throw error;
-          toast.success("Account created successfully! Please check your email to verify.");
-          return { success: true, error: null };
-        } catch (error) {
-          const authError = error as AuthError;
-          toast.error(authError.message || "Sign up failed");
-          return { success: false, error: authError };
-        }
-      });
-    },
-    [executeWithLoading, supabase.auth],
-  );
-
   return useMemo(
     () => ({
       user,
@@ -222,12 +190,12 @@ export const useAuth = () => {
       getUserId: getUserId(),
       signIn,
       signInWithGoogle,
-      signUp,
       logout,
       forgotPassword,
       resetPassword,
       syncSession,
-    }),[
+    }),
+    [
       user,
       authState,
       isLoading,
@@ -235,7 +203,6 @@ export const useAuth = () => {
       getUserId,
       signIn,
       signInWithGoogle,
-      signUp,
       logout,
       forgotPassword,
       resetPassword,

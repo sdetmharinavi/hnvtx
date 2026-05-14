@@ -17,9 +17,7 @@ GRANT SELECT ON public.inventory_items TO viewer;
 
 -- ---- GRANTS FOR inventory_transactions ----
 -- Read-only access for all roles that can see inventory.
--- THE FIX: Added UPDATE grant so managers can fix typos in the history logs.
-GRANT SELECT, UPDATE ON public.inventory_transactions TO admin, admin_pro, asset_admin;
-GRANT SELECT ON public.inventory_transactions TO viewer;
+GRANT SELECT ON public.inventory_transactions TO admin, admin_pro, asset_admin, viewer;
 
 
 -- =================================================================
@@ -79,7 +77,6 @@ USING (
 -- =================================================================
 
 DROP POLICY IF EXISTS "policy_read_inventory_transactions" ON public.inventory_transactions;
-DROP POLICY IF EXISTS "policy_update_inventory_transactions" ON public.inventory_transactions;
 
 -- Policy 1: Read Access
 CREATE POLICY "policy_read_inventory_transactions"
@@ -88,19 +85,6 @@ FOR SELECT
 USING (
   is_super_admin() OR
   get_my_role() IN ('viewer', 'admin', 'admin_pro', 'asset_admin')
-);
-
--- THE FIX: Policy 2: Update Access (Allow managers to fix typos in logs)
-CREATE POLICY "policy_update_inventory_transactions"
-ON public.inventory_transactions
-FOR UPDATE
-USING (
-  is_super_admin() OR
-  get_my_role() IN ('admin', 'admin_pro', 'asset_admin')
-)
-WITH CHECK (
-  is_super_admin() OR
-  get_my_role() IN ('admin', 'admin_pro', 'asset_admin')
 );
 
 -- =================================================================

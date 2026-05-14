@@ -54,12 +54,14 @@ export const useLookupTypesData = (
     isFetching,
     error,
     refetch,
-    // MODIFIED: Removed `networkStatus` from the destructuring as it's not returned by the hook.
+    networkStatus,
   } = useLocalFirstQuery<'lookup_types'>({
     queryKey: ['lookup_types-data', searchQuery, filters],
     onlineQueryFn,
     localQueryFn,
     dexieTable: localDb.lookup_types,
+    // Explicitly disable auto-sync to rely on manual refresh
+    autoSync: false,
   });
 
   const processedData = useMemo(() => {
@@ -103,6 +105,5 @@ export const useLookupTypesData = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allLookups, searchQuery, filters, currentPage, pageLimit]);
 
-  // MODIFIED: Removed `networkStatus` from the returned object.
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { ...processedData, isLoading, isFetching, error, refetch, networkStatus };
 };

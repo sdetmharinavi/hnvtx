@@ -88,6 +88,7 @@ export const useUserPermissionsExtended = () => {
     data: profiles = [],
     isLoading: isQueryLoading,
     error,
+    isError,
     refetch,
   } = useLocalFirstQuery<
     'v_user_profiles_extended',
@@ -100,6 +101,7 @@ export const useUserPermissionsExtended = () => {
     dexieTable: localDb.v_user_profiles_extended,
     enabled: authState === 'authenticated' && !!user?.id,
     staleTime: 5 * 60 * 1000,
+    autoSync: true,
   });
 
   const profile = profiles[0] || null;
@@ -115,9 +117,10 @@ export const useUserPermissionsExtended = () => {
       isSuperAdmin: profile?.is_super_admin ?? null,
       isLoading,
       error: error || null,
+      isError,
       refetch: refetch as unknown as () => Promise<UseQueryResult<UserPermissionsData, Error>>,
     }),
-    [profile, isLoading, error, refetch]
+    [profile, isLoading, error, isError, refetch]
   );
 
   const hasRole = React.useCallback(

@@ -5,3 +5,5 @@ export * from "./core-queries";
 
 // Additional specialized hooks for complex operations
 export * from "./rpc-queries";
+// Performance and Cache hooks
+export * from "./cache-performance";

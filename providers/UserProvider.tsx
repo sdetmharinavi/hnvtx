@@ -1,13 +1,15 @@
-// providers/UserProvider.tsx
-'use client';
+// path: providers/UserProvider.tsx
+"use client";
 
-import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
-import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
-import { UserRole } from '@/types/user-roles';
-import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
-import { useThemeStore, Theme } from '@/stores/themeStore';
-import { useAuth } from '@/hooks/useAuth';
-import { useDataSync } from '@/hooks/data/useDataSync';
+import { createContext, useContext, ReactNode, useEffect, useRef } from "react";
+import { useUserPermissionsExtended } from "@/hooks/useRoleFunctions";
+import { UserRole } from "@/types/user-roles";
+import { V_user_profiles_extendedRowSchema } from "@/schemas/zod-schemas";
+import { UseQueryResult, useQueryClient } from "@tanstack/react-query";
+import { useThemeStore, Theme } from "@/stores/themeStore";
+import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useDataSync } from "@/hooks/data/useDataSync";
 
 interface UserContextType {
   profile: V_user_profiles_extendedRowSchema | null;
@@ -15,7 +17,7 @@ interface UserContextType {
   isSuperAdmin: boolean | null;
   isLoading: boolean;
   canAccess: (allowedRoles?: readonly string[]) => boolean;
-  refetch: () => Promise<unknown>;
+  refetch: () => Promise<UseQueryResult>;
   error: Error | null;
 }
 
@@ -39,7 +41,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (hasInitializedThemeRef.current !== user.id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const profileTheme = (profile.preferences as any)?.theme;
-      if (profileTheme && typeof profileTheme === 'string') {
+      if (profileTheme && typeof profileTheme === "string") {
         setTheme(profileTheme as Theme);
       }
       hasInitializedThemeRef.current = user.id;
@@ -56,7 +58,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
     if (syncedUserIdRef.current !== currentUserId) {
       syncedUserIdRef.current = currentUserId;
-      syncData(['v_user_profiles_extended']);
+      syncData(["v_user_profiles_extended"]);
     }
   }, [user?.id, syncData]);
 
@@ -68,7 +70,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         isSuperAdmin,
         isLoading,
         canAccess,
-        refetch: refetch as () => Promise<unknown>,
+        refetch: refetch as () => Promise<UseQueryResult>,
         error,
       }}
     >
@@ -80,7 +82,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 export const useUser = (): UserContextType => {
   const context = useContext(UserContext);
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+    throw new Error("useUser must be used within a UserProvider");
   }
   return context;
 };

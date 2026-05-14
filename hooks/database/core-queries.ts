@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, InfiniteData } from '@tanstack/react-query';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Json } from '@/types/supabase-types';
 import {
@@ -8,7 +8,9 @@ import {
   Row,
   RowWithCount,
   DeduplicationOptions, // Still imported for backward compat in other files if needed, but unused here
+  InfiniteQueryPage,
   UseTableQueryOptions,
+  UseTableInfiniteQueryOptions,
   UseTableRecordOptions,
   PagedQueryResult,
   UseUniqueValuesOptions,
@@ -35,6 +37,7 @@ export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResul
     orderBy,
     limit,
     offset,
+    performance,
     includeCount = false,
     ...queryOptions
   } = options || {};
@@ -59,6 +62,7 @@ export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResul
       if (orderBy?.length) query = applyOrdering(query, orderBy);
       if (limit !== undefined) query = query.limit(limit);
       if (offset !== undefined) query = query.range(offset, offset + (limit || 1000) - 1);
+      if (performance?.timeout) query = query.abortSignal(AbortSignal.timeout(performance.timeout));
 
       const { data, error, count } = await query;
       if (error) throw error;
@@ -68,6 +72,61 @@ export function useTableQuery<T extends TableOrViewName, TData = PagedQueryResul
         count: includeCount ? count ?? 0 : data?.length ?? 0,
       };
     },
+    ...queryOptions,
+  });
+}
+
+// Infinite scroll query hook for large datasets
+export function useTableInfiniteQuery<
+  T extends TableOrViewName,
+  TData = InfiniteData<InfiniteQueryPage<T>>
+>(
+  supabase: SupabaseClient<Database>,
+  tableName: T,
+  options?: UseTableInfiniteQueryOptions<T, TData>
+) {
+  const {
+    columns = '*',
+    filters,
+    orderBy,
+    pageSize = 20,
+    performance,
+    ...queryOptions
+  } = options || {};
+
+  return useInfiniteQuery({
+    queryKey: createQueryKey(
+      tableName,
+      filters,
+      columns,
+      orderBy,
+      undefined,
+      pageSize
+    ),
+    queryFn: async ({ pageParam = 0 }) => {
+      let query = supabase.from(tableName as any).select(columns, { count: 'exact' });
+
+      if (filters) query = applyFilters(query, filters);
+      if (orderBy?.length) query = applyOrdering(query, orderBy);
+
+      const startIdx = pageParam * pageSize;
+      query = query.range(startIdx, startIdx + pageSize - 1);
+
+      if (performance?.timeout) query = query.abortSignal(AbortSignal.timeout(performance.timeout));
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      const results = (data as unknown as Row<T>[]) || [];
+
+      return {
+        data: results,
+        nextCursor: results.length === pageSize ? pageParam + 1 : undefined,
+        count: count ?? 0,
+      };
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: 0,
     ...queryOptions,
   });
 }
@@ -194,7 +253,7 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
 
   return useQuery({
     queryKey: ['unique', tableName, column, { filters, orderBy }],
-    queryFn: async (): Promise<TData> => {
+    queryFn: async (): Promise<unknown[]> => {
       // Basic implementation for server-side unique values
       const { data, error } = await supabase.rpc('get_unique_values', {
         p_table_name: tableName,
@@ -207,9 +266,9 @@ export function useUniqueValues<T extends TableOrViewName, TData = unknown[]>(
       if (error) {
         // Fallback to simple select if RPC fails
         const { data: fbData } = await supabase.from(tableName as any).select(column);
-        return Array.from(new Set(fbData?.map((item) => (item as any)[column]))) as TData;
+        return Array.from(new Set(fbData?.map((item) => (item as any)[column])));
       }
-      return (data as any)?.map((item: any) => item.value) || [] as TData;
+      return (data as any)?.map((item: any) => item.value) || [];
     },
     staleTime: 10 * 60 * 1000,
     ...queryOptions,

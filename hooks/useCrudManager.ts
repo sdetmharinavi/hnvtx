@@ -2,11 +2,26 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Filters, PagedQueryResult, PublicTableOrViewName } from '@/hooks/database';
+import {
+  Filters,
+  PublicTableName,
+  PublicTableOrViewName,
+  PagedQueryResult,
+} from '@/hooks/database';
 import { useOnlineStatus } from './useOnlineStatus';
 import { DEFAULTS } from '@/constants/constants';
 import { UseQueryResult } from '@tanstack/react-query';
 import { useDataSync } from '@/hooks/data/useDataSync';
+
+export type RecordWithId = {
+  id: string | number | null;
+  system_id?: string | number | null;
+  system_connection_id?: string | number | null;
+  name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  employee_name?: string | null;[key: string]: unknown;
+};
 
 export interface DataQueryHookParams {
   currentPage: number;
@@ -24,23 +39,24 @@ export interface DataQueryHookReturn<V> {
   isFetching?: boolean;
   error: Error | null;
   refetch: () => void;
+  [key: string]: unknown;
 }
 
 type DataQueryHook<V> = (params: DataQueryHookParams) => DataQueryHookReturn<V>;
-export type BaseRecord = { id: string | number | null; [key: string]: unknown };
+type BaseRecord = { id: string | number | null; [key: string]: any };
 
-export interface ViewManagerOptions<T extends PublicTableOrViewName, V extends BaseRecord> {
+export interface CrudManagerOptions<T extends PublicTableName, V extends BaseRecord> {
   tableName: T;
-  localTableName?: string;
-  idType?: 'string' | 'number';
-  displayNameField?: keyof V & string;
+  localTableName?: PublicTableOrViewName;
   dataQueryHook: DataQueryHook<V>;
   searchColumn?: (keyof V & string) | (keyof V & string)[];
+  displayNameField?: (keyof V & string) | (keyof V & string)[];
+  idType?: 'string' | 'number';
   initialFilters?: Filters;
-  syncTables?: string[];
+  syncTables?: PublicTableOrViewName[];
 }
 
-export interface UseViewManagerReturn<V extends BaseRecord> {
+export interface UseCrudManagerReturn<V> {
   data: V[];
   totalCount: number;
   activeCount: number;
@@ -70,34 +86,40 @@ export interface UseViewManagerReturn<V extends BaseRecord> {
     open: (record: V) => void;
     close: () => void;
   };
+  utils: {
+    getDisplayName: (record: RecordWithId) => string;
+  };
 }
 
-export function useCrudManager<T extends PublicTableOrViewName, V extends BaseRecord>({
+export function useCrudManager<T extends PublicTableName, V extends BaseRecord>({
   dataQueryHook,
   searchColumn,
+  displayNameField = 'name',
   initialFilters = {},
-  syncTables = [],
-}: ViewManagerOptions<T, V>): UseViewManagerReturn<V> {
+  syncTables,
+}: CrudManagerOptions<T, V>): UseCrudManagerReturn<V> {
   const isOnline = useOnlineStatus();
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
 
   const [viewingRecord, setViewingRecord] = useState<V | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const[currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(DEFAULTS.PAGE_SIZE);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<Filters>(initialFilters);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const[filters, setFilters] = useState<Filters>(initialFilters);
+  const[isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const combinedFilters = useMemo(() => {
     const newFilters: Filters = { ...filters };
     if (searchQuery && searchColumn) {
       if (Array.isArray(searchColumn)) {
-        // FIX: Explicitly type the accumulator for the reduce function
-        newFilters.or = searchColumn.reduce<Record<string, string>>((acc, col) => {
-          acc[col] = searchQuery;
-          return acc;
-        }, {});
+        newFilters.or = searchColumn.reduce(
+          (acc, col) => {
+            acc[col as string] = searchQuery;
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
       } else {
         newFilters[searchColumn as string] = { operator: 'ilike', value: `%${searchQuery}%` };
       }
@@ -118,25 +140,58 @@ export function useCrudManager<T extends PublicTableOrViewName, V extends BaseRe
     });
 
   const handleRefresh = useCallback(async () => {
-    if (isOnline && syncTables.length > 0) {
+    if (isOnline && syncTables && syncTables.length > 0) {
       await syncData(syncTables);
     } else {
       refetch();
     }
   }, [isOnline, syncTables, syncData, refetch]);
 
-  // Create a proper query result object to satisfy UseQueryResult interface
-  const queryResult = {
-    data: { data, count: totalCount },
-    isLoading,
-    isFetching: isFetching || isSyncingData,
-    error,
-    isError: !!error,
-    refetch: async () => { handleRefresh(); return { data, count: totalCount }; },
-  } as unknown as UseQueryResult<PagedQueryResult<V>, Error>;
+  const openViewModal = useCallback((record: V) => {
+    setViewingRecord(record);
+    setIsViewModalOpen(true);
+  },[]);
+
+  const closeModal = useCallback(() => {
+    setIsViewModalOpen(false);
+    setViewingRecord(null);
+  },[]);
+
+  const getDisplayName = useCallback(
+    (record: RecordWithId): string => {
+      if (displayNameField) {
+        const fields = Array.isArray(displayNameField) ? displayNameField :[displayNameField];
+        for (const field of fields) {
+          const name = record[field as string];
+          if (name) return String(name);
+        }
+      }
+      if (record.name) return String(record.name);
+      if (record.employee_name) return String(record.employee_name);
+      if (record.first_name && record.last_name) return `${record.first_name} ${record.last_name}`;
+      if (record.first_name) return String(record.first_name);
+      return String(record.id) || 'Unknown';
+    },
+    [displayNameField],
+  );
+
+  const queryResult = useMemo(
+    () =>
+      ({
+        data: { data, count: totalCount },
+        isLoading,
+        isPending: isLoading,
+        isFetching: isFetching || isSyncingData,
+        error: error as Error | null,
+        isError: !!error,
+        isSuccess: !isLoading && !error,
+        refetch: handleRefresh as unknown as () => Promise<PagedQueryResult<V>>,
+        status: isLoading ? 'pending' : error ? 'error' : 'success',
+      }) as unknown as UseQueryResult<PagedQueryResult<V>, Error>,[data, totalCount, isLoading, isFetching, isSyncingData, error, handleRefresh],
+  );
 
   return {
-    data: data || [],
+    data: data ||[],
     totalCount,
     activeCount,
     inactiveCount,
@@ -147,12 +202,13 @@ export function useCrudManager<T extends PublicTableOrViewName, V extends BaseRe
     pagination: { currentPage, pageLimit, setCurrentPage, setPageLimit },
     search: { searchQuery, setSearchQuery },
     filters: { filters, setFilters },
+    queryResult,
     viewModal: {
       isOpen: isViewModalOpen,
       record: viewingRecord,
-      open: (rec) => { setViewingRecord(rec); setIsViewModalOpen(true); },
-      close: () => { setViewingRecord(null); setIsViewModalOpen(false); },
+      open: openViewModal,
+      close: closeModal,
     },
-    queryResult,
+    utils: { getDisplayName },
   };
 }
