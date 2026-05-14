@@ -8,6 +8,7 @@ import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
 import { Column, RPCConfig } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
 import { Card } from '../common/ui';
+import { toast } from 'sonner';
 
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
@@ -59,7 +60,6 @@ function tableReducer<T extends PublicTableOrViewName>(
 
 export function DataTable<T extends PublicTableOrViewName>({
   data = [],
-  tableName,
   columns,
   loading = false,
   pagination,
@@ -291,6 +291,7 @@ export function DataTable<T extends PublicTableOrViewName>({
         await rpcExcelDownload.mutateAsync(rpcOptions);
       }
     } catch (err) {
+      console.log(err);
       toast.error('Export Failed');
     }
   }, [onExport, processedData, visibleColumnsData, exportOptions, filters, rpcExcelDownload]);
@@ -316,7 +317,8 @@ export function DataTable<T extends PublicTableOrViewName>({
                 if (!isDisabled) action.onClick(record, index);
               }}
               disabled={isDisabled}
-              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'}`}>
+              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'}`}
+            >
               {action.getIcon ? action.getIcon(record) : action.icon}
             </button>
           );
@@ -331,7 +333,8 @@ export function DataTable<T extends PublicTableOrViewName>({
         'flex flex-col bg-white dark:bg-gray-800 rounded-lg max-h-[calc(100vh-100px)] relative shadow-md',
         bordered ? 'border border-gray-200 dark:border-gray-700' : '',
         className,
-      )}>
+      )}
+    >
       <div className='shrink-0 z-20 relative bg-white dark:bg-gray-800 rounded-t-lg'>
         <TableToolbar
           title={title}
@@ -389,7 +392,8 @@ export function DataTable<T extends PublicTableOrViewName>({
               processedData.map((record, idx) => (
                 <Card
                   key={`${record.id}-${idx}`}
-                  className='p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative'>
+                  className='p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative'
+                >
                   {selectable && (
                     <div className='absolute top-4 left-4'>
                       <input
@@ -410,7 +414,8 @@ export function DataTable<T extends PublicTableOrViewName>({
         )}
 
         <table
-          className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? 'border-separate border-spacing-0' : ''} ${renderMobileItem ? 'hidden sm:table' : ''}`}>
+          className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? 'border-separate border-spacing-0' : ''} ${renderMobileItem ? 'hidden sm:table' : ''}`}
+        >
           <TableHeader
             columns={columns}
             visibleColumns={visibleColumnsData}

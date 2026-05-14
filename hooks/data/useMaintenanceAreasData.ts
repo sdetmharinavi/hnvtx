@@ -56,6 +56,7 @@ export const useMaintenanceAreasData = (
     isFetching,
     error,
     refetch,
+    // MODIFIED: Removed `networkStatus` from the destructuring as it's not returned by the hook.
   } = useLocalFirstQuery<'v_maintenance_areas'>({
     queryKey: ['maintenance_areas-data', searchQuery, filters],
     onlineQueryFn,
@@ -141,5 +142,6 @@ export const useMaintenanceAreasData = (
     };
   }, [allAreasFlat, searchQuery, filters]);
 
+  // MODIFIED: Removed `networkStatus` from the returned object.
   return { ...processedData, isLoading, isFetching, error, refetch };
 };

@@ -9,6 +9,15 @@ import { JcSplicingDetails } from '@/schemas/custom-schemas';
 import { SpliceVisualizationModal } from '@/components/route-manager/ui/SpliceVisualizationModal';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
+type FiberData = {
+  fiber_no: number;
+  status: string;
+  connected_to_segment?: string | null;
+  connected_to_fiber?: number | null;
+  splice_id?: string | null;
+  loss_db?: number | null;
+};
+
 export const FiberSpliceManager: React.FC<{ junctionClosureId: string | null }> = ({
   junctionClosureId,
 }) => {
@@ -22,16 +31,16 @@ export const FiberSpliceManager: React.FC<{ junctionClosureId: string | null }> 
     return rawData;
   }, [rawData]);
 
-  if (isLoading) return <PageSpinner text="Loading splice details..." />;
-  if (isError) return <div className="p-4 text-red-500">Error: {error?.message}</div>;
+  if (isLoading) return <PageSpinner text='Loading splice details...' />;
+  if (isError) return <div className='p-4 text-red-500'>Error: {error?.message}</div>;
   if (!spliceDetails?.junction_closure) {
-    return <div className="p-4 text-gray-500">Select a Junction Closure to view its splices.</div>;
+    return <div className='p-4 text-gray-500'>Select a Junction Closure to view its splices.</div>;
   }
 
   const { junction_closure, segments_at_jc } = spliceDetails;
   const gridTemplateColumns = `repeat(${Math.max(1, segments_at_jc.length)}, minmax(0, 1fr))`;
 
-  const renderFiber = (fiber: any) => {
+  const renderFiber = (fiber: FiberData) => {
     const statusClasses: Record<string, string> = {
       available: 'bg-green-100 text-green-700',
       used_as_incoming: 'bg-blue-100 text-blue-700',
@@ -44,35 +53,46 @@ export const FiberSpliceManager: React.FC<{ junctionClosureId: string | null }> 
       : fiber.status.replace(/_/g, ' ');
 
     return (
-      <div key={fiber.fiber_no} className={`flex items-center justify-between p-2 rounded-md ${statusClasses[fiber.status] || ''}`}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-xs font-bold w-6 text-center">{fiber.fiber_no}</span>
-          {fiber.status !== 'available' && <FiLink className="w-3 h-3 shrink-0" />}
-          <span className="text-xs truncate" title={titleText}>{titleText}</span>
+      <div
+        key={fiber.fiber_no}
+        className={`flex items-center justify-between p-2 rounded-md ${statusClasses[fiber.status] || ''}`}
+      >
+        <div className='flex items-center gap-2 min-w-0'>
+          <span className='font-mono text-xs font-bold w-6 text-center'>{fiber.fiber_no}</span>
+          {fiber.status !== 'available' && <FiLink className='w-3 h-3 shrink-0' />}
+          <span className='text-xs truncate' title={titleText}>
+            {titleText}
+          </span>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700">
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-        <h3 className="text-xl font-semibold">Splice Matrix: {junction_closure.name}</h3>
-        <Button size="sm" onClick={() => setShowVisualizationModal(true)} variant="outline">
+    <div className='bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border dark:border-gray-700'>
+      <div className='flex flex-wrap justify-between items-center gap-4 mb-4'>
+        <h3 className='text-xl font-semibold'>Splice Matrix: {junction_closure.name}</h3>
+        <Button size='sm' onClick={() => setShowVisualizationModal(true)} variant='outline'>
           View All Splices
         </Button>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns }}>
+      <div className='grid gap-4' style={{ gridTemplateColumns }}>
         {segments_at_jc.map((segment) => (
-          <div key={segment.segment_id} className="bg-gray-50 p-3 rounded-lg border">
-            <h4 className="font-bold text-sm mb-2 truncate"><TruncateTooltip text={segment.segment_name} /></h4>
-            <p className="text-xs text-gray-500 mb-3 flex flex-wrap gap-2">
-              <span className="bg-gray-100 px-1.5 py-0.5 rounded border">{segment.fiber_count} Fibers</span>
-              <span className="bg-gray-100 px-1.5 py-0.5 rounded border font-mono">{segment.distance_km ? `${segment.distance_km} km` : '0 km'}</span>
+          <div key={segment.segment_id} className='bg-gray-50 p-3 rounded-lg border'>
+            <h4 className='font-bold text-sm mb-2 truncate'>
+              <TruncateTooltip text={segment.segment_name} />
+            </h4>
+            <p className='text-xs text-gray-500 mb-3 flex flex-wrap gap-2'>
+              <span className='bg-gray-100 px-1.5 py-0.5 rounded border'>
+                {segment.fiber_count} Fibers
+              </span>
+              <span className='bg-gray-100 px-1.5 py-0.5 rounded border font-mono'>
+                {segment.distance_km ? `${segment.distance_km} km` : '0 km'}
+              </span>
             </p>
-            <div className="space-y-1 max-h-96 overflow-y-auto">
-              {segment.fibers.map((fiber) => renderFiber(fiber))}
+            <div className='space-y-1 max-h-96 overflow-y-auto'>
+              {segment.fibers.map((fiber) => renderFiber(fiber as FiberData))}
             </div>
           </div>
         ))}

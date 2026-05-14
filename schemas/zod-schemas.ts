@@ -1944,6 +1944,8 @@ export const v_ring_nodesRowSchema = z.object({
 });
 
 export const v_ringsRowSchema = z.object({
+  associated_system_ips: z.ipv4().nullable(),
+  associated_system_names: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   bts_status: z.string().min(1, "Status cannot be empty").nullable(),
   created_at: z.iso.datetime().nullable(),
   description: z.string().max(10000, "Text is too long").nullable(),

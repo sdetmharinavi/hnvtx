@@ -56,7 +56,7 @@ import {
   V_advances_completeRowSchema,
   V_expenses_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { PublicTableName, Row, PublicTableOrViewName } from '@/hooks/database';
+import { Row, PublicTableOrViewName } from '@/hooks/database';
 import { Json } from '@/types/supabase-types';
 import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
@@ -218,7 +218,6 @@ export class HNVTMDatabase extends Dexie {
 
   constructor() {
     super('HNVTMDatabase');
-    // Bumped to version 44, setting mutation_queue to null destroys it securely
     this.version(44).stores({
       mutation_queue: null, // explicitly delete deprecated table
       lookup_types: '&id, category, name, sort_order, status',
@@ -234,7 +233,7 @@ export class HNVTMDatabase extends Dexie {
       ofc_cables: '&id, route_name, sn_id, en_id, status',
       v_ofc_cables_complete: '&id, route_name, ofc_type_id, maintenance_terminal_id, status',
       ofc_cable_links: '&id, cable_id_1, cable_id_2',
-      ofc_connections: '&id, ofc_id, system_id, [ofc_id+fiber_no_sn], status, updated_at',
+      ofc_connections: '&id, ofc_id, system_id,[ofc_id+fiber_no_sn], status, updated_at',
       v_ofc_connections_complete: '&id, ofc_id, system_id, ofc_route_name, status, updated_at',
       cable_segments: '&id, original_cable_id',
       junction_closures: '&id, node_id, ofc_cable_id',
@@ -248,7 +247,7 @@ export class HNVTMDatabase extends Dexie {
       v_ring_nodes: '&[id+ring_id], ring_id, node_id',
       systems: '&id, system_name, node_id, status, updated_at',
       v_systems_complete:
-        '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status, [system_name+ip_address], updated_at',
+        '&id, system_name, system_type_name, maintenance_terminal_id, node_id, status,[system_name+ip_address], updated_at',
       system_connections: '&id, system_id, status, updated_at',
       v_system_connections_complete:
         '&id, system_id, en_id, connected_system_name, service_name, created_at, status, updated_at',
@@ -292,13 +291,13 @@ export class HNVTMDatabase extends Dexie {
 
 export const localDb = new HNVTMDatabase();
 
+// The FIX: Uses unknown to safely bridge between the exact schema definition and the generic Table wrapper.
 export function getTable<T extends PublicTableOrViewName>(
   tableName: T,
-): Table<Row<T>, string | number | [string, string]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const table = (localDb as any)[tableName];
+): Table<Row<T>, string | number |[string, string]> {
+  const table = (localDb as unknown as Record<string, unknown>)[tableName];
   if (!table) {
     throw new Error(`Table ${tableName} does not exist in localDb`);
   }
-  return table as Table<Row<T>, any>;
+  return table as unknown as Table<Row<T>, string | number | [string, string]>;
 }

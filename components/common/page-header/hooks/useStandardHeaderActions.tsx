@@ -45,7 +45,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   isFetching,
   data,
 }: StandardActionsConfig<T>): ActionButton[] {
-  const supabase = useMemo(() => createClient(),[]);
+  const supabase = useMemo(() => createClient(), []);
   const isOnline = useOnlineStatus();
 
   const columns = useDynamicColumnConfig(exportConfig?.tableName as T, {
@@ -92,10 +92,10 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
       const finalFileName = `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${fileName}.xlsx`;
       const columnsToExport = columns.filter((c) =>
-        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true
+        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true,
       );
 
-      const orderBy = exportConfig.orderBy ||[{ column: 'id', ascending: true }];
+      const orderBy = exportConfig.orderBy || [{ column: 'id', ascending: true }];
 
       // Assuming all exports utilize RPC via our views now
       rpcExcelDownload.mutate({
@@ -115,11 +115,13 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         },
       });
     },
-    [exportConfig, columns, rpcExcelDownload, isOnline]
+    [exportConfig, columns, rpcExcelDownload, isOnline],
   );
 
   return useMemo(() => {
-    const actions: ActionButton[] =[];
+    // MODIFIED: Removed all actions related to adding, creating, or uploading.
+    // The component now only generates 'Refresh' and 'Export' buttons.
+    const actions: ActionButton[] = [];
     const isBusy = isLoading || isFetching;
 
     if (onRefresh) {
@@ -135,7 +137,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
     if (exportConfig) {
       if (exportConfig.filterOptions && exportConfig.filterOptions.length > 0) {
-        const dropdownoptions =[
+        const dropdownoptions = [
           {
             label: 'Export All (No Filters)',
             onClick: () =>
@@ -177,12 +179,5 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
     }
 
     return actions;
-  },[
-    onRefresh,
-    exportConfig,
-    isLoading,
-    isFetching,
-    handleExport,
-    rpcExcelDownload.isPending,
-  ]);
+  }, [onRefresh, exportConfig, isLoading, isFetching, handleExport, rpcExcelDownload.isPending]);
 }

@@ -2,17 +2,18 @@
 import React from 'react';
 import { Eye } from 'lucide-react';
 import { TableAction } from './datatable-types';
+import { Row, TableOrViewName } from '@/hooks/database';
 
-interface StandardActionHandlers<V> {
-  onView?: (record: V) => void;
+interface StandardActionHandlers<T extends TableOrViewName> {
+  onView?: (record: Row<T>) => void;
   // Add placeholder defaults to not break existing pages calling this function
   onEdit?: unknown;
   onDelete?: unknown;
   onToggleStatus?: unknown;
 }
 
-export function createStandardActions<V>({ onView }: StandardActionHandlers<V>): TableAction<V>[] {
-  const actions: TableAction<V>[] = [];
+export function createStandardActions<T extends TableOrViewName>({ onView }: StandardActionHandlers<T>): TableAction<T>[] {
+  const actions: TableAction<T>[] = [];
 
   if (onView) {
     actions.push({

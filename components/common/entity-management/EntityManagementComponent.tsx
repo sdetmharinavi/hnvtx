@@ -45,19 +45,19 @@ export function EntityManagementComponent<T extends BaseEntity>({
   duplicateSet,
 }: EntityManagementComponentProps<T>) {
   const [internalSearchTerm, setInternalSearchTerm] = useState(searchTerm);
-  const[debouncedSearch] = useDebounce(internalSearchTerm, 300);
+  const [debouncedSearch] = useDebounce(internalSearchTerm, 300);
 
-  const[viewMode, setViewMode] = useState<'list' | 'tree'>('list');
-  const[showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'tree'>('list');
+  const [showFilters, setShowFilters] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
   const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000);
-  const[isResizing, setIsResizing] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const startResizing = useCallback(() => setIsResizing(true),[]);
-  const stopResizing = useCallback(() => setIsResizing(false),[]);
+  const startResizing = useCallback(() => setIsResizing(true), []);
+  const stopResizing = useCallback(() => setIsResizing(false), []);
 
   const resize = useCallback(
     (mouseEvent: MouseEvent) => {
@@ -89,27 +89,27 @@ export function EntityManagementComponent<T extends BaseEntity>({
       document.body.style.cursor = 'auto';
       document.body.style.userSelect = 'auto';
     };
-  },[isResizing, resize, stopResizing]);
+  }, [isResizing, resize, stopResizing]);
 
   useEffect(() => {
     onSearchChange(debouncedSearch);
-  },[debouncedSearch, onSearchChange]);
+  }, [debouncedSearch, onSearchChange]);
 
-  const allEntities = useMemo(() => entitiesQuery.data?.data ||[], [entitiesQuery.data]);
+  const allEntities = useMemo(() => entitiesQuery.data?.data || [], [entitiesQuery.data]);
   const selectedEntity = useMemo(
     () => allEntities.find((e) => e.id === selectedEntityId) || null,
     [allEntities, selectedEntityId],
   );
 
   const hierarchicalEntities = useMemo((): EntityWithChildren<T>[] => {
-    if (!config.isHierarchical) return allEntities.map((entity) => ({ ...entity, children:[] }));
+    if (!config.isHierarchical) return allEntities.map((entity) => ({ ...entity, children: [] }));
 
     const entityMap = new Map<string, EntityWithChildren<T>>();
     allEntities.forEach((entity) => {
-      entityMap.set(entity.id ?? '', { ...entity, children:[] });
+      entityMap.set(entity.id ?? '', { ...entity, children: [] });
     });
 
-    const rootEntities: EntityWithChildren<T>[] =[];
+    const rootEntities: EntityWithChildren<T>[] = [];
 
     const isParentEntity = (value: unknown): value is { id: string } => {
       return (
@@ -153,7 +153,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
       }
     });
     return rootEntities;
-  },[allEntities, config.isHierarchical, config.parentField]);
+  }, [allEntities, config.isHierarchical, config.parentField]);
 
   const handleCloseDetailsPanel = useCallback(() => {
     setShowDetailsPanel(false);
@@ -179,7 +179,9 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
   return (
     <div className='flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative overflow-hidden'>
-      <div className={`flex-1 flex flex-col min-w-1/3 ${showDetailsPanel ? 'hidden lg:flex' : 'flex'}`}>
+      <div
+        className={`flex-1 flex flex-col min-w-1/3 ${showDetailsPanel ? 'hidden lg:flex' : 'flex'}`}
+      >
         <div className='bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
           <SearchAndFilters
             searchTerm={internalSearchTerm}
@@ -247,7 +249,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
 
       <div
         className={`hidden lg:flex w-1 cursor-col-resize items-center justify-center bg-gray-100 hover:bg-blue-400 dark:bg-gray-900 dark:hover:bg-blue-600 transition-colors z-20 relative ${isResizing ? 'bg-blue-500 dark:bg-blue-500' : ''}`}
-        onMouseDown={startResizing}>
+        onMouseDown={startResizing}
+      >
         <div className='absolute pointer-events-none text-gray-400 dark:text-gray-500'>
           <FiMoreVertical size={12} />
         </div>
@@ -259,7 +262,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
         style={{
           width:
             typeof window !== 'undefined' && window.innerWidth >= 1024 ? detailsPanelWidth : '100%',
-        }}>
+        }}
+      >
         <div className='sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 lg:hidden'>
           <div className='flex items-center justify-between'>
             <h2 className='text-lg font-medium text-gray-900 dark:text-white'>Details</h2>

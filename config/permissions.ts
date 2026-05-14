@@ -19,10 +19,12 @@ export const ROLES = {
 } as const;
 
 // Simplify to read-only flags
+// MODIFIED: All management and write-related permissions have been set to empty arrays,
+// effectively making the entire application read-only based on this configuration.
 export const PERMISSIONS = {
-  canManageUsers:[], 
-  canViewAuditLogs: ROLES.VIEWERS, 
-  canManageEmployees:[], 
+  canManageUsers:[],
+  canViewAuditLogs: ROLES.VIEWERS,
+  canManageEmployees:[],
   canManageInventory: [],
   canManageSystems: [],
   canManageRoutes:[],

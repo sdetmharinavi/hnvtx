@@ -1,5 +1,5 @@
 // components/route-manager/ui/SpliceVisualizationModal.tsx
-"use client";
+'use client';
 
 import React, { useMemo } from 'react';
 import { Modal, PageSpinner, ErrorDisplay } from '@/components/common/ui';
@@ -13,16 +13,40 @@ interface SpliceVisualizationModalProps {
   junctionClosureId: string | null;
 }
 
-export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> = ({ isOpen, onClose, junctionClosureId }) => {
-  const { data: spliceDetails, isLoading, isError, error } = useJcSplicingDetails(junctionClosureId);
+type SpliceData = {
+  id: string;
+  incoming_segment: string;
+  incoming_fiber: number;
+  outgoing_segment: string | null;
+  outgoing_fiber: number | null;
+  loss_db: number | null;
+};
+
+type AvailableFiberData = {
+  segment_id: string;
+  segment_name: string;
+  fiber_no: number;
+};
+
+export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> = ({
+  isOpen,
+  onClose,
+  junctionClosureId,
+}) => {
+  const {
+    data: spliceDetails,
+    isLoading,
+    isError,
+    error,
+  } = useJcSplicingDetails(junctionClosureId);
 
   const { spliceConnections, availableFibers } = useMemo(() => {
     if (!spliceDetails?.segments_at_jc) {
-      return { spliceConnections:[], availableFibers:[] };
+      return { spliceConnections: [], availableFibers: [] };
     }
 
-    const splices: any[] = [];
-    const available: any[] =[];
+    const splices: SpliceData[] = [];
+    const available: AvailableFiberData[] = [];
 
     for (const segment of spliceDetails.segments_at_jc) {
       for (const fiber of segment.fibers) {
@@ -36,57 +60,71 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
             loss_db: fiber.loss_db,
           });
         } else if (fiber.status === 'available') {
-            available.push({
-                segment_id: segment.segment_id,
-                segment_name: segment.segment_name,
-                fiber_no: fiber.fiber_no,
-            });
+          available.push({
+            segment_id: segment.segment_id,
+            segment_name: segment.segment_name,
+            fiber_no: fiber.fiber_no,
+          });
         }
       }
     }
 
     splices.sort((a, b) => a.incoming_fiber - b.incoming_fiber);
-    available.sort((a,b) => a.segment_name.localeCompare(b.segment_name) || a.fiber_no - b.fiber_no);
+    available.sort(
+      (a, b) => a.segment_name.localeCompare(b.segment_name) || a.fiber_no - b.fiber_no,
+    );
 
     return { spliceConnections: splices, availableFibers: available };
   }, [spliceDetails]);
 
-  if (isLoading) return <PageSpinner text="Loading Splice Details..." />;
+  if (isLoading) return <PageSpinner text='Loading Splice Details...' />;
   if (isError) return <ErrorDisplay error={error?.message} />;
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`} 
-      size="lg"
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Splice Details: ${spliceDetails?.junction_closure?.name || 'Loading...'}`}
+      size='lg'
     >
-      <div className="p-4 md:p-6 space-y-6 w-full">
+      <div className='p-4 md:p-6 space-y-6 w-full'>
         <div>
-          <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+          <h4 className='text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3'>
             Active Splice Connections ({spliceConnections.length})
           </h4>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+          <div className='overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700'>
+            <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+              <thead className='bg-gray-50 dark:bg-gray-800'>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Incoming</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outgoing</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loss (dB)</th>
+                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
+                    Incoming
+                  </th>
+                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
+                    Outgoing
+                  </th>
+                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
+                    Loss (dB)
+                  </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800/50 divide-y divide-gray-200">
-                {spliceConnections.map(splice => (
+              <tbody className='bg-white dark:bg-gray-800/50 divide-y divide-gray-200'>
+                {spliceConnections.map((splice) => (
                   <tr key={splice.id}>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium"><TruncateTooltip text={splice.incoming_segment} /></div>
-                      <div className="text-xs text-gray-500">Fiber #{splice.incoming_fiber}</div>
+                    <td className='px-4 py-3'>
+                      <div className='text-sm font-medium'>
+                        <TruncateTooltip text={splice.incoming_segment} />
+                      </div>
+                      <div className='text-xs text-gray-500'>Fiber #{splice.incoming_fiber}</div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm font-medium"><TruncateTooltip text={splice.outgoing_segment || 'Terminated'} /></div>
-                      <div className="text-xs text-gray-500">{splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}</div>
+                    <td className='px-4 py-3'>
+                      <div className='text-sm font-medium'>
+                        <TruncateTooltip text={splice.outgoing_segment || 'Terminated'} />
+                      </div>
+                      <div className='text-xs text-gray-500'>
+                        {splice.outgoing_fiber ? `Fiber #${splice.outgoing_fiber}` : ''}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium">{splice.loss_db}</td>
+                    <td className='px-4 py-3 text-sm font-medium'>{splice.loss_db}</td>
                   </tr>
                 ))}
               </tbody>
@@ -97,22 +135,26 @@ export const SpliceVisualizationModal: React.FC<SpliceVisualizationModalProps> =
         <Separator />
 
         <div>
-          <h4 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+          <h4 className='text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3'>
             Available Segments ({availableFibers.length})
           </h4>
-          <div className="overflow-hidden rounded-lg border border-gray-200 max-h-80 overflow-y-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
+          <div className='overflow-hidden rounded-lg border border-gray-200 max-h-80 overflow-y-auto'>
+            <table className='min-w-full divide-y divide-gray-200'>
+              <thead className='bg-gray-50 sticky top-0 z-10'>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Segment Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fiber #</th>
+                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
+                    Segment Name
+                  </th>
+                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>
+                    Fiber #
+                  </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className='bg-white divide-y divide-gray-200'>
                 {availableFibers.map((fiber) => (
                   <tr key={`${fiber.segment_id}-${fiber.fiber_no}`}>
-                    <td className="px-4 py-2 text-sm">{fiber.segment_name}</td>
-                    <td className="px-4 py-2 font-mono text-sm">{fiber.fiber_no}</td>
+                    <td className='px-4 py-2 text-sm'>{fiber.segment_name}</td>
+                    <td className='px-4 py-2 font-mono text-sm'>{fiber.fiber_no}</td>
                   </tr>
                 ))}
               </tbody>

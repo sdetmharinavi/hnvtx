@@ -5,6 +5,8 @@ import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { AlertCircle, ArrowRight, Server, ExternalLink } from 'lucide-react';
 import React from 'react';
+import { Row } from '@/hooks/database';
+import type { ColumnOverrides } from '@/hooks/useColumnConfig';
 
 // Define the shape of items in the allocated_systems array
 interface AllocatedSystem {
@@ -13,8 +15,8 @@ interface AllocatedSystem {
 }
 
 export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: Set<string>) => {
-  return useDynamicColumnConfig('v_services', {
-    data: data,
+  const columns = useDynamicColumnConfig<'v_services'>('v_services', {
+    data: data as Row<'v_services'>[],
     omit: [
       'created_at',
       'updated_at',
@@ -31,7 +33,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 250,
-        render: (value, record) => {
+        render: (value: unknown, record: Row<'v_services'>) => {
           const strValue = String(value ?? '');
 
           const namePart = strValue.trim().toLowerCase();
@@ -65,7 +67,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 280,
-        render: (value, record) => {
+        render: (value: unknown, record: Row<'v_services'>) => {
           const start = value as string;
           const end = record.end_node_name;
 
@@ -97,7 +99,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
       allocated_systems: {
         title: 'Allotted Systems',
         width: 250,
-        render: (value) => {
+        render: (value: unknown) => {
           const systems = value as AllocatedSystem[] | null;
 
           if (!systems || systems.length === 0) {
@@ -175,14 +177,16 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         title: 'Status',
         width: 120,
         sortable: true,
-        render: (value) => <StatusBadge status={value as boolean} />,
+        render: (value: unknown) => <StatusBadge status={value as boolean} />,
       },
       description: {
         title: 'Description',
         width: 200,
         searchable: true,
-        render: (value) => <TruncateTooltip text={value as string} />,
+        render: (value: unknown) => <TruncateTooltip text={value as string} />,
       },
-    },
+    } as ColumnOverrides<'v_services'>,
   });
+
+  return columns;
 };

@@ -46,7 +46,7 @@ export function useOfcRoutesForSelection() {
         id: c.id,
         route_name: c.route_name,
         capacity: c.capacity,
-        ofc_connections: [],
+        ofc_connections:[],
       }));
     },
     staleTime: 5 * 60 * 1000,
@@ -88,7 +88,7 @@ export function useRouteDetails(routeId: string | null) {
           .equals(routeId)
           .toArray();
         const nodesData = await localDb.nodes.toArray();
-        const nodeMap = new Map(nodesData.map((n) => [n.id, n]));
+        const nodeMap = new Map(nodesData.map((n) =>[n.id, n]));
 
         const segmentsData = await localDb.cable_segments
           .where("original_cable_id")
@@ -130,7 +130,7 @@ export function useRouteDetails(routeId: string | null) {
           },
           jointBoxes,
           segments: segmentsData,
-          splices: [],
+          splices:[],
         };
       } catch (err) {
         console.error("Local DB fetch failed for route details:", err);
@@ -147,7 +147,7 @@ export function useJcSplicingDetails(jcId: string | null) {
   const isOnline = useOnlineStatus();
 
   return useQuery({
-    queryKey: ["jc-splicing-details", jcId],
+    queryKey:["jc-splicing-details", jcId],
     queryFn: async (): Promise<JcSplicingDetails | null> => {
       if (!jcId) return null;
 
@@ -181,27 +181,29 @@ export function useJcSplicingDetails(jcId: string | null) {
           (s) => s.start_node_id === jc.node_id || s.end_node_id === jc.node_id,
         );
 
-        const cableIds = [
+        const cableIds =[
           ...new Set(connectedSegments.map((s) => s.original_cable_id)),
         ];
         const cables = await localDb.ofc_cables
           .where("id")
           .anyOf(cableIds)
           .toArray();
-        const cableMap = new Map(cables.map((c) => [c.id, c]));
+        const cableMap = new Map(cables.map((c) =>[c.id, c]));
 
         const splices = await localDb.fiber_splices
           .where("jc_id")
           .equals(jcId)
           .toArray();
 
-        const segmentsPayload: any[] = connectedSegments.map((seg) => {
+        type SegmentPayloadType = JcSplicingDetails['segments_at_jc'][number];
+
+        const segmentsPayload: SegmentPayloadType[] = connectedSegments.map((seg) => {
           const cable = cableMap.get(seg.original_cable_id);
           const segName = cable
             ? `${cable.route_name} (Seg ${seg.segment_order})`
             : `Segment ${seg.id}`;
 
-          const fibers = [];
+          const fibers =[];
           for (let i = 1; i <= seg.fiber_count; i++) {
             const spliceAsIncoming = splices.find(
               (s) =>
@@ -212,7 +214,7 @@ export function useJcSplicingDetails(jcId: string | null) {
                 s.outgoing_segment_id === seg.id && s.outgoing_fiber_no === i,
             );
 
-            let status = "available";
+            let status: "available" | "used_as_incoming" | "used_as_outgoing" | "terminated" = "available";
             let spliceId = null;
             let connectedToSeg = null;
             let connectedToFib = null;

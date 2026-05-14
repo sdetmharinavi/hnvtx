@@ -23,8 +23,7 @@ interface GenericFilterBarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filters: Record<string, any>;
+  filters: Record<string, unknown>; // THE FIX: Replaced `any` with `unknown`
   onFilterChange: (key: string, value: string | null) => void;
   setFilters?: React.Dispatch<React.SetStateAction<Filters>>;
   filterConfigs: FilterConfig[];
@@ -81,10 +80,9 @@ export const GenericFilterBar = memo(
                     label={config.label}
                     showLabel={config.showLabel}
                     filterKey={config.key}
-                    filters={filters}
+                    filters={filters as Filters} // Pass safely as Filters
                     setFilters={setFilters}
                     options={config.options}
-                    // THE FIX: Pass the placeholder prop here
                     placeholder={config.placeholder}
                   />
                 </div>

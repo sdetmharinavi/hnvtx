@@ -1924,6 +1924,8 @@ export type V_ring_nodesRow = {
 };
 
 export type V_ringsRow = {
+    associated_system_ips: string | null;
+    associated_system_names: string | null;
     bts_status: string | null;
     created_at: string | null;
     description: string | null;

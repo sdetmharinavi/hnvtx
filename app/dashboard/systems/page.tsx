@@ -3,27 +3,18 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  FiDatabase,
-  FiRefreshCw,
-  FiCpu,
-  FiMapPin,
-  FiActivity,
-  FiGrid,
-  FiTag,
-} from 'react-icons/fi';
+import { FiDatabase, FiRefreshCw, FiCpu, FiMapPin, FiActivity, FiTag } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { ErrorDisplay } from '@/components/common/ui';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
-import { Row } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { formatDate, formatIP } from '@/utils/formatters';
+import { formatIP } from '@/utils/formatters';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
@@ -53,9 +44,9 @@ export default function SystemsPage() {
     tableName: 'systems',
     localTableName: 'v_systems_complete',
     dataQueryHook: useSystemsData,
-    searchColumn:['system_name', 'system_type_name', 'node_name', 'ip_address'],
+    searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: 'system_name',
-    syncTables:[
+    syncTables: [
       'systems',
       'v_systems_complete',
       'ring_based_systems',
@@ -73,7 +64,7 @@ export default function SystemsPage() {
   const { options: maintenanceAreaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
 
   const filterConfigs = useMemo<FilterConfig[]>(
-    () =>[
+    () => [
       {
         key: 'system_type_id',
         type: 'multi-select' as const,
@@ -99,19 +90,27 @@ export default function SystemsPage() {
         key: 'status',
         type: 'native-select' as const,
         placeholder: 'All Status',
-        options:[
+        options: [
           { value: 'true', label: 'Active' },
           { value: 'false', label: 'Inactive' },
         ],
       },
-    ],[systemTypeOptions, capacityOptions, maintenanceAreaOptions, loadingTypes, loadingCaps, loadingAreas]
+    ],
+    [
+      systemTypeOptions,
+      capacityOptions,
+      maintenanceAreaOptions,
+      loadingTypes,
+      loadingCaps,
+      loadingAreas,
+    ],
   );
 
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
     },
-    [filters]
+    [filters],
   );
 
   const isInitialLoad = isLoading && systems.length === 0;
@@ -121,20 +120,20 @@ export default function SystemsPage() {
       if (system.id) router.push(`/dashboard/systems/${system.id}`);
       else toast.info('Invalid system ID.');
     },
-    [router]
+    [router],
   );
 
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
 
   const tableActions = useMemo(() => {
-    return createStandardActions<V_systems_completeRowSchema>({
+    return createStandardActions<'v_systems_complete'>({
       onView: handleView,
     });
   }, [handleView]);
 
   const headerActions = useMemo((): ActionButton[] => {
-    return[
+    return [
       {
         label: 'Refresh',
         onClick: () => {
@@ -142,7 +141,7 @@ export default function SystemsPage() {
           toast.success('Systems refreshed.');
         },
         variant: 'outline',
-        leftIcon: <FiRefreshCw className={(isLoading || isFetching) ? 'animate-spin' : ''} />,
+        leftIcon: <FiRefreshCw className={isLoading || isFetching ? 'animate-spin' : ''} />,
         disabled: isLoading || isFetching,
       },
     ];
@@ -151,7 +150,7 @@ export default function SystemsPage() {
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
 
-    return[
+    return [
       {
         value: totalCount,
         label: 'Total Systems',
@@ -179,7 +178,7 @@ export default function SystemsPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  },[totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
+  }, [totalCount, activeCount, inactiveCount, filters]);
 
   const renderItem = useCallback(
     (sys: V_systems_completeRowSchema) => (
@@ -203,10 +202,20 @@ export default function SystemsPage() {
         }
         dataItems={[
           { icon: FiMapPin, label: 'Location', value: sys.node_name, optional: true },
-          { icon: FiActivity, label: 'IP Address', value: formatIP(sys.ip_address), optional: true },
+          {
+            icon: FiActivity,
+            label: 'IP Address',
+            value: formatIP(sys.ip_address),
+            optional: true,
+          },
           { icon: FiCpu, label: 'Capacity', value: sys.system_capacity_name, optional: true },
           { icon: FiTag, label: 'Asset No', value: sys.asset_no, optional: true },
-          { icon: CiCalendarDate, label: 'Commissioning Date', value: sys.commissioned_on, optional: true },
+          {
+            icon: CiCalendarDate,
+            label: 'Commissioning Date',
+            value: sys.commissioned_on,
+            optional: true,
+          },
         ]}
         customFooter={
           <div className='w-full'>
@@ -216,7 +225,7 @@ export default function SystemsPage() {
         onView={handleView}
       />
     ),
-    [handleView]
+    [handleView],
   );
 
   const renderGrid = useCallback(
@@ -236,10 +245,12 @@ export default function SystemsPage() {
           },
         }}
       />
-    ),[systems, renderItem, isLoading, totalCount, pagination]
+    ),
+    [systems, renderItem, isLoading, totalCount, pagination],
   );
 
-  if (error) return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+  if (error)
+    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
     <DashboardPageLayout

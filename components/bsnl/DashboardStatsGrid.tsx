@@ -1,10 +1,10 @@
-// components/bsnl/DashboardStatsGrid.tsx
+// path: components/bsnl/DashboardStatsGrid.tsx
 'use client';
 
 import React, { useMemo } from 'react';
 import { Network, Activity, AlertTriangle, Cable } from 'lucide-react';
 import { Card } from '@/components/common/ui';
-import { BsnlNode, BsnlCable, BsnlSystem } from './types';
+import { BsnlNode, BsnlSystem } from './types';
 import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 
 // Updated interface to accept data AND filter callback
