@@ -2,6 +2,8 @@
 'use client';
 
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import { PageSpinner } from '@/components/common/ui';
+import dynamic from 'next/dynamic';
 import {
   ErrorState,
   LoadingState,
@@ -12,26 +14,37 @@ import { useMemo, useCallback, useEffect } from 'react';
 import { FiList } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
+import { Lookup_typesRowSchema, Lookup_typesInsertSchema } from '@/schemas/zod-schemas';
 import { useLookupTypesData } from '@/hooks/data/useLookupTypesData';
-import { useOfflineQuery } from '@/hooks/data/useOfflineQuery';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { useLookupActions } from '@/components/lookup/lookup-hooks';
+import { useUser } from '@/providers/UserProvider';
 import { snakeToTitleCase } from '@/utils/formatters';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { DataTable } from '@/components/table';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
+import { createStandardActions } from '@/components/table/action-helpers';
 import { Row } from '@/hooks/database';
+import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
+import { useQuery } from '@tanstack/react-query';
+
+const LookupModal = dynamic(
+  () => import('@/components/lookup/LookupModal').then((mod) => mod.LookupModal),
+  { loading: () => <PageSpinner text='Loading Lookup Form...' /> },
+);
 
 export default function LookupTypesPage() {
   const {
     handlers: { handleCategoryChange },
     selectedCategory,
   } = useLookupActions();
+
+  const { canAccess } = useUser();
+  const canManage = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const crud = useCrudManager<'lookup_types', Lookup_typesRowSchema>({
     tableName: 'lookup_types',
@@ -46,34 +59,44 @@ export default function LookupTypesPage() {
     activeCount,
     inactiveCount,
     isLoading: isLoadingLookups,
+    isMutating,
     isFetching,
     error,
     refetch,
     filters,
+    editModal,
+    actions: crudActions,
   } = crud;
 
+  // THE FIX: Replaced useOfflineQuery with standard useQuery
   const {
     data: categoriesData,
     isLoading: isLoadingCategories,
     error: categoriesError,
     refetch: refetchCategories,
-  } = useOfflineQuery<Lookup_typesRowSchema[]>(
-    ['unique-categories-v2'],
-    async () => {
-      const { data, error: dbError } = await createClient().from('lookup_types').select('*');
+  } = useQuery({
+    queryKey: ['unique-categories-list'],
+    queryFn: async () => {
+      const { data, error: dbError } = await createClient()
+        .from('lookup_types')
+        .select('category, id') // Just need unique categories
+        .order('category');
+
       if (dbError) throw dbError;
+
+      // Client-side unique because distinct() isn't directly exposed in this simple client usage
+      // without using .rpc or a view.
       const unique = Array.from(new Map(data.map((item) => [item.category, item])).values());
-      return unique.sort((a, b) => a.category.localeCompare(b.category));
+      
+      // Map to simplified schema expected by UI
+      return unique.sort((a, b) => a.category.localeCompare(b.category)) as unknown as Lookup_typesRowSchema[];
     },
-    async () => {
-      const allLookups = await localDb.lookup_types.toArray();
-      const unique = Array.from(new Map(allLookups.map((item) => [item.category, item])).values());
-      return unique.sort((a, b) => a.category.localeCompare(b.category));
-    },
-  );
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
   const categories = useMemo(() => categoriesData || [], [categoriesData]);
 
+  // Sync the URL param 'category' with the internal filters
   useEffect(() => {
     if (selectedCategory && filters.filters.category !== selectedCategory) {
       filters.setFilters({ category: selectedCategory });
@@ -89,7 +112,7 @@ export default function LookupTypesPage() {
     } else {
       await Promise.all([refetch(), refetchCategories()]);
     }
-    toast.success('Data synced successfully');
+    toast.success('Data refreshed successfully');
   }, [refetch, refetchCategories, isOnline]);
 
   const hasCategories = categories.length > 0;
@@ -99,22 +122,30 @@ export default function LookupTypesPage() {
   const headerActions = useStandardHeaderActions({
     data: lookupTypes,
     onRefresh: handleRefresh,
+    onAddNew: canManage
+      ? hasSelectedCategory
+        ? editModal.openAdd
+        : () => toast.error('Please select a category first.')
+      : undefined,
     isLoading: isLoading,
     isFetching: isFetching,
-    exportConfig: {
-      tableName: 'lookup_types',
-      filterOptions: [
-        {
-          label: 'selected lookups',
-          filters: { category: selectedCategory },
-          fileName: `selected_lookups.xlsx`,
-        },
-      ],
-    },
+    exportConfig: canManage
+      ? {
+          tableName: 'lookup_types',
+          filterOptions: [
+            {
+              label: 'selected lookups',
+              filters: { category: selectedCategory },
+              fileName: `selected_lookups.xlsx`,
+            },
+          ],
+        }
+      : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
     if (!hasSelectedCategory) return [];
+
     const currentStatus = filters.filters.status;
 
     return [
@@ -154,6 +185,10 @@ export default function LookupTypesPage() {
     filters.filters.status,
     filters.setFilters,
   ]);
+
+  const handleModalSubmit = (data: Lookup_typesInsertSchema) => {
+    crudActions.handleSave(data);
+  };
 
   const filterConfigs = useMemo<FilterConfig[]>(() => {
     const categoryOptions = categories.map((c) => ({
@@ -205,6 +240,22 @@ export default function LookupTypesPage() {
     [],
   );
 
+  const tableActions = useMemo(
+    () =>
+      createStandardActions({
+        onEdit: canManage ? editModal.openEdit : undefined,
+        onDelete: canDelete ? crudActions.handleDelete : undefined,
+        onToggleStatus: canManage ? crudActions.handleToggleStatus : undefined,
+      }),
+    [
+      canManage,
+      canDelete,
+      editModal.openEdit,
+      crudActions.handleDelete,
+      crudActions.handleToggleStatus,
+    ],
+  );
+
   let content = null;
 
   if (categoriesError) {
@@ -224,11 +275,10 @@ export default function LookupTypesPage() {
         tableName='lookup_types'
         data={lookupTypes as Row<'lookup_types'>[]}
         columns={columns as unknown as Column<Row<'lookup_types'>>[]}
-        actions={[]} // NO Actions
+        actions={tableActions}
         loading={isLoading}
         searchable={true}
         filterable={false}
-        selectable={false}
         pagination={{
           current: crud.pagination.currentPage,
           pageSize: crud.pagination.pageLimit,
@@ -244,11 +294,11 @@ export default function LookupTypesPage() {
   }
 
   return (
-    <DashboardPageLayout<'lookup_types', Lookup_typesRowSchema>
+    <DashboardPageLayout
       crud={crud}
       header={{
-        title: 'Lookup Types Viewer',
-        description: 'Read-only view of lookup types and categories.',
+        title: 'Lookup Types',
+        description: 'Manage lookup types for various categories.',
         icon: <FiList />,
         stats: hasSelectedCategory ? headerStats : [],
         actions: headerActions,
@@ -260,6 +310,17 @@ export default function LookupTypesPage() {
       filterConfigs={filterConfigs}
       renderGrid={() => <div className='p-4'>{content}</div>}
       renderTable={() => <div className='p-4'>{content}</div>}
+      modals={
+        <LookupModal
+          isOpen={editModal.isOpen}
+          onClose={editModal.close}
+          onSubmit={handleModalSubmit}
+          isLoading={isMutating}
+          editingLookup={editModal.record}
+          category={selectedCategory}
+          categories={categories}
+        />
+      }
     />
   );
 }

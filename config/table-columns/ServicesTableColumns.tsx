@@ -1,23 +1,83 @@
 // config/table-columns/ServicesTableColumns.tsx
+'use client';
+
+import React, { useState } from 'react';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_servicesRowSchema } from '@/schemas/zod-schemas';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { AlertCircle, ArrowRight, Server, ExternalLink } from 'lucide-react';
-import React from 'react';
 import { Row } from '@/hooks/database';
-import type { ColumnOverrides } from '@/hooks/useColumnConfig';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 
 // Define the shape of items in the allocated_systems array
-interface AllocatedSystem {
+export interface AllocatedSystem {
   id: string;
   name: string;
 }
 
+// Extract into a stateful component to manage expansion
+const AllocatedSystemsCell = ({ systems }: { systems: AllocatedSystem[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const displaySystems = expanded ? systems : systems.slice(0, 9);
+
+  if (systems.length === 1) {
+    return (
+      <a
+        href={`/dashboard/systems/${systems[0].id}`}
+        target='_blank'
+        rel='noopener noreferrer'
+        onClick={(e) => e.stopPropagation()} // Stop row click
+        className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline group'
+      >
+        <Server className='w-3.5 h-3.5' />
+        <span className='truncate max-w-40' title={systems[0].name}>
+          {systems[0].name}
+        </span>
+        <ExternalLink className='w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity' />
+      </a>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-1'>
+      {displaySystems.map((sys) => (
+        <a
+          key={sys.id}
+          href={`/dashboard/systems/${sys.id}`}
+          target='_blank'
+          rel='noopener noreferrer'
+          onClick={(e) => e.stopPropagation()}
+          className='flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline group'
+        >
+          <Server className='w-3 h-3 text-blue-500' />
+          <span className='truncate max-w-45' title={sys.name}>
+            {sys.name}
+          </span>
+          <ExternalLink className='w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity' />
+        </a>
+      ))}
+      {systems.length > 9 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setExpanded(!expanded);
+          }}
+          className='text-[10px] text-gray-500 pl-4 hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left w-fit'
+        >
+          {expanded ? 'Show less' : `+${systems.length - 9} more systems`}
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: Set<string>) => {
-  const columns = useDynamicColumnConfig<'v_services'>('v_services', {
-    data: data as Row<'v_services'>[],
-    omit: [
+  return useDynamicColumnConfig('v_services', {
+    data: data,
+    omit:[
       'created_at',
       'updated_at',
       'node_id',
@@ -33,7 +93,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 250,
-        render: (value: unknown, record: Row<'v_services'>) => {
+        render: (value, record) => {
           const strValue = String(value ?? '');
 
           const namePart = strValue.trim().toLowerCase();
@@ -67,7 +127,7 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         sortable: true,
         searchable: true,
         width: 280,
-        render: (value: unknown, record: Row<'v_services'>) => {
+        render: (value, record) => {
           const start = value as string;
           const end = record.end_node_name;
 
@@ -75,14 +135,14 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
             return (
               <div className='flex items-center gap-2 text-sm'>
                 <span
-                  className='font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]'
+                  className='font-medium text-gray-700 dark:text-gray-300 truncate max-w-30'
                   title={start}
                 >
                   {start}
                 </span>
                 <ArrowRight className='w-3 h-3 text-gray-400 shrink-0' />
                 <span
-                  className='font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]'
+                  className='font-medium text-gray-700 dark:text-gray-300 truncate max-w-30'
                   title={end}
                 >
                   {end}
@@ -95,60 +155,18 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
           );
         },
       },
-      // MODIFIED: Allocated Systems Column with Links
+      // MODIFIED: Allocated Systems Column with Links and Inline Expansion
       allocated_systems: {
         title: 'Allotted Systems',
         width: 250,
-        render: (value: unknown) => {
+        render: (value) => {
           const systems = value as AllocatedSystem[] | null;
 
           if (!systems || systems.length === 0) {
             return <span className='text-xs text-gray-400 italic'>Unassigned</span>;
           }
 
-          if (systems.length === 1) {
-            return (
-              <a
-                href={`/dashboard/systems/${systems[0].id}`}
-                target='_blank'
-                rel='noopener noreferrer'
-                onClick={(e) => e.stopPropagation()} // Stop row click
-                className='flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline group'
-              >
-                <Server className='w-3.5 h-3.5' />
-                <span className='truncate max-w-[160px]' title={systems[0].name}>
-                  {systems[0].name}
-                </span>
-                <ExternalLink className='w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity' />
-              </a>
-            );
-          }
-
-          return (
-            <div className='flex flex-col gap-1'>
-              {systems.slice(0, 9).map((sys) => (
-                <a
-                  key={sys.id}
-                  href={`/dashboard/systems/${sys.id}`}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  onClick={(e) => e.stopPropagation()}
-                  className='flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline group'
-                >
-                  <Server className='w-3 h-3 text-blue-500' />
-                  <span className='truncate max-w-[180px]' title={sys.name}>
-                    {sys.name}
-                  </span>
-                  <ExternalLink className='w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity' />
-                </a>
-              ))}
-              {systems.length > 9 && (
-                <span className='text-[10px] text-gray-500 pl-4'>
-                  +{systems.length - 9} more systems
-                </span>
-              )}
-            </div>
-          );
+          return <AllocatedSystemsCell systems={systems} />;
         },
       },
       link_type_name: {
@@ -177,16 +195,14 @@ export const ServicesTableColumns = (data: V_servicesRowSchema[], duplicates?: S
         title: 'Status',
         width: 120,
         sortable: true,
-        render: (value: unknown) => <StatusBadge status={value as boolean} />,
+        render: (value) => <StatusBadge status={value as boolean} />,
       },
       description: {
         title: 'Description',
         width: 200,
         searchable: true,
-        render: (value: unknown) => <TruncateTooltip text={value as string} />,
+        render: (value) => <TruncateTooltip text={value as string} />,
       },
-    } as ColumnOverrides<'v_services'>,
+    },
   });
-
-  return columns;
 };

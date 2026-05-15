@@ -1,3 +1,4 @@
+// components/home/AnimatedBackground.tsx
 "use client"
 import Image from "next/image";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -13,7 +14,6 @@ export default function AnimatedBackground() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check for dark mode preference
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
     
@@ -25,11 +25,11 @@ export default function AnimatedBackground() {
 
   return (
     <>
-      {/* Dynamic gradient overlay that adjusts for dark mode */}
+      {/* THE FIX: Removed solid bg-slate colors that were blocking the image behind the gradient */}
       <div className={`fixed inset-0 z-0 transition-opacity duration-500 ${
         isDarkMode 
-          ? "bg-slate-700/30 bg-linear-to-b from-slate-500/70 via-slate-500/40 to-slate-500/70" 
-          : "bg-slate-500/40 bg-linear-to-b from-slate-500/40 via-transparent to-slate-500/40"
+          ? "bg-linear-to-b from-slate-900/80 via-slate-900/50 to-slate-900/80" 
+          : "bg-linear-to-b from-slate-500/40 via-transparent to-slate-500/40"
       }`} />
       
       <motion.div 
@@ -41,7 +41,7 @@ export default function AnimatedBackground() {
           alt="Harinavi Transmission Background"
           fill
           className={`transition-all duration-700 object-cover ${
-            isDarkMode ? "opacity-50" : "opacity-80"
+            isDarkMode ? "opacity-60" : "opacity-90"
           }`}
           priority
           quality={90}

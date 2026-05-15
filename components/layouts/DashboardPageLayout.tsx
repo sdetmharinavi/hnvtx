@@ -2,41 +2,74 @@
 import React, { ReactNode } from 'react';
 import { PageHeader, PageHeaderProps } from '@/components/common/page-header';
 import { GenericFilterBar, FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { BulkActions } from '@/components/common/BulkActions';
 import { DataTable, DataTableProps } from '@/components/table';
 import { PublicTableOrViewName, Filters } from '@/hooks/database';
-import { UseViewManagerReturn, BaseRecord } from '@/hooks/useCrudManager';
+import { UseCrudManagerReturn } from '@/hooks/useCrudManager';
+import { ConfirmModal } from '@/components/common/ui';
 
-// THE FIX: Define a generic record type to replace `any` and satisfy the UseCrudManagerReturn constraint
-type DefaultRecord = Record<string, unknown> & { id: string | number | null };
-
-interface DashboardPageLayoutProps<
-  T extends PublicTableOrViewName,
-  V extends BaseRecord = DefaultRecord,
-> {
+interface DashboardPageLayoutProps<T extends PublicTableOrViewName> {
+  // Header Props
   header: PageHeaderProps;
-  crud?: UseViewManagerReturn<V>;
+
+  // CRUD Props (New)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  crud?: UseCrudManagerReturn<any>;
+
+  // Filter Props
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
-  filters?: Record<string, unknown>;
+  filters?: Filters;
   onFilterChange?: (key: string, value: string | null) => void;
   setFilters?: React.Dispatch<React.SetStateAction<Filters>>;
   filterConfigs?: FilterConfig[];
+  filterExtraActions?: ReactNode;
+
+  // View Mode Props
   viewMode?: 'grid' | 'table';
   onViewModeChange?: (mode: 'grid' | 'table') => void;
+
+  // Bulk Action Props
+  bulkActions?: {
+    selectedCount: number;
+    isOperationLoading: boolean;
+    onBulkDelete: () => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onBulkUpdateStatus: (status: any) => void;
+    onClearSelection: () => void;
+    entityName: string;
+    showStatusUpdate?: boolean;
+    canDelete?: () => boolean;
+  };
+
+  // Allow custom bulk actions rendering
+  renderBulkActions?: () => ReactNode;
+
+  // Content Props
   renderGrid?: () => ReactNode;
+
+  // Allow overriding table rendering if not using DataTable
   renderTable?: () => ReactNode;
+
+  // Table Props
   tableProps?: DataTableProps<T>;
+
+  // Empty State Logic
   isEmpty?: boolean;
   emptyState?: ReactNode;
-  modals?: ReactNode; // Kept for 'View Details' modals
+
+  // Modals slot
+  modals?: ReactNode;
+
+  // Automatically render delete modal if crud is provided?
+  autoDeleteModal?: boolean;
+
+  // Extra class
   className?: string;
 }
 
-export function DashboardPageLayout<
-  T extends PublicTableOrViewName,
-  V extends BaseRecord = DefaultRecord,
->({
+export function DashboardPageLayout<T extends PublicTableOrViewName>({
   header,
   crud,
   searchQuery,
@@ -46,22 +79,29 @@ export function DashboardPageLayout<
   onFilterChange,
   setFilters,
   filterConfigs = [],
+  filterExtraActions,
   viewMode,
   onViewModeChange,
+  bulkActions,
+  renderBulkActions,
   renderGrid,
   renderTable,
   tableProps,
   modals,
+  autoDeleteModal = true,
   className = 'p-4 md:p-6 space-y-6',
-}: DashboardPageLayoutProps<T, V>) {
+}: DashboardPageLayoutProps<T>) {
+  // --- Auto-Wire Props from CRUD ---
   const effectiveSearchQuery = searchQuery ?? crud?.search.searchQuery ?? '';
   const effectiveOnSearchChange = onSearchChange ?? crud?.search.setSearchQuery ?? (() => {});
+
   const effectiveFilters = filters ?? crud?.filters.filters ?? {};
 
+  // Default filter change handler if not provided
   const effectiveOnFilterChange =
     onFilterChange ??
     ((key: string, value: string | null) => {
-      crud?.filters.setFilters((prev: Filters) => {
+      crud?.filters.setFilters((prev) => {
         const next = { ...prev };
         if (value === null || value === '') delete next[key];
         else next[key] = value;
@@ -70,6 +110,21 @@ export function DashboardPageLayout<
     });
 
   const effectiveSetFilters = setFilters ?? crud?.filters.setFilters;
+
+  // Bulk Actions
+  const effectiveBulkActions =
+    bulkActions ??
+    (crud
+      ? {
+          selectedCount: crud.bulkActions.selectedCount,
+          isOperationLoading: crud.isMutating,
+          onBulkDelete: crud.bulkActions.handleBulkDelete,
+          onBulkUpdateStatus: crud.bulkActions.handleBulkUpdateStatus,
+          onClearSelection: crud.bulkActions.handleClearSelection,
+          entityName: 'item', // Default
+          showStatusUpdate: true,
+        }
+      : undefined);
 
   return (
     <div className={className}>
@@ -85,8 +140,15 @@ export function DashboardPageLayout<
         filterConfigs={filterConfigs}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
+        extraActions={filterExtraActions}
       />
 
+      {renderBulkActions
+        ? renderBulkActions()
+        : effectiveBulkActions &&
+          effectiveBulkActions.selectedCount > 0 && <BulkActions {...effectiveBulkActions} />}
+
+      {/* Content Rendering */}
       {viewMode === 'grid' && renderGrid ? (
         renderGrid()
       ) : renderTable ? (
@@ -94,6 +156,19 @@ export function DashboardPageLayout<
       ) : tableProps ? (
         <DataTable<T> {...tableProps} />
       ) : null}
+
+      {/* Auto-render delete modal if crud provided */}
+      {autoDeleteModal && crud && (
+        <ConfirmModal
+          isOpen={crud.deleteModal.isOpen}
+          onConfirm={crud.deleteModal.onConfirm}
+          onCancel={crud.deleteModal.onCancel}
+          title='Confirm Deletion'
+          message={crud.deleteModal.message}
+          type='danger'
+          loading={crud.deleteModal.loading}
+        />
+      )}
 
       {modals}
     </div>

@@ -1,12 +1,12 @@
 // components/common/ui/GenericEntityCard.tsx
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import { LucideIcon } from 'lucide-react';
-import { FiInfo } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiInfo } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 import { LoadingSpinner } from '@/components/common/ui/LoadingSpinner';
 
@@ -30,7 +30,10 @@ interface GenericEntityCardProps<T> {
   showStatusLabel?: boolean;
   dataItems: EntityCardItem[];
   onView?: (entity: T) => void;
-  // Removed onEdit, onDelete, canEdit, canDelete
+  onEdit?: (entity: T) => void;
+  onDelete?: (entity: T) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
   customHeader?: React.ReactNode;
   customFooter?: React.ReactNode;
   extraActions?: React.ReactNode;
@@ -53,6 +56,10 @@ export function GenericEntityCard<T>({
   showStatusLabel = true,
   dataItems,
   onView,
+  onEdit,
+  onDelete,
+  canEdit = false,
+  canDelete = false,
   customHeader,
   customFooter,
   extraActions,
@@ -68,11 +75,29 @@ export function GenericEntityCard<T>({
   const isAvatarStyle = !!initials;
   const [isInteracting, setIsInteracting] = useState(false);
 
+  // THE FIX: Track timeout reference to prevent memory leaks if unmounted
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleViewAction = useCallback(async () => {
     if (!onView || isInteracting) return;
+
     setIsInteracting(true);
+
+    // Trigger the parent action
     onView(entity);
-    setTimeout(() => {
+
+    // Safety fallback (ensuring we don't leak memory)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       setIsInteracting(false);
     }, 5000);
   }, [onView, entity, isInteracting]);
@@ -91,6 +116,7 @@ export function GenericEntityCard<T>({
     }
   };
 
+  // Helper function to render data item value
   const renderValue = (item: EntityCardItem) => {
     const value = item.value;
 
@@ -103,6 +129,7 @@ export function GenericEntityCard<T>({
     if (typeof value === 'string' || typeof value === 'number') {
       const stringValue = String(value);
 
+      // Handle coordinates specially
       if (
         item.label.toLowerCase().includes('coordinate') ||
         item.label.toLowerCase() === 'lat/long'
@@ -128,13 +155,13 @@ export function GenericEntityCard<T>({
           <TruncateTooltip
             text={stringValue}
             copyOnDoubleClick={item.copyable}
-            className='text-blue-950 dark:text-blue-50 font-semibold'
+            className='text-blue-950 dark:text-blue-50 font-semibold truncate block'
           />
         );
       }
 
       return (
-        <span className='text-blue-950 dark:text-blue-50 font-semibold'>
+        <span className='text-blue-950 dark:text-blue-50 font-semibold wrap-break-words'>
           {item.copyable ? (
             <TruncateTooltip
               text={stringValue}
@@ -147,7 +174,12 @@ export function GenericEntityCard<T>({
         </span>
       );
     }
-    return <div className='text-blue-950 dark:text-blue-50 font-semibold'>{value}</div>;
+
+    return (
+      <div className='text-blue-950 dark:text-blue-50 font-semibold min-w-0 wrap-break-words'>
+        {value}
+      </div>
+    );
   };
 
   return (
@@ -156,60 +188,113 @@ export function GenericEntityCard<T>({
       role={onView ? 'button' : undefined}
       tabIndex={onView ? 0 : undefined}
       onKeyDown={handleKeyDown}
+      aria-label={onView ? `View details for ${title}` : undefined}
       className={`
-        bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
-        shadow-md dark:shadow-lg dark:shadow-gray-900/30 transition-all duration-200 ease-in-out
-        flex flex-col h-full group relative overflow-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none
+        bg-white dark:bg-gray-800
+        rounded-xl
+        border border-gray-200 dark:border-gray-700
+        shadow-md dark:shadow-lg dark:shadow-gray-900/30
+        transition-all duration-200 ease-in-out
+        flex flex-col h-full
+        group
+        relative
+        overflow-hidden
+        focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none
         ${onView ? 'cursor-pointer hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 hover:-translate-y-0.5' : ''}
         ${className}
       `}
     >
+      {/* Loading Overlay */}
       {isInteracting && (
-        <div className='absolute inset-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px] flex items-center justify-center'>
+        <div className='absolute inset-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px] flex items-center justify-center transition-opacity duration-200'>
           <LoadingSpinner size='md' color='primary' />
         </div>
       )}
 
+      {/* Header Section */}
       {isAvatarStyle ? (
-        <div className='relative h-20 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-800 dark:via-blue-900/20 dark:to-purple-900/20'>
+        <div className='relative h-20 bg-blue-50 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:bg-gray-800 dark:from-gray-800 dark:via-blue-900/20 dark:to-purple-900/20'>
           <div className='absolute top-2.5 right-2.5 z-10'>
             <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
           <div className='absolute -bottom-10 left-1/2 transform -translate-x-1/2'>
             <div className='relative'>
               <div
-                className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg ring-4 ring-white dark:ring-gray-800 transition-transform duration-300 group-hover:scale-105 bg-linear-to-br from-blue-500 to-blue-700`}
-                style={{ background: avatarColor }}
+                className={`
+                  w-20 h-20
+                  rounded-full
+                  flex items-center justify-center
+                  text-2xl font-bold text-white
+                  shadow-lg dark:shadow-gray-900/50
+                  ring-4 ring-white dark:ring-gray-800
+                  transition-transform duration-300
+                  group-hover:scale-105
+                  bg-blue-500 bg-linear-to-br from-blue-500 to-blue-700 dark:bg-blue-600 dark:from-blue-600 dark:to-blue-800
+                `}
+                style={{
+                  background: avatarColor,
+                }}
               >
                 {initials}
               </div>
+              <div className='absolute inset-0 rounded-full pointer-events-none opacity-20 dark:opacity-30 bg-white/30 bg-linear-to-br from-white/30 to-transparent' />
             </div>
           </div>
         </div>
       ) : (
-        <div className='relative p-4 border-b border-gray-200 dark:border-gray-700 bg-linear-to-br from-blue-50 via-indigo-50 to-white dark:from-gray-800 dark:via-blue-900/10'>
+        <div className='relative p-4 border-b border-gray-200 dark:border-gray-700 bg-blue-50 bg-linear-to-br from-blue-50 via-indigo-50 to-white dark:bg-gray-800 dark:from-gray-800 dark:via-blue-900/10 dark:to-gray-800'>
+          {/* Status indicator bar */}
           <div
-            className={`absolute left-0 top-0 bottom-0 w-1.5 ${status ? 'bg-green-500' : 'bg-red-500'} shadow-lg`}
+            className={`
+            absolute left-0 top-0 bottom-0 w-1.5
+            ${
+              status
+                ? 'bg-green-500 bg-linear-to-b from-green-500 to-green-600 shadow-green-500/30'
+                : 'bg-red-500 bg-linear-to-b from-red-500 to-red-600 shadow-red-500/30'
+            }
+            shadow-lg
+          `}
+            aria-hidden='true'
           />
+
           <div className='absolute top-3.5 right-3.5 z-10'>
             <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
+
           <div className='flex items-start gap-3 pr-14'>
             {headerIcon && (
               <div className='relative shrink-0 group/icon'>
-                <div className='w-12 h-12 rounded-xl flex items-center justify-center shadow-md border border-blue-100 dark:border-blue-800/50 bg-linear-to-br from-white to-blue-50 dark:from-gray-700 text-blue-900 dark:text-blue-100'>
+                <div
+                  className='
+                  w-12 h-12
+                  rounded-xl
+                  flex items-center justify-center
+                  shadow-md dark:shadow-gray-900/30
+                  transition-all duration-300
+                  border border-blue-100 dark:border-blue-800/50
+                  bg-white bg-linear-to-br from-white to-blue-50 dark:bg-gray-700 dark:from-gray-700 dark:to-gray-800
+                  group-hover:shadow-lg group-hover:scale-105
+                  text-blue-900 dark:text-blue-100
+                '
+                >
                   {headerIcon}
                 </div>
+                <div className='absolute inset-0 rounded-xl opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300 blur-sm -z-10 bg-blue-200/20 bg-linear-to-br from-blue-200/20 to-purple-200/20 dark:bg-blue-400/10 dark:from-blue-400/10 dark:to-purple-400/10' />
               </div>
             )}
+
             <div className='min-w-0 flex-1 pt-0.5'>
               <h3
-                className={`font-bold text-gray-900 dark:text-white text-base mb-1 truncate ${titleClassName}`}
+                className={`font-bold text-gray-900 dark:text-white text-base mb-1 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 ${titleClassName}`}
                 title={title}
               >
                 <TruncateTooltip text={title} />
               </h3>
-              {subBadge && <div className='flex flex-wrap gap-1.5 mt-1.5'>{subBadge}</div>}
+              {subBadge && (
+                <div className='flex flex-wrap gap-1.5 mt-1.5' role='list'>
+                  {subBadge}
+                </div>
+              )}
               {subtitle && !subBadge && (
                 <p
                   className={`text-sm text-blue-800 dark:text-blue-200 font-semibold truncate ${subtitleClassName}`}
@@ -223,9 +308,10 @@ export function GenericEntityCard<T>({
         </div>
       )}
 
-      <div className={`px-4 ${isAvatarStyle ? 'pt-12' : 'pt-3.5'} pb-3.5 space-y-2 flex-1`}>
+      {/* Body Section */}
+      <div className={`px-4 ${isAvatarStyle ? 'pt-12' : 'pt-3.5'} pb-3.5 space-y-2 flex-1 min-w-0`}>
         {isAvatarStyle && (
-          <div className='text-center mb-3.5'>
+          <div className='text-center mb-3.5 min-w-0'>
             <h3
               className={`font-bold text-gray-900 dark:text-white text-base mb-1 truncate ${titleClassName}`}
               title={title}
@@ -233,41 +319,85 @@ export function GenericEntityCard<T>({
               {title}
             </h3>
             <p
-              className={`text-sm text-blue-800 dark:text-blue-200 font-semibold mb-2 ${subtitleClassName}`}
+              className={`text-sm text-blue-800 dark:text-blue-200 font-semibold mb-2 truncate ${subtitleClassName}`}
               title={subtitle}
             >
               {subtitle || '—'}
             </p>
-            {subBadge && <div>{subBadge}</div>}
+            {subBadge && <div role='list'>{subBadge}</div>}
           </div>
         )}
-        {customHeader}
-        <div className='space-y-2'>
+
+        {customHeader && <div className='min-w-0'>{customHeader}</div>}
+
+        <div className='space-y-2 min-w-0' role='list'>
           {dataItems
             .filter((item) => !item.optional || (item.optional && item.value))
             .map((item, idx) => {
               const isRemark = item.label === 'Remark';
               const ItemIcon = item.icon;
+
               return (
                 <div
                   key={idx}
-                  className={`flex items-center gap-2.5 p-2.5 rounded-lg border ${isRemark ? 'bg-amber-50/50 border-amber-200 dark:bg-amber-900/10' : 'bg-blue-50/30 border-blue-100 dark:bg-blue-900/10'} ${dataItemClassName}`}
+                  role='listitem'
+                  className={`
+                    flex items-center gap-2.5 p-2.5 rounded-lg
+                    transition-all duration-200 min-w-0
+                    border
+                    ${
+                      isRemark
+                        ? 'bg-amber-50/50 bg-linear-to-br from-amber-50/50 to-amber-100/50 dark:bg-amber-900/10 dark:from-amber-900/10 dark:to-amber-900/20 border-amber-200 dark:border-amber-800/30'
+                        : 'bg-blue-50/30 bg-linear-to-br from-blue-50/30 to-indigo-50/30 dark:bg-blue-900/10 dark:from-blue-900/10 dark:to-indigo-900/10 border-blue-100 dark:border-blue-800/30'
+                    }
+                    ${dataItemClassName}
+                  `}
                 >
                   <div
-                    className={`p-2 rounded-lg shadow-sm shrink-0 border ${isRemark ? 'bg-amber-100 border-amber-300 dark:bg-amber-800/30' : 'bg-blue-100 border-blue-200 dark:bg-blue-800/30'}`}
+                    className={`
+                    p-2 rounded-lg shadow-sm shrink-0 transition-all duration-200 border
+                    ${
+                      isRemark
+                        ? 'bg-amber-100 bg-linear-to-br from-amber-100 to-amber-200 dark:bg-amber-800/30 dark:from-amber-800/30 dark:to-amber-900/40 border-amber-300 dark:border-amber-700/50'
+                        : 'bg-blue-100 bg-linear-to-br from-blue-100 to-indigo-100 dark:bg-blue-800/30 dark:from-blue-800/30 dark:to-indigo-800/30 border-blue-200 dark:border-blue-700/50'
+                    }
+                  `}
+                    aria-hidden='true'
                   >
                     <ItemIcon
-                      className={`w-4 h-4 ${isRemark ? 'text-amber-800 dark:text-amber-300' : 'text-blue-800 dark:text-blue-300'} ${item.iconClassName || ''}`}
+                      className={`w-4 h-4 ${
+                        isRemark
+                          ? 'text-amber-800 dark:text-amber-300'
+                          : 'text-blue-800 dark:text-blue-300'
+                      } ${item.iconClassName || ''}`}
+                      aria-hidden='true'
                     />
                   </div>
-                  <div className='min-w-0 flex-1'>
+                  <div className='min-w-0 flex-1 overflow-hidden'>
                     <div
-                      className={`text-[10px] font-bold uppercase tracking-wider leading-none mb-1 ${isRemark ? 'text-amber-900 dark:text-amber-200' : 'text-blue-800 dark:text-blue-200'} ${item.labelClassName || ''}`}
+                      className={`
+                      text-[10px] font-bold uppercase tracking-wider leading-none mb-1 truncate
+                      ${
+                        isRemark
+                          ? 'text-amber-900 dark:text-amber-200'
+                          : 'text-blue-800 dark:text-blue-200'
+                      }
+                      ${item.labelClassName || ''}
+                    `}
                     >
                       {item.label}
                     </div>
                     <div
-                      className={`${isRemark ? 'text-amber-950 dark:text-amber-100' : 'text-blue-950 dark:text-blue-50'} ${item.valueClassName || ''}`}
+                      className={`
+                      truncate
+                      ${
+                        isRemark
+                          ? 'text-amber-950 dark:text-amber-100'
+                          : 'text-blue-950 dark:text-blue-50'
+                      }
+                      ${item.valueClassName || ''}
+                    `}
+                      title={typeof item.value === 'string' ? item.value : undefined}
                     >
                       {renderValue(item)}
                     </div>
@@ -276,15 +406,31 @@ export function GenericEntityCard<T>({
               );
             })}
         </div>
-        {customFooter}
+
+        {customFooter && <div className='min-w-0 pt-2'>{customFooter}</div>}
       </div>
 
+      {/* Footer Actions */}
       <div
-        className='px-3.5 py-2.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-linear-to-t from-gray-50/50 to-transparent dark:from-gray-800/50'
+        className='
+          px-3.5 py-2.5
+          border-t border-gray-200 dark:border-gray-700
+          flex items-center justify-between gap-2 cursor-default
+          bg-gray-50/50 bg-linear-to-t from-gray-50/50 via-blue-50/20 to-transparent dark:from-gray-800/50 dark:via-blue-900/10 dark:to-transparent
+        '
         onClick={(e) => e.stopPropagation()}
+        role='toolbar'
+        aria-label='Card actions'
       >
-        <div className='flex-1 flex gap-1.5'>{extraActions}</div>
-        <div className='flex items-center gap-1.5'>
+        <div className='flex-1 flex gap-1.5 overflow-x-auto no-scrollbar' role='group'>
+          {extraActions}
+        </div>
+
+        <div
+          className='flex items-center gap-1.5 shrink-0'
+          role='group'
+          aria-label='Primary actions'
+        >
           {onView && (
             <Button
               size='xs'
@@ -294,12 +440,64 @@ export function GenericEntityCard<T>({
                 handleViewAction();
               }}
               disabled={isInteracting}
-              className={`font-semibold bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 ${actionButtonClassName}`}
+              title='View Details'
+              aria-label={`View details for ${title}`}
+              className={`
+                font-semibold hover:scale-105 transition-transform duration-200 cursor-pointer
+                bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/40
+                text-blue-900 dark:text-blue-100
+                border-blue-300 dark:border-blue-700
+                ${actionButtonClassName}
+              `}
             >
-              <FiInfo className='w-4 h-4' />
+              <FiInfo className='w-4 h-4' aria-hidden='true' />
               {!isAvatarStyle && !extraActions && (
                 <span className='ml-1.5 hidden sm:inline'>Details</span>
               )}
+            </Button>
+          )}
+
+          {canEdit && onEdit && (
+            <Button
+              size='xs'
+              variant='ghost'
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(entity);
+              }}
+              title='Edit'
+              aria-label={`Edit ${title}`}
+              className={`
+                text-blue-800 hover:text-blue-900 hover:bg-blue-50
+                dark:text-blue-300 dark:hover:text-blue-200 dark:hover:bg-blue-900/20
+                hover:scale-105 transition-all duration-200 cursor-pointer
+                font-semibold
+                ${actionButtonClassName}
+              `}
+            >
+              <FiEdit2 className='w-4 h-4' aria-hidden='true' />
+            </Button>
+          )}
+
+          {canDelete && onDelete && (
+            <Button
+              size='xs'
+              variant='ghost'
+              className={`
+                text-red-800 hover:text-red-900 hover:bg-red-50
+                dark:text-red-300 dark:hover:text-red-200 dark:hover:bg-red-900/20
+                hover:scale-105 transition-all duration-200 cursor-pointer
+                font-semibold
+                ${actionButtonClassName}
+              `}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(entity);
+              }}
+              title='Delete'
+              aria-label={`Delete ${title}`}
+            >
+              <FiTrash2 className='w-4 h-4' aria-hidden='true' />
             </Button>
           )}
         </div>

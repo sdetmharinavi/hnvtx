@@ -1,47 +1,36 @@
 // hooks/data/useCategoriesData.ts
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
-import { localDb } from '@/hooks/data/localDb';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { createClient } from '@/utils/supabase/client';
 import { CategoryInfo, GroupedLookupsByCategory } from '@/components/categories/categories-types';
+import { useQuery } from '@tanstack/react-query';
 
 export function useCategoriesData() {
   const supabase = createClient();
 
-  // 1. Online Fetcher (Fetch all lookup types)
-  const onlineQueryFn = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('lookup_types')
-      .select('*')
-      .order('category', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  }, [supabase]);
-
-  // 2. Offline Fetcher (Fetch all from Dexie)
-  const localQueryFn = useCallback(() => {
-    return localDb.lookup_types.orderBy('category').toArray();
-  }, []);
-
-  // 3. Local First Hook
   const {
     data: allLookups = [],
     isLoading,
     error,
     refetch,
     isFetching,
-  } = useLocalFirstQuery<'lookup_types'>({
+  } = useQuery({
     queryKey: ['categories-data-all'],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.lookup_types,
+    queryFn: async (): Promise<Lookup_typesRowSchema[]> => {
+      const { data, error } = await supabase
+        .from('lookup_types')
+        .select('*')
+        .order('category', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000
   });
 
-  // 4. Client-Side Processing (Deduplication & Grouping)
+  // Client-Side Processing (Deduplication & Grouping)
   const processedData = useMemo(() => {
     if (!allLookups)
       return {
@@ -65,7 +54,7 @@ export function useCategoriesData() {
       if (!groupedLookups[cat]) groupedLookups[cat] = [];
       groupedLookups[cat].push(lookup);
 
-      // Deduplication (Keep the first one encountered as the "Representative" for the category list)
+      // Deduplication (Keep the first one encountered as the "Representative")
       if (!uniqueCategoriesMap.has(cat)) {
         uniqueCategoriesMap.set(cat, lookup);
       }

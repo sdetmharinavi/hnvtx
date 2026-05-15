@@ -8,6 +8,7 @@ import {
   fiber_splicesRowSchema,
   nodesRowSchema,
 } from '@/schemas/zod-schemas';
+import { JsonSchema } from '@/types/custom';
 
 // ============= AUTH & UI-SPECIFIC SCHEMAS =============
 
@@ -44,7 +45,7 @@ export const ofcForSelectionSchema = v_ofc_cables_completeRowSchema
     capacity: true,
   })
   .extend({
-    ofc_connections: z.array(z.object({ id: z.uuid() })),
+    ofc_connections: z.array(z.object({ id: z.uuid() })).optional().default([]),
   });
 export type OfcForSelection = z.infer<typeof ofcForSelectionSchema>;
 
@@ -65,17 +66,17 @@ const fiberAtSegmentSchema = z.object({
 });
 
 const segmentAtJcSchema = z.object({
-  segment_id: cable_segmentsRowSchema.shape.id,
+  segment_id: z.uuid(),
   segment_name: z.string(),
-  fiber_count: cable_segmentsRowSchema.shape.fiber_count,
+  fiber_count: z.number().int(),
   fibers: z.array(fiberAtSegmentSchema),
   distance_km: z.number().nullable().optional(),
 });
 
 export const jcSplicingDetailsSchema = z.object({
   junction_closure: z.object({
-    id: junction_closuresRowSchema.shape.id,
-    name: nodesRowSchema.shape.name,
+    id: z.uuid(),
+    name: z.string().nullable().optional(),
   }),
   segments_at_jc: z.array(segmentAtJcSchema),
 });
@@ -83,49 +84,106 @@ export type JcSplicingDetails = z.infer<typeof jcSplicingDetailsSchema>;
 
 // --- For RouteDetailsPayload and its constituent parts ---
 
-const relaxed_v_ofc_cables_completeRowSchema = v_ofc_cables_completeRowSchema.extend({
-  created_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
-});
+// Helper for permissive date handling (string or null)
+const dateStringSchema = z.string().nullable().optional();
 
-const relaxed_junction_closuresRowSchema = junction_closuresRowSchema.extend({
-  created_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
-});
+// Helper for permissive number handling (can be string in some DB drivers, though Supabase usually sends numbers)
+const numberSchema = z.union([z.number(), z.string()]).transform((val) => Number(val)).nullable().optional();
 
-const relaxed_cable_segmentsRowSchema = cable_segmentsRowSchema.extend({
-  created_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
-});
-
-export const cableSegmentSchema = relaxed_cable_segmentsRowSchema;
-export type CableSegment = z.infer<typeof cableSegmentSchema>;
-
-export const fiberSpliceSchema = fiber_splicesRowSchema;
-export type FiberSplice = z.infer<typeof fiberSpliceSchema>;
-
+// 1. Cable Route Schema - Explicitly redefine critical fields to be safe for JSON transfer
 const siteSchema = z.object({
-  id: nodesRowSchema.shape.id.nullable(),
-  name: nodesRowSchema.shape.name.nullable(),
+  id: z.uuid().nullable(),
+  name: z.string().nullable(),
 });
 
-export const cableRouteSchema = relaxed_v_ofc_cables_completeRowSchema.extend({
-  start_site: siteSchema,
-  end_site: siteSchema,
-  evolution_status: z.enum(['simple', 'with_jcs', 'fully_segmented']),
-});
+export const cableRouteSchema = z.object({
+  id: z.uuid().nullable(),
+  route_name: z.string().nullable(),
+  ofc_type_name: z.string().nullable(),
+  capacity: z.number().nullable(),
+  current_rkm: numberSchema,
+  transnet_rkm: numberSchema,
+  ofc_owner_name: z.string().nullable(),
+  maintenance_area_name: z.string().nullable(),
+  maintenance_area_code: z.string().nullable(),
+  asset_no: z.string().nullable(),
+  transnet_id: z.string().nullable(),
+  remark: z.string().nullable().optional(),
+  
+  // ID fields
+  sn_id: z.uuid().nullable(),
+  en_id: z.uuid().nullable(),
+  sn_name: z.string().nullable(),
+  en_name: z.string().nullable(),
+  
+  // Timestamps
+  commissioned_on: dateStringSchema,
+  created_at: dateStringSchema,
+  updated_at: dateStringSchema,
+  last_activity_at: dateStringSchema,
+
+  // Status
+  status: z.boolean().nullable().optional(),
+  
+  // Derived/Joined fields
+  start_site: siteSchema.optional(),
+  end_site: siteSchema.optional(),
+  evolution_status: z.enum(['simple', 'with_jcs', 'fully_segmented']).optional(),
+  
+  // Handle linked_cables jsonb safely
+  linked_cables: JsonSchema.nullable().optional(),
+}).loose(); // Allow extra fields from the view without crashing
+
 export type CableRoute = z.infer<typeof cableRouteSchema>;
 
-export const jointBoxSchema = relaxed_junction_closuresRowSchema.extend({
-  node: z.object({ name: nodesRowSchema.shape.name.nullable() }).nullable(),
-  status: z.enum(['existing', 'planned']),
+// 2. Joint Box Schema
+export const jointBoxSchema = z.object({
+  id: z.uuid().optional(), // Might be optional during creation flows
+  node_id: z.uuid(),
+  ofc_cable_id: z.uuid(),
+  position_km: numberSchema,
+  
+  // Joined/Derived
+  node: z.object({ name: z.string().nullable() }).nullable().optional(),
+  status: z.enum(['existing', 'planned']).optional(),
   attributes: z.object({
     position_on_route: z.number(),
     name: z.string().optional(),
-  }),
-});
+  }).optional(),
+  
+  created_at: dateStringSchema,
+  updated_at: dateStringSchema,
+}).loose();
+
 export type JointBox = z.infer<typeof jointBoxSchema>;
 
+// 3. Segment Schema
+export const cableSegmentSchema = z.object({
+  id: z.uuid().optional(),
+  original_cable_id: z.uuid(),
+  segment_order: z.number(),
+  start_node_id: z.uuid(),
+  end_node_id: z.uuid(),
+  start_node_type: z.string(),
+  end_node_type: z.string(),
+  distance_km: z.number(),
+  fiber_count: z.number(),
+  
+  created_at: dateStringSchema,
+  updated_at: dateStringSchema,
+}).loose();
+
+export type CableSegment = z.infer<typeof cableSegmentSchema>;
+
+// 4. Splice Schema
+export const fiberSpliceSchema = fiber_splicesRowSchema.extend({
+  created_at: dateStringSchema,
+  updated_at: dateStringSchema,
+}).loose();
+
+export type FiberSplice = z.infer<typeof fiberSpliceSchema>;
+
+// 5. Main Payload
 export const routeDetailsPayloadSchema = z.object({
   route: cableRouteSchema,
   jointBoxes: z.array(jointBoxSchema),
@@ -183,8 +241,9 @@ export const linkedCableSchema = z.object({
 export type LinkedCable = z.infer<typeof linkedCableSchema>;
 
 // Extended Schema to include the JSONB aggregated column
-export const extendedOfcCableSchema = v_ofc_cables_completeRowSchema.extend({
-  linked_cables: z.array(linkedCableSchema).nullable(),
+// Use the redefined cableRouteSchema for consistency instead of extending the generated one again
+export const extendedOfcCableSchema = cableRouteSchema.extend({
+  linked_cables: z.array(linkedCableSchema).nullable().optional(),
 });
 
 export type ExtendedOfcCable = z.infer<typeof extendedOfcCableSchema>;

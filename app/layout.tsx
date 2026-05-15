@@ -1,4 +1,4 @@
-// path: app/layout.tsx
+// app/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
@@ -8,28 +8,26 @@ import { ToastProvider } from '@/providers/ToastProvider';
 import ThemeProvider from '@/providers/ThemeProvider';
 import PwaRegistry from '@/components/pwa/PwaRegistry';
 import { QueryProvider } from '@/providers/QueryProvider';
-import { LocalDbProvider } from '@/providers/LocalDbProvider';
-import { AppearanceProvider } from '@/providers/AppearanceProvider'; // IMPORTED
+import { AppearanceProvider } from '@/providers/AppearanceProvider';
+import { NextFontWithVariable } from 'next/dist/compiled/@next/font';
 
-const defaultUrl = process.env.VERCEL_URL
+const defaultUrl: string = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : 'http://localhost:3000';
 
-// Load the main body font (Inter)
-const fontSans = localFont({
+const fontSans: NextFontWithVariable = localFont({
   src: '../public/fonts/Inter.woff2',
   display: 'swap',
-  variable: '--font-sans', // We'll use this for Tailwind's 'sans' class
-  preload: true,
+  variable: '--font-sans',
+  preload: false,
   fallback: ['system-ui', 'arial'],
 });
 
-// Load the secondary heading font (Montserrat)
-const fontHeading = localFont({
+const fontHeading: NextFontWithVariable = localFont({
   src: '../public/fonts/Montserrat.woff2',
   display: 'swap',
-  variable: '--font-heading', // We'll use this for a custom 'heading' class
-  preload: true,
+  variable: '--font-heading',
+  preload: false,
   fallback: ['system-ui', 'times new roman'],
 });
 
@@ -39,8 +37,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'cyan' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
+    { media: '(prefers-color-scheme: light)', color: '#020617' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
   ],
 };
 
@@ -55,8 +53,13 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'Harinavi Transmission Maintenance',
+    startupImage: [
+      {
+        url: '/icon-512x512.png',
+      },
+    ],
   },
   formatDetection: {
     telephone: false,
@@ -77,35 +80,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning>
+      <head>
+        <link rel='apple-touch-startup-image' href='/splash.png' />
+      </head>
       <body className={`${fontSans.variable} ${fontHeading.variable} antialiased`}>
-        {/* 1. LOAD POLYFILLS FIRST */}
+        {/* THE FIX: Mount point for react-datepicker portals inside modals */}
+        <div id='root-portal'></div>
+
         <PolyfillLoader />
-        {/* 2. Theme Script */}
-        {/* ** Inline script to prevent theme flashing** */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  let theme = 'system'; // Default to system
+                  let theme = 'system';
                   const storedValue = localStorage.getItem('theme-storage');
 
                   if (storedValue) {
-                    // Try to parse as JSON (new format)
                     try {
                       const parsed = JSON.parse(storedValue);
                       if (parsed && parsed.state && typeof parsed.state.theme === 'string') {
                         theme = parsed.state.theme;
                       }
                     } catch (e) {
-                      // If parsing fails, it might be the old raw string format
-                      if (typeof storedValue === 'string' && ['light', 'dark', 'system'].includes(storedValue)) {
+                      if (typeof storedValue === 'string' &&['light', 'dark', 'system'].includes(storedValue)) {
                         theme = storedValue;
                       }
                     }
                   }
-                  
+
                   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                   if (isDark) {
                     document.documentElement.classList.add('dark');
@@ -117,17 +121,13 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* 3. Providers & App */}
         <ThemeProvider>
-          {/* WRAP with AppearanceProvider */}
           <AppearanceProvider>
             <QueryProvider>
-              <LocalDbProvider>
-                <ToastProvider>
-                  <PwaRegistry />
-                  {children}
-                </ToastProvider>
-              </LocalDbProvider>
+              <ToastProvider>
+                <PwaRegistry />
+                {children}
+              </ToastProvider>
             </QueryProvider>
           </AppearanceProvider>
         </ThemeProvider>

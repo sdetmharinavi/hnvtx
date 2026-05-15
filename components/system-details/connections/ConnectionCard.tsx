@@ -310,7 +310,10 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
                 </div>
               </div>
             )}
-            <GenericRemarks remark={connection.remark || ''} />
+            <GenericRemarks
+              className='whitespace-normal wrap-break-words'
+              remark={connection.remark || ''}
+            />
           </div>
         )}
       </div>

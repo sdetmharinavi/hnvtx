@@ -3,10 +3,10 @@
 
 import { useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { useQuery } from '@tanstack/react-query';
 import { Option } from '@/components/common/ui/select/SearchableSelect';
 import { buildRpcFilters, PublicTableOrViewName } from '@/hooks/database';
+import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 
 interface OptionsQuery {
   tableName: PublicTableOrViewName;
@@ -38,89 +38,32 @@ export function useDropdownOptions({
   orderBy = 'name',
   orderDir = 'asc',
 }: OptionsQuery) {
-  const onlineQueryFn = async () => {
-    const validFilters = cleanFilters(filters);
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: tableName,
-      p_limit: 10000,
-      p_offset: 0,
-      p_filters: buildRpcFilters(validFilters),
-      p_order_by: orderBy,
-      p_order_dir: orderDir,
-    });
+  const supabase = createClient();
 
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  };
-
-  const localQueryFn = () => {
-    const table = localDb.table(tableName);
-    const validFilters = cleanFilters(filters);
-
-    if (Object.keys(validFilters).length === 0) {
-      return table
-        .orderBy(orderBy)
-        .toArray()
-        .then((result) => sortResult(result));
-    }
-
-    return table
-      .filter((item) => {
-        return Object.entries(validFilters).every(([key, val]) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const itemVal = (item as any)[key];
-
-          // Robust boolean check: handles true/false vs "true"/"false" vs 1/0
-          if (key === 'status') {
-            return String(itemVal) === String(val);
-          }
-          // General equality check
-          return itemVal === val;
-        });
-      })
-      .toArray()
-      .then((result) => sortResult(result));
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sortResult = (result: any[]) => {
-    return result.sort((a, b) => {
-      const valA = a[orderBy];
-      const valB = b[orderBy];
-      let comparison = 0;
-
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        comparison = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
-      } else {
-        comparison = valA > valB ? 1 : valA < valB ? -1 : 0;
-      }
-
-      // THE FIX: Secondary Sort by Label if primary sort is equal (e.g. all have sort_order 0)
-      if (comparison === 0 && orderBy !== labelField) {
-         const labelA = String(a[labelField] || '');
-         const labelB = String(b[labelField] || '');
-         return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: 'base' });
-      }
-
-      return orderDir === 'asc' ? comparison : -comparison;
-    });
-  };
-
-  const { data, isLoading } = useLocalFirstQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['dropdown-options', tableName, filters, orderBy, orderDir],
-    onlineQueryFn,
-    localQueryFn,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    dexieTable: localDb.table(tableName) as any,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    // MODIFIED: Removed the `autoSync: true` property as it is no longer valid.
+    queryFn: async () => {
+      const validFilters = cleanFilters(filters);
+      
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: tableName,
+        p_limit: 10000,
+        p_offset: 0,
+        p_filters: buildRpcFilters(validFilters),
+        p_order_by: orderBy,
+        p_order_dir: orderDir,
+      });
+
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any)?.data || [];
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+    refetchOnWindowFocus: false,
   });
 
   const options: Option[] = useMemo(() => {
     if (!data) return [];
-
-    // Deduplicate options based on label to prevent clutter
     const uniqueLabels = new Set<string>();
     const uniqueOptions: Option[] = [];
 
@@ -129,7 +72,6 @@ export function useDropdownOptions({
       const label = String(item[labelField]);
       const value = String(item[valueField]);
 
-      // If label already exists, skip (or you could prefer specific IDs)
       if (!uniqueLabels.has(label)) {
         uniqueLabels.add(label);
         uniqueOptions.push({ value, label });
@@ -141,8 +83,6 @@ export function useDropdownOptions({
 
   return { options, isLoading, originalData: data || [] };
 }
-
-// ... (Rest of exports) ...
 
 export const useLookupTypeOptions = (
   category: string,
@@ -190,38 +130,30 @@ export const useActiveRingOptions = () => {
 };
 
 export function useEmployeeOptions() {
-  const onlineQueryFn = async () => {
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_employees',
-      p_limit: 10000,
-      p_offset: 0,
-      p_filters: { status: true },
-      p_order_by: 'employee_name',
-    });
-
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  };
-
-  const localQueryFn = () => {
-    return localDb.v_employees
-      .orderBy('employee_name')
-      .filter((e) => e.status === true)
-      .toArray();
-  };
-
-  const { data, isLoading } = useLocalFirstQuery<'v_employees'>({
+  const supabase = createClient();
+  
+  const { data, isLoading } = useQuery({
     queryKey: ['employee-options'],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_employees,
-    // MODIFIED: Removed the `autoSync: true` property.
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_employees',
+        p_limit: 10000,
+        p_offset: 0,
+        p_filters: { status: true },
+        p_order_by: 'employee_name',
+      });
+
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any)?.data || [];
+    },
+    staleTime: 1000 * 60 * 10,
   });
 
   const options: Option[] = useMemo(() => {
     if (!data) return [];
-    return data.map((e) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return data.map((e: any) => ({
       value: e.id!,
       label: `${e.employee_name} ${
         e.employee_designation_name ? `(${e.employee_designation_name})` : ''
@@ -233,75 +165,58 @@ export function useEmployeeOptions() {
 }
 
 export function useSystemOptions() {
-  const onlineQueryFn = async () => {
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_systems_complete',
-      p_limit: 10000,
-      p_offset: 0,
-      p_order_by: 'system_name',
-      p_order_dir: 'asc',
-      p_filters: {},
-    });
-
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  };
-
-  const localQueryFn = () => {
-    return localDb.v_systems_complete.orderBy('system_name').toArray();
-  };
-
-  const { data, isLoading } = useLocalFirstQuery<'v_systems_complete'>({
+  const supabase = createClient();
+  
+  const { data, isLoading } = useQuery({
     queryKey: ['system-options'],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_systems_complete,
-    // MODIFIED: Removed the `autoSync: true` property.
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_systems_complete',
+        p_limit: 10000,
+        p_offset: 0,
+        p_order_by: 'system_name',
+        p_order_dir: 'asc',
+        p_filters: {},
+      });
+
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any)?.data || [];
+    },
+    staleTime: 1000 * 60 * 5,
   });
 
   return { data: data || [], isLoading };
 }
 
 export function usePortOptions(systemId: string | null) {
-  const onlineQueryFn = async () => {
-    if (!systemId) return [];
-
-    const rpcFilters = buildRpcFilters({
-      system_id: systemId,
-      port_admin_status: true,
-    });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_ports_management_complete',
-      p_limit: 10000,
-      p_offset: 0,
-      p_order_by: 'port',
-      p_order_dir: 'asc',
-      p_filters: rpcFilters,
-    });
-
-    if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.data || [];
-  };
-
-  const localQueryFn = () => {
-    if (!systemId) return Promise.resolve([]);
-    return localDb.v_ports_management_complete
-      .where('system_id')
-      .equals(systemId)
-      .filter((p) => p.port_admin_status === true)
-      .toArray();
-  };
-
-  const { data, isLoading } = useLocalFirstQuery<'v_ports_management_complete'>({
+  const supabase = createClient();
+  
+  const { data, isLoading } = useQuery({
     queryKey: ['port-options', systemId],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_ports_management_complete,
+    queryFn: async () => {
+      if (!systemId) return [];
+
+      const rpcFilters = buildRpcFilters({
+        system_id: systemId,
+        port_admin_status: true,
+      });
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_ports_management_complete',
+        p_limit: 10000,
+        p_offset: 0,
+        p_order_by: 'port',
+        p_order_dir: 'asc',
+        p_filters: rpcFilters,
+      });
+
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any)?.data || [];
+    },
     enabled: !!systemId,
-    localQueryDeps: [systemId],
+    staleTime: 1000 * 60 * 5,
   });
 
   return { data: data || [], isLoading };

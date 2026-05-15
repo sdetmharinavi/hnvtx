@@ -2,20 +2,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppSettingsStore } from '@/stores/appSettingsStore';
 
 export function useOnlineStatus() {
-  const [isBrowserOnline, setIsBrowserOnline] = useState(true);
-  const isSimulatedOffline = useAppSettingsStore((state) => state.isSimulatedOffline);
+  // Default to true to prevent hydration mismatch, update in useEffect
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    // Check status on initial client-side render
+    // Initial check
     if (typeof window !== 'undefined') {
-      setIsBrowserOnline(navigator.onLine);
+      setIsOnline(navigator.onLine);
     }
 
-    const handleOnline = () => setIsBrowserOnline(true);
-    const handleOffline = () => setIsBrowserOnline(false);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -26,6 +25,5 @@ export function useOnlineStatus() {
     };
   }, []);
 
-  // Return false if either the browser is offline OR the user has simulated offline mode
-  return isBrowserOnline && !isSimulatedOffline;
+  return isOnline;
 }

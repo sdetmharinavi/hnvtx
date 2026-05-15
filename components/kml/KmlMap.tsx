@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, GeoJSON, useMap, LayersControl } from 'react-l
 import L from 'leaflet';
 import * as toGeoJSON from '@mapbox/togeojson'; 
 import JSZip from 'jszip';
-import { toPng } from 'html-to-image'; // THE FIX: Replaced html2canvas
+import { toPng } from 'html-to-image';
 import 'leaflet/dist/leaflet.css';
 import { PageSpinner } from '@/components/common/ui';
 import { Maximize, Minimize, Printer, RotateCw, RotateCcw, Plus, Minus, Camera, Ruler } from 'lucide-react';
@@ -311,42 +311,25 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
     
     setIsGeneratingImage(true);
     const toastId = toast.loading("Generating High-Res Image...");
-
-    // Store the current rotation to restore later
     const currentRotation = rotation;
 
     try {
-      // 1. Temporarily reset rotation to 0
-      // This is crucial because standard DOM-to-image libraries can struggle with 
-      // rotated elements, especially complex ones like Leaflet containers.
       setRotation(0);
-      
-      // 2. Wait for the state update and re-render
       await new Promise(resolve => setTimeout(resolve, 800));
-
-      // 3. Force map to redraw in 0-degree state to ensure tiles are loaded
       mapRef.current.invalidateSize();
 
-      // 4. Capture the map using html-to-image
-      // This library uses SVG serialization which handles modern CSS variables better than html2canvas
       const dataUrl = await toPng(containerRef.current, {
         cacheBust: true,
-        pixelRatio: 2, // High resolution
-        backgroundColor: '#f3f4f6', // Ensure a background color if tiles have gaps
-        filter: (node) => {
-            // Exclude controls that shouldn't appear in the image
-            return !node.classList?.contains('no-print');
-        }
+        pixelRatio: 2, 
+        backgroundColor: '#f3f4f6', 
+        filter: (node) => !node.classList?.contains('no-print')
       });
 
-      // 5. If the map was rotated, apply that rotation to the captured image manually
       let finalDataUrl = dataUrl;
-      
       if (currentRotation !== 0) {
         finalDataUrl = await rotateImage(dataUrl, currentRotation);
       }
 
-      // 6. Download the resulting image
       const link = document.createElement('a');
       link.download = `kml-map-view-${new Date().toISOString().split('T')[0]}.png`;
       link.href = finalDataUrl;
@@ -360,7 +343,6 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
       console.error("Snapshot failed:", error);
       toast.error("Failed to generate image.", { id: toastId });
     } finally {
-      // 7. Restore original rotation state
       setRotation(currentRotation);
       setIsGeneratingImage(false);
     }

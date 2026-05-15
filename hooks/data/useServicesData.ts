@@ -1,6 +1,5 @@
 // hooks/data/useServicesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 const matchFilter = (itemValue: unknown, filterValue: unknown) => {
   if (Array.isArray(filterValue)) {
@@ -21,7 +20,7 @@ export const useServicesData = createGenericDataQuery<'v_services'>({
     'unique_id',
   ],
   defaultSortField: 'name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed to use default 6000
   filterFn: (s, filters) => {
     if (filters.link_type_id && !matchFilter(s.link_type_id, filters.link_type_id)) return false;
 

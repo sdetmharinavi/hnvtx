@@ -10,14 +10,6 @@ export const useOfcConnectionsData = (cableId: string | null) => {
     // Inject the cable ID as a mandatory server-side filter
     baseFilters: cableId ? { ofc_id: cableId } : {},
 
-    // Use an indexed query for local data fetching optimization
-    // THE FIX: Do NOT call .sortBy() here. Return the Collection.
-    // The generic hook will handle sorting via performClientSort.
-    getLocalCollection: (table) => {
-        if (!cableId) return table.limit(0); // Return empty if no ID
-        return table.where('ofc_id').equals(cableId);
-    },
-
     searchFields: [
       'system_name',
       'connection_type',
@@ -50,7 +42,7 @@ export const useOfcConnectionsData = (cableId: string | null) => {
         if (c.status !== statusBool) return false;
       }
 
-      // 3. Custom Allocation Status Logic (Ported from original hook)
+      // 3. Custom Allocation Status Logic
       if (filters.allocation_status) {
         const filterVal = filters.allocation_status;
 

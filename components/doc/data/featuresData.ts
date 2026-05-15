@@ -1,4 +1,4 @@
-// path: components/doc/data/featuresData.ts
+// components/doc/data/featuresData.ts
 import { FeatureItem } from "../types/featureTypes";
 
 export const featuresData: FeatureItem[] = [
@@ -26,17 +26,17 @@ export const featuresData: FeatureItem[] = [
     subtitle: "Zero data loss connectivity",
     icon: "WifiOff",
     color: "rose",
-    description: "Our advanced 'Safe Sync' engine ensures you never lose work. If you edit data while offline, changes are queued locally. When you reconnect, the system merges your pending changes with the latest server data, preventing accidental overwrites.",
+    description: "Our advanced 'Safe Sync' engine ensures you never lose work. Network states are cached dynamically using TanStack Query Persisters and Service Workers. When offline, you browse seamlessly from cache.",
     benefits: [
       "Works completely without internet access.",
-      "Safe Sync: Pending local edits are preserved during refresh.",
+      "Safe Sync: Data is cached locally across sessions.",
       "Automatic background synchronization when online.",
     ],
     technicalHighlights: [
-      "IndexedDB (Dexie.js) local storage",
-      "Mutation Queue for optimistic writes",
-      "Conflict-aware hydration strategy",
+      "TanStack Query Async Storage Persister",
+      "Serwist PWA Caching Strategies",
       "Stale-While-Revalidate caching",
+      "Robust offline detection hooks",
     ],
   },
   {

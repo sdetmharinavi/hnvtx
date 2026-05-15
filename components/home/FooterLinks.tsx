@@ -28,7 +28,7 @@ export default function FooterLinks() {
   const handleHardReset = async () => {
     const confirmed = window.confirm(
       "⚠️ RECOVERY MODE ⚠️\n\n" +
-      "This will wipe all local data (Database, Cache, Login Session) to fix loading issues.\n\n" +
+      "This will clear browser cache, cookies, and local storage to fix loading issues.\n\n" +
       "Are you sure you want to proceed?"
     );
 
@@ -38,32 +38,25 @@ export default function FooterLinks() {
     const toastId = toast.loading("Resetting application data...");
 
     try {
-      // 1. Dynamic import to avoid SSR issues with Dexie
-      const { localDb } = await import("@/hooks/data/localDb");
-      
-      // 2. Delete IndexedDB
-      await localDb.delete();
-      console.log("Database deleted");
-
-      // 3. Clear Local/Session Storage
+      // 1. Clear Local/Session Storage
       localStorage.clear();
       sessionStorage.clear();
 
-      // 4. Clear Cookies (for middleware/server session)
+      // 2. Clear Cookies (for middleware/server session)
       document.cookie.split(";").forEach((c) => {
         document.cookie = c
           .replace(/^ +/, "")
           .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
 
-      // 5. Clear Service Worker Caches
+      // 3. Clear Service Worker Caches
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(key => caches.delete(key)));
         console.log("Caches cleared");
       }
 
-      // 6. Unregister Service Workers
+      // 4. Unregister Service Workers
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const registration of registrations) {
@@ -72,13 +65,15 @@ export default function FooterLinks() {
         console.log("Service Worker unregistered");
       }
 
+      // Note: IndexedDB deletion removed as localDb is deprecated.
+
       toast.success("Reset complete. Reloading...", { id: toastId });
 
-      // 7. Force Hard Reload
+      // 5. Force Hard Reload
       setTimeout(() => {
          window.location.reload();
       }, 1000);
-      
+
     } catch (e) {
       console.error("Reset failed", e);
       toast.error("Reset failed. Please clear browser site data manually.", { id: toastId });
@@ -96,7 +91,7 @@ export default function FooterLinks() {
     >
       <div className="flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-400 dark:text-gray-500">
         <span>&copy; {currentYear} Harinavi. All Rights Reserved.</span>
-        
+
         <div className="flex items-center gap-x-4">
           <Link
             href="/terms"
@@ -112,7 +107,7 @@ export default function FooterLinks() {
             Privacy
           </Link>
           <span className="opacity-50">|</span>
-          
+
           {/* RESET BUTTON */}
           <button
             onClick={handleHardReset}

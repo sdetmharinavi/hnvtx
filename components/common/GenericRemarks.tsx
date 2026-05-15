@@ -1,14 +1,21 @@
 import React from 'react';
 import { FiMessageSquare } from 'react-icons/fi';
 import TruncateTooltip from './TruncateTooltip';
+import { cn } from '@/lib/utils';
 
 interface GenericRemarksProps {
   remark: string;
   maxLines?: number;
   renderAsHtml?: boolean;
+  className?: string;
 }
 
-const GenericRemarks = ({ remark, maxLines = 2, renderAsHtml = true }: GenericRemarksProps) => {
+const GenericRemarks = ({
+  remark,
+  maxLines = 2,
+  renderAsHtml = true,
+  className = '',
+}: GenericRemarksProps) => {
   if (!remark) return null;
 
   return (
@@ -23,7 +30,7 @@ const GenericRemarks = ({ remark, maxLines = 2, renderAsHtml = true }: GenericRe
         expandable={true}
         maxLines={maxLines}
         renderAsHtml={renderAsHtml}
-        className='flex-1'
+        className={cn('flex-1', className)}
       />
     </div>
   );

@@ -1,29 +1,30 @@
 // hooks/data/useGenericDataQuery.ts
 import { useMemo, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query'; 
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
-import { buildRpcFilters, PublicTableOrViewName, Row, Filters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { buildRpcFilters, PublicTableOrViewName, Row } from '@/hooks/database';
 import {
   buildServerSearchString,
   performClientPagination,
-  performClientSort,
-  performClientSearch
 } from '@/hooks/database/search-utils';
-import { Table, Collection } from 'dexie';
+import { DEFAULTS } from '@/constants/constants';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FilterFunction<T> = (item: T, filters: Record<string, any>) => boolean;
 
 interface GenericDataQueryOptions<T extends PublicTableOrViewName> {
   tableName: T;
   searchFields: (keyof Row<T> & string)[];
   serverSearchFields?: string[];
-  defaultSortField: keyof Row<T> & string;
+  defaultSortField?: keyof Row<T>;
+  filterFn?: FilterFunction<Row<T>>;
+  rpcName?: string;
   rpcLimit?: number;
   orderBy?: 'asc' | 'desc';
   activeStatusField?: keyof Row<T> & string;
-  baseFilters?: Filters;
-  getLocalCollection?: (table: Table<Row<T>, string | number>) => Collection<Row<T>, string | number> | Table<Row<T>, string | number>;
-  filterFn?: (item: Row<T>, filters: Record<string, unknown>) => boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  baseFilters?: Record<string, any>;
 }
 
 export function createGenericDataQuery<T extends PublicTableOrViewName>(
@@ -33,13 +34,13 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
     tableName,
     searchFields,
     serverSearchFields,
-    defaultSortField,
-    rpcLimit = 5000,
+    defaultSortField = 'name' as keyof Row<T>,
+    filterFn,
+    rpcName = 'get_paged_data',
+    rpcLimit = 6000,
     orderBy = 'asc',
     activeStatusField = 'status' as keyof Row<T> & string,
     baseFilters = {},
-    getLocalCollection,
-    filterFn
   } = options;
 
   return (params: DataQueryHookParams): DataQueryHookReturn<Row<T>> => {
@@ -48,91 +49,89 @@ export function createGenericDataQuery<T extends PublicTableOrViewName>(
 
     const actualServerSearchFields = useMemo(
       () => serverSearchFields || searchFields,
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       [serverSearchFields, searchFields]
     );
 
-    const onlineQueryFn = useCallback(async (): Promise<Row<T>[]> => {
+    const queryFn = useCallback(async (): Promise<Row<T>[]> => {
       const searchString = buildServerSearchString(searchQuery, actualServerSearchFields);
-      const queryFilters = { ...filters, ...baseFilters };
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const queryFilters: Record<string, any> = { ...baseFilters, ...filters };
+      if (searchString) queryFilters.or = searchString;
 
-      if (searchString) {
-        queryFilters.or = searchString;
-      }
+      // THE FIX: Added 'stock_status' to prevent Postgres PGRST errors on the inventory page
+      const clientSideKeys = ['coordinates_status', 'sortBy', 'allocation_status', 'stock_status'];
+      clientSideKeys.forEach(key => {
+        if (key in queryFilters) delete queryFilters[key];
+      });
 
-      const { data, error } = await supabase.rpc('get_paged_data', {
+      const rpcFilters = buildRpcFilters(queryFilters);
+      
+      const { data, error } = await supabase.rpc(rpcName, {
         p_view_name: tableName,
         p_limit: rpcLimit,
         p_offset: 0,
-        p_filters: buildRpcFilters(queryFilters),
-        p_order_by: defaultSortField,
+        p_filters: rpcFilters,
+        p_order_by: String(defaultSortField),
         p_order_dir: orderBy,
+        p_status_column_name: activeStatusField,
       });
 
       if (error) throw error;
-      const response = data as { data: Row<T>[] };
-      return response.data ||[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((data as any)?.data || []) as Row<T>[];
     }, [searchQuery, filters, actualServerSearchFields, supabase]);
 
-    const localQueryFn = useCallback(async () => {
-      const table = (localDb as unknown as Record<string, Table<Row<T>, string | number>>)[tableName];
-      
-      const dbResults = getLocalCollection ? await getLocalCollection(table).toArray() : await table.toArray();
-      
-      // 1. Search
-      let filtered = performClientSearch(dbResults, searchQuery, searchFields);
-
-      // 2. Filters
-      filtered = filtered.filter((item) => {
-        // Base filters first
-        for (const[key, value] of Object.entries(baseFilters)) {
-            if (String(item[key as keyof Row<T>]) !== String(value)) return false;
-        }
-        
-        // Custom filter function
-        if (filterFn && !filterFn(item, filters)) return false;
-
-        // General exact match filters (if no custom filterFn handled it)
-        if (!filterFn) {
-            for (const [key, value] of Object.entries(filters)) {
-                if (!value || key === 'or') continue;
-                if (String(item[key as keyof Row<T>]) !== String(value)) return false;
-            }
-        }
-        return true;
-      });
-
-      // 3. Sort
-      return performClientSort(filtered, defaultSortField, orderBy);
-    }, [searchQuery, filters]);
-
     const {
-      data: filteredData =[],
+      data: allData = [],
       isLoading,
       isFetching,
       error,
       refetch,
-    } = useLocalFirstQuery<T>({
-      queryKey:[tableName, searchQuery, filters],
-      onlineQueryFn,
-      localQueryFn,
-      dexieTable: (localDb as unknown as Record<string, Table<Row<T>, string | number>>)[tableName],
-      localQueryDeps: [searchQuery, filters],
+    } = useQuery<Row<T>[]>({
+      queryKey: [`${tableName}-data`, searchQuery, filters, baseFilters],
+      queryFn,
+      placeholderData: keepPreviousData,
+      staleTime: DEFAULTS.CACHE_TIME, 
     });
 
     const processedData = useMemo(() => {
-      const totalCount = filteredData.length;
-      const activeCount = filteredData.filter((i) => (i as Record<string, unknown>)[activeStatusField] === true).length;
-      const paginatedData = performClientPagination(filteredData, currentPage, pageLimit);
+      let filtered = allData;
+
+      // Client-side filtering (if filterFn is provided)
+      if (filterFn) {
+        filtered = filtered.filter((item) => filterFn(item, filters));
+      }
+
+      // Client-side sorting (Optional specific overrides)
+      if (filters.sortBy === 'last_activity' && filtered.length > 0) {
+        filtered = [...filtered].sort((a, b) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tA = new Date((a as any).last_activity_at || 0).getTime();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tB = new Date((b as any).last_activity_at || 0).getTime();
+          return tB - tA; // Descending
+        });
+      }
+
+      const totalCount = filtered.length;
+      let activeCount = totalCount;
+      
+      if (filtered.length > 0 && activeStatusField in (filtered[0] as object)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeCount = filtered.filter((i) => (i as any)[activeStatusField] === true).length;
+      }
+      const inactiveCount = totalCount - activeCount;
+
+      const paginatedData = performClientPagination(filtered, currentPage, pageLimit);
 
       return {
         data: paginatedData,
         totalCount,
         activeCount,
-        inactiveCount: totalCount - activeCount,
+        inactiveCount,
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[filteredData, currentPage, pageLimit, activeStatusField]);
+    }, [allData, filters, currentPage, pageLimit, activeStatusField]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };

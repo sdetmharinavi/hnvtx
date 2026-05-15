@@ -1,7 +1,7 @@
 'use client';
 
 import { Label } from '@/components/common/ui/label/Label';
-import { useState, useRef, useEffect, useMemo, useId } from 'react';
+import { useState, useRef, useEffect, useMemo, useId, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { FiChevronDown, FiX, FiSearch } from 'react-icons/fi';
 import { ButtonSpinner } from '../LoadingSpinner';
@@ -55,7 +55,12 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   isLoading = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+
+  // Separate display text and actual filtered text to allow fast typing
+  const [inputValue, setInputValue] = useState('');
+  const [deferredSearchTerm, setDeferredSearchTerm] = useState('');
+  const [isPending, startTransition] = useTransition();
+
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const listboxId = useId();
@@ -76,12 +81,13 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       );
     }
 
-    if (!searchTerm.trim()) return processedOptions;
+    // Use deferredSearchTerm instead of raw input to prevent blocking
+    if (!deferredSearchTerm.trim()) return processedOptions;
 
     return processedOptions.filter((option) =>
-      option.label.toLowerCase().includes(searchTerm.toLowerCase()),
+      option.label.toLowerCase().includes(deferredSearchTerm.toLowerCase()),
     );
-  }, [options, searchTerm, sortOptions, serverSide]);
+  }, [options, deferredSearchTerm, sortOptions, serverSide]);
 
   const visibleOptions = useMemo(() => {
     return filteredOptions.slice(0, RENDER_LIMIT);
@@ -95,16 +101,25 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const selectedLabel = selectedOption?.label || '';
   const hasValue = !!value;
 
-  useEffect(() => {
-    if (serverSide && onSearch) {
-      const handler = setTimeout(() => {
-        onSearch(searchTerm);
-      }, 300);
-      return () => clearTimeout(handler);
-    }
-  }, [searchTerm, serverSide, onSearch]);
+  // Sync input to deferred search
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val); // Updates UI immediately
 
-  // FIXED: Use Isomorphic Layout Effect
+    if (serverSide && onSearch) {
+      // If server side, debouncing is handled by the parent or we do it here
+      startTransition(() => {
+        setDeferredSearchTerm(val);
+        onSearch(val);
+      });
+    } else {
+      // Wrap heavy client-side filtering in transition
+      startTransition(() => {
+        setDeferredSearchTerm(val);
+      });
+    }
+  };
+
   useIsomorphicLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -160,7 +175,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (isOpen && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 0);
     } else {
-      if (!serverSide) setSearchTerm('');
+      if (!serverSide) {
+        setInputValue('');
+        setDeferredSearchTerm('');
+      }
       setFocusedIndex(-1);
     }
   }, [isOpen, serverSide]);
@@ -234,37 +252,37 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+      className='fixed bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100'
     >
-      <div className="p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
-        <div className="relative">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+      <div className='p-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'>
+        <div className='relative'>
+          <FiSearch className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500' />
           <input
             ref={searchInputRef}
-            type="text"
+            type='text'
             placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={inputValue}
+            onChange={handleSearchChange}
             onKeyDown={handleKeyDown}
-            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400"
-            autoComplete="off"
+            className='w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400'
+            autoComplete='off'
           />
-          {isLoading && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <ButtonSpinner size="sm" />
+          {(isLoading || isPending) && (
+            <div className='absolute right-3 top-1/2 transform -translate-y-1/2'>
+              <ButtonSpinner size='sm' />
             </div>
           )}
         </div>
       </div>
 
       <div
-        className="overflow-y-auto custom-scrollbar"
+        className='overflow-y-auto custom-scrollbar'
         style={{ maxHeight: `${maxHeight}px` }}
-        role="listbox"
+        role='listbox'
         id={listboxId}
       >
-        {visibleOptions.length === 0 && !isLoading ? (
-          <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center italic">
+        {visibleOptions.length === 0 && !isLoading && !isPending ? (
+          <div className='px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center italic'>
             {noOptionsMessage}
           </div>
         ) : (
@@ -294,14 +312,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     }
                 `}
                 onClick={() => !option.disabled && handleOptionSelect(option.value)}
-                role="option"
+                role='option'
                 aria-selected={option.value === value}
               >
                 {option.label}
               </div>
             ))}
             {hasMoreOptions && (
-              <div className="px-3 py-2 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 italic">
+              <div className='px-3 py-2 text-xs text-center text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 italic'>
                 Showing first {RENDER_LIMIT} options. Type to refine...
               </div>
             )}
@@ -313,7 +331,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   return (
     <div className={className}>
-      {label && <Label className="mb-1.5 block">{label}</Label>}
+      {label && <Label className='mb-1.5 block'>{label}</Label>}
 
       <div
         ref={triggerRef}
@@ -323,27 +341,27 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         onClick={toggleDropdown}
         onKeyDown={handleKeyDown}
         tabIndex={disabled ? -1 : 0}
-        role="combobox"
+        role='combobox'
         aria-expanded={isOpen}
-        aria-haspopup="listbox"
+        aria-haspopup='listbox'
         aria-controls={listboxId}
       >
-        <div className="flex items-center justify-between">
+        <div className='flex items-center justify-between'>
           <span
             className={`block truncate ${!selectedLabel ? 'text-gray-500 dark:text-gray-400' : ''}`}
           >
             {selectedLabel || placeholder}
           </span>
-          <div className="flex items-center gap-1.5 text-gray-400">
+          <div className='flex items-center gap-1.5 text-gray-400'>
             {clearable && value && !disabled && (
               <button
-                type="button"
+                type='button'
                 onClick={handleClear}
-                className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                className='p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors hover:text-gray-600 dark:hover:text-gray-200'
                 tabIndex={-1}
-                aria-label="Clear selection"
+                aria-label='Clear selection'
               >
-                <FiX className="w-3.5 h-3.5" />
+                <FiX className='w-3.5 h-3.5' />
               </button>
             )}
             <FiChevronDown

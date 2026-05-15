@@ -19,7 +19,7 @@ import {
 } from '@/components/home/variants';
 import OutdatedBrowserModal from '@/components/outdated/OutdatedBrowserModal';
 import { useOutdatedBrowserCheck } from '@/hooks/useOutdatedBrowserCheck';
-import FooterLinks from '@/components/home/FooterLinks'; // IMPORT THE NEW COMPONENT
+import FooterLinks from '@/components/home/FooterLinks';
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -42,8 +42,6 @@ export default function Home() {
     }
   };
 
-  if (isOutdated === null) return null;
-
   return (
     <>
       {/* 
@@ -51,8 +49,9 @@ export default function Home() {
         - h-[100vh]: Fallback for older browsers
         - h-[100dvh]: Modern mobile viewport fix
         - overflow-hidden: Disables scrolling
+        THE FIX: Removed bg-black/60 to let AnimatedBackground handle it.
       */}
-      <div className="relative h-screen supports-height:100dvh:h-100dvh w-full overflow-hidden bg-black/60">
+      <div className="relative h-screen supports-height:100dvh:h-100dvh w-full overflow-hidden">
         <div className="fixed inset-0 z-0 pointer-events-none">
           <AnimatedBackground />
           <ParticlesOverlay />
@@ -88,7 +87,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ADD THE FOOTER COMPONENT HERE */}
         <FooterLinks />
       </div>
       <PWAInstallPrompt />

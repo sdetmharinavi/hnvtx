@@ -6,441 +6,442 @@
 @custom-variant dark (&:where([class=dark], [class=dark] *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-size-multiplier: 1;
+    --background: #ffffff;
+    --foreground: #171717;
+    --font-size-multiplier: 1;
 }
 
 html {
-  font-size: calc(15px * var(--font-size-multiplier));
-  overscroll-behavior-y: none;
-  height: 100%;
+    font-size: calc(15px * var(--font-size-multiplier));
+    overscroll-behavior-y: none;
+    height: 100%;
 }
 
 /* Large screens (Full HD) */
 @media (min-width: 1920px) {
-  html {
-    font-size: calc(16px * var(--font-size-multiplier));
-  }
+    html {
+        font-size: calc(16px * var(--font-size-multiplier));
+    }
 }
 
 /* 2K Screens */
 @media (min-width: 2560px) {
-  html {
-    font-size: calc(18px * var(--font-size-multiplier));
-  }
+    html {
+        font-size: calc(18px * var(--font-size-multiplier));
+    }
 }
 
 /* 4K Screens */
 @media (min-width: 3840px) {
-  html {
-    font-size: calc(22px * var(--font-size-multiplier));
-  }
+    html {
+        font-size: calc(22px * var(--font-size-multiplier));
+    }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    /* THE FIX: Map to the correct font variables provided by Next.js localFont */
+    --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+    --font-mono:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
 }
 
 /* Smooth transitions for interactive elements */
 button,
 a {
-  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+    transition:
+        opacity 0.15s ease-in-out,
+        transform 0.15s ease-in-out;
 }
 
 /* Loading state transitions */
-[data-loading='true'] {
-  opacity: 0.8;
-  transform: translateY(1px);
+[data-loading="true"] {
+    opacity: 0.8;
+    transform: translateY(1px);
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-  }
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  height: 100%;
-  overscroll-behavior-y: none;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    height: 100%;
+    overscroll-behavior-y: none;
 }
 
 /* --- SCROLLBAR HIDING UTILITIES --- */
 .no-scrollbar::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* Ensure react-datepicker popper appears above modals/overlays */
 /* INCREASED Z-INDEX */
 .react-datepicker-popper {
-  z-index: 100000 !important;
+    z-index: 100000 !important;
 }
 
 /* Custom Scrollbar for visible areas (like tables) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+    background: #cbd5e1;
+    border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569;
+    background: #475569;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+    background: #94a3b8;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+    background: #64748b;
 }
 
 /* Animation for the sync indicator */
 @keyframes pulse-sync {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.1);
-  }
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 .animate-pulse-sync {
-  animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* --- LEAFLET POPUP DARK MODE FIX --- */
 .dark .leaflet-popup-content-wrapper,
 .dark .leaflet-popup-tip {
-  background-color: #1f2937 !important;
-  color: #f9fafb !important;
-  border: 1px solid #374151;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+    border: 1px solid #374151;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
 }
 
 .dark .leaflet-popup-content {
-  color: #e5e7eb;
+    color: #e5e7eb;
 }
 
 /* Calender */
 .react-datepicker {
-  border-radius: 0.75rem !important;
-  border-color: #e5e7eb !important;
-  background-color: #fff !important;
+    border-radius: 0.75rem !important;
+    border-color: #e5e7eb !important;
+    background-color: #fff !important;
 }
 
 .dark .react-datepicker {
-  border-color: #374151 !important;
-  background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    background-color: #1f2937 !important;
 }
 
 .react-datepicker__header {
-  background-color: #f9fafb !important;
-  border-bottom-color: #e5e7eb !important;
+    background-color: #f9fafb !important;
+    border-bottom-color: #e5e7eb !important;
 }
 
 .dark .react-datepicker__header {
-  background-color: #374151 !important;
-  border-bottom-color: #4b5563 !important;
+    background-color: #374151 !important;
+    border-bottom-color: #4b5563 !important;
 }
 
 .react-datepicker__current-month,
 .react-datepicker-time__header,
 .react-datepicker__day-name {
-  color: #111827 !important;
+    color: #111827 !important;
 }
 
 .dark .react-datepicker__current-month,
 .dark .react-datepicker-time__header,
 .dark .react-datepicker__day-name {
-  color: #f9fafb !important;
+    color: #f9fafb !important;
 }
 
 .react-datepicker__day {
-  color: #374151 !important;
+    color: #374151 !important;
 }
 .dark .react-datepicker__day {
-  color: #d1d5db !important;
+    color: #d1d5db !important;
 }
 
 .react-datepicker__day:hover {
-  background-color: #f3f4f6 !important;
+    background-color: #f3f4f6 !important;
 }
 .dark .react-datepicker__day:hover {
-  background-color: #4b5563 !important;
+    background-color: #4b5563 !important;
 }
 
 .react-datepicker__day--selected {
-  background-color: #3b82f6 !important;
-  color: #fff !important;
+    background-color: #3b82f6 !important;
+    color: #fff !important;
 }
 .dark .react-datepicker__day--selected {
-  background-color: #3b82f6 !important;
+    background-color: #3b82f6 !important;
 }
 
 .react-datepicker__day--highlighted {
-  background-color: #1b8310 !important;
-  color: #1e3a8a !important;
+    background-color: #1b8310 !important;
+    color: #1e3a8a !important;
 }
 .dark .react-datepicker__day--highlighted {
-  background-color: #396503 !important;
-  color: #dbeafe !important;
+    background-color: #396503 !important;
+    color: #dbeafe !important;
 }
 
 /* Map Labels */
 .permanent-label {
-  background: transparent;
-  background-color: transparent;
-  border: none;
-  box-shadow: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: #2c3e50;
-  text-shadow:
-    1px 1px 0 #ffffff,
-    -1px -1px 0 #ffffff,
-    1px -1px 0 #ffffff,
-    -1px 1px 0 #ffffff;
+    background: transparent;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2c3e50;
+    text-shadow:
+        1px 1px 0 #ffffff,
+        -1px -1px 0 #ffffff,
+        1px -1px 0 #ffffff,
+        -1px 1px 0 #ffffff;
 }
 
 .dark .permanent-label {
-  color: #dfe2e6;
-  text-shadow:
-    1px 1px 0 #2c3e50,
-    -1px -1px 0 #2c3e50,
-    1px -1px 0 #2c3e50,
-    -1px 1px 0 #2c3e50;
+    color: #dfe2e6;
+    text-shadow:
+        1px 1px 0 #2c3e50,
+        -1px -1px 0 #2c3e50,
+        1px -1px 0 #2c3e50,
+        -1px 1px 0 #2c3e50;
 }
 
 .leaflet-tooltip-left.permanent-label {
-  text-align: right;
+    text-align: right;
 }
 
 .leaflet-tooltip-right.permanent-label {
-  text-align: left;
+    text-align: left;
 }
 
-/* ... (Print styles remain same) */
 @media print {
     .no-print {
-    display: none !important;
-  }
+        display: none !important;
+    }
 
-  body, .qr-page-wrapper {
-    background: #ffffff !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+    body,
+    .qr-page-wrapper {
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
-  .print-content {
-    box-shadow: none !important;
-    border: none !important;
-  }
+    .print-content {
+        box-shadow: none !important;
+        border: none !important;
+    }
 
-  .dark .print-content {
-    background-color: #ffffff !important;
-  }
-  .dark .print-content * {
-    color: #000000 !important;
-  }
-  .dark .print-content .bg-gray-50 {
-     background-color: #ffffff !important;
-  }
-  .dark .print-content svg {
-    color: #000000 !important;
-  }
-  /*
-    CRITICAL: Reset document structure for printing.
-    Override 'overflow: hidden' that might be set by modals or scroll locks.
-    Ensure height allows content to flow.
-  */
-  html, body {
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
-    overflow-y: visible !important;
-    position: static !important;
-  }
+    .dark .print-content {
+        background-color: #ffffff !important;
+    }
+    .dark .print-content * {
+        color: #000000 !important;
+    }
+    .dark .print-content .bg-gray-50 {
+        background-color: #ffffff !important;
+    }
+    .dark .print-content svg {
+        color: #000000 !important;
+    }
 
-/* 4. MODAL PRINTING SUPPORT */
-  /* If a modal is open, we position it at the top. */
-  [role="dialog"] {
-    display: block !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    background: white !important;
-    z-index: 9999 !important;
-    overflow: visible !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
+    html,
+    body {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        overflow-y: visible !important;
+        position: static !important;
+    }
 
-  [role="dialog"] > div {
-    transform: none !important;
-    max-width: 100% !important;
-    height: auto !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
+    [role="dialog"] {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        background: white !important;
+        z-index: 9999 !important;
+        overflow: visible !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
 
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
-  }
+    [role="dialog"] > div {
+        transform: none !important;
+        max-width: 100% !important;
+        height: auto !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
 
-  /* Hide layout elements explicitly */
-  .no-print, header, nav, aside, footer, button, .uppy-dashboard-container {
-    display: none !important;
-  }
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+    }
 
-  /* 1. MAP PRINTING */
-  .printable-map-container,
-  .printable-map-container * {
-    visibility: visible;
-  }
+    .no-print,
+    header,
+    nav,
+    aside,
+    footer,
+    button,
+    .uppy-dashboard-container {
+        display: none !important;
+    }
 
-  .printable-map-container {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 99999 !important;
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: 0 !important;
-  }
+    /* 1. MAP PRINTING */
+    .printable-map-container,
+    .printable-map-container * {
+        visibility: visible;
+    }
 
-  /* 2. GENERIC CONTENT PRINTING */
-  .printable-content,
-  .printable-content * {
-    visibility: visible;
-  }
+    .printable-map-container {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 99999 !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+    }
 
-  .printable-content {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 20px !important;
+    /* 2. GENERIC CONTENT PRINTING */
+    .printable-content,
+    .printable-content * {
+        visibility: visible;
+    }
 
-    /* Allow content to expand indefinitely */
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
+    .printable-content {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        z-index: 99999 !important;
+        background: white !important;
+        color: black !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
 
-    /* Ensure visibility and layer */
-    z-index: 99999 !important;
-    background: white !important;
-    color: black !important;
+    /* Force internal scroll containers to expand fully */
+    .printable-content .overflow-y-auto,
+    .printable-content .overflow-auto,
+    .printable-content .overflow-x-auto {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
 
-    /* Remove UI artifacts */
-    border: none !important;
-    box-shadow: none !important;
-  }
+    /* Text color reset for print legibility */
+    .printable-content .text-gray-900,
+    .printable-content .text-white,
+    .printable-content .dark\:text-white {
+        color: black !important;
+    }
 
-  /* Force internal scroll containers to expand fully */
-  .printable-content .overflow-y-auto,
-  .printable-content .overflow-auto,
-  .printable-content .overflow-x-auto {
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
-  }
+    /* Background reset */
+    .printable-content .bg-white,
+    .printable-content .dark\:bg-gray-800 {
+        background: white !important;
+    }
 
-  /* Text color reset for print legibility */
-  .printable-content .text-gray-900,
-  .printable-content .text-white,
-  .printable-content .dark\:text-white {
-    color: black !important;
-  }
+    /* 2. MAP PRINTING SPECIFICS */
+    .printable-map-container,
+    .printable-map-container * {
+        visibility: visible;
+    }
 
-  /* Background reset */
-  .printable-content .bg-white,
-  .printable-content .dark\:bg-gray-800 {
-    background: white !important;
-  }
+    .printable-map-container {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 99999 !important;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
 
-  /* 2. MAP PRINTING SPECIFICS */
-  .printable-map-container,
-  .printable-map-container * {
-    visibility: visible;
-  }
+    /* Hide Leaflet controls */
+    .leaflet-control-container {
+        display: none !important;
+    }
 
-  .printable-map-container {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 99999 !important;
-    background: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-  }
+    /* Ensure background graphics (map tiles, charts) are printed */
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
-  /* Hide Leaflet controls */
-  .leaflet-control-container {
-    display: none !important;
-  }
-
-  /* Ensure background graphics (map tiles, charts) are printed */
-  body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* Print specific overrides for Diagram page if needed */
-  .print-content {
-    box-shadow: none !important;
-    border: none !important;
-  }
+    /* Print specific overrides for Diagram page if needed */
+    .print-content {
+        box-shadow: none !important;
+        border: none !important;
+    }
 }
 
 /* Additional print fixes for map elements */
 @media print {
-  .leaflet-container {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+    .leaflet-container {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
-  .leaflet-tile {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+    .leaflet-tile {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 
-  .leaflet-overlay-pane svg {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
+    .leaflet-overlay-pane svg {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
 }

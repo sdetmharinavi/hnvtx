@@ -68,7 +68,7 @@ export const Modal = ({
     md: 'max-w-2xl',
     lg: 'max-w-6xl',
     xl: 'max-w-7xl',
-    xxl: 'max-w-11/12',
+    xxl: 'max-w-[95vw]',
     full: 'max-w-[98vw] max-h-[95vh]',
   };
 
@@ -97,8 +97,7 @@ export const Modal = ({
           className='fixed inset-0 z-9999 flex items-center justify-center p-4'
           role='dialog'
           aria-modal='true'
-          aria-labelledby={title ? 'modal-title' : undefined}
-        >
+          aria-labelledby={title ? 'modal-title' : undefined}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -122,16 +121,14 @@ export const Modal = ({
               sizeClasses[size],
               className,
             )}
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             {(title || showCloseButton) && visible && (
               <div className='flex shrink-0 items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700'>
                 {title && (
                   <h2
                     id='modal-title'
-                    className='text-xl font-semibold text-gray-900 dark:text-gray-100'
-                  >
+                    className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
                     {title}
                   </h2>
                 )}
@@ -139,8 +136,7 @@ export const Modal = ({
                   <button
                     onClick={onClose}
                     className='ml-auto rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    aria-label='Close modal'
-                  >
+                    aria-label='Close modal'>
                     <IoClose size={20} />
                   </button>
                 )}

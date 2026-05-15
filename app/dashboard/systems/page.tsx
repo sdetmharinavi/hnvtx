@@ -2,47 +2,108 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
-import { FiDatabase, FiRefreshCw, FiCpu, FiMapPin, FiActivity, FiTag } from 'react-icons/fi';
+import { useCallback, useMemo, useState, useRef } from 'react';
+import {
+  FiDatabase,
+  FiUpload,
+  FiDownload,
+  FiRefreshCw,
+  FiServer,
+  FiCpu,
+  FiMapPin,
+  FiActivity,
+  FiTag,
+  FiPlus,
+  FiGrid,
+} from 'react-icons/fi';
 import { toast } from 'sonner';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { ErrorDisplay } from '@/components/common/ui';
+import { Button, ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { SystemsTableColumns } from '@/config/table-columns/SystemsTableColumns';
+import {
+  useRpcMutation,
+  RpcFunctionArgs,
+  buildRpcFilters,
+  Row,
+  TableOrViewName,
+  EnhancedUploadResult,
+} from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import { V_systems_completeRowSchema } from '@/schemas/zod-schemas';
+import { createClient } from '@/utils/supabase/client';
+import { SystemFormData } from '@/schemas/system-schemas';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
-import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
+import {
+  buildUploadConfig,
+  buildColumnConfig,
+  TABLE_COLUMN_KEYS,
+} from '@/constants/table-column-keys';
+import { useSystemExcelUpload } from '@/hooks/database/excel-queries/useSystemExcelUpload';
+import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { formatIP } from '@/utils/formatters';
+import { formatDate, formatIP } from '@/utils/formatters';
 import { useSystemsData } from '@/hooks/data/useSystemsData';
+import { useUser } from '@/providers/UserProvider';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
 import { ActionButton } from '@/components/common/page-header';
 import { DataGrid } from '@/components/common/DataGrid';
+
+import dynamic from 'next/dynamic';
+import { PageSpinner } from '@/components/common/ui';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { CiCalendarDate } from 'react-icons/ci';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
+
+const SystemModal = dynamic(
+  () => import('@/components/systems/SystemModal').then((mod) => mod.SystemModal),
+  { loading: () => <PageSpinner text='Loading Form...' /> },
+);
+
+const SystemPortsManagerModal = dynamic(
+  () =>
+    import('@/components/systems/SystemPortsManagerModal').then(
+      (mod) => mod.SystemPortsManagerModal,
+    ),
+  { loading: () => <PageSpinner text='Loading Ports...' /> },
+);
+
+const UploadResultModal = dynamic(
+  () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
+  { ssr: false },
+);
 
 export default function SystemsPage() {
   const router = useRouter();
+  const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
 
+  // REMOVED: localTableName
   const {
     data: systems,
     totalCount,
     activeCount,
     inactiveCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
+    editModal,
+    deleteModal,
+    bulkActions,
+    actions: crudActions,
   } = useCrudManager<'systems', V_systems_completeRowSchema>({
     tableName: 'systems',
-    localTableName: 'v_systems_complete',
     dataQueryHook: useSystemsData,
     searchColumn: ['system_name', 'system_type_name', 'node_name', 'ip_address'],
     displayNameField: 'system_name',
@@ -57,6 +118,11 @@ export default function SystemsPage() {
     ],
   });
 
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+
+  // ... (Rest of component logic remains identical) ...
   const { options: systemTypeOptions, isLoading: loadingTypes } =
     useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions, isLoading: loadingCaps } =
@@ -95,6 +161,15 @@ export default function SystemsPage() {
           { value: 'false', label: 'Inactive' },
         ],
       },
+      {
+        key: 'sortBy',
+        type: 'native-select' as const,
+        options: [
+          { value: 'name', label: 'Name (A-Z)' },
+          { value: 'last_activity', label: 'Last Activity' },
+        ],
+        placeholder: 'Sort By',
+      },
     ],
     [
       systemTypeOptions,
@@ -113,27 +188,104 @@ export default function SystemsPage() {
     [filters],
   );
 
+  const { mutate: uploadSystems, isPending: isUploading } = useSystemExcelUpload(supabase, {
+    showToasts: false,
+    onSuccess: (result) => {
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
+      if (result.successCount > 0) {
+        refetch();
+        toast.success(`Processed ${result.totalRows} rows.`);
+      } else {
+        toast.warning('Upload completed with no successful inserts.');
+      }
+    },
+    onError: (err) => {
+      toast.error(`Upload failed: ${err.message}`);
+    },
+  });
+  const { mutate: exportSystems, isPending: isExporting } = useRPCExcelDownload(supabase);
+  const allExportColumns = useMemo(() => buildColumnConfig('v_systems_complete'), []);
+
+  const [isPortsModalOpen, setIsPortsModalOpen] = useState(false);
+  const [selectedSystemForPorts, setSelectedSystemForPorts] =
+    useState<V_systems_completeRowSchema | null>(null);
+
   const isInitialLoad = isLoading && systems.length === 0;
+
+  const upsertSystemMutation = useRpcMutation(supabase, 'upsert_system_with_details', {
+    onSuccess: () => {
+      toast.success(`System ${editModal.record ? 'updated' : 'created'} successfully.`);
+      refetch();
+      editModal.close();
+    },
+    onError: (err) => toast.error(`Failed to save system: ${err.message}`),
+  });
 
   const handleView = useCallback(
     (system: V_systems_completeRowSchema) => {
       if (system.id) router.push(`/dashboard/systems/${system.id}`);
-      else toast.info('Invalid system ID.');
+      else toast.info('System needs to be created before managing connections.');
     },
     [router],
   );
+
+  const handleManagePorts = useCallback((system: V_systems_completeRowSchema) => {
+    setSelectedSystemForPorts(system);
+    setIsPortsModalOpen(true);
+  }, []);
 
   const columns = SystemsTableColumns(systems);
   const orderedSystems = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_systems_complete]);
 
   const tableActions = useMemo(() => {
-    return createStandardActions<'v_systems_complete'>({
+    const actions = createStandardActions<V_systems_completeRowSchema>({
+      onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
+      onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
     });
-  }, [handleView]);
+    actions.unshift({
+      key: 'manage-ports',
+      label: 'Manage Ports',
+      icon: <FiServer />,
+      onClick: handleManagePorts,
+      variant: 'secondary',
+    });
+    return actions;
+  }, [editModal.openEdit, handleView, crudActions, handleManagePorts, canEdit, canDelete]);
+
+  const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const uploadConfig = buildUploadConfig('v_systems_complete');
+      uploadSystems({ file, columns: uploadConfig.columnMapping });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleExport = useCallback(() => {
+    exportSystems({
+      fileName: `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-systems-export.xlsx`,
+      sheetName: 'Systems',
+      columns: allExportColumns as Column<Row<TableOrViewName>>[],
+      rpcConfig: {
+        functionName: 'get_paged_data',
+        parameters: {
+          p_view_name: 'v_systems_complete',
+          p_limit: 50000,
+          p_offset: 0,
+          p_filters: buildRpcFilters(filters.filters),
+        },
+      },
+    });
+  }, [exportSystems, allExportColumns, filters.filters]);
+
+  const isBusy = isLoading || isFetching;
 
   const headerActions = useMemo((): ActionButton[] => {
-    return [
+    const actions: ActionButton[] = [
       {
         label: 'Refresh',
         onClick: () => {
@@ -141,11 +293,46 @@ export default function SystemsPage() {
           toast.success('Systems refreshed.');
         },
         variant: 'outline',
-        leftIcon: <FiRefreshCw className={isLoading || isFetching ? 'animate-spin' : ''} />,
-        disabled: isLoading || isFetching,
+        leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+        disabled: isBusy,
       },
     ];
-  }, [isLoading, isFetching, refetch]);
+    if (canEdit) {
+      actions.push({
+        label: isExporting ? 'Exporting...' : 'Export',
+        onClick: handleExport,
+        variant: 'outline',
+        leftIcon: <FiDownload />,
+        disabled: isExporting || isBusy,
+        hideTextOnMobile: true,
+      });
+      actions.splice(1, 0, {
+        label: isUploading ? 'Uploading...' : 'Upload',
+        onClick: handleUploadClick,
+        variant: 'outline',
+        leftIcon: <FiUpload />,
+        disabled: isUploading || isBusy,
+        hideTextOnMobile: true,
+      });
+      actions.push({
+        label: 'Add New',
+        onClick: editModal.openAdd,
+        variant: 'primary',
+        leftIcon: <FiPlus />,
+        disabled: isBusy,
+      });
+    }
+    return actions;
+  }, [
+    isBusy,
+    isUploading,
+    isExporting,
+    refetch,
+    handleUploadClick,
+    handleExport,
+    editModal.openAdd,
+    canEdit,
+  ]);
 
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
@@ -178,7 +365,36 @@ export default function SystemsPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  }, [totalCount, activeCount, inactiveCount, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
+
+  const handleSave = useCallback(
+    (formData: SystemFormData) => {
+      const payload: RpcFunctionArgs<'upsert_system_with_details'> = {
+        p_id: editModal.record?.id ?? undefined,
+        p_system_name: formData.system_name!,
+        p_system_type_id: formData.system_type_id!,
+        p_node_id: formData.node_id!,
+        p_status: formData.status ?? true,
+        p_is_hub: formData.is_hub ?? false,
+        p_maan_node_id: formData.maan_node_id || undefined,
+        p_ip_address: formData.ip_address ? formData.ip_address.split('/')[0] : undefined,
+        p_maintenance_terminal_id: formData.maintenance_terminal_id || undefined,
+        p_commissioned_on: formData.commissioned_on || undefined,
+        p_s_no: formData.s_no || undefined,
+        p_remark: formData.remark || undefined,
+        p_make: formData.make || undefined,
+        p_asset_no: formData.asset_no || undefined,
+        p_system_capacity_id: formData.system_capacity_id || undefined,
+        p_ring_associations:
+          formData.ring_id && formData.order_in_ring != null
+            ? [{ ring_id: formData.ring_id, order_in_ring: formData.order_in_ring }]
+            : null,
+      };
+      upsertSystemMutation.mutate(payload);
+    },
+    [editModal.record, upsertSystemMutation],
+  );
 
   const renderItem = useCallback(
     (sys: V_systems_completeRowSchema) => (
@@ -219,13 +435,39 @@ export default function SystemsPage() {
         ]}
         customFooter={
           <div className='w-full'>
-            <GenericRemarks remark={sys.remark || ''} />
+            <GenericRemarks
+              className='whitespace-normal wrap-break-words'
+              remark={sys.remark || ''}
+            />
           </div>
         }
+        extraActions={
+          <Button
+            size='xs'
+            variant='secondary'
+            onClick={() => handleManagePorts(sys)}
+            title='Manage Ports'
+            className='font-medium'
+          >
+            <FiGrid className='w-4 h-4' />
+            <span className='ml-1.5 hidden sm:inline'>Ports</span>
+          </Button>
+        }
         onView={handleView}
+        onEdit={editModal.openEdit}
+        onDelete={crudActions.handleDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     ),
-    [handleView],
+    [
+      handleManagePorts,
+      handleView,
+      editModal.openEdit,
+      crudActions.handleDelete,
+      canEdit,
+      canDelete,
+    ],
   );
 
   const renderGrid = useCallback(
@@ -246,7 +488,7 @@ export default function SystemsPage() {
         }}
       />
     ),
-    [systems, renderItem, isLoading, totalCount, pagination],
+    [systems, renderItem, isLoading, pagination, totalCount],
   );
 
   if (error)
@@ -255,8 +497,8 @@ export default function SystemsPage() {
   return (
     <DashboardPageLayout
       header={{
-        title: 'System Viewer',
-        description: 'Read-only view of network systems, including CPAN, MAAN, SDH, DWDM etc.',
+        title: 'System Management',
+        description: 'Manage all network systems, including CPAN, MAAN, SDH, DWDM etc.',
         icon: <FiDatabase />,
         stats: headerStats,
         actions: headerActions,
@@ -272,15 +514,31 @@ export default function SystemsPage() {
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'system',
+        showStatusUpdate: true,
+        canDelete: () => canDelete,
+      }}
       renderGrid={renderGrid}
       tableProps={{
         tableName: 'v_systems_complete',
         data: systems,
         columns: orderedSystems,
         loading: isLoading,
-        isFetching: isFetching,
+        isFetching: isFetching || isMutating,
         actions: tableActions,
-        selectable: false,
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_systems_completeRowSchema & { id: string } => !!row.id,
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -291,8 +549,51 @@ export default function SystemsPage() {
             pagination.setPageLimit(pageSize);
           },
         },
+        customToolbar: <></>,
       }}
       isEmpty={systems.length === 0 && !isLoading}
+      modals={
+        <>
+          <input
+            type='file'
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className='hidden'
+            accept='.xlsx, .xls, .csv'
+          />
+
+          <UploadResultModal
+            isOpen={isUploadResultOpen}
+            onClose={() => setIsUploadResultOpen(false)}
+            result={uploadResult}
+            title='Systems Upload Report'
+          />
+
+          <SystemModal
+            isOpen={editModal.isOpen}
+            onClose={editModal.close}
+            rowData={editModal.record}
+            onSubmit={handleSave}
+            isLoading={upsertSystemMutation.isPending}
+          />
+
+          <SystemPortsManagerModal
+            isOpen={isPortsModalOpen}
+            onClose={() => setIsPortsModalOpen(false)}
+            system={selectedSystemForPorts}
+          />
+
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title='Confirm Deletion'
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type='danger'
+          />
+        </>
+      }
     />
   );
 }

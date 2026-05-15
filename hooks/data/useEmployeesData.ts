@@ -1,6 +1,5 @@
 // hooks/data/useEmployeesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 const matchFilter = (itemValue: unknown, filterValue: unknown) => {
   if (Array.isArray(filterValue)) {
@@ -20,7 +19,7 @@ export const useEmployeesData = createGenericDataQuery<'v_employees'>({
     'remark'
   ],
   defaultSortField: 'employee_name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed to use default 6000
   filterFn: (emp, filters) => {
     if (
       filters.employee_designation_id &&

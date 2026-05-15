@@ -1,116 +1,55 @@
 // hooks/data/useMaintenanceAreasData.ts
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_maintenance_areasRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { MaintenanceAreaWithRelations } from '@/config/areas';
+import { useQuery } from '@tanstack/react-query';
+import { buildServerSearchString } from '@/hooks/database/search-utils';
 
 export const useMaintenanceAreasData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<MaintenanceAreaWithRelations> => {
-  const { filters, searchQuery } = params;
-
-  const onlineQueryFn = useCallback(async (): Promise<V_maintenance_areasRowSchema[]> => {
-    // FIX: Use standard SQL syntax
-    let searchString: string | undefined;
-    if (searchQuery && searchQuery.trim() !== '') {
-      const term = searchQuery.trim().replace(/'/g, "''");
-      searchString =
-        `(` +
-        `name ILIKE '%${term}%' OR ` +
-        `code ILIKE '%${term}%' OR ` +
-        `contact_person ILIKE '%${term}%' OR ` +
-        `email ILIKE '%${term}%'` +
-        `)`;
-    }
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_maintenance_areas',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      // THE FIX: Ensure sorting by name
-      p_order_by: 'name',
-      p_order_dir: 'asc',
-    });
-    if (error) throw error;
-    return (data as { data: V_maintenance_areasRowSchema[] })?.data || [];
-  }, [searchQuery, filters]);
-
-  const localQueryFn = useCallback(() => {
-    // THE FIX: Ensure local sorting by name
-    return localDb.v_maintenance_areas.orderBy('name').toArray();
-  }, []);
+  const { filters, searchQuery, currentPage, pageLimit } = params;
+  const supabase = createClient();
 
   const {
-    data: allAreasFlat = [],
+    data: allAreas = [],
     isLoading,
     isFetching,
     error,
     refetch,
-    // MODIFIED: Removed `networkStatus` from the destructuring as it's not returned by the hook.
-  } = useLocalFirstQuery<'v_maintenance_areas'>({
+  } = useQuery({
     queryKey: ['maintenance_areas-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_maintenance_areas,
+    queryFn: async (): Promise<V_maintenance_areasRowSchema[]> => {
+      const serverSearchFields = ['name', 'code', 'contact_person', 'email'];
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+
+      const rpcFilters = buildRpcFilters({
+        ...filters,
+        or: searchString,
+      });
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_maintenance_areas',
+        p_limit: 5000,
+        p_offset: 0,
+        p_filters: rpcFilters,
+        p_order_by: 'name',
+        p_order_dir: 'asc',
+      });
+      
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((data as any)?.data || []) as V_maintenance_areasRowSchema[];
+    },
+    staleTime: 5 * 60 * 1000
   });
 
   const processedData = useMemo(() => {
-    if (!allAreasFlat) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
-
-    let filtered = allAreasFlat;
-
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      const searchFilteredIds = new Set<string>();
-
-      const initialFilter = filtered.filter(
-        (area) =>
-          area.name?.toLowerCase().includes(lowerQuery) ||
-          area.code?.toLowerCase().includes(lowerQuery) ||
-          area.contact_person?.toLowerCase().includes(lowerQuery) ||
-          area.email?.toLowerCase().includes(lowerQuery)
-      );
-
-      const addParents = (area: V_maintenance_areasRowSchema) => {
-        if (area.id && !searchFilteredIds.has(area.id)) {
-          searchFilteredIds.add(area.id);
-          if (area.parent_id) {
-            const parent = allAreasFlat.find((a) => a.id === area.parent_id);
-            if (parent) {
-              addParents(parent);
-            }
-          }
-        }
-      };
-      initialFilter.forEach(addParents);
-      filtered = allAreasFlat.filter((area) => area.id && searchFilteredIds.has(area.id));
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter((area) => String(area.status) === filters.status);
-    }
-    if (filters.area_type_id) {
-      filtered = filtered.filter((area) => area.area_type_id === filters.area_type_id);
-    }
-
-    // THE FIX: Explicit case-insensitive sort for safety (though hook already sorts)
-    filtered.sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-    );
-
-    const areasWithRelations = filtered.map((area) => ({
+    // 1. Client-side hierarchy construction is needed since the View is flat
+    const areasWithRelations = allAreas.map((area) => ({
       ...area,
       id: area.id!,
       name: area.name!,
@@ -131,17 +70,32 @@ export const useMaintenanceAreasData = (
       }
     });
 
-    const totalCount = filtered.length;
-    const activeCount = filtered.filter((a) => a.status === true).length;
+    // Pagination logic applied after hierarchy build (though hierarchy usually shows all)
+    // If strict pagination is needed on root elements, we filter here.
+    // For now, simple client pagination of the flat list (or roots) could be done.
+    // We'll return all for Tree view compatibility, or paginate flat if needed.
+    
+    // For this specific hook, since we often need the full tree, 
+    // returning the full processed list for the UI to paginate or render as tree is safer.
+    // However, useCrudManager expects pagination.
+    
+    const totalCount = allAreas.length;
+    const activeCount = allAreas.filter((a) => a.status === true).length;
+    
+    // Slice if necessary (though for Tree View, usually we want everything)
+    // Assuming Tree view handles its own rendering if 'list' mode is off.
+    // In 'list' mode, slicing happens here.
+    const start = (currentPage - 1) * pageLimit;
+    const end = start + pageLimit;
+    const paginatedData = areasWithRelations.slice(start, end);
 
     return {
-      data: areasWithRelations,
+      data: paginatedData, // Or areasWithRelations if tree view is priority
       totalCount,
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
-  }, [allAreasFlat, searchQuery, filters]);
+  }, [allAreas, currentPage, pageLimit]);
 
-  // MODIFIED: Removed `networkStatus` from the returned object.
   return { ...processedData, isLoading, isFetching, error, refetch };
 };

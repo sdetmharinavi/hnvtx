@@ -3,66 +3,29 @@ import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import {
   buildServerSearchString,
   performClientSearch,
   performClientSort,
   performClientPagination,
 } from '@/hooks/database/search-utils';
+import { useQuery } from '@tanstack/react-query';
+import { DEFAULTS } from '@/constants/constants';
 
 export const usePortsData = (systemId: string | null) => {
   return function useData(
     params: DataQueryHookParams
   ): DataQueryHookReturn<V_ports_management_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
+    const supabase = createClient();
 
-    // Search Config
     const searchFields = useMemo(
       () =>
-        [
-          'port',
-          'port_type_name',
-          'port_type_code',
-          'sfp_serial_no',
-        ] as (keyof V_ports_management_completeRowSchema)[],
+        ['port', 'port_type_name', 'port_type_code', 'sfp_serial_no'] as (keyof V_ports_management_completeRowSchema)[],
       []
     );
     const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
-
-    const onlineQueryFn = useCallback(async (): Promise<V_ports_management_completeRowSchema[]> => {
-      if (!systemId) return [];
-
-      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-      const rpcFilters = buildRpcFilters({
-        ...filters,
-        system_id: systemId,
-        or: searchString,
-      });
-
-      const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_ports_management_complete',
-        p_limit: 5000,
-        p_offset: 0,
-        p_filters: rpcFilters,
-        p_order_by: 'port',
-        p_order_dir: 'asc',
-      });
-
-      if (error) throw error;
-      return (data as { data: V_ports_management_completeRowSchema[] })?.data || [];
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, systemId, serverSearchFields]);
-
-    const localQueryFn = useCallback(() => {
-      if (!systemId) {
-        return localDb.v_ports_management_complete.limit(0).toArray();
-      }
-      return localDb.v_ports_management_complete.where('system_id').equals(systemId).toArray();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [systemId]);
 
     const {
       data: allPorts = [],
@@ -70,12 +33,33 @@ export const usePortsData = (systemId: string | null) => {
       isFetching,
       error,
       refetch,
-    } = useLocalFirstQuery<'v_ports_management_complete', V_ports_management_completeRowSchema>({
+    } = useQuery({
       queryKey: ['ports_management-data', systemId, searchQuery, filters],
-      onlineQueryFn,
-      localQueryFn,
-      dexieTable: localDb.v_ports_management_complete,
-      localQueryDeps: [systemId],
+      queryFn: async (): Promise<V_ports_management_completeRowSchema[]> => {
+        if (!systemId) return [];
+
+        const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+        const rpcFilters = buildRpcFilters({
+          ...filters,
+          system_id: systemId,
+          or: searchString,
+        });
+
+        const { data, error } = await supabase.rpc('get_paged_data', {
+          p_view_name: 'v_ports_management_complete',
+          p_limit: 5000,
+          p_offset: 0,
+          p_filters: rpcFilters,
+          p_order_by: 'port',
+          p_order_dir: 'asc',
+        });
+
+        if (error) throw error;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (data as any)?.data || [];
+      },
+      enabled: !!systemId,
+      staleTime: DEFAULTS.CACHE_TIME,
     });
 
     const processedData = useMemo(() => {
@@ -123,8 +107,7 @@ export const usePortsData = (systemId: string | null) => {
         activeCount,
         inactiveCount,
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId]);
+    }, [allPorts, searchQuery, filters, currentPage, pageLimit, systemId, searchFields]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };

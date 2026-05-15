@@ -1,11 +1,16 @@
+// components/home/ParticlesOverlay.tsx
 "use client"
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 export default function ParticlesOverlay() {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  // THE FIX: Add mounted state to prevent hydration error from Math.random() mismatch
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true); // Flag as mounted after initial hydration
+    
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     setIsDarkMode(mediaQuery.matches);
     
@@ -14,6 +19,9 @@ export default function ParticlesOverlay() {
     
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
+
+  // THE FIX: Do not render particles during SSR to ensure HTML perfectly matches
+  if (!mounted) return null;
 
   // Colors that adapt to dark/light mode
   const colors = {

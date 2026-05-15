@@ -1,16 +1,34 @@
 // app/dashboard/diary/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { FiBookOpen, FiCalendar, FiPrinter } from 'react-icons/fi';
+import { useMemo, useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { FiBookOpen, FiUpload, FiCalendar, FiPrinter } from 'react-icons/fi';
+import { toast } from 'sonner';
 import { useDebounce } from 'use-debounce';
 
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay, Button } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, Button, PageSpinner } from '@/components/common/ui';
 import { DiaryEntryCard } from '@/components/diary/DiaryEntryCard';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
-import { useDiaryData } from '@/hooks/data/useDiaryData';
+import { Diary_notesRowSchema, Diary_notesInsertSchema } from '@/schemas/zod-schemas';
+import { useAuthStore } from '@/stores/authStore';
+import { useUser } from '@/providers/UserProvider';
+import { useDiaryExcelUpload } from '@/hooks/database/excel-queries/useDiaryExcelUpload';
+import { buildUploadConfig } from '@/constants/table-column-keys';
+import { createClient } from '@/utils/supabase/client';
+import { useDeleteManager } from '@/hooks/useDeleteManager';
+import { useTableInsert, useTableUpdate } from '@/hooks/database';
+import { useDiaryData, DiaryEntryWithUser } from '@/hooks/data/useDiaryData';
+import { UserRole } from '@/types/user-roles';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { GenericFilterBar } from '@/components/common/filters/GenericFilterBar';
+import { useDataSync } from '@/hooks/data/useDataSync';
+
+const DiaryFormModal = dynamic(
+  () => import('@/components/diary/DiaryFormModal').then((mod) => mod.DiaryFormModal),
+  { loading: () => <PageSpinner text='Loading Form...' /> },
+);
 
 type ViewMode = 'day' | 'feed';
 
@@ -21,6 +39,17 @@ export default function DiaryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch] = useDebounce(searchQuery, 300);
 
+  const { sync: syncData } = useDataSync();
+  const isOnline = useOnlineStatus();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Diary_notesRowSchema | null>(null);
+
+  const { user } = useAuthStore();
+  const { role: currentUserRole, isSuperAdmin } = useUser();
+  const supabase = createClient();
+
   const {
     data: allNotesForMonth = [],
     isLoading,
@@ -29,8 +58,19 @@ export default function DiaryPage() {
     refetch,
   } = useDiaryData(currentDate);
 
+  const canViewAll =
+    isSuperAdmin ||
+    [UserRole.ADMIN, UserRole.ADMINPRO, UserRole.VIEWER].includes(currentUserRole as UserRole);
+  const canEdit =
+    isSuperAdmin || currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.ADMINPRO;
+  const canDelete = isSuperAdmin === true || currentUserRole === UserRole.ADMINPRO;
+
   const filteredNotes = useMemo(() => {
-    let notes = allNotesForMonth;
+    let notes: DiaryEntryWithUser[] = canViewAll
+      ? allNotesForMonth
+      : allNotesForMonth.filter(
+          (note: { user_id: string | undefined }) => note.user_id === user?.id,
+        );
 
     if (debouncedSearch) {
       const query = debouncedSearch.toLowerCase();
@@ -49,10 +89,109 @@ export default function DiaryPage() {
     }
 
     return notes;
-  }, [allNotesForMonth, debouncedSearch, viewMode, selectedDate]);
+  }, [allNotesForMonth, canViewAll, user?.id, debouncedSearch, viewMode, selectedDate]);
+
+  // Use mutateAsync to manually control success flow
+  const { mutateAsync: insertNoteAsync, isPending: isInserting } = useTableInsert(
+    supabase,
+    'diary_notes',
+    {
+      invalidateQueries: false,
+      optimisticUpdate: false,
+    },
+  );
+
+  const { mutateAsync: updateNoteAsync, isPending: isUpdating } = useTableUpdate(
+    supabase,
+    'diary_notes',
+    {
+      invalidateQueries: false,
+      optimisticUpdate: false,
+    },
+  );
+
+  const deleteManager = useDeleteManager({
+    tableName: 'diary_notes',
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
+  const isMutating = isInserting || isUpdating || deleteManager.isPending;
+
+  const openAddModal = () => {
+    setEditingNote(null);
+    setIsFormOpen(true);
+  };
+  const openEditModal = (note: Diary_notesRowSchema) => {
+    setEditingNote(note);
+    setIsFormOpen(true);
+  };
+  const closeFormModal = () => {
+    setIsFormOpen(false);
+    setEditingNote(null);
+  };
+
+  const handleSaveNote = async (data: Diary_notesInsertSchema, keepOpen: boolean = false) => {
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    if (!isOnline) {
+      toast.error('Creating or updating notes requires an online connection.');
+      return;
+    }
+
+    const payload = { ...data, user_id: user.id };
+
+    try {
+      if (editingNote) {
+        const res = await updateNoteAsync({ id: editingNote.id, data: payload });
+        toast.success('Note updated successfully!');
+        if (keepOpen && res && res.length > 0) {
+          setEditingNote(res[0] as Diary_notesRowSchema);
+        }
+      } else {
+        const res = await insertNoteAsync(payload);
+        toast.success('Note created successfully!');
+        if (keepOpen && res && res.length > 0) {
+          setEditingNote(res[0] as Diary_notesRowSchema);
+        }
+      }
+
+      if (!keepOpen) {
+        setIsFormOpen(false);
+        setEditingNote(null);
+      }
+
+      refetch();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to save note: ${message}`);
+    }
+  };
+
+  const { mutate: uploadDiaryNotes, isPending: isUploading } = useDiaryExcelUpload();
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && user?.id) {
+      const uploadConfig = buildUploadConfig('diary_notes');
+      uploadDiaryNotes({
+        file,
+        columns: uploadConfig.columnMapping,
+        currentUserId: user.id,
+        currentUserRole,
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const highlightedDates = useMemo(() => {
-    return (allNotesForMonth || []).map((note) => {
+    return (allNotesForMonth || []).map((note: DiaryEntryWithUser) => {
       const [y, m, d] = note.note_date!.split('-').map(Number);
       return new Date(y, m - 1, d);
     });
@@ -69,9 +208,9 @@ export default function DiaryPage() {
     }
   };
 
-  const handleMonthChange = useCallback((date: Date) => {
+  const handleMonthChange = (date: Date) => {
     setCurrentDate(date);
-  }, []);
+  };
 
   const jumpToToday = () => {
     const now = new Date();
@@ -82,18 +221,41 @@ export default function DiaryPage() {
 
   const headerActions = useStandardHeaderActions({
     data: allNotesForMonth,
-    onRefresh: refetch,
+    onRefresh: async () => {
+      if (isOnline) {
+        await syncData(['diary_notes']);
+      }
+      refetch();
+      toast.success('Diary refreshed!');
+    },
+    onAddNew: canEdit ? openAddModal : undefined,
     isLoading,
     isFetching: isFetching,
-    exportConfig: { tableName: 'diary_notes', fileName: 'diary_logs' },
+    exportConfig: canDelete ? { tableName: 'diary_notes', fileName: 'my_diary_notes' } : undefined,
   });
+
+  if (canDelete) {
+    headerActions.splice(1, 0, {
+      label: isUploading ? 'Uploading...' : 'Upload',
+      onClick: handleUploadClick,
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+      hideTextOnMobile: true,
+    });
+  }
 
   const handlePrintFeed = () => {
     window.print();
   };
 
   if (error)
-    return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+    return (
+      <ErrorDisplay
+        error={error.message}
+        actions={[{ label: 'Retry', onClick: () => refetch(), variant: 'primary' }]}
+      />
+    );
 
   const selectedDateString = selectedDate.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -110,10 +272,18 @@ export default function DiaryPage() {
   return (
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'>
       <div className='mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8'>
+        <input
+          type='file'
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className='hidden'
+          accept='.xlsx, .xls, .csv'
+        />
+
         <div className='mb-6'>
           <PageHeader
-            title='Log Book Viewer'
-            description='View daily maintenance logs and event tracking.'
+            title='Log Book'
+            description='Daily maintenance logs and event tracking.'
             icon={<FiBookOpen />}
             stats={[{ value: allNotesForMonth.length, label: 'Total This Month' }]}
             actions={headerActions}
@@ -123,7 +293,6 @@ export default function DiaryPage() {
         </div>
 
         <div className='grid grid-cols-1 xl:grid-cols-12 gap-6'>
-          {/* Calendar Sidebar */}
           <div className='xl:col-span-4 space-y-6'>
             <div className='bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative'>
               <div className='p-4'>
@@ -152,7 +321,6 @@ export default function DiaryPage() {
             </div>
           </div>
 
-          {/* Main Content Area */}
           <div className='xl:col-span-8 space-y-6'>
             <GenericFilterBar
               searchQuery={searchQuery}
@@ -170,8 +338,7 @@ export default function DiaryPage() {
                     variant='outline'
                     onClick={handlePrintFeed}
                     leftIcon={<FiPrinter className='w-4 h-4' />}
-                    title="Print this month's feed"
-                  >
+                    title="Print this month's feed">
                     Print
                   </Button>
                 ) : null
@@ -208,6 +375,18 @@ export default function DiaryPage() {
                     <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
                       {debouncedSearch ? 'No matching notes found' : 'No entries found'}
                     </h3>
+                    <p className='text-sm text-gray-500 max-w-sm mx-auto mb-6'>
+                      {debouncedSearch
+                        ? 'Try different keywords or tags.'
+                        : 'No logs recorded for this selection. Create a new entry to get started.'}
+                    </p>
+                    {canEdit && !debouncedSearch && viewMode === 'day' && (
+                      <button
+                        onClick={openAddModal}
+                        className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30'>
+                        Create Entry
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -216,10 +395,10 @@ export default function DiaryPage() {
                     <DiaryEntryCard
                       key={note.id}
                       entry={note}
-                      onEdit={() => {}} // Disabled
-                      onDelete={() => {}} // Disabled
-                      canEdit={false}
-                      canDelete={false}
+                      onEdit={openEditModal}
+                      onDelete={(item) => deleteManager.deleteSingle(item)}
+                      canEdit={canEdit}
+                      canDelete={canDelete}
                     />
                   ))}
                 </div>
@@ -228,6 +407,27 @@ export default function DiaryPage() {
           </div>
         </div>
       </div>
+
+      {isFormOpen && (
+        <DiaryFormModal
+          isOpen={isFormOpen}
+          onClose={closeFormModal}
+          editingNote={editingNote}
+          onSubmit={handleSaveNote}
+          isLoading={isMutating}
+          selectedDate={selectedDate}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={deleteManager.isConfirmModalOpen}
+        onConfirm={deleteManager.handleConfirm}
+        onCancel={deleteManager.handleCancel}
+        title='Confirm Deletion'
+        message={deleteManager.confirmationMessage}
+        loading={deleteManager.isPending}
+        type='danger'
+      />
     </div>
   );
 }

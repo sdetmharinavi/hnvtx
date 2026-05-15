@@ -1,2 +1,3 @@
 id,req_no,employee_id,amount,advance_date,status,description,created_at,updated_at
-391f2fad-c233-444f-ab05-4f51eef7ec33,Vehicle advance of Ardhendu Khatua,6e741c80-4fa4-4226-bccb-61a22ea65bef,3000.00,2026-01-29,active,Vehicle advance of Ardhendu Khatua.,2026-01-29 12:05:49.780416+00,2026-01-30 15:33:41.142441+00
+391f2fad-c233-444f-ab05-4f51eef7ec33,Vehicle advance of Ardhendu Khatua,6e741c80-4fa4-4226-bccb-61a22ea65bef,8226.00,2026-01-29,active,Vehicle advance of Ardhendu Khatua.,2026-01-29 12:05:49.780416+00,2026-03-10 06:52:54.946523+00
+ba7a4119-bfcf-4d67-80f9-0e79a5ff5380,Vehicle_Advance_Rajaul,436e1759-9f21-4071-a391-bea46f81b60a,16000.00,2026-02-04,active,Vehicle Advance for March 2026,2026-02-05 05:05:42.222901+00,2026-02-05 05:05:42.222901+00

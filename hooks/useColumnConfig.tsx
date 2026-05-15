@@ -44,7 +44,7 @@ export interface ColumnConfig<T extends PublicTableOrViewName> {
   editOptions?: { label: string; value: string | number | boolean }[];
 }
 
-export type ColumnOverrides<T extends PublicTableOrViewName> = {
+type ColumnOverrides<T extends PublicTableOrViewName> = {
   [K in keyof Row<T>]?: Partial<ColumnConfig<T>>;
 };
 
@@ -56,7 +56,7 @@ interface UseDynamicColumnConfigOptions<T extends PublicTableOrViewName> {
 
 export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
   tableName: T,
-  options: UseDynamicColumnConfigOptions<T> = {},
+  options: UseDynamicColumnConfigOptions<T> = {}
 ): Column<Row<T>>[] {
   const { overrides = {}, omit = [], data = [] } = options;
 
@@ -71,17 +71,14 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
         'email_confirmed_at',
         'phone_confirmed_at',
       ]),
-    [],
+    []
   );
 
   const columnWidths = useMemo(() => {
     const widths: Record<string, number> = {};
     if (data.length > 0) {
       for (const colName of Object.keys(data[0] || {})) {
-        widths[colName] = dateColumns.has(colName)
-          ? 120
-          : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            inferDynamicColumnWidth(colName, data as any[]);
+        widths[colName] = dateColumns.has(colName) ? 120 : inferDynamicColumnWidth(colName, data);
       }
     }
     return widths;
@@ -117,9 +114,16 @@ export function useDynamicColumnConfig<T extends PublicTableOrViewName>(
           width: columnWidths?.[key],
         };
 
-        return { ...defaultConfig, ...columnOverride } as Column<Row<T>>;
+        return { ...defaultConfig, ...columnOverride };
       });
-  }, [tableName, overrides, omit, columnWidths]);
+  }, [tableName, overrides, omit, columnWidths]); // Its dependencies are now correct.
+
+  // const columnsKeys = columns.map((col) => col.key);
+
+  // useEffect(() => {
+  //   console.log(`columns for ${tableName}`, columnsKeys);
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   return columns;
 }

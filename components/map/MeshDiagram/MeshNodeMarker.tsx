@@ -61,17 +61,17 @@ export const MeshNodeMarker = ({
   const labelIcon = useMemo(() => {
     return L.divIcon({
       html: createLabelHtml(
-        node.name || 'Unknown',
+        node.system_node_name || node.name || 'Unknown', // THE FIX: Prioritize system_node_name
         formatIP(node.ip),
         portsList,
         isDark,
-        0 // No rotation
+        0, // No rotation
       ),
       className: 'bg-transparent border-none',
       iconSize: [20, 20],
       iconAnchor: [10, 10],
     });
-  }, [node.name, node.ip, portsList, isDark]);
+  }, [node.system_node_name, node.name, node.ip, portsList, isDark]);
 
   return (
     <>
@@ -91,26 +91,35 @@ export const MeshNodeMarker = ({
       <Marker
         position={position}
         icon={getNodeIcon(node.system_type, node.type, false)}
-        zIndexOffset={500}
-      >
-        <Popup className="custom-popup">
-          <div className="text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
-            <div className="bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600">
-              <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">{node.name}</h3>
+        zIndexOffset={500}>
+        <Popup className='custom-popup'>
+          <div className='text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800'>
+            <div className='bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600'>
+              <h3 className='font-bold text-slate-900 dark:text-slate-50 text-base'>
+                {/* THE FIX: Title uses System Name */}
+                {node.system_node_name || node.name}
+              </h3>
             </div>
-            <div className="space-y-2 p-3 text-slate-600 dark:text-slate-300">
+            <div className='space-y-2 p-3 text-slate-600 dark:text-slate-300'>
+              {/* THE FIX: Keep the physical location name visible as secondary info */}
+              <div className='flex items-center justify-between'>
+                <span className='font-medium text-slate-700 dark:text-slate-200'>Location:</span>
+                <span className='text-xs truncate max-w-[120px]' title={node.name || ''}>
+                  {node.name}
+                </span>
+              </div>
               {node.ip && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-700 dark:text-slate-200">IP:</span>
-                  <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all">
+                <div className='flex items-center justify-between'>
+                  <span className='font-medium text-slate-700 dark:text-slate-200'>IP:</span>
+                  <span className='font-mono text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-800 dark:text-slate-100 break-all'>
                     {formatIP(node.ip)}
                   </span>
                 </div>
               )}
               {node.system_type && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-700 dark:text-slate-200">Type:</span>
-                  <span className="text-xs">{node.system_type}</span>
+                <div className='flex items-center justify-between'>
+                  <span className='font-medium text-slate-700 dark:text-slate-200'>Type:</span>
+                  <span className='text-xs'>{node.system_type}</span>
                 </div>
               )}
             </div>

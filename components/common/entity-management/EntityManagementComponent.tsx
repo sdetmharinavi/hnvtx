@@ -1,4 +1,3 @@
-// components/common/entity-management/EntityManagementComponent.tsx
 import type { UseQueryResult } from '@tanstack/react-query';
 import { PagedQueryResult } from '@/hooks/database';
 import { EntityDetailsPanel } from '@/components/common/entity-management/EntityDetailsPanel';
@@ -12,13 +11,20 @@ import {
 } from '@/components/common/entity-management/types';
 import { ViewModeToggle } from '@/components/common/entity-management/ViewModeToggle';
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { FiInfo, FiMoreVertical } from 'react-icons/fi';
+import { FiInfo, FiPlus, FiMoreVertical } from 'react-icons/fi';
 import { useDebounce } from 'use-debounce';
 import { PageSpinner } from '@/components/common/ui';
+
+type ToggleStatusVariables = { id: string; status: boolean; nameField?: keyof BaseEntity };
 
 interface EntityManagementComponentProps<T extends BaseEntity> {
   config: EntityConfig<T>;
   entitiesQuery: UseQueryResult<PagedQueryResult<T>, Error>;
+  toggleStatusMutation?: { mutate: (variables: ToggleStatusVariables) => void; isPending: boolean };
+  // THE FIX: Made onEdit optional
+  onEdit?: (entity: T) => void;
+  onDelete?: (entity: { id: string; name: string }) => void;
+  onCreateNew?: () => void; // Made optional as well for read-only access
   selectedEntityId: string | null;
   onSelect: (id: string | null) => void;
   onViewDetails?: () => void;
@@ -34,6 +40,10 @@ interface EntityManagementComponentProps<T extends BaseEntity> {
 export function EntityManagementComponent<T extends BaseEntity>({
   config,
   entitiesQuery,
+  toggleStatusMutation,
+  onEdit,
+  onDelete,
+  onCreateNew,
   selectedEntityId,
   onSelect,
   onViewDetails,
@@ -52,12 +62,18 @@ export function EntityManagementComponent<T extends BaseEntity>({
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
 
+  // --- RESIZING LOGIC START ---
   const [detailsPanelWidth, setDetailsPanelWidth] = useState(1000);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const startResizing = useCallback(() => setIsResizing(true), []);
-  const stopResizing = useCallback(() => setIsResizing(false), []);
+  const startResizing = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
 
   const resize = useCallback(
     (mouseEvent: MouseEvent) => {
@@ -90,6 +106,7 @@ export function EntityManagementComponent<T extends BaseEntity>({
       document.body.style.userSelect = 'auto';
     };
   }, [isResizing, resize, stopResizing]);
+  // --- RESIZING LOGIC END ---
 
   useEffect(() => {
     onSearchChange(debouncedSearch);
@@ -155,6 +172,20 @@ export function EntityManagementComponent<T extends BaseEntity>({
     return rootEntities;
   }, [allEntities, config.isHierarchical, config.parentField]);
 
+  const handleToggleStatus = useCallback(
+    (e: React.MouseEvent, entity: T) => {
+      e.stopPropagation();
+      if (!toggleStatusMutation) return;
+      if (entity.status === null || entity.status === undefined) return;
+      toggleStatusMutation.mutate({
+        id: entity.id ?? '',
+        status: !entity.status,
+        nameField: 'status',
+      });
+    },
+    [toggleStatusMutation],
+  );
+
   const handleCloseDetailsPanel = useCallback(() => {
     setShowDetailsPanel(false);
     onSelect(null);
@@ -164,6 +195,10 @@ export function EntityManagementComponent<T extends BaseEntity>({
     onSelect(id);
     setShowDetailsPanel(true);
   };
+
+  const handleOpenEditForm = useCallback(() => {
+    if (selectedEntity && onEdit) onEdit(selectedEntity);
+  }, [selectedEntity, onEdit]);
 
   const toggleExpanded = (id: string) => {
     setExpandedEntities((prev) => {
@@ -175,10 +210,12 @@ export function EntityManagementComponent<T extends BaseEntity>({
   };
 
   const IconComponent = config.icon;
+
   const isInitialLoading = entitiesQuery.isLoading && allEntities.length === 0;
 
   return (
     <div className='flex flex-col lg:flex-row lg:h-[calc(100vh-160px)] relative overflow-hidden'>
+      {/* LEFT PANEL: LIST/TREE */}
       <div
         className={`flex-1 flex flex-col min-w-1/3 ${showDetailsPanel ? 'hidden lg:flex' : 'flex'}`}
       >
@@ -211,6 +248,16 @@ export function EntityManagementComponent<T extends BaseEntity>({
                 <p className='text-gray-500 dark:text-gray-400'>
                   No {config.entityPluralName.toLowerCase()} found.
                 </p>
+                {/* THE FIX: Conditionally render Add button only if onCreateNew provided */}
+                {onCreateNew && (
+                  <button
+                    onClick={onCreateNew}
+                    className='mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30'
+                  >
+                    <FiPlus className='h-4 w-4 mr-2' />
+                    Add First {config.entityDisplayName}
+                  </button>
+                )}
               </div>
             </div>
           ) : config.isHierarchical && viewMode === 'tree' ? (
@@ -225,7 +272,11 @@ export function EntityManagementComponent<T extends BaseEntity>({
                   expandedEntities={expandedEntities}
                   onSelect={handleItemSelect}
                   onToggleExpand={toggleExpanded}
-                  isLoading={false}
+                  onToggleStatus={
+                    toggleStatusMutation ? (e) => handleToggleStatus(e, entity) : undefined
+                  }
+                  isLoading={toggleStatusMutation?.isPending ?? false}
+                  showStatusToggle={!!toggleStatusMutation}
                 />
               ))}
             </div>
@@ -238,7 +289,11 @@ export function EntityManagementComponent<T extends BaseEntity>({
                   config={config}
                   isSelected={entity.id === selectedEntityId}
                   onSelect={() => handleItemSelect(entity.id ?? '')}
-                  isLoading={false}
+                  onToggleStatus={
+                    toggleStatusMutation ? (e) => handleToggleStatus(e, entity) : undefined
+                  }
+                  isLoading={toggleStatusMutation?.isPending ?? false}
+                  showStatusToggle={!!toggleStatusMutation}
                   isDuplicate={duplicateSet?.has(entity.name)}
                 />
               ))}
@@ -247,8 +302,15 @@ export function EntityManagementComponent<T extends BaseEntity>({
         </div>
       </div>
 
+      {/* RESIZER HANDLE (Desktop Only) */}
       <div
-        className={`hidden lg:flex w-1 cursor-col-resize items-center justify-center bg-gray-100 hover:bg-blue-400 dark:bg-gray-900 dark:hover:bg-blue-600 transition-colors z-20 relative ${isResizing ? 'bg-blue-500 dark:bg-blue-500' : ''}`}
+        className={`
+          hidden lg:flex
+          w-1 cursor-col-resize items-center justify-center
+          bg-gray-100 hover:bg-blue-400 dark:bg-gray-900 dark:hover:bg-blue-600
+          transition-colors z-20 relative
+          ${isResizing ? 'bg-blue-500 dark:bg-blue-500' : ''}
+        `}
         onMouseDown={startResizing}
       >
         <div className='absolute pointer-events-none text-gray-400 dark:text-gray-500'>
@@ -256,9 +318,12 @@ export function EntityManagementComponent<T extends BaseEntity>({
         </div>
       </div>
 
+      {/* RIGHT PANEL: DETAILS */}
       <div
         ref={sidebarRef}
-        className={`${showDetailsPanel ? 'flex' : 'hidden lg:flex'} flex-col bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700`}
+        className={`${
+          showDetailsPanel ? 'flex' : 'hidden lg:flex'
+        } flex-col bg-white dark:bg-gray-800 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700`}
         style={{
           width:
             typeof window !== 'undefined' && window.innerWidth >= 1024 ? detailsPanelWidth : '100%',
@@ -289,6 +354,8 @@ export function EntityManagementComponent<T extends BaseEntity>({
             <EntityDetailsPanel
               entity={selectedEntity}
               config={config}
+              onEdit={handleOpenEditForm}
+              onDelete={onDelete}
               onViewDetails={onViewDetails}
             />
           ) : (

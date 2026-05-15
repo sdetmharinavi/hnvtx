@@ -1,11 +1,19 @@
+// hooks/data/useRingsData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 export const useRingsData = createGenericDataQuery<'v_rings'>({
   tableName: 'v_rings',
-  searchFields: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
+  // Typecast as any to support our custom view fields that aren't in Zod yet
+  searchFields: [
+    'name',
+    'description',
+    'ring_type_name',
+    'maintenance_area_name',
+    'associated_system_names',
+    'associated_system_ips',
+  ] as any,
   defaultSortField: 'name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed
   filterFn: (r, filters) => {
     if (filters.status) {
       const statusBool = filters.status === 'true';
@@ -18,7 +26,6 @@ export const useRingsData = createGenericDataQuery<'v_rings'>({
     )
       return false;
 
-    // Status Selects
     if (filters.ofc_status && r.ofc_status !== filters.ofc_status) return false;
     if (filters.spec_status && r.spec_status !== filters.spec_status) return false;
     if (filters.bts_status && r.bts_status !== filters.bts_status) return false;

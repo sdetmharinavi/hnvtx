@@ -7,11 +7,10 @@ import {
   V_junction_closures_completeRowSchema,
   Cable_segmentsRowSchema,
 } from '@/schemas/zod-schemas';
+import { Json } from '@/types/supabase-types';
 
-// THE FIX: Opt out of static caching
 export const dynamic = 'force-dynamic';
 
-// ... (rest of the schema definitions)
 const evolutionCommitPayloadSchema = z.object({
   plannedJointBoxes: z.array(
     z.object({
@@ -44,6 +43,7 @@ export type EvolutionCommitPayload = z.infer<typeof evolutionCommitPayloadSchema
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const routeId = (await context.params).id;
+
   if (!routeId) {
     return NextResponse.json({ error: 'Route ID is required' }, { status: 400 });
   }
@@ -52,27 +52,39 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
   try {
     // 1. Fetch main route info
+    // We construct the filter manually here to ensure it's a valid JSON object
+    // acceptable by the PostgreSQL jsonb parameter.
+    const filters: Json = { id: routeId };
+    
     const { data: routeRpcData, error: routeError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_ofc_cables_complete',
       p_limit: 1,
       p_offset: 0,
-      p_filters: { id: routeId },
+      p_filters: filters,
     });
 
-    if (routeError) throw new Error(`Route fetch error: ${routeError.message}`);
+    if (routeError) {
+      console.error(`Route fetch RPC error for ID ${routeId}:`, routeError);
+      throw new Error(`Route fetch error: ${routeError.message}`);
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routeDataList = (routeRpcData as any)?.data as V_ofc_cables_completeRowSchema[];
     const routeData = routeDataList?.[0];
 
-    if (!routeData) return NextResponse.json({ error: 'Route not found' }, { status: 404 });
+    if (!routeData) {
+      // Return a 404 if the route data array is empty
+      console.warn(`Route ${routeId} not found or access denied.`);
+      return NextResponse.json({ error: 'Route not found' }, { status: 404 });
+    }
 
     // 2. Fetch JCs
+    const jcFilters: Json = { ofc_cable_id: routeId };
     const { data: jcRpcData, error: jcError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'v_junction_closures_complete',
       p_limit: 1000,
       p_offset: 0,
-      p_filters: { ofc_cable_id: routeId },
+      p_filters: jcFilters,
     });
 
     if (jcError) throw new Error(`JC fetch error: ${jcError.message}`);
@@ -100,11 +112,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }));
 
     // 3. Fetch Segments
+    const segFilters: Json = { original_cable_id: routeId };
     const { data: segmentRpcData, error: segmentError } = await supabase.rpc('get_paged_data', {
       p_view_name: 'cable_segments',
       p_limit: 1000,
       p_offset: 0,
-      p_filters: { original_cable_id: routeId },
+      p_filters: segFilters,
       p_order_by: 'segment_order',
       p_order_dir: 'asc',
     });
@@ -159,9 +172,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { data, error } = await supabase.rpc('upsert_route_topology_from_excel', {
       p_route_id: routeId,
-      p_junction_closures: validationResult.data.plannedJointBoxes,
-      p_cable_segments: validationResult.data.plannedSegments,
-      p_fiber_splices: validationResult.data.plannedSplices,
+      p_junction_closures: validationResult.data.plannedJointBoxes as unknown as Json,
+      p_cable_segments: validationResult.data.plannedSegments as unknown as Json,
+      p_fiber_splices: validationResult.data.plannedSplices as unknown as Json,
     });
 
     if (error) throw error;

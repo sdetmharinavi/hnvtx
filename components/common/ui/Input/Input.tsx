@@ -29,7 +29,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       value,
       ...props
     },
-    ref
+    ref,
   ) => {
     const generatedId = useId();
     const inputId = id || generatedId;
@@ -46,7 +46,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
     // Initialize hasValue logic
     useEffect(() => {
-      const val = value !== undefined ? value : innerRef.current?.value ?? '';
+      const val = value !== undefined ? value : (innerRef.current?.value ?? '');
       setLiveHasValue(String(val).length > 0);
     }, [value]);
 
@@ -74,7 +74,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       setLiveHasValue(false);
     };
 
-    const safeValue = value === undefined ? undefined : value ?? '';
+    const safeValue = value === undefined ? undefined : (value ?? '');
     const shouldShowClear = clearable && !disabled && !isLoading && liveHasValue;
 
     const inputClasses = clsx(
@@ -91,13 +91,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed',
       !(disabled || isLoading) && liveHasValue && 'bg-gray-50 dark:bg-gray-800!',
       !(disabled || isLoading) && !liveHasValue && 'bg-white dark:bg-gray-900',
-      !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100'
+      !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100',
     );
 
     return (
       <div className={clsx('relative', fullWidth && 'w-full')}>
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 z-10">
+          <div className='absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 z-10'>
             {leftIcon}
           </div>
         )}
@@ -117,21 +117,20 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         />
         {shouldShowClear && (
           <button
-            type="button"
+            type='button'
             onClick={handleClear}
             // Add onMouseDown preventDefault to ensure click registers before blur
             onMouseDown={(e) => e.preventDefault()}
             // Added z-10 and pointer-events-auto
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10 cursor-pointer pointer-events-auto"
-            aria-label="Clear input"
+            className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10 cursor-pointer pointer-events-auto'
+            aria-label='Clear input'
           >
             <FiX />
           </button>
         )}
-        {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';

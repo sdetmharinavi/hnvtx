@@ -1,11 +1,10 @@
 // hooks/data/useLookupTypesData.ts
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { Lookup_typesRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import {
   buildServerSearchString,
   performClientSearch,
@@ -16,37 +15,16 @@ export const useLookupTypesData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<Lookup_typesRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
+  const supabase = createClient();
 
   // Search Config
   const searchFields = useMemo(
     () => ['name', 'code', 'description'] as (keyof Lookup_typesRowSchema)[],
     []
   );
+  
+  // For lookups, we generally search the same fields on server and client
   const serverSearchFields = useMemo(() => [...searchFields], [searchFields]);
-
-  const onlineQueryFn = useCallback(async (): Promise<Lookup_typesRowSchema[]> => {
-    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-
-    const rpcFilters = buildRpcFilters({
-      ...filters,
-      or: searchString,
-    });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'lookup_types',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'sort_order',
-      p_order_dir: 'asc',
-    });
-    if (error) throw error;
-    return (data as { data: Lookup_typesRowSchema[] })?.data || [];
-  }, [searchQuery, filters, serverSearchFields]);
-
-  const localQueryFn = useCallback(() => {
-    return localDb.lookup_types.orderBy('sort_order').toArray();
-  }, []);
 
   const {
     data: allLookups = [],
@@ -54,12 +32,39 @@ export const useLookupTypesData = (
     isFetching,
     error,
     refetch,
-    // MODIFIED: Removed `networkStatus` from the destructuring as it's not returned by the hook.
-  } = useLocalFirstQuery<'lookup_types'>({
+  } = useQuery({
     queryKey: ['lookup_types-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.lookup_types,
+    queryFn: async (): Promise<Lookup_typesRowSchema[]> => {
+      // 1. Build Search String for RPC
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+
+      // 2. Build Filters
+      // Note: We use 'get_paged_data' with a high limit (5000) to fetch all lookups 
+      // and perform detailed filtering/sorting on the client if necessary, 
+      // or rely on RPC filters for basic needs.
+      const rpcFilters = buildRpcFilters({
+        ...filters,
+        or: searchString,
+      });
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'lookup_types', // Can also use 'v_lookup_types' if view exists
+        p_limit: 5000,
+        p_offset: 0,
+        p_filters: rpcFilters,
+        p_order_by: 'sort_order',
+        p_order_dir: 'asc',
+      });
+
+      if (error) throw error;
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((data as any)?.data || []) as Lookup_typesRowSchema[];
+    },
+    // Keep data fresh for 1 hour since lookup types rarely change during a session.
+    // This replaces the need for a local database.
+    staleTime: 1000 * 60 * 60, 
+    refetchOnWindowFocus: false,
   });
 
   const processedData = useMemo(() => {
@@ -69,15 +74,16 @@ export const useLookupTypesData = (
 
     let filtered = allLookups;
 
-    // 1. Search
+    // 1. Client-Side Search Refinement (Optional, adds responsiveness)
     filtered = performClientSearch(filtered, searchQuery, searchFields);
 
-    // 2. Filters
+    // 2. Client-Side Filters
+    // (RPC handles most, but we ensure specific logic here if needed)
     if (filters.category) {
       filtered = filtered.filter((lookup) => lookup.category === filters.category);
     }
 
-    // Hide DEFAULT placeholder
+    // Hide DEFAULT placeholder from UI
     filtered = filtered.filter((lookup) => lookup.name !== 'DEFAULT');
 
     // 3. Sort (Priority: Sort Order, then Name)
@@ -100,9 +106,13 @@ export const useLookupTypesData = (
       activeCount,
       inactiveCount,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allLookups, searchQuery, filters, currentPage, pageLimit]);
+  }, [allLookups, searchQuery, filters, currentPage, pageLimit, searchFields]);
 
-  // MODIFIED: Removed `networkStatus` from the returned object.
-  return { ...processedData, isLoading, isFetching, error, refetch };
+  return { 
+    ...processedData, 
+    isLoading, 
+    isFetching, 
+    error, 
+    refetch 
+  };
 };

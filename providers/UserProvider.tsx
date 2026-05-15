@@ -1,13 +1,15 @@
-// providers/UserProvider.tsx
+// path: providers/UserProvider.tsx
 'use client';
 
 import { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useUserPermissionsExtended } from '@/hooks/useRoleFunctions';
 import { UserRole } from '@/types/user-roles';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
+import { UseQueryResult, useQueryClient } from '@tanstack/react-query';
 import { useThemeStore, Theme } from '@/stores/themeStore';
+import { useTableUpdate } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useDataSync } from '@/hooks/data/useDataSync';
 
 interface UserContextType {
   profile: V_user_profiles_extendedRowSchema | null;
@@ -15,7 +17,7 @@ interface UserContextType {
   isSuperAdmin: boolean | null;
   isLoading: boolean;
   canAccess: (allowedRoles?: readonly string[]) => boolean;
-  refetch: () => Promise<unknown>;
+  refetch: () => Promise<UseQueryResult>;
   error: Error | null;
 }
 
@@ -25,14 +27,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { profile, role, isSuperAdmin, isLoading, canAccess, refetch, error } =
     useUserPermissionsExtended();
   const { user } = useAuth();
-
   const { setTheme } = useThemeStore();
-  const { sync: syncData } = useDataSync();
+  const queryClient = useQueryClient();
+  const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
 
   const hasInitializedThemeRef = useRef<string | null>(null);
-  const syncedUserIdRef = useRef<string | null>(null);
 
-  // Initialize theme from profile on first load
+  // 1. Theme Initialization
   useEffect(() => {
     if (!profile || !user?.id) return;
 
@@ -46,19 +47,34 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [profile, user?.id, setTheme]);
 
-  // Sync user profile data automatically when user changes
+  // 2. Sync Theme Changes to Database
   useEffect(() => {
-    const currentUserId = user?.id;
-    if (!currentUserId) {
-      syncedUserIdRef.current = null;
-      hasInitializedThemeRef.current = null;
-      return;
-    }
-    if (syncedUserIdRef.current !== currentUserId) {
-      syncedUserIdRef.current = currentUserId;
-      syncData(['v_user_profiles_extended']);
-    }
-  }, [user?.id, syncData]);
+    const unsubscribe = useThemeStore.subscribe(
+      (state) => state.theme,
+      (newTheme: Theme, oldTheme: Theme) => {
+        if (newTheme !== oldTheme && user?.id && profile) {
+          const currentPreferences = (profile.preferences as Record<string, unknown>) || {};
+          if (currentPreferences.theme !== newTheme) {
+            const newPreferences = { ...currentPreferences, theme: newTheme };
+            updateProfile(
+              { id: user.id, data: { preferences: newPreferences } },
+              {
+                onSuccess: () => {
+                  queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
+                },
+                onError: (err) => console.error('Failed to save theme preference:', err),
+              },
+            );
+          }
+        }
+      },
+    );
+    return () => unsubscribe();
+  }, [user?.id, profile, updateProfile, queryClient]);
+
+  // REMOVED: Automatic syncData effect.
+  // React Query's `useQuery` in `useUserPermissionsExtended` handles fetching data on mount.
+  // Triggering `syncData` here caused a double-fetch loop.
 
   return (
     <UserContext.Provider
@@ -68,7 +84,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         isSuperAdmin,
         isLoading,
         canAccess,
-        refetch: refetch as () => Promise<unknown>,
+        refetch: refetch as () => Promise<UseQueryResult>,
         error,
       }}
     >

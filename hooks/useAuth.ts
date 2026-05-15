@@ -1,16 +1,19 @@
-// hooks/useAuth.ts
-"use client";
+'use client';
 
-import { useEffect, useMemo, useCallback } from "react";
-import { createClient } from "@/utils/supabase/client";
-import { useAuthStore } from "@/stores/authStore";
-import { toast } from "sonner";
-import { AuthError } from "@supabase/supabase-js";
+import { useEffect, useMemo, useCallback, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useAuthStore } from '@/stores/authStore';
+import { toast } from 'sonner';
+import { AuthError, Subscription } from '@supabase/supabase-js';
 
 interface AuthActionResult {
   success: boolean;
   error: AuthError | null;
 }
+
+let listenerCount = 0;
+let authSubscription: Subscription | null = null;
+let isInitializing = false;
 
 export const useAuth = () => {
   const {
@@ -25,70 +28,126 @@ export const useAuth = () => {
     getUserId,
   } = useAuthStore();
 
-  const supabase = useMemo(() => createClient(),[]);
+  const supabase = useMemo(() => createClient(), []);
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
-    const subscription = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (isMounted) {
-          setUser(session?.user ?? null);
-        }
-      },
-    ).data.subscription;
+    listenerCount++;
 
     const initAuth = async () => {
       try {
         const {
           data: { session: existingSession },
         } = await supabase.auth.getSession();
+
         if (existingSession?.user) {
-          if (isMounted) setUser(existingSession.user);
+          useAuthStore.getState().setUser(existingSession.user);
           return;
         }
+
         const {
           data: { session },
           error,
         } = await supabase.auth.refreshSession();
+
         if (error) {
-          if (isMounted) setAuthState("unauthenticated");
+          useAuthStore.getState().setAuthState('unauthenticated');
           return;
         }
-        if (session?.user && isMounted) setUser(session.user);
-        else if (isMounted) setAuthState("unauthenticated");
-      } catch {
-        if (isMounted) setAuthState("unauthenticated");
+
+        if (session?.user) {
+          useAuthStore.getState().setUser(session.user);
+        } else {
+          useAuthStore.getState().setAuthState('unauthenticated');
+        }
+      } catch (error) {
+        console.error(
+          'Failed to initialize auth:',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+        useAuthStore.getState().setAuthState('unauthenticated');
+      } finally {
+        isInitializing = false;
       }
     };
-    initAuth();
+
+    if (listenerCount === 1) {
+      authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
+        useAuthStore.getState().setUser(session?.user ?? null);
+      }).data.subscription;
+
+      if (!isInitializing) {
+        isInitializing = true;
+        initAuth();
+      }
+    }
 
     const timeoutId = setTimeout(() => {
-      if (useAuthStore.getState().authState === "loading") {
-        setAuthState("unauthenticated");
+      if (useAuthStore.getState().authState === 'loading' && isMounted) {
+        console.warn('Auth check timed out. Forcing unauthenticated state.');
+        useAuthStore.getState().setAuthState('unauthenticated');
       }
     }, 8000);
 
     return () => {
       isMounted = false;
-      subscription?.unsubscribe();
+      listenerCount--;
       clearTimeout(timeoutId);
+
+      if (listenerCount === 0 && authSubscription) {
+        authSubscription.unsubscribe();
+        authSubscription = null;
+      }
     };
-  }, [supabase, setUser, setAuthState]);
+  }, [supabase]);
+
+  const signUp = useCallback(
+    async (credentials: {
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+    }): Promise<AuthActionResult> => {
+      return executeWithLoading(async () => {
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: credentials.email,
+            password: credentials.password,
+            options: {
+              data: {
+                first_name: credentials.firstName,
+                last_name: credentials.lastName,
+              },
+            },
+          });
+
+          if (error) throw error;
+          if (data.user && !data.session) {
+            toast.success('Signup successful! Please check your email for verification.');
+          }
+          return { success: true, error: null };
+        } catch (error) {
+          const authError = error as AuthError;
+          toast.error(authError.message || 'Signup failed');
+          return { success: false, error: authError };
+        }
+      });
+    },
+    [executeWithLoading, supabase.auth],
+  );
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<AuthActionResult> => {
       return executeWithLoading(async () => {
         try {
-          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) throw error;
-          toast.success("Signed in successfully!");
+          toast.success('Signed in successfully!');
           return { success: true, error: null };
         } catch (error) {
           const authError = error as AuthError;
-          toast.error(authError.message || "Sign in failed");
+          toast.error(authError.message || 'Sign in failed');
           return { success: false, error: authError };
         }
       });
@@ -97,19 +156,29 @@ export const useAuth = () => {
   );
 
   const signInWithGoogle = useCallback(async () => {
+    if (isProcessingRef.current) return { success: false, error: null };
     try {
+      isProcessingRef.current = true;
+      sessionStorage.setItem('oauth_in_progress', 'true');
+
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) throw error;
-      if (data?.url) window.location.href = data.url;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
       return { success: true, error: null };
     } catch (error) {
-      sessionStorage.removeItem("oauth_in_progress");
+      sessionStorage.removeItem('oauth_in_progress');
       const authError = error as AuthError;
-      toast.error(authError.message || "Google sign in failed");
+      toast.error(authError.message || 'Google sign in failed');
       return { success: false, error: authError };
+    } finally {
+      isProcessingRef.current = false;
     }
   }, [supabase.auth]);
 
@@ -118,11 +187,13 @@ export const useAuth = () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       logoutStore();
-      toast.success("Signed out successfully!");
+      toast.success('Signed out successfully!');
       return { success: true, error: null };
     } catch (error) {
+      const authError = error as AuthError;
+      toast.error(authError.message || 'Logout failed');
       logoutStore();
-      return { success: false, error: error as AuthError };
+      return { success: false, error: authError };
     }
   }, [supabase.auth, logoutStore]);
 
@@ -134,12 +205,14 @@ export const useAuth = () => {
             redirectTo: `${window.location.origin}/reset-password`,
           });
           if (error) throw error;
-          toast.success("Password reset email sent!");
+          toast.success('Password reset email sent!');
           return { success: true, error: null };
         } catch (error) {
-          return { success: false, error: error as AuthError };
+          const authError = error as AuthError;
+          toast.error(authError.message || 'Failed to send reset email');
+          return { success: false, error: authError };
         } finally {
-          setAuthState("unauthenticated");
+          setAuthState('unauthenticated');
         }
       });
     },
@@ -150,14 +223,14 @@ export const useAuth = () => {
     async (newPassword: string): Promise<AuthActionResult> => {
       return executeWithLoading(async () => {
         try {
-          const { error } = await supabase.auth.updateUser({
-            password: newPassword,
-          });
+          const { error } = await supabase.auth.updateUser({ password: newPassword });
           if (error) throw error;
-          toast.success("Password updated successfully!");
+          toast.success('Password updated successfully!');
           return { success: true, error: null };
         } catch (error) {
-          return { success: false, error: error as AuthError };
+          const authError = error as AuthError;
+          toast.error(authError.message || 'Password update failed');
+          return { success: false, error: authError };
         }
       });
     },
@@ -176,42 +249,11 @@ export const useAuth = () => {
         return true;
       }
       return false;
-    } catch {
+    } catch (error) {
+      console.error('Failed to sync session:', error);
       return false;
     }
   }, [supabase.auth, setUser]);
-
-  const signUp = useCallback(
-    async (userData: {
-      email: string;
-      password: string;
-      firstName: string;
-      lastName: string;
-    }): Promise<AuthActionResult> => {
-      return executeWithLoading(async () => {
-        try {
-          const { error } = await supabase.auth.signUp({
-            email: userData.email,
-            password: userData.password,
-            options: {
-              data: {
-                first_name: userData.firstName,
-                last_name: userData.lastName,
-              },
-            },
-          });
-          if (error) throw error;
-          toast.success("Account created successfully! Please check your email to verify.");
-          return { success: true, error: null };
-        } catch (error) {
-          const authError = error as AuthError;
-          toast.error(authError.message || "Sign up failed");
-          return { success: false, error: authError };
-        }
-      });
-    },
-    [executeWithLoading, supabase.auth],
-  );
 
   return useMemo(
     () => ({
@@ -220,22 +262,23 @@ export const useAuth = () => {
       isLoading: isLoading(),
       isAuthenticated: isAuthenticated(),
       getUserId: getUserId(),
+      signUp,
       signIn,
       signInWithGoogle,
-      signUp,
       logout,
       forgotPassword,
       resetPassword,
       syncSession,
-    }),[
+    }),
+    [
       user,
       authState,
       isLoading,
       isAuthenticated,
       getUserId,
+      signUp,
       signIn,
       signInWithGoogle,
-      signUp,
       logout,
       forgotPassword,
       resetPassword,

@@ -1,29 +1,43 @@
 // app/dashboard/users/page.tsx
 'use client';
 
+// ... imports remain the same ...
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import { BulkActions } from '@/components/users/BulkActions';
+import { UserCreateModal } from '@/components/users/UserCreateModal';
 import { ErrorDisplay, PageSpinner, RoleBadge, StatusBadge } from '@/components/common/ui';
 import { UserProfileColumns } from '@/config/table-columns/UsersTableColumns';
 import { UserDetailsModal } from '@/config/user-details-config';
 import { Row } from '@/hooks/database';
+import { useAdminUserOperations, type UserCreateInput } from '@/hooks/data/useAdminUserMutations';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FiUsers } from 'react-icons/fi';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
+import { TableAction } from '@/components/table/datatable-types';
 import { Json } from '@/types/supabase-types';
 import { useUser } from '@/providers/UserProvider';
 import { useUsersData } from '@/hooks/data/useUsersData';
 import Image from 'next/image';
 import { UserRole } from '@/types/user-roles';
 import { UnauthorizedModal } from '@/components/auth/UnauthorizedModal';
+import UserProfileEditModal from '@/components/users/UserProfileEditModal';
 import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { StatProps } from '@/components/common/page-header/StatCard';
 
 const AdminUsersPage = () => {
   const { isSuperAdmin, role, isLoading: isUserLoading } = useUser();
+  const {
+    createUser,
+    deleteUsers: bulkDelete,
+    updateUserRoles: bulkUpdateRole,
+    updateUserStatus: bulkUpdateStatus,
+    isLoading: isOperationLoading,
+  } = useAdminUserOperations();
 
+  // REMOVED: localTableName
   const crud = useCrudManager<'user_profiles', V_user_profiles_extendedRowSchema>({
     tableName: 'user_profiles',
     dataQueryHook: useUsersData,
@@ -33,12 +47,18 @@ const AdminUsersPage = () => {
     data: users,
     totalCount,
     isLoading,
+    isMutating,
     error,
     refetch,
     pagination,
+    editModal,
     viewModal,
+    bulkActions,
     filters,
   } = crud;
+
+  // ... (Rest of component logic remains identical) ...
+  const canManage = useMemo(() => isSuperAdmin || role === UserRole.ADMINPRO, [isSuperAdmin, role]);
 
   const filterConfigs = useMemo<FilterConfig[]>(
     () => [
@@ -75,13 +95,66 @@ const AdminUsersPage = () => {
   );
 
   const columns = UserProfileColumns(users as V_user_profiles_extendedRowSchema[]);
+  const { selectedRowIds, handleClearSelection } = bulkActions;
 
   const tableActions = useMemo(
     () =>
-      createStandardActions<'v_user_profiles_extended'>({
-        onView: (record) => viewModal.open(record as V_user_profiles_extendedRowSchema),
-      }),
-    [viewModal],
+      createStandardActions<V_user_profiles_extendedRowSchema>({
+        onEdit: canManage ? editModal.openEdit : undefined,
+        onView: viewModal.open,
+        onDelete: canManage
+          ? (rec) => {
+              if (window.confirm(`Are you sure you want to delete ${rec.full_name}?`)) {
+                bulkDelete.mutateAsync({ user_ids: [rec.id!] }).then(() => refetch());
+              }
+            }
+          : undefined,
+        canDelete: (record) => canManage && !record.is_super_admin,
+      }) as TableAction<'v_user_profiles_extended'>[],
+    [editModal.openEdit, viewModal.open, canManage, bulkDelete, refetch],
+  );
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const handleCreateUser = async (userData: UserCreateInput) => {
+    await createUser.mutateAsync({
+      ...userData,
+    });
+  };
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedRowIds.length === 0) return;
+    if (
+      !window.confirm(`Are you sure you want to delete ${selectedRowIds.length} selected user(s)?`)
+    )
+      return;
+
+    await bulkDelete.mutateAsync({ user_ids: selectedRowIds });
+    handleClearSelection();
+  }, [selectedRowIds, bulkDelete, handleClearSelection]);
+
+  const handleBulkUpdateRole = useCallback(
+    async (newRole: string) => {
+      if (selectedRowIds.length === 0) return;
+      await bulkUpdateRole.mutateAsync({
+        user_ids: selectedRowIds,
+        new_role: newRole,
+      });
+      handleClearSelection();
+    },
+    [selectedRowIds, bulkUpdateRole, handleClearSelection],
+  );
+
+  const handleBulkUpdateStatus = useCallback(
+    async (newStatus: string) => {
+      if (selectedRowIds.length === 0) return;
+      await bulkUpdateStatus.mutateAsync({
+        user_ids: selectedRowIds,
+        new_status: newStatus,
+      });
+      handleClearSelection();
+    },
+    [selectedRowIds, bulkUpdateStatus, handleClearSelection],
   );
 
   const headerActions = useStandardHeaderActions<'user_profiles'>({
@@ -89,6 +162,7 @@ const AdminUsersPage = () => {
     onRefresh: async () => {
       await refetch();
     },
+    onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,
     exportConfig: { tableName: 'user_profiles' },
   });
@@ -126,7 +200,8 @@ const AdminUsersPage = () => {
         isActive: currentStatus === 'inactive',
       },
     ];
-  }, [totalCount, users, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, users, filters.filters.status, filters.setFilters]);
 
   const renderMobileItem = useCallback(
     (record: Row<'v_user_profiles_extended'>, actions: React.ReactNode) => {
@@ -187,7 +262,6 @@ const AdminUsersPage = () => {
     return <PageSpinner text='Verifying permissions...' />;
   }
 
-  // Ensure only PRO Admins and Super Admins can even view this page
   const allowedRoles = [UserRole.ADMINPRO];
   if (!isSuperAdmin && !allowedRoles.includes(role as UserRole)) {
     return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
@@ -206,8 +280,8 @@ const AdminUsersPage = () => {
     <DashboardPageLayout
       crud={crud}
       header={{
-        title: 'User Viewer',
-        description: 'Read-only view of network users and their related information.',
+        title: 'User Management',
+        description: 'Manage network users and their related information.',
         icon: <FiUsers />,
         stats: headerStats,
         actions: headerActions,
@@ -215,6 +289,19 @@ const AdminUsersPage = () => {
       }}
       searchPlaceholder='Search users by name or email...'
       filterConfigs={filterConfigs}
+      renderBulkActions={() =>
+        canManage && selectedRowIds.length > 0 ? (
+          <BulkActions
+            selectedCount={selectedRowIds.length}
+            isSuperAdmin={!!isSuperAdmin}
+            isOperationLoading={isMutating || isOperationLoading}
+            onBulkDelete={handleBulkDelete}
+            onBulkUpdateRole={handleBulkUpdateRole}
+            onBulkUpdateStatus={handleBulkUpdateStatus}
+            onClearSelection={handleClearSelection}
+          />
+        ) : null
+      }
       renderGrid={() => <div className='text-center p-8'>Grid View Not Supported</div>}
       tableProps={{
         tableName: 'v_user_profiles_extended',
@@ -226,9 +313,15 @@ const AdminUsersPage = () => {
           address: user.address as Json | null,
         })),
         columns: columns,
-        loading: isLoading,
+        loading: isLoading || isOperationLoading,
         actions: tableActions,
-        selectable: false, // Read only, no selection
+        selectable: true,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_user_profiles_extendedRowSchema & { id: string } => row.id !== null,
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
         searchable: false,
         filterable: false,
         renderMobileItem: renderMobileItem,
@@ -245,12 +338,33 @@ const AdminUsersPage = () => {
         customToolbar: <></>,
       }}
       isEmpty={users.length === 0 && !isLoading}
+      autoDeleteModal={false}
       modals={
-        <UserDetailsModal
-          isOpen={viewModal.isOpen}
-          user={viewModal.record as V_user_profiles_extendedRowSchema}
-          onClose={viewModal.close}
-        />
+        <>
+          <UserProfileEditModal
+            isOpen={editModal.isOpen}
+            user={editModal.record as V_user_profiles_extendedRowSchema | null}
+            onClose={editModal.close}
+            onSave={() => {
+              refetch();
+            }}
+          />
+
+          <UserDetailsModal
+            isOpen={viewModal.isOpen}
+            user={viewModal.record as V_user_profiles_extendedRowSchema}
+            onClose={viewModal.close}
+          />
+
+          {canManage && (
+            <UserCreateModal
+              isOpen={isCreateModalOpen}
+              onClose={() => setIsCreateModalOpen(false)}
+              onCreate={handleCreateUser}
+              isLoading={createUser.isPending}
+            />
+          )}
+        </>
       }
     />
   );

@@ -12,7 +12,6 @@ import {
 } from './queries-type-helpers';
 import { buildRpcFilters, createRpcQueryKey } from './utility-functions';
 import { DEFAULTS } from '@/constants/constants';
-import { localDb } from '@/hooks/data/localDb'; // THE FIX: Import localDb for fallback logic
 
 // ... (Section 1 Generic RPC Hooks remains unchanged) ...
 
@@ -178,20 +177,11 @@ export function useRingManagerStats(supabase: SupabaseClient<Database>) {
   return useQuery({
     queryKey: ['ring-manager-stats'],
     queryFn: async (): Promise<RingManagerStats> => {
-      // 1. Try Online RPC
-      try {
-        const { data, error } = await supabase.rpc('get_ring_manager_stats');
-        if (error) throw error;
-        if (data) return data as unknown as RingManagerStats;
-      } catch (e) {
-        console.warn('Online stats fetch failed, falling back to local:', e);
-      }
-
-      // 2. Offline Fallback Calculation
-      try {
-        const rings = await localDb.rings.toArray();
-
-        const stats: RingManagerStats = {
+      const { data, error } = await supabase.rpc('get_ring_manager_stats');
+      if (error) throw error;
+      // Ensure we return a valid object even if data is null/empty
+      return (
+        (data as unknown as RingManagerStats) || {
           total_rings: 0,
           spec_issued: 0,
           spec_pending: 0,
@@ -200,39 +190,8 @@ export function useRingManagerStats(supabase: SupabaseClient<Database>) {
           ofc_pending: 0,
           on_air_nodes: 0,
           configured_in_maan: 0,
-        };
-
-        stats.total_rings = rings.filter((r) => r.status).length;
-
-        rings.forEach((r) => {
-          if (!r.status) return;
-
-          if (r.spec_status === 'Issued') stats.spec_issued++;
-          else stats.spec_pending++;
-
-          if (r.ofc_status === 'Ready') stats.ofc_ready++;
-          else if (r.ofc_status === 'Partial Ready') stats.ofc_partial_ready++;
-          else stats.ofc_pending++;
-
-          if (r.bts_status === 'Configured') stats.configured_in_maan++;
-        });
-
-        // Note: on_air_nodes is hard to calculate offline without heavy joins across 3 tables.
-        // We default to 0 for offline mode to avoid performance hit.
-        return stats;
-      } catch (e) {
-        console.error('Local stats calc failed:', e);
-        return {
-          total_rings: 0,
-          spec_issued: 0,
-          spec_pending: 0,
-          ofc_ready: 0,
-          ofc_partial_ready: 0,
-          ofc_pending: 0,
-          on_air_nodes: 0,
-          configured_in_maan: 0,
-        };
-      }
+        }
+      );
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });

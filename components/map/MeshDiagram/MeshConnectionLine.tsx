@@ -2,7 +2,7 @@
 'use client';
 
 import { Polyline, Popup } from 'react-leaflet';
-import { getCurvedPath, getLoopPath } from '@/utils/mapUtils';
+import { getCurvedPath, getLoopPath, getDynamicLineWeight } from '@/utils/mapUtils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect, useState, useMemo } from 'react';
@@ -36,34 +36,47 @@ export const MeshConnectionLine = ({
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
-  // QUERY 1: CONFIGURATION (logical_paths)
+  // THE FIX: Removed 'remark' from logical_paths selection
   const { data: configuredPaths = [], refetch: refetchConfig } = useQuery({
     queryKey: ['logical_paths', 'mesh-segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
       const { data, error } = await supabase
         .from('logical_paths')
-        .select('id, name, remark')
-        .or(filter);
+        .select('id, name, source_system_id, destination_system_id')
+        .in('source_system_id', [start.id, end.id])
+        .in('destination_system_id', [start.id, end.id]);
+
       if (error) throw error;
-      return data;
+
+      return data.filter(
+        (p) =>
+          (p.source_system_id === start.id && p.destination_system_id === end.id) ||
+          (p.source_system_id === end.id && p.destination_system_id === start.id),
+      );
     },
     enabled: shouldFetch && !!start.id && !!end.id,
   });
 
-  // QUERY 2: PROVISIONING (logical_fiber_paths)
   const { data: provisionedPaths = [] } = useQuery({
     queryKey: ['logical_fiber_paths', 'mesh-segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
       const { data, error } = await supabase
         .from('logical_fiber_paths')
-        .select('id, system_connection_id, remark')
-        .or(filter);
+        .select('id, system_connection_id, remark, source_system_id, destination_system_id')
+        .in('source_system_id', [start.id, end.id])
+        .in('destination_system_id', [start.id, end.id]);
+
       if (error) throw error;
-      return data;
+
+      return data.filter(
+        (p) =>
+          (p.source_system_id === start.id && p.destination_system_id === end.id) ||
+          (p.source_system_id === end.id && p.destination_system_id === start.id),
+      );
     },
     enabled: shouldFetch && !!start.id && !!end.id,
   });
@@ -71,21 +84,14 @@ export const MeshConnectionLine = ({
   useEffect(() => {
     const configPath = configuredPaths[0];
     const provPath = provisionedPaths[0];
-    const serviceName = configPath?.name;
-    const sysConnectionId = provPath?.system_connection_id || undefined;
-    const remark = provPath?.remark || configPath?.remark || '';
-
-    setAllotedService(serviceName || config?.cableName);
-    setConnectionId(sysConnectionId || config?.connectionId);
-
-    if (!isEditingRemark) {
-      setRemarkText(remark);
-    }
+    setAllotedService(configPath?.name || config?.cableName);
+    setConnectionId(provPath?.system_connection_id || config?.connectionId);
+    // THE FIX: Only attempt to pull remarks from provisionedPaths as logical_paths has no remark column
+    if (!isEditingRemark) setRemarkText(provPath?.remark || '');
   }, [configuredPaths, provisionedPaths, config, isEditingRemark]);
 
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
-      // THE FIX: Target logical_fiber_paths for remark updates
       const existingPath = provisionedPaths[0];
       if (existingPath) {
         const { error } = await supabase
@@ -107,30 +113,14 @@ export const MeshConnectionLine = ({
     onSuccess: () => {
       toast.success('Remark saved successfully');
       setIsEditingRemark(false);
-      refetchConfig(); // Refetch both just in case
+      refetchConfig();
       queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
     },
     onError: (err: Error) => toast.error(`Failed to save remark: ${err.message}`),
   });
 
-  const handleSaveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    saveRemark(remarkText);
-  };
-  const handleCancelClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingRemark(false);
-    setRemarkText(provisionedPaths[0]?.remark || configuredPaths[0]?.remark || '');
-  };
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingRemark(true);
-  };
-
   let color = isSpur ? (isDark ? '#b4083f' : '#ff0066') : isDark ? '#60a5fa' : '#3b82f6';
-  if (customColor) {
-    color = customColor;
-  }
+  if (customColor) color = customColor;
 
   const hasConfig =
     (config &&
@@ -143,16 +133,14 @@ export const MeshConnectionLine = ({
   const positions = useMemo(() => {
     const dist = startPos.distanceTo(endPos);
     const isSelf = start.id === end.id;
-    if (dist < 50 || isSelf) {
-      const loopIndex = Math.round(curveOffset * 10);
-      return getLoopPath(startPos, loopIndex, 120);
-    }
+    if (dist < 50 || isSelf) return getLoopPath(startPos, Math.round(curveOffset * 10), 120);
     if (curveOffset !== 0) return getCurvedPath(startPos, endPos, curveOffset);
     if (isSpur || nodesLength !== 2) return [startPos, endPos];
     return getCurvedPath(startPos, endPos, 0.15);
   }, [startPos, endPos, start.id, end.id, curveOffset, isSpur, nodesLength]);
 
-  const hitWeight = isMobile ? 30 : 5;
+  const baseWeight = isSpur ? 2 : 4;
+  const dynamicWeight = getDynamicLineWeight(config?.bandwidthGbps, baseWeight);
 
   return (
     <>
@@ -161,7 +149,7 @@ export const MeshConnectionLine = ({
         positions={positions}
         pathOptions={{
           color,
-          weight: isSpur ? 2 : 4,
+          weight: dynamicWeight,
           opacity: 0.8,
           lineCap: 'round',
           lineJoin: 'round',
@@ -172,12 +160,11 @@ export const MeshConnectionLine = ({
       <Polyline
         key={`hitbox-${start.id}-${end.id}-${curveOffset}`}
         positions={positions}
-        pathOptions={{ color: 'transparent', weight: hitWeight, opacity: 0 }}
+        pathOptions={{ color: 'transparent', weight: isMobile ? 30 : 15, opacity: 0 }}
         eventHandlers={{
           click: () => setIsInteracted(true),
           popupopen: () => setIsInteracted(true),
-        }}
-      >
+        }}>
         <Popup className={isDark ? 'dark-popup' : ''} minWidth={280} maxWidth={350}>
           <div className='text-sm w-full'>
             {hasConfig ? (
@@ -196,9 +183,19 @@ export const MeshConnectionLine = ({
               isEditing={isEditingRemark}
               editText={remarkText}
               isSaving={isSaving}
-              onEditClick={handleEditClick}
-              onSaveClick={handleSaveClick}
-              onCancelClick={handleCancelClick}
+              onEditClick={(e) => {
+                e.stopPropagation();
+                setIsEditingRemark(true);
+              }}
+              onSaveClick={(e) => {
+                e.stopPropagation();
+                saveRemark(remarkText);
+              }}
+              onCancelClick={(e) => {
+                e.stopPropagation();
+                setIsEditingRemark(false);
+                setRemarkText(provisionedPaths[0]?.remark || '');
+              }}
               onTextChange={setRemarkText}
             />
           </div>

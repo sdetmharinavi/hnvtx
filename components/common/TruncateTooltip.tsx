@@ -12,8 +12,8 @@ export interface TruncateTooltipProps {
   renderAsHtml?: boolean;
   copyOnDoubleClick?: boolean;
   onCopy?: () => void;
-  expandable?: boolean; // NEW: Enable inline expand/collapse
-  maxLines?: number; // NEW: Number of lines before truncating (only for expandable mode)
+  expandable?: boolean;
+  maxLines?: number;
 }
 
 export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
@@ -47,13 +47,11 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     if (!el) return;
 
     if (expandable) {
-      // For expandable mode, check if content exceeds maxLines
       const lineHeight = parseFloat(window.getComputedStyle(el).lineHeight);
       const maxHeight = lineHeight * maxLines;
       const hasOverflow = el.scrollHeight > maxHeight + 1;
       setIsOverflowing(hasOverflow);
     } else {
-      // Original truncate check for single-line truncation
       const hasOverflow = el.scrollWidth > el.clientWidth + 1;
       setIsOverflowing(hasOverflow);
     }
@@ -140,8 +138,9 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
   };
 
   useEffect(() => {
-    if (!isLocked) return;
-    const handleClickOutside = (e: MouseEvent) => {
+    if (!isLocked && !isHovered) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (
         tooltipRef.current &&
         !tooltipRef.current.contains(e.target as Node) &&
@@ -149,25 +148,33 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
         !textRef.current.contains(e.target as Node)
       ) {
         setIsLocked(false);
+        setIsHovered(false); // THE FIX: also clear hover state on mobile touches outside
       }
     };
+
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsLocked(false);
+      if (e.key === 'Escape') {
+        setIsLocked(false);
+        setIsHovered(false);
+      }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
+    // THE FIX: Added touchstart to dismiss tooltips on mobile devices
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
     document.addEventListener('keydown', handleEscape);
     document.addEventListener('scroll', updatePosition, true);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('scroll', updatePosition, true);
     };
-  }, [isLocked, updatePosition]);
+  }, [isLocked, isHovered, updatePosition]);
 
   const showTooltip = !expandable && ((isHovered && isOverflowing) || isLocked);
 
-  // EXPANDABLE MODE: Render with line-clamp and expand button
   if (expandable) {
     return (
       <div className='flex flex-col gap-1.5 w-full min-w-0'>
@@ -203,7 +210,6 @@ export const TruncateTooltip: React.FC<TruncateTooltipProps> = ({
     );
   }
 
-  // DEFAULT MODE: Original truncate behavior with tooltip
   return (
     <>
       <span

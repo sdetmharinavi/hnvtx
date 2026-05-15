@@ -16,13 +16,13 @@ import { LatLngBounds, LatLngExpression } from 'leaflet';
 import { BsnlNode, BsnlSystem } from './types';
 import { ExtendedOfcCable } from '@/schemas/custom-schemas';
 import 'leaflet/dist/leaflet.css';
-import { Maximize, Minimize, Ruler } from 'lucide-react'; // Added Ruler
+import { Maximize, Minimize, Ruler } from 'lucide-react';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import { MapLegend } from '@/components/map/MapLegend';
 import { applyJitterToNodes, fixLeafletIcons, DisplayNode } from '@/utils/mapUtils';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { useDebounce } from 'use-debounce';
-import { MeasureController } from '@/components/kml/MeasureController'; // Reuse existing component
+import { MeasureController } from '@/components/kml/MeasureController';
 
 // --- CONTROLLER: Auto Fit ---
 const MapAutoFit = ({ nodes, filterKey }: { nodes: BsnlNode[]; filterKey?: string }) => {
@@ -122,7 +122,7 @@ const MapContent = ({
   setZoom,
   filteredNodes,
   filterKey,
-  isMeasureMode, // Receive measure mode prop
+  isMeasureMode,
 }: {
   cables: ExtendedOfcCable[];
   visibleLayers: { nodes: boolean; cables: boolean; systems: boolean };
@@ -139,19 +139,12 @@ const MapContent = ({
   filterKey?: string;
   isMeasureMode: boolean;
 }) => {
-  // Determine Rendering Mode (LOD)
-  // Simple: Canvas CircleMarkers (Fast, supports thousands)
-  // Detailed: DOM Markers (Slow, detailed icons)
   const renderMode = zoom >= 13 ? 'detailed' : 'simple';
 
   const visibleDisplayNodes = useMemo(() => {
     if (!mapBounds || !visibleLayers.nodes) return displayNodes;
 
-    // Adjust limits based on render mode
-    // Detailed mode creates DOM elements, so limit strictly to prevent UI freeze
-    // Simple mode uses Canvas, so we can render many more
     const maxItems = renderMode === 'detailed' ? 250 : 5000;
-
     const paddedBounds = mapBounds.pad(0.2);
 
     return displayNodes
@@ -162,19 +155,26 @@ const MapContent = ({
 
   const visibleCables = useMemo(() => {
     if (!visibleLayers.cables) return [];
-    if (!mapBounds) return cables.slice(0, 100);
+    // THE FIX: Provide all cables before map bounds establish, don't slice early.
+    if (!mapBounds) return cables;
 
-    const paddedBounds = mapBounds.pad(0.1);
+    // THE FIX: Increased padding to 0.5 to prevent snapping out too soon
+    // when dragging along a long diagonal line.
+    const paddedBounds = mapBounds.pad(0.5);
 
     return cables.filter((cable) => {
       const s = nodeMap.get(cable.sn_id!);
       const e = nodeMap.get(cable.en_id!);
+
+      // If either coordinate is completely missing, we can't draw the line anyway.
       if (!s?.latitude || !s?.longitude || !e?.latitude || !e?.longitude) return false;
 
-      return (
-        paddedBounds.contains([s.latitude, s.longitude]) ||
-        paddedBounds.contains([e.latitude, e.longitude])
-      );
+      // THE FIX: Create a bounding box representing the line segment.
+      // Leaflet's intersects() will correctly return true if the cable passes
+      // directly through the viewport even if both endpoints are currently off-screen.
+      const cableBounds = new LatLngBounds([s.latitude, s.longitude], [e.latitude, e.longitude]);
+
+      return paddedBounds.intersects(cableBounds);
     });
   }, [cables, visibleLayers.cables, mapBounds, nodeMap]);
 
@@ -191,6 +191,9 @@ const MapContent = ({
         const endNode = nodeMap.get(cable.en_id!);
 
         if (startNode?.latitude && startNode.longitude && endNode?.latitude && endNode.longitude) {
+          const defaultColor = cable.status ? '#3b82f6' : '#ef4444';
+          const defaultWeight = renderMode === 'simple' ? 2 : 3.5;
+
           return (
             <Polyline
               key={cable.id}
@@ -199,20 +202,57 @@ const MapContent = ({
                 [endNode.latitude, endNode.longitude],
               ]}
               pathOptions={{
-                color: cable.status ? '#3b82f6' : '#ef4444',
-                weight: renderMode === 'simple' ? 1.5 : 3, // Thinner lines at low zoom
-                opacity: 0.7,
+                color: defaultColor,
+                weight: defaultWeight,
+                opacity: 0.8,
               }}
-              // IMPORTANT: Disable interaction when measuring so clicks fall through to map
               interactive={!isMeasureMode}
+              eventHandlers={{
+                popupopen: (e) => {
+                  const layer = e.target;
+                  if (layer.setStyle) {
+                    layer.setStyle({
+                      color: '#eab308',
+                      weight: defaultWeight + 3,
+                      opacity: 1,
+                    });
+                    layer.bringToFront();
+                  }
+                },
+                popupclose: (e) => {
+                  const layer = e.target;
+                  if (layer.setStyle) {
+                    layer.setStyle({
+                      color: defaultColor,
+                      weight: defaultWeight,
+                      opacity: 0.8,
+                    });
+                  }
+                },
+              }}
             >
               <Popup>
-                <div className="min-w-48 max-w-72">
-                  <h3 className="font-semibold text-base">{cable.route_name}</h3>
-                  <p className="text-sm">Type: {cable.ofc_type_name}</p>
-                  <p className="text-sm">Capacity: {cable.capacity}F</p>
-                  <p className="text-sm">Status: {cable.status ? 'Active' : 'Inactive'}</p>
-                  <p className="text-sm">Owner: {cable.ofc_owner_name}</p>
+                <div className='min-w-48 max-w-72'>
+                  <h3 className='font-semibold text-base text-gray-900'>{cable.route_name}</h3>
+                  <p className='text-sm text-gray-700 mt-1'>
+                    <strong>Type:</strong> {cable.ofc_type_name}
+                  </p>
+                  <p className='text-sm text-gray-700'>
+                    <strong>Capacity:</strong> {cable.capacity}F
+                  </p>
+                  <p className='text-sm text-gray-700'>
+                    <strong>Status:</strong>{' '}
+                    <span
+                      className={
+                        cable.status ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
+                      }
+                    >
+                      {cable.status ? 'Active' : 'Inactive'}
+                    </span>
+                  </p>
+                  <p className='text-sm text-gray-700'>
+                    <strong>Owner:</strong> {cable.ofc_owner_name}
+                  </p>
                 </div>
               </Popup>
             </Polyline>
@@ -223,25 +263,26 @@ const MapContent = ({
 
       {/* Render Nodes (LOD Switching) */}
       {visibleDisplayNodes.map((node: DisplayNode<BsnlNode>) => {
-        // Shared Popup Content
         const PopupContent = (
-          <div className="min-w-48 max-w-72">
-            <h3 className="font-semibold text-base">{node.name}</h3>
-            <p className="text-sm">Type: {node.node_type_code}</p>
-            <p className="text-sm">Region: {node.maintenance_area_name}</p>
+          <div className='min-w-48 max-w-72'>
+            <h3 className='font-semibold text-base'>{node.name}</h3>
+            <p className='text-sm'>Type: {node.node_type_code}</p>
+            <p className='text-sm'>Region: {node.maintenance_area_name}</p>
             {nodeSystemMap.get(node.id!) && (
-              <p className="text-sm text-blue-600 mt-1">Systems: {nodeSystemMap.get(node.id!)}</p>
+              <p className='text-sm text-blue-600 mt-1'>Systems: {nodeSystemMap.get(node.id!)}</p>
             )}
             {node.latitude && (
-              <p className="text-sm mt-1 text-gray-500">
+              <p className='text-sm mt-1 text-gray-500'>
                 {node.latitude.toFixed(5)}, {node.longitude?.toFixed(5)}
               </p>
             )}
-            <GenericRemarks remark={node.remark || ''} />
+            <GenericRemarks
+              className='whitespace-normal wrap-break-words'
+              remark={node.remark || ''}
+            />
           </div>
         );
 
-        // --- MODE 1: SIMPLE (Canvas Circles) ---
         if (renderMode === 'simple') {
           return (
             <CircleMarker
@@ -251,10 +292,9 @@ const MapContent = ({
               pathOptions={{
                 color: '#ffffff',
                 weight: 1,
-                fillColor: node.status ? '#16a34a' : '#dc2626', // Green/Red
+                fillColor: node.status ? '#16a34a' : '#dc2626',
                 fillOpacity: 0.9,
               }}
-              // IMPORTANT: Disable interaction when measuring
               interactive={!isMeasureMode}
             >
               <Popup>{PopupContent}</Popup>
@@ -262,7 +302,6 @@ const MapContent = ({
           );
         }
 
-        // --- MODE 2: DETAILED (DOM Markers) ---
         const systemTypesAtNode = nodeSystemMap.get(node.id!) || '';
         const icon = getNodeIcon(systemTypesAtNode, node.node_type_name, false);
 
@@ -273,7 +312,6 @@ const MapContent = ({
             icon={icon}
             riseOnHover={true}
             zIndexOffset={10}
-            // IMPORTANT: Disable interaction when measuring
             interactive={!isMeasureMode}
           >
             <Popup>{PopupContent}</Popup>
@@ -311,7 +349,7 @@ export function OptimizedNetworkMap({
   filterKey,
 }: OptimizedNetworkMapProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isMeasureMode, setIsMeasureMode] = useState(false); // New State
+  const [isMeasureMode, setIsMeasureMode] = useState(false);
   const [debouncedBounds] = useDebounce(mapBounds, 100);
 
   useEffect(() => {
@@ -327,7 +365,6 @@ export function OptimizedNetworkMap({
     }
   }, [isFullScreen]);
 
-  // Handle ESC key to exit modes
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -371,23 +408,22 @@ export function OptimizedNetworkMap({
     return map;
   }, [systems]);
 
-  // Jitter calculation on full dataset
   const displayNodes = useMemo(() => {
     return applyJitterToNodes<BsnlNode>(nodes);
   }, [nodes]);
 
   if (nodes.length > 0 && !initialBounds) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700">
-        <p className="text-gray-500 dark:text-gray-300">No valid location data.</p>
+      <div className='flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700'>
+        <p className='text-gray-500 dark:text-gray-300'>No valid location data.</p>
       </div>
     );
   }
 
   if (nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700">
-        <p className="text-gray-500 dark:text-gray-300">No location data available.</p>
+      <div className='flex items-center justify-center h-full bg-gray-100 dark:bg-gray-700'>
+        <p className='text-gray-500 dark:text-gray-300'>No location data available.</p>
       </div>
     );
   }
@@ -395,10 +431,8 @@ export function OptimizedNetworkMap({
   const mapUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const mapAttribution = '&copy; OpenStreetMap contributors';
 
-  // Floating Controls UI (Top Right)
   const ControlsGroup = () => (
-    <div className="absolute top-4 right-4 z-1000 flex flex-col gap-2">
-      {/* Measure Button */}
+    <div className='absolute top-4 right-4 z-1000 flex flex-col gap-2'>
       <button
         onClick={() => setIsMeasureMode(!isMeasureMode)}
         className={`p-2.5 rounded-full shadow-lg transition-all duration-200 border ${
@@ -406,18 +440,17 @@ export function OptimizedNetworkMap({
             ? 'bg-blue-600 text-white border-blue-700'
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
         }`}
-        title="Measure Distance (Click points on map)"
+        title='Measure Distance (Click points on map)'
       >
-        <Ruler className="h-5 w-5" />
+        <Ruler className='h-5 w-5' />
       </button>
 
-      {/* Fullscreen Button */}
       <button
         onClick={() => setIsFullScreen(!isFullScreen)}
-        className="p-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+        className='p-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700'
         title={isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'}
       >
-        {isFullScreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+        {isFullScreen ? <Minimize className='h-5 w-5' /> : <Maximize className='h-5 w-5' />}
       </button>
     </div>
   );
@@ -433,12 +466,10 @@ export function OptimizedNetworkMap({
         <ControlsGroup />
 
         <MapContainer
-          key="normal"
+          key='normal'
           bounds={initialBounds!}
-          className="h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800"
-          // ENABLE CANVAS RENDERER FOR PERFORMANCE
+          className='h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800'
           preferCanvas={true}
-          // If in measure mode, change cursor style
           style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
         >
           <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
@@ -460,24 +491,16 @@ export function OptimizedNetworkMap({
             isMeasureMode={isMeasureMode}
           />
         </MapContainer>
-        {/* <button
-          onClick={() => setIsFullScreen(true)}
-          className="absolute top-4 right-4 z-1000 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Enter Full Screen"
-        >
-          <Maximize className="h-5 w-5" />
-        </button> */}
       </div>
       {isFullScreen && (
-        <div className="fixed inset-0 z-9999 bg-white dark:bg-gray-900">
+        <div className='fixed inset-0 z-9999 bg-white dark:bg-gray-900'>
           <MapLegend />
           <ControlsGroup />
-          
+
           <MapContainer
-            key="fullscreen"
+            key='fullscreen'
             bounds={initialBounds!}
-            className="h-full w-full bg-gray-200 dark:bg-gray-800"
-            // ENABLE CANVAS RENDERER FOR PERFORMANCE
+            className='h-full w-full bg-gray-200 dark:bg-gray-800'
             preferCanvas={true}
             style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
           >
@@ -500,13 +523,6 @@ export function OptimizedNetworkMap({
               isMeasureMode={isMeasureMode}
             />
           </MapContainer>
-          {/* <button
-            onClick={() => setIsFullScreen(false)}
-            className="absolute top-4 right-4 z-10000 p-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title="Exit Full Screen"
-          >
-            <Minimize className="h-6 w-6" />
-          </button> */}
         </div>
       )}
     </>

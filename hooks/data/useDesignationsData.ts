@@ -1,40 +1,18 @@
 // hooks/data/useDesignationsData.ts
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_employee_designationsRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import { DesignationWithRelations } from '@/config/designations';
-import { buildServerSearchString, performClientSort } from '@/hooks/database/search-utils';
+import { buildServerSearchString } from '@/hooks/database/search-utils';
+import { useQuery } from '@tanstack/react-query';
 
 export const useDesignationsData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<DesignationWithRelations> => {
   const { filters, searchQuery } = params;
-
-  // Search Config
-  const serverSearchFields = useMemo(() => ['name'], []);
-
-  const onlineQueryFn = useCallback(async (): Promise<V_employee_designationsRowSchema[]> => {
-    const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-    const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
-
-    const { data, error } = await createClient().rpc('get_paged_data', {
-      p_view_name: 'v_employee_designations',
-      p_limit: 5000,
-      p_offset: 0,
-      p_filters: rpcFilters,
-      p_order_by: 'name',
-    });
-    if (error) throw error;
-    return (data as { data: V_employee_designationsRowSchema[] })?.data || [];
-  }, [searchQuery, filters, serverSearchFields]);
-
-  const localQueryFn = useCallback(() => {
-    return localDb.v_employee_designations.orderBy('name').toArray();
-  }, []);
+  const supabase = createClient();
 
   const {
     data: allDesignationsFlat = [],
@@ -42,48 +20,36 @@ export const useDesignationsData = (
     isFetching,
     error,
     refetch,
-  } = useLocalFirstQuery<'v_employee_designations'>({
+  } = useQuery({
     queryKey: ['employee_designations-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_employee_designations,
-    // MODIFIED: Removed the `autoSync: false` property as it's no longer a valid option for this hook.
+    queryFn: async (): Promise<V_employee_designationsRowSchema[]> => {
+      const serverSearchFields = ['name'];
+      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+      const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
+      const { data, error } = await supabase.rpc('get_paged_data', {
+        p_view_name: 'v_employee_designations',
+        p_limit: 5000,
+        p_offset: 0,
+        p_filters: rpcFilters,
+        p_order_by: 'name',
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return ((data as any)?.data || []) as V_employee_designationsRowSchema[];
+    },
+    staleTime: 5 * 60 * 1000
   });
 
   const processedData = useMemo(() => {
-    // MODIFIED: Explicitly cast the data to the correct type to resolve all subsequent TypeScript errors.
-    let filtered = (allDesignationsFlat || []).filter((d) => d.id != null) as V_employee_designationsRowSchema[];
+    // Basic client-side processing for hierarchy (required for the UI tree view)
+    // Filter out invalids
+    const filtered = (allDesignationsFlat || []).filter((d) => d.id != null);
+    
+    // Sort
+    filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-    // 1. Search (Recursive Parent/Child Logic)
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      const searchFilteredIds = new Set<string>();
-
-      const initialFilter = filtered.filter((d) => d.name?.toLowerCase().includes(lowerQuery));
-
-      // Recursive function to keep parents if child matches search
-      const addParents = (designation: V_employee_designationsRowSchema) => {
-        if (designation.id && !searchFilteredIds.has(designation.id)) {
-          searchFilteredIds.add(designation.id);
-          if (designation.parent_id) {
-            const parent = allDesignationsFlat.find((d) => d.id === designation.parent_id);
-            if (parent) addParents(parent as V_employee_designationsRowSchema);
-          }
-        }
-      };
-      initialFilter.forEach(addParents);
-      filtered = allDesignationsFlat.filter((d) => d.id && searchFilteredIds.has(d.id)) as V_employee_designationsRowSchema[];
-    }
-
-    // 2. Filters
-    if (filters.status) {
-      filtered = filtered.filter((d) => String(d.status) === filters.status);
-    }
-
-    // 3. Sort
-    filtered = performClientSort(filtered, 'name');
-
-    // 4. Reconstruct Hierarchy
+    // Reconstruct Hierarchy
     const designationsWithRelations = filtered.map((d) => ({
       ...d,
       id: d.id!,
@@ -106,15 +72,14 @@ export const useDesignationsData = (
 
     const totalCount = filtered.length;
     const activeCount = filtered.filter((d) => d.status === true).length;
-    const inactiveCount = totalCount - activeCount;
 
     return {
       data: designationsWithRelations,
       totalCount,
       activeCount,
-      inactiveCount,
+      inactiveCount: totalCount - activeCount,
     };
-  }, [allDesignationsFlat, searchQuery, filters]);
+  }, [allDesignationsFlat]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
 };

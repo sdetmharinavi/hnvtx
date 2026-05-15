@@ -2,23 +2,35 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { getEmployeeTableColumns } from '@/config/table-columns/EmployeeTableColumns';
 import { useCrudManager } from '@/hooks/useCrudManager';
-import { V_employeesRowSchema, EmployeesRowSchema } from '@/schemas/zod-schemas';
+import {
+  V_employeesRowSchema,
+  EmployeesInsertSchema,
+  EmployeesRowSchema,
+} from '@/schemas/zod-schemas';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { EmployeeDetailsModal } from '@/config/employee-details-config';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { useEmployeesData } from '@/hooks/data/useEmployeesData';
+import { useUser } from '@/providers/UserProvider';
 import { useMaintenanceAreaOptions, useDropdownOptions } from '@/hooks/data/useDropdownOptions';
 import { FiUsers, FiPhone, FiMail, FiMapPin } from 'react-icons/fi';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { useStandardHeaderActions } from '@/components/common/page-header';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
+
+const EmployeeForm = dynamic(
+  () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
+  { loading: () => <PageSpinner text='Loading Employee Form...' /> },
+);
 
 export default function EmployeesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -29,20 +41,29 @@ export default function EmployeesPage() {
     activeCount,
     inactiveCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
+    editModal,
     viewModal,
+    bulkActions,
+    deleteModal,
+    actions: crudActions,
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
-    localTableName: 'v_employees',
+    // REMOVED: localTableName
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
     syncTables: ['employees', 'v_employees', 'employee_designations', 'v_employee_designations'],
   });
+
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const { options: desOptions, isLoading: loadingDes } = useDropdownOptions({
     tableName: 'employee_designations',
@@ -80,23 +101,24 @@ export default function EmployeesPage() {
     [filters],
   );
 
-  const columns = useMemo(
-    () => getEmployeeTableColumns().map((c) => ({ ...c, editable: false })),
-    [],
-  );
+  const columns = useMemo(() => getEmployeeTableColumns(), []);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_employees]);
   const isInitialLoad = isLoading && employees.length === 0;
 
   const headerActions = useStandardHeaderActions({
     data: employees as EmployeesRowSchema[],
-    onRefresh: refetch,
+    onRefresh: async () => {
+      await refetch();
+    },
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isInitialLoad,
     isFetching: isFetching,
-    exportConfig: { tableName: 'employees' },
+    exportConfig: canEdit ? { tableName: 'employees' } : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.status;
+
     return [
       {
         value: totalCount,
@@ -125,7 +147,8 @@ export default function EmployeesPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  }, [totalCount, activeCount, inactiveCount, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.status, filters.setFilters]);
 
   const getAvatarColor = (name: string) => {
     const colors = [
@@ -170,9 +193,13 @@ export default function EmployeesPage() {
         ]}
         customFooter={<GenericRemarks remark={emp.remark || ''} />}
         onView={viewModal.open}
+        onEdit={editModal.openEdit}
+        onDelete={crudActions.handleDelete}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     ),
-    [viewModal.open],
+    [viewModal.open, editModal.openEdit, crudActions.handleDelete, canEdit, canDelete],
   );
 
   const renderGrid = useCallback(
@@ -196,14 +223,15 @@ export default function EmployeesPage() {
     [employees, renderItem, isLoading, pagination, totalCount],
   );
 
-  if (error)
+  if (error) {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
+  }
 
   return (
     <DashboardPageLayout
       header={{
         title: 'Employee Directory',
-        description: 'View team members and contact details.',
+        description: 'Manage your team members and their contact details.',
         icon: <FiUsers />,
         actions: headerActions,
         stats: headerStats,
@@ -219,15 +247,40 @@ export default function EmployeesPage() {
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
+      bulkActions={
+        canEdit
+          ? {
+              selectedCount: bulkActions.selectedCount,
+              isOperationLoading: isMutating,
+              onBulkDelete: bulkActions.handleBulkDelete,
+              onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
+              onClearSelection: bulkActions.handleClearSelection,
+              entityName: 'employee',
+              canDelete: () => canDelete,
+            }
+          : undefined
+      }
       renderGrid={renderGrid}
       tableProps={{
         tableName: 'v_employees',
         data: employees,
         columns: orderedColumns,
         loading: isLoading,
-        isFetching: isFetching,
-        actions: createStandardActions<'v_employees'>({ onView: viewModal.open }),
-        selectable: false,
+        isFetching: isFetching || isMutating,
+        actions: createStandardActions({
+          onView: viewModal.open,
+          onEdit: canEdit ? editModal.openEdit : undefined,
+          onDelete: canDelete ? crudActions.handleDelete : undefined,
+          onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
+        }),
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_employeesRowSchema & { id: string } => !!row.id,
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
+        onCellEdit: crudActions.handleCellEdit,
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -238,14 +291,37 @@ export default function EmployeesPage() {
             pagination.setPageLimit(pageSize);
           },
         },
+        customToolbar: <></>,
       }}
       isEmpty={employees.length === 0 && !isLoading}
       modals={
-        <EmployeeDetailsModal
-          employee={viewModal.record}
-          onClose={viewModal.close}
-          isOpen={viewModal.isOpen}
-        />
+        <>
+          {canEdit && (
+            <EmployeeForm
+              isOpen={editModal.isOpen}
+              onClose={editModal.close}
+              employee={editModal.record}
+              onSubmit={crudActions.handleSave as (data: EmployeesInsertSchema) => void}
+              isLoading={isMutating}
+              designationOptions={desOptions}
+              maintenanceAreaOptions={areaOptions}
+            />
+          )}
+          <EmployeeDetailsModal
+            employee={viewModal.record}
+            onClose={viewModal.close}
+            isOpen={viewModal.isOpen}
+          />
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title='Confirm Deletion'
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type='danger'
+          />
+        </>
       }
     />
   );

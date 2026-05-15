@@ -1,14 +1,15 @@
+// app/manifest.ts
 import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Harinavi Transmission Maintenance',
-    short_name: 'Harinavi Database App',
+    name: 'Harinavi Tx',
+    short_name: 'Harinavi Database App Online',
     description: 'Complete records management system for Harinavi Transmission maintenance',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#000000',
+    background_color: '#020617',
+    theme_color: '#020617',
     orientation: 'portrait-primary',
     icons: [
       {

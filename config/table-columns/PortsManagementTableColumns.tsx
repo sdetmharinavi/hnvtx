@@ -1,5 +1,7 @@
 // path: config/table-columns/PortsManagementTableColumns.tsx
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import {
   V_ports_management_completeRowSchema,
@@ -13,6 +15,72 @@ import TruncateTooltip from '@/components/common/TruncateTooltip';
 // Define the structure for our service mapping
 export type PortServiceMap = Record<string, V_system_connections_completeRowSchema[]>;
 
+// Extract into a stateful component to manage expansion
+const AllocatedServicesCell = ({
+  services,
+  portName,
+}: {
+  services: V_system_connections_completeRowSchema[];
+  portName: string;
+}) => {
+  const[expanded, setExpanded] = useState(false);
+  const displayServices = expanded ? services : services.slice(0, 2);
+
+  return (
+    <div className='flex flex-col gap-1.5 py-1'>
+      {displayServices.map((svc) => (
+        <div
+          key={svc.id}
+          className='flex items-center gap-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 shadow-sm'
+        >
+          {/* Role Indicator */}
+          {svc.system_working_interface === portName ? (
+            <div
+              title='Working Path'
+              className='p-1 bg-blue-100 dark:bg-blue-900/50 rounded-full shrink-0'
+            >
+              <Activity size={10} className='text-blue-600 dark:text-blue-400' />
+            </div>
+          ) : (
+            <div
+              title='Protection Path'
+              className='p-1 bg-purple-100 dark:bg-purple-900/50 rounded-full shrink-0'
+            >
+              <Shield size={10} className='text-purple-600 dark:text-purple-400' />
+            </div>
+          )}
+
+          <div className='flex flex-col min-w-0 flex-1'>
+            <div className='font-semibold text-gray-700 dark:text-gray-200 truncate max-w-45'>
+              <TruncateTooltip
+                text={svc.service_name || svc.connected_system_name || 'Unknown'}
+                className='truncate'
+              />
+            </div>
+            <span className='text-[10px] text-gray-500 truncate'>
+              {svc.connected_link_type_name}{' '}
+              {svc.bandwidth_allocated ? `• ${svc.bandwidth_allocated}` : ''}
+            </span>
+          </div>
+        </div>
+      ))}
+      
+      {services.length > 2 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+          className='text-[10px] text-blue-600 dark:text-blue-400 font-medium pl-1 text-left hover:underline w-fit'
+        >
+          {expanded ? 'Show less' : `+${services.length - 2} more services...`}
+        </button>
+      )}
+    </div>
+  );
+};
+
 export const PortsManagementTableColumns = (
   data: V_ports_management_completeRowSchema[],
   portServicesMap?: PortServiceMap,
@@ -20,7 +88,7 @@ export const PortsManagementTableColumns = (
   // 1. Generate base columns from the hook
   const columns = useDynamicColumnConfig('v_ports_management_complete', {
     data: data,
-    omit: [
+    omit:[
       'id',
       'system_id',
       'port_type_id',
@@ -100,65 +168,17 @@ export const PortsManagementTableColumns = (
     dataIndex: 'port',
     width: 350,
     render: (value) => {
-      // Removed unused _record parameter
       const portName = value as string;
       if (!portName || !portServicesMap)
         return <span className='text-gray-400 italic text-xs'>No info</span>;
 
-      const services = portServicesMap[portName] || [];
+      const services = portServicesMap[portName] ||[];
 
       if (services.length === 0) {
         return <span className='text-gray-300 dark:text-gray-600 text-xs italic'>Unallocated</span>;
       }
 
-      return (
-        <div className='flex flex-col gap-1.5 py-1'>
-          {services.slice(0, 2).map((svc) => (
-            <div
-              key={svc.id}
-              className='flex items-center gap-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 shadow-sm'
-            >
-              {/* Role Indicator */}
-              {svc.system_working_interface === portName ? (
-                <div
-                  title='Working Path'
-                  className='p-1 bg-blue-100 dark:bg-blue-900/50 rounded-full shrink-0'
-                >
-                  <Activity size={10} className='text-blue-600 dark:text-blue-400' />
-                </div>
-              ) : (
-                <div
-                  title='Protection Path'
-                  className='p-1 bg-purple-100 dark:bg-purple-900/50 rounded-full shrink-0'
-                >
-                  <Shield size={10} className='text-purple-600 dark:text-purple-400' />
-                </div>
-              )}
-
-              <div className='flex flex-col min-w-0 flex-1'>
-                <div className='font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[180px]'>
-                  <TruncateTooltip
-                    text={svc.service_name || svc.connected_system_name || 'Unknown'}
-                    className='truncate'
-                  />
-                </div>
-                <span className='text-[10px] text-gray-500 truncate'>
-                  {svc.connected_link_type_name}{' '}
-                  {svc.bandwidth_allocated ? `• ${svc.bandwidth_allocated}` : ''}
-                </span>
-              </div>
-            </div>
-          ))}
-          {services.length > 2 && (
-            <span
-              className='text-[10px] text-blue-600 dark:text-blue-400 font-medium pl-1 cursor-help'
-              title={`${services.length - 2} more services hidden`}
-            >
-              +{services.length - 2} more services...
-            </span>
-          )}
-        </div>
-      );
+      return <AllocatedServicesCell services={services} portName={portName} />;
     },
   };
 

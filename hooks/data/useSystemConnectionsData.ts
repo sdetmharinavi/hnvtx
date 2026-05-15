@@ -1,20 +1,20 @@
 // hooks/data/useSystemConnectionsData.ts
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_system_connections_completeRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb } from '@/hooks/data/localDb';
 import { buildRpcFilters } from '@/hooks/database';
-import { useLocalFirstQuery } from './useLocalFirstQuery';
 import {
   buildServerSearchString,
   performClientSearch,
   performClientPagination,
 } from '@/hooks/database/search-utils';
+import { useQuery } from '@tanstack/react-query';
+import { DEFAULTS } from '@/constants/constants';
 
 const transformConnectionPerspective = (
   conn: V_system_connections_completeRowSchema,
-  currentSystemId: string | null
+  currentSystemId: string | null,
 ): V_system_connections_completeRowSchema => {
   if (!currentSystemId || conn.system_id === currentSystemId) {
     return conn;
@@ -48,12 +48,11 @@ const transformConnectionPerspective = (
 
 export const useSystemConnectionsData = (systemId: string | null) => {
   return function useData(
-    params: DataQueryHookParams
+    params: DataQueryHookParams,
   ): DataQueryHookReturn<V_system_connections_completeRowSchema> {
     const { currentPage, pageLimit, filters, searchQuery } = params;
+    const supabase = createClient();
 
-    // Search Config
-    // THE FIX: Added IP fields
     const searchFields = useMemo(
       () =>
         [
@@ -69,11 +68,14 @@ export const useSystemConnectionsData = (systemId: string | null) => {
           'remark',
           'vlan',
           'sn_interface',
+          'en_interface',
+          'system_working_interface',
+          'system_protection_interface',
+          'en_protection_interface',
         ] as (keyof V_system_connections_completeRowSchema)[],
-      []
+      [],
     );
 
-    // THE FIX: Added IP fields with explicit text cast for server search
     const serverSearchFields = useMemo(
       () => [
         'service_name',
@@ -88,51 +90,13 @@ export const useSystemConnectionsData = (systemId: string | null) => {
         'remark',
         'vlan::text',
         'sn_interface',
+        'en_interface',
+        'system_working_interface',
+        'system_protection_interface',
+        'en_protection_interface',
       ],
-      []
+      [],
     );
-
-    const onlineQueryFn = useCallback(async (): Promise<
-      V_system_connections_completeRowSchema[]
-    > => {
-      if (!systemId) return [];
-
-      const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-      const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
-
-      const { data, error } = await createClient().rpc('get_paged_data', {
-        p_view_name: 'v_system_connections_complete',
-        p_limit: 5000,
-        p_offset: 0,
-        p_filters: rpcFilters,
-        p_order_by: 'service_name',
-        p_order_dir: 'asc',
-      });
-
-      if (error) throw error;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rawData = (data as any)?.data || [];
-
-      return rawData.map((row: V_system_connections_completeRowSchema) =>
-        transformConnectionPerspective(row, systemId)
-      );
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchQuery, filters, serverSearchFields, systemId]);
-
-    const localQueryFn = useCallback(() => {
-      if (!systemId) {
-        return localDb.v_system_connections_complete.limit(0).toArray();
-      }
-      return Promise.all([
-        localDb.v_system_connections_complete.where('system_id').equals(systemId).toArray(),
-        localDb.v_system_connections_complete.where('en_id').equals(systemId).toArray(),
-      ]).then(([source, dest]) => {
-        const combined = [...source, ...dest];
-        const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
-        return unique.map((row) => transformConnectionPerspective(row, systemId));
-      });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [systemId]);
 
     const {
       data: allConnections = [],
@@ -140,15 +104,32 @@ export const useSystemConnectionsData = (systemId: string | null) => {
       isFetching,
       error,
       refetch,
-    } = useLocalFirstQuery<'v_system_connections_complete', V_system_connections_completeRowSchema>(
-      {
-        queryKey: ['system_connections-data', systemId, searchQuery, filters],
-        onlineQueryFn,
-        localQueryFn,
-        dexieTable: localDb.v_system_connections_complete,
-        localQueryDeps: [systemId],
-      }
-    );
+    } = useQuery({
+      queryKey: ['system_connections-data', systemId, searchQuery, filters],
+      queryFn: async (): Promise<V_system_connections_completeRowSchema[]> => {
+        if (!systemId) return [];
+
+        const searchString = buildServerSearchString(searchQuery, serverSearchFields);
+        const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+
+        // We want connections where this system is EITHER source OR destination
+        // The RPC `get_paged_system_connections` handles this logic specifically
+        const { data, error } = await supabase.rpc('get_paged_system_connections', {
+          p_system_id: systemId,
+          p_limit: 5000,
+          p_offset: 0,
+          p_search_query: searchQuery || null,
+        });
+
+        if (error) throw error;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawData = ((data as any)?.data || []) as V_system_connections_completeRowSchema[];
+
+        return rawData.map((row) => transformConnectionPerspective(row, systemId));
+      },
+      enabled: !!systemId,
+      staleTime: DEFAULTS.CACHE_TIME,
+    });
 
     const processedData = useMemo(() => {
       if (!allConnections || !systemId) {
@@ -157,7 +138,7 @@ export const useSystemConnectionsData = (systemId: string | null) => {
 
       let filtered = allConnections;
 
-      // 1. Search
+      // 1. Client Search (Refinement)
       if (searchQuery) {
         filtered = performClientSearch(filtered, searchQuery, searchFields);
       }
@@ -168,7 +149,7 @@ export const useSystemConnectionsData = (systemId: string | null) => {
       }
       if (filters.connected_link_type_id) {
         filtered = filtered.filter(
-          (c) => c.connected_link_type_id === filters.connected_link_type_id
+          (c) => c.connected_link_type_id === filters.connected_link_type_id,
         );
       }
       if (filters.bandwidth) {
@@ -183,11 +164,7 @@ export const useSystemConnectionsData = (systemId: string | null) => {
       filtered.sort((a, b) => {
         const nameA = a.service_name || a.connected_system_name || '';
         const nameB = b.service_name || b.connected_system_name || '';
-
-        const nameComparison = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
-        if (nameComparison !== 0) return nameComparison;
-
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
       });
 
       const totalCount = filtered.length;
@@ -203,8 +180,7 @@ export const useSystemConnectionsData = (systemId: string | null) => {
         activeCount,
         inactiveCount,
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allConnections, searchQuery, filters, currentPage, pageLimit, systemId]);
+    }, [allConnections, searchQuery, filters, currentPage, pageLimit, systemId, searchFields]);
 
     return { ...processedData, isLoading, isFetching, error, refetch };
   };

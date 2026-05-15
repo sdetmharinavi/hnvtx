@@ -1,23 +1,40 @@
-// app/dashboard/notes/page.tsx
+// path: app/dashboard/notes/page.tsx
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
 import { useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { useCrudManager } from '@/hooks/useCrudManager';
+import { TableInsert } from '@/hooks/database';
 import { useNotesData } from '@/hooks/data/useNotesData';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { FiBook, FiUser, FiCalendar } from 'react-icons/fi';
+import { useUser } from '@/providers/UserProvider';
+import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types/user-roles';
+import { FiBook, FiUser, FiCalendar, FiRefreshCw } from 'react-icons/fi';
+import { NoteModal } from '@/components/notes/NoteModal';
 import { NoteViewModal } from '@/components/notes/NoteViewModal';
 import { V_technical_notesRowSchema } from '@/schemas/zod-schemas';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { DataGrid } from '@/components/common/DataGrid';
 import { StatProps } from '@/components/common/page-header/StatCard';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import { useDataSync } from '@/hooks/data/useDataSync';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { toast } from 'sonner';
 
 export default function NotesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+  const { user } = useAuth();
+  const { isSuperAdmin, role } = useUser();
+  const { sync: syncData, isSyncing } = useDataSync();
+  const isOnline = useOnlineStatus();
+
+  const canCreate = !!user;
+  const canManageAll = isSuperAdmin || role === UserRole.ADMIN || role === UserRole.ADMINPRO;
 
   const {
     data: notes,
@@ -25,37 +42,37 @@ export default function NotesPage() {
     activeCount, // Published
     inactiveCount, // Drafts
     isLoading,
+    isMutating: isCrudMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
+    editModal,
     viewModal,
-  } = useCrudManager<'v_technical_notes', V_technical_notesRowSchema>({
-    tableName: 'v_technical_notes',
-    localTableName: 'v_technical_notes',
+    deleteModal,
+    actions: crudActions,
+    bulkActions,
+  } = useCrudManager<'technical_notes', V_technical_notesRowSchema>({
+    tableName: 'technical_notes',
+    // REMOVED: localTableName
     dataQueryHook: useNotesData,
     displayNameField: 'title',
     searchColumn: ['title', 'content', 'author_name'],
     syncTables: ['technical_notes', 'v_technical_notes'],
+    processDataForSave: (data): TableInsert<'technical_notes'> => {
+      return {
+        ...data,
+        author_id: (data.author_id as string | null | undefined) ?? user?.id ?? null,
+      } as TableInsert<'technical_notes'>;
+    },
   });
 
   const columns = useMemo<Column<V_technical_notesRowSchema>[]>(
     () => [
-      {
-        key: 'title',
-        title: 'Title',
-        dataIndex: 'title',
-        sortable: true,
-        searchable: true,
-      },
-      {
-        key: 'author_name',
-        title: 'Author',
-        dataIndex: 'author_name',
-        sortable: true,
-      },
+      { key: 'title', title: 'Title', dataIndex: 'title', sortable: true, searchable: true },
+      { key: 'author_name', title: 'Author', dataIndex: 'author_name', sortable: true },
       {
         key: 'is_published',
         title: 'Status',
@@ -87,7 +104,7 @@ export default function NotesPage() {
     [],
   );
 
-  const filterConfigs = useMemo(
+  const filterConfigs = useMemo<FilterConfig[]>(
     () => [
       {
         key: 'is_published',
@@ -102,6 +119,14 @@ export default function NotesPage() {
     [],
   );
 
+  const canEditNote = useCallback(
+    (note: V_technical_notesRowSchema) => {
+      if (canManageAll) return true;
+      return note.author_id === user?.id;
+    },
+    [canManageAll, user?.id],
+  );
+
   const handleFilterChange = useCallback(
     (key: string, value: string | null) => {
       filters.setFilters((prev) => ({ ...prev, [key]: value }));
@@ -109,14 +134,30 @@ export default function NotesPage() {
     [filters],
   );
 
+  const isBusy = isLoading || isFetching || isSyncing;
+
   const headerActions = useStandardHeaderActions({
     data: notes,
-    onRefresh: refetch,
-    isLoading,
-    isFetching,
+    onRefresh: async () => {
+      if (isOnline) {
+        await syncData(['technical_notes', 'v_technical_notes']);
+      }
+      refetch();
+      toast.success('Notes refreshed!');
+    },
+    onAddNew: canCreate ? editModal.openAdd : undefined,
+    isLoading: isBusy,
+    isFetching: isFetching,
     exportConfig: { tableName: 'v_technical_notes' },
   });
 
+  // Override refresh action to use sync
+  if (headerActions.length > 0 && headerActions[0].label === 'Refresh') {
+      headerActions[0].leftIcon = <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />;
+      headerActions[0].disabled = isBusy;
+  }
+
+  // --- INTERACTIVE STATS ---
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.is_published;
 
@@ -148,7 +189,8 @@ export default function NotesPage() {
         isActive: currentStatus === 'false',
       },
     ];
-  }, [totalCount, activeCount, inactiveCount, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCount, activeCount, inactiveCount, filters.filters.is_published, filters.setFilters]);
 
   const renderItem = useCallback(
     (note: V_technical_notesRowSchema) => (
@@ -169,6 +211,10 @@ export default function NotesPage() {
           },
         ]}
         onView={viewModal.open}
+        onEdit={canEditNote(note) ? editModal.openEdit : undefined}
+        onDelete={canEditNote(note) ? crudActions.handleDelete : undefined}
+        canEdit={canEditNote(note)}
+        canDelete={canEditNote(note)}
         customFooter={
           note.tags && note.tags.length > 0 ? (
             <div className='flex flex-wrap gap-1 mt-2'>
@@ -188,7 +234,7 @@ export default function NotesPage() {
         }
       />
     ),
-    [viewModal.open],
+    [viewModal.open, editModal.openEdit, crudActions.handleDelete, canEditNote],
   );
 
   const renderGrid = useCallback(
@@ -216,16 +262,15 @@ export default function NotesPage() {
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
 
   return (
-    <DashboardPageLayout<'v_technical_notes'>
+    <DashboardPageLayout
       header={{
-        title: 'Technical Notes Reader',
-        description:
-          'Read-only access to knowledge base, technical documentation, and team updates.',
+        title: 'Technical Notes',
+        description: 'Knowledge base, technical documentation, and team updates.',
         icon: <FiBook />,
         stats: headerStats,
         actions: headerActions,
         isLoading,
-        isFetching,
+        isFetching: isFetching,
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
@@ -236,23 +281,44 @@ export default function NotesPage() {
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderGrid={renderGrid}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isCrudMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: () => {}, // Not supported
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'note',
+        showStatusUpdate: false,
+        canDelete: () => canManageAll,
+      }}
       tableProps={{
         tableName: 'v_technical_notes',
         data: notes,
         columns,
         loading: isLoading,
-        isFetching: isFetching,
+        isFetching: isFetching || isCrudMutating,
         actions: createStandardActions({
+          onEdit: (rec) =>
+            canEditNote(rec as V_technical_notesRowSchema)
+              ? editModal.openEdit(rec as V_technical_notesRowSchema)
+              : undefined,
           onView: viewModal.open,
+          onDelete: (rec) =>
+            canEditNote(rec as V_technical_notesRowSchema)
+              ? crudActions.handleDelete(rec)
+              : undefined,
         }),
-        selectable: false,
+        selectable: canManageAll,
+        onRowSelect: (rows) => {
+           const validRows = rows.filter(r => !!r.id);
+           bulkActions.handleRowSelect(validRows);
+        },
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
           total: totalCount,
-          showSizeChanger: true,
-          onChange: (page, s) => {
-            pagination.setCurrentPage(page);
+          onChange: (p, s) => {
+            pagination.setCurrentPage(p);
             pagination.setPageLimit(s);
           },
         },
@@ -260,11 +326,31 @@ export default function NotesPage() {
       }}
       isEmpty={notes.length === 0 && !isLoading}
       modals={
-        <NoteViewModal
-          isOpen={viewModal.isOpen}
-          onClose={viewModal.close}
-          note={viewModal.record}
-        />
+        <>
+          {editModal.isOpen && (
+            <NoteModal
+              isOpen={editModal.isOpen}
+              onClose={editModal.close}
+              onSubmit={crudActions.handleSave}
+              isLoading={isCrudMutating}
+              editingNote={editModal.record}
+            />
+          )}
+          <NoteViewModal
+            isOpen={viewModal.isOpen}
+            onClose={viewModal.close}
+            note={viewModal.record}
+          />
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title='Delete Note'
+            message={deleteModal.message}
+            type='danger'
+            loading={deleteModal.loading}
+          />
+        </>
       }
     />
   );

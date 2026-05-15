@@ -1,6 +1,5 @@
 // hooks/data/useSystemsData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 const matchFilter = (itemValue: unknown, filterValue: unknown) => {
   if (Array.isArray(filterValue)) {
@@ -30,7 +29,7 @@ export const useSystemsData = createGenericDataQuery<'v_systems_complete'>({
     'remark',
   ],
   defaultSortField: 'system_name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed to use default 6000
   filterFn: (s, filters) => {
     if (filters.system_type_id && !matchFilter(s.system_type_id, filters.system_type_id)) return false;
     if (
@@ -38,14 +37,13 @@ export const useSystemsData = createGenericDataQuery<'v_systems_complete'>({
       !matchFilter(s.system_capacity_id, filters.system_capacity_id)
     )
       return false;
-    
-    // THE FIX: Added maintenance_terminal_id check
+
     if (
       filters.maintenance_terminal_id &&
       !matchFilter(s.maintenance_terminal_id, filters.maintenance_terminal_id)
     )
       return false;
-    
+
     if (filters.status) {
       const statusBool = filters.status === 'true';
       if (s.status !== statusBool) return false;

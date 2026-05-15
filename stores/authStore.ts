@@ -58,32 +58,6 @@ export const useAuthStore = create<AuthStore>()(
           });
         },
 
-        // executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
-        //   if (get().authState !== 'loading') {
-        //     set({ authState: 'loading' });
-        //   }
-
-        //   try {
-        //     const result = await action();
-        //     // The onAuthStateChange listener is the primary driver for state changes.
-        //     // This is a reliable fallback to ensure the UI doesn't get stuck in loading.
-        //     if (get().authState === 'loading') {
-        //       const finalUser = get().user;
-        //       set({ authState: finalUser ? 'authenticated' : 'unauthenticated' });
-        //     }
-        //     return result;
-        //   } catch (error) {
-        //     // // On error, let onAuthStateChange handle the state, or fall back.
-        //     // const finalUser = get().user;
-        //     // set({ authState: finalUser ? "authenticated" : "unauthenticated" });
-        //     // throw error;
-        //     // On any error within the action, assume the session might be invalid.
-        //     // Set the state directly to 'unauthenticated'.
-        //     set({ authState: 'unauthenticated', user: null }); // Also clear the user
-        //     throw error;
-        //   }
-        // },
-
         executeWithLoading: async <T>(action: () => Promise<T>): Promise<T> => {
           const previousAuthState = get().authState;
           if (previousAuthState !== 'loading') {

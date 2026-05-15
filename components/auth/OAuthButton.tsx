@@ -1,17 +1,10 @@
 // components/auth/OAuthButton.tsx
-/* @refresh reset */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { FaGoogle } from 'react-icons/fa';
 import { LoadingSpinner } from '../common/ui/LoadingSpinner/LoadingSpinner';
-
-// const debug = (...args: unknown[]) => {
-//   if (process.env.NODE_ENV === 'development') {
-//     console.log('[OAuthButton]', ...args);
-//   }
-// };
 
 interface OAuthButtonProps {
   provider: string;
@@ -39,62 +32,54 @@ export function OAuthButton({
   const [isLocalLoading, setIsLocalLoading] = useState(false);
   const [isOAuthInProgress, setIsOAuthInProgress] = useState(false);
 
-  //  Use ref to track if action is in progress
+  // Use ref to track if action is in progress
   const isProcessingRef = useRef(false);
 
-  //  Remove authState and isLocalLoading from dependencies
-  // Only depend on the stable signInWithGoogle function
   const handleGoogleSignIn = useCallback(async () => {
-    // debug('handleGoogleSignIn called');
-
     // Prevent multiple clicks - check ref instead of state
     if (isProcessingRef.current) {
-      // debug('Already processing, ignoring click');
       return;
     }
 
     try {
-      // debug('Setting loading state');
       isProcessingRef.current = true;
       setIsLocalLoading(true);
       setIsOAuthInProgress(true);
       sessionStorage.setItem('oauth_in_progress', 'true');
 
-      // debug('Calling signInWithGoogle');
       await signInWithGoogle();
-      // debug('signInWithGoogle completed');
     } catch (error) {
-      // debug('OAuth error:', error);
       console.error('OAuth error:', error);
       sessionStorage.removeItem('oauth_in_progress');
       setIsOAuthInProgress(false);
     } finally {
-      // debug('Cleaning up');
       isProcessingRef.current = false;
       setIsLocalLoading(false);
       sessionStorage.removeItem('oauth_in_progress');
     }
-  }, [signInWithGoogle]); // Only signInWithGoogle in deps
+  }, [signInWithGoogle]);
 
   // Check for OAuth in progress on mount
   useEffect(() => {
     const inProgress = sessionStorage.getItem('oauth_in_progress') === 'true';
     if (inProgress) {
       setIsOAuthInProgress(true);
+
+      // THE FIX: Safety timeout. If the network crashes or user reloads while it was spinning,
+      // it gets stuck forever. This forces a reset after 8 seconds.
+      const safetyTimeout = setTimeout(() => {
+        sessionStorage.removeItem('oauth_in_progress');
+        setIsOAuthInProgress(false);
+      }, 8000);
+
+      return () => clearTimeout(safetyTimeout);
     }
-  }, []); // Run once on mount
+  }, []);
 
   // Combine all loading states
   const isLoading = isLocalLoading || authState === 'loading' || isOAuthInProgress;
   const isButtonDisabled = disabled || isLoading;
   const config = providerConfig[provider as keyof typeof providerConfig];
-
-  // debug('Rendering with state:', {
-  //   isLocalLoading,
-  //   authState,
-  //   isOAuthInProgress,
-  //   isLoading,
-  // });
 
   return (
     <button
@@ -139,7 +124,7 @@ export function OAuthButton({
     >
       {isLoading && (
         <div
-          className="absolute inset-0 animate-shimmer"
+          className='absolute inset-0 animate-shimmer'
           style={{
             background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
             backgroundSize: '200% 100%',
@@ -156,14 +141,14 @@ export function OAuthButton({
         ].join(' ')}
       >
         {isLoading ? (
-          <div className="relative">
-            <LoadingSpinner size="sm" className="h-5 w-5 text-current opacity-80" />
-            <div className="absolute inset-0 animate-ping">
-              <div className="h-5 w-5 rounded-full bg-current opacity-20" />
+          <div className='relative'>
+            <LoadingSpinner size='sm' className='h-5 w-5 text-current opacity-80' />
+            <div className='absolute inset-0 animate-ping'>
+              <div className='h-5 w-5 rounded-full bg-current opacity-20' />
             </div>
           </div>
         ) : (
-          <config.icon className="h-5 w-5 transition-all duration-300 filter drop-shadow-sm" />
+          <config.icon className='h-5 w-5 transition-all duration-300 filter drop-shadow-sm' />
         )}
       </div>
 
@@ -175,19 +160,19 @@ export function OAuthButton({
         ].join(' ')}
       >
         {isLoading ? (
-          <span className="flex items-center gap-2">
+          <span className='flex items-center gap-2'>
             Connecting
-            <span className="flex gap-1">
+            <span className='flex gap-1'>
               <span
-                className="w-1 h-1 bg-current rounded-full animate-bounce"
+                className='w-1 h-1 bg-current rounded-full animate-bounce'
                 style={{ animationDelay: '0ms' }}
               />
               <span
-                className="w-1 h-1 bg-current rounded-full animate-bounce"
+                className='w-1 h-1 bg-current rounded-full animate-bounce'
                 style={{ animationDelay: '150ms' }}
               />
               <span
-                className="w-1 h-1 bg-current rounded-full animate-bounce"
+                className='w-1 h-1 bg-current rounded-full animate-bounce'
                 style={{ animationDelay: '300ms' }}
               />
             </span>
@@ -198,7 +183,7 @@ export function OAuthButton({
       </span>
 
       {!isButtonDisabled && !isLoading && (
-        <div className="absolute inset-0 rounded-xl bg-linear-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className='absolute inset-0 rounded-xl bg-linear-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
       )}
     </button>
   );

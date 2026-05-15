@@ -4,13 +4,13 @@
 import { createClient } from '@/utils/supabase/client';
 import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
-import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { formatDate } from '@/utils/formatters';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 
 import { ActionButton } from '@/components/common/page-header/DropdownButton';
 import { Filters, Row, PublicTableOrViewName, buildRpcFilters, OrderBy } from '@/hooks/database';
-import { FiDownload, FiRefreshCw, FiWifiOff } from 'react-icons/fi';
+import { FiDownload, FiPlus, FiRefreshCw, FiWifiOff } from 'react-icons/fi';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface ExportFilterOption {
@@ -32,6 +32,7 @@ interface ExportConfig<T extends PublicTableOrViewName> {
 
 interface StandardActionsConfig<T extends PublicTableOrViewName> {
   onRefresh?: () => void;
+  onAddNew?: () => void;
   exportConfig?: ExportConfig<T>;
   isLoading?: boolean;
   isFetching?: boolean;
@@ -40,6 +41,7 @@ interface StandardActionsConfig<T extends PublicTableOrViewName> {
 
 export function useStandardHeaderActions<T extends PublicTableOrViewName>({
   onRefresh,
+  onAddNew,
   exportConfig,
   isLoading,
   isFetching,
@@ -50,6 +52,10 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
   const columns = useDynamicColumnConfig(exportConfig?.tableName as T, {
     data: data,
+  });
+
+  const tableExcelDownload = useTableExcelDownload(supabase, exportConfig?.tableName as T, {
+    onError: (err) => toast.error(`Export failed: ${err.message}`),
   });
 
   const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
@@ -92,36 +98,50 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
 
       const finalFileName = `${formatDate(new Date(), { format: 'dd-mm-yyyy' })}-${fileName}.xlsx`;
       const columnsToExport = columns.filter((c) =>
-        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true,
+        exportConfig.columns ? exportConfig.columns.includes(c.key as keyof Row<T> & string) : true
       );
 
-      const orderBy = exportConfig.orderBy || [{ column: 'id', ascending: true }];
+      const orderBy = exportConfig.orderBy || [{ column: 'created_at', ascending: false }];
 
-      // Assuming all exports utilize RPC via our views now
-      rpcExcelDownload.mutate({
-        fileName: finalFileName,
-        sheetName: sheetName,
-        columns: columnsToExport,
-        rpcConfig: {
-          functionName: 'get_paged_data',
-          parameters: {
-            p_view_name: exportConfig.tableName,
-            p_limit: exportConfig.maxRows || 50000,
-            p_offset: 0,
-            p_filters: buildRpcFilters(filters || {}),
-            p_order_by: orderBy[0].column,
-            p_order_dir: orderBy[0].ascending === false ? 'desc' : 'asc',
+      if (exportConfig.useRpc) {
+        const primaryOrder = orderBy[0] || { column: 'id', ascending: true };
+
+        rpcExcelDownload.mutate({
+          fileName: finalFileName,
+          sheetName: sheetName,
+          columns: columnsToExport,
+          rpcConfig: {
+            functionName: 'get_paged_data',
+            parameters: {
+              p_view_name: exportConfig.tableName,
+              p_limit: exportConfig.maxRows || 50000,
+              p_offset: 0,
+              p_filters: buildRpcFilters(filters || {}),
+              p_order_by: primaryOrder.column,
+              p_order_dir: primaryOrder.ascending === false ? 'desc' : 'asc',
+            },
           },
-        },
-      });
+        });
+      } else {
+        tableExcelDownload.mutate({
+          fileName: finalFileName,
+          sheetName: sheetName,
+          filters: filters,
+          columns: columnsToExport,
+          maxRows: exportConfig.maxRows,
+          orderBy: orderBy,
+        });
+      }
     },
-    [exportConfig, columns, rpcExcelDownload, isOnline],
+    [exportConfig, columns, tableExcelDownload, rpcExcelDownload, isOnline]
   );
 
   return useMemo(() => {
-    // MODIFIED: Removed all actions related to adding, creating, or uploading.
-    // The component now only generates 'Refresh' and 'Export' buttons.
     const actions: ActionButton[] = [];
+    const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
+
+    // THE FIX: Use isFetching OR isLoading for visual state, but allow clicking if not "hard" loading
+    // Actually, we want to disable refresh if a sync/fetch is already happening
     const isBusy = isLoading || isFetching;
 
     if (onRefresh) {
@@ -130,7 +150,7 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
         onClick: onRefresh,
         variant: 'outline',
         leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
-        disabled: isBusy,
+        disabled: isBusy, // Prevent double clicking
         hideTextOnMobile: true,
       });
     }
@@ -146,14 +166,14 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
                 filters: undefined,
                 fileName: undefined,
               }),
-            disabled: rpcExcelDownload.isPending,
+            disabled: isExporting,
           },
         ];
         exportConfig.filterOptions.forEach((option) => {
           dropdownoptions.push({
             label: `Export ${option.label}`,
             onClick: () => handleExport(option),
-            disabled: rpcExcelDownload.isPending,
+            disabled: isExporting,
           });
         });
 
@@ -161,23 +181,42 @@ export function useStandardHeaderActions<T extends PublicTableOrViewName>({
           label: 'Export',
           variant: 'outline',
           leftIcon: <FiDownload />,
-          disabled: rpcExcelDownload.isPending,
+          disabled: isExporting,
           'data-dropdown': true,
           dropdownoptions,
           hideTextOnMobile: true,
         });
       } else {
         actions.push({
-          label: rpcExcelDownload.isPending ? 'Exporting...' : 'Export',
+          label: isExporting ? 'Exporting...' : 'Export',
           onClick: () => handleExport(),
           variant: 'outline',
           leftIcon: <FiDownload />,
-          disabled: isLoading || rpcExcelDownload.isPending,
+          disabled: isLoading || isExporting,
           hideTextOnMobile: true,
         });
       }
     }
 
+    if (onAddNew) {
+      actions.push({
+        label: 'Add New',
+        onClick: onAddNew,
+        variant: 'primary',
+        leftIcon: <FiPlus />,
+        disabled: isLoading,
+      });
+    }
+
     return actions;
-  }, [onRefresh, exportConfig, isLoading, isFetching, handleExport, rpcExcelDownload.isPending]);
+  }, [
+    onRefresh,
+    onAddNew,
+    exportConfig,
+    isLoading,
+    isFetching,
+    handleExport,
+    tableExcelDownload.isPending,
+    rpcExcelDownload.isPending,
+  ]);
 }

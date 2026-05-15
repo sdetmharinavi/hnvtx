@@ -1,25 +1,50 @@
 // app/dashboard/inventory/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { FiArchive, FiClock, FiMapPin, FiTag } from 'react-icons/fi';
+import {
+  FiArchive,
+  FiMinusCircle,
+  FiClock,
+  FiUpload,
+  FiMapPin,
+  FiTag,
+  FiFileText,
+} from 'react-icons/fi';
 import { FaQrcode, FaRupeeSign } from 'react-icons/fa';
 
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
 import { GenericEntityCard } from '@/components/common/ui/GenericEntityCard';
-import { Button, ErrorDisplay, PageSpinner } from '@/components/common/ui';
+import { Button, ConfirmModal, ErrorDisplay, PageSpinner } from '@/components/common/ui';
 import { createStandardActions } from '@/components/table/action-helpers';
 import { getInventoryTableColumns } from '@/config/table-columns/InventoryTableColumns';
-import { useCrudManager } from '@/hooks/useCrudManager';
-import { useInventoryData } from '@/hooks/data/useInventoryData';
+import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
+import { useInventoryData, InventoryDataReturn } from '@/hooks/data/useInventoryData';
+import { useIssueInventoryItem } from '@/hooks/inventory-actions';
+import { useInventoryExcelUpload } from '@/hooks/database/excel-queries/useInventoryExcelUpload';
 import { useLookupTypeOptions, useActiveNodeOptions } from '@/hooks/data/useDropdownOptions';
-import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
+import { V_inventory_itemsRowSchema, Inventory_itemsInsertSchema } from '@/schemas/zod-schemas';
 import { formatCurrency } from '@/utils/formatters';
+import { useUser } from '@/providers/UserProvider';
 import { useStandardHeaderActions } from '@/components/common/page-header';
+import { EnhancedUploadResult } from '@/hooks/database';
 import { DataGrid } from '@/components/common/DataGrid';
+import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
+import { FilterConfig } from '@/components/common/filters/GenericFilterBar';
+import GenericRemarks from '@/components/common/GenericRemarks';
+
+const InventoryFormModal = dynamic(
+  () => import('@/components/inventory/InventoryFormModal').then((mod) => mod.InventoryFormModal),
+  { loading: () => <PageSpinner text='Loading Inventory Form...' /> },
+);
+
+const IssueItemModal = dynamic(
+  () => import('@/components/inventory/IssueItemModal').then((mod) => mod.IssueItemModal),
+  { loading: () => <PageSpinner text='Loading Issue Form...' /> },
+);
 
 const InventoryHistoryModal = dynamic(
   () =>
@@ -27,38 +52,88 @@ const InventoryHistoryModal = dynamic(
   { loading: () => <PageSpinner text='Loading History...' /> },
 );
 
+const UploadResultModal = dynamic(
+  () => import('@/components/common/ui/UploadResultModal').then((mod) => mod.UploadResultModal),
+  { loading: () => <PageSpinner text='Loading Import Report...' /> },
+);
+
 export default function InventoryPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [itemToIssue, setItemToIssue] = useState<V_inventory_itemsRowSchema | null>(null);
+
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [historyItem, setHistoryItem] = useState<{ id: string; name: string } | null>(null);
+  // THE FIX: Store the entire item record instead of just id/name for the history modal
+  const [historyItem, setHistoryItem] = useState<V_inventory_itemsRowSchema | null>(null);
+
+  const crud = useCrudManager<'inventory_items', V_inventory_itemsRowSchema>({
+    tableName: 'inventory_items',
+    dataQueryHook: useInventoryData,
+    displayNameField: 'name',
+    searchColumn: ['name', 'description', 'asset_no'],
+    syncTables: [
+      'inventory_items',
+      'v_inventory_items',
+      'inventory_transactions',
+      'v_inventory_transactions_extended',
+    ],
+  }) as unknown as UseCrudManagerReturn<V_inventory_itemsRowSchema> & InventoryDataReturn;
 
   const {
     data: inventory,
     totalCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
+    editModal,
+    deleteModal,
+    actions: crudActions,
     filters,
-  } = useCrudManager<'inventory_items', V_inventory_itemsRowSchema>({
-    tableName: 'inventory_items',
-    dataQueryHook: useInventoryData,
-    displayNameField: 'name',
-    searchColumn: ['name', 'description', 'asset_no'],
+    bulkActions,
+    stats,
+  } = crud;
+
+  const { mutate: issueItem, isPending: isIssuing } = useIssueInventoryItem();
+  const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
+  const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
+
+  const { mutate: uploadInventory, isPending: isUploading } = useInventoryExcelUpload({
+    onSuccess: (result) => {
+      setUploadResult(result);
+      setIsUploadResultOpen(true);
+      if (result.successCount > 0) refetch();
+    },
   });
 
   const { options: categoryOptions, isLoading: loadingCats } =
     useLookupTypeOptions('INVENTORY_CATEGORY');
   const { options: locationOptions, isLoading: loadingLocs } = useActiveNodeOptions();
 
-  const filterConfigs = useMemo(
+  const filterConfigs = useMemo<FilterConfig[]>(
     () => [
-      { key: 'category_id', label: 'Category', options: categoryOptions, isLoading: loadingCats },
-      { key: 'location_id', label: 'Location', options: locationOptions, isLoading: loadingLocs },
+      {
+        key: 'category_id',
+        label: 'Category',
+        type: 'multi-select',
+        options: categoryOptions,
+        isLoading: loadingCats,
+        placeholder: 'All Categories',
+      },
+      {
+        key: 'location_id',
+        label: 'Location',
+        type: 'multi-select',
+        options: locationOptions,
+        isLoading: loadingLocs,
+        placeholder: 'All Locations',
+      },
     ],
     [categoryOptions, locationOptions, loadingCats, loadingLocs],
   );
@@ -70,18 +145,23 @@ export default function InventoryPage() {
     [filters],
   );
 
-  const totalInventoryValue = useMemo(() => {
-    return inventory.reduce((acc, item) => acc + (item.total_value || 0), 0);
-  }, [inventory]);
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManageInventory);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
 
   const headerStats = useMemo<StatProps[]>(() => {
     const currentStatus = filters.filters.stock_status;
-    const inStockCount = inventory.filter((i) => (i.quantity || 0) > 0).length;
-    const outOfStockCount = inventory.filter((i) => (i.quantity || 0) <= 0).length;
+    const safeStats = stats || {
+      totalItems: 0,
+      totalValue: 0,
+      inStock: 0,
+      outOfStock: 0,
+      lowStock: 0,
+    };
 
     return [
       {
-        value: totalCount,
+        value: safeStats.totalItems,
         label: 'Total Items',
         onClick: () =>
           filters.setFilters((prev) => {
@@ -92,44 +172,73 @@ export default function InventoryPage() {
         isActive: !currentStatus,
       },
       {
-        value: formatCurrency(totalInventoryValue),
+        value: formatCurrency(safeStats.totalValue),
         label: 'Total Value',
         color: 'success',
       },
       {
-        value: inStockCount,
+        value: safeStats.inStock,
         label: 'In Stock',
         color: 'success',
         onClick: () => filters.setFilters((prev) => ({ ...prev, stock_status: 'in_stock' })),
         isActive: currentStatus === 'in_stock',
       },
       {
-        value: outOfStockCount,
+        value: safeStats.outOfStock,
         label: 'Out of Stock',
         color: 'danger',
-        onClick: () => filters.setFilters((prev) => ({ ...prev, stock_status: 'out_of_stock' })),
+        onClick: () =>
+          filters.setFilters((prev) => ({
+            ...prev,
+            stock_status: 'out_of_stock',
+          })),
         isActive: currentStatus === 'out_of_stock',
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    totalCount,
-    totalInventoryValue,
-    inventory,
-    filters.filters.stock_status,
-    filters.setFilters,
-  ]);
+  }, [stats, filters.filters.stock_status, filters.setFilters]);
 
+  const handleOpenIssueModal = (record: V_inventory_itemsRowSchema) => {
+    setItemToIssue(record);
+    setIsIssueModalOpen(true);
+  };
+
+  // THE FIX: Set the whole record to state
   const handleOpenHistory = (record: V_inventory_itemsRowSchema) => {
     if (!record.id) return;
-    setHistoryItem({ id: record.id, name: record.name || 'Item' });
+    setHistoryItem(record);
     setIsHistoryModalOpen(true);
+  };
+
+  const handleIssueSubmit = (data: {
+    item_id: string;
+    quantity: number;
+    issued_to: string;
+    issue_reason: string;
+    issued_date: string;
+  }) => {
+    issueItem(data, {
+      onSuccess: () => {
+        refetch();
+        setIsIssueModalOpen(false);
+        setItemToIssue(null);
+      },
+    });
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) uploadInventory({ file });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const columns = getInventoryTableColumns();
 
   const tableActions = useMemo(() => {
-    const standardActions = createStandardActions<'v_inventory_items'>({});
+    const standardActions = createStandardActions<V_inventory_itemsRowSchema>({
+      onEdit: canEdit ? editModal.openEdit : undefined,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
+    });
     standardActions.unshift({
       key: 'history',
       label: 'History',
@@ -137,6 +246,16 @@ export default function InventoryPage() {
       onClick: (r) => handleOpenHistory(r),
       variant: 'secondary',
     });
+    if (canEdit) {
+      standardActions.unshift({
+        key: 'issue',
+        label: 'Issue',
+        icon: <FiMinusCircle className='text-orange-600' />,
+        onClick: (r) => handleOpenIssueModal(r),
+        variant: 'secondary',
+        disabled: (r) => (r.quantity || 0) <= 0,
+      });
+    }
     standardActions.unshift({
       key: 'qr-code',
       label: 'QR',
@@ -145,15 +264,27 @@ export default function InventoryPage() {
       variant: 'secondary',
     });
     return standardActions;
-  }, [router]);
+  }, [editModal.openEdit, crudActions.handleDelete, canEdit, canDelete, router]);
 
   const headerActions = useStandardHeaderActions({
     data: inventory,
     onRefresh: refetch,
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isFetching: isFetching,
     isLoading,
-    exportConfig: { tableName: 'v_inventory_items', useRpc: true },
+    exportConfig: canEdit ? { tableName: 'v_inventory_items', useRpc: true } : undefined,
   });
+
+  if (canEdit) {
+    headerActions.splice(1, 0, {
+      label: isUploading ? 'Importing...' : 'Import',
+      variant: 'outline',
+      leftIcon: <FiUpload />,
+      disabled: isUploading || isLoading,
+      onClick: () => fileInputRef.current?.click(),
+      hideTextOnMobile: true,
+    });
+  }
 
   const renderItem = useCallback(
     (item: V_inventory_itemsRowSchema) => {
@@ -191,8 +322,16 @@ export default function InventoryPage() {
           }
           headerIcon={<FiArchive className='w-6 h-6 text-blue-500' />}
           dataItems={[
-            { icon: FiMapPin, label: 'Location', value: item.store_location || 'Unknown' },
-            { icon: FiTag, label: 'Category', value: item.category_name || 'Uncategorized' },
+            {
+              icon: FiMapPin,
+              label: 'Location',
+              value: item.store_location || 'Unknown',
+            },
+            {
+              icon: FiTag,
+              label: 'Category',
+              value: item.category_name || 'Uncategorized',
+            },
             {
               icon: FaRupeeSign,
               label: 'Total Value',
@@ -200,6 +339,17 @@ export default function InventoryPage() {
                 <span className='font-bold text-emerald-600 dark:text-emerald-400'>
                   {formatCurrency(totalValue)}
                 </span>
+              ),
+            },
+            {
+              icon: FiFileText,
+              label: 'Description',
+              value: (
+                <GenericRemarks
+                  className='whitespace-normal wrap-break-words'
+                  maxLines={3}
+                  remark={item.description || ''}
+                />
               ),
             },
           ]}
@@ -216,6 +366,17 @@ export default function InventoryPage() {
           }
           extraActions={
             <>
+              {canEdit && (
+                <Button
+                  size='xs'
+                  variant='primary'
+                  onClick={() => handleOpenIssueModal(item)}
+                  disabled={quantity <= 0}
+                  title='Issue Stock'
+                >
+                  <FiMinusCircle className='w-4 h-4' />
+                </Button>
+              )}
               <Button
                 size='xs'
                 variant='secondary'
@@ -234,11 +395,37 @@ export default function InventoryPage() {
               </Button>
             </>
           }
+          onEdit={editModal.openEdit}
+          onDelete={crudActions.handleDelete}
+          canEdit={canEdit}
+          canDelete={canDelete}
           onView={() => handleOpenHistory(item)}
         />
       );
     },
-    [router],
+    [canEdit, canDelete, crudActions.handleDelete, editModal.openEdit, router],
+  );
+
+  const renderGrid = useCallback(
+    () => (
+      <DataGrid
+        data={inventory}
+        renderItem={renderItem}
+        isLoading={isLoading}
+        isEmpty={inventory.length === 0 && !isLoading}
+        pagination={{
+          current: pagination.currentPage,
+          pageSize: pagination.pageLimit,
+          total: totalCount,
+          showSizeChanger: true,
+          onChange: (page, limit) => {
+            pagination.setCurrentPage(page);
+            pagination.setPageLimit(limit);
+          },
+        }}
+      />
+    ),
+    [inventory, renderItem, isLoading, pagination, totalCount],
   );
 
   if (error)
@@ -246,9 +433,10 @@ export default function InventoryPage() {
 
   return (
     <DashboardPageLayout
+      crud={crud}
       header={{
-        title: 'Inventory Viewer',
-        description: 'Track physical assets, stock levels, and past movements.',
+        title: 'Inventory',
+        description: 'Track physical assets, stock levels, and movements.',
         icon: <FiArchive />,
         stats: headerStats,
         actions: headerActions,
@@ -257,28 +445,38 @@ export default function InventoryPage() {
       }}
       searchQuery={search.searchQuery}
       onSearchChange={search.setSearchQuery}
-      searchPlaceholder='Search asset, name, desc...'
+      searchPlaceholder='Search asset, name, desc, vendor, location...'
       filters={filters.filters}
       onFilterChange={handleFilterChange}
+      setFilters={filters.setFilters}
       filterConfigs={filterConfigs}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      renderGrid={() => (
-        <DataGrid
-          data={inventory}
-          renderItem={renderItem}
-          isLoading={isLoading}
-          isEmpty={inventory.length === 0}
-        />
-      )}
+      bulkActions={{
+        selectedCount: bulkActions.selectedCount,
+        isOperationLoading: isMutating,
+        onBulkDelete: bulkActions.handleBulkDelete,
+        onBulkUpdateStatus: bulkActions.handleBulkUpdateStatus,
+        onClearSelection: bulkActions.handleClearSelection,
+        entityName: 'item',
+        showStatusUpdate: false,
+        canDelete: () => canDelete,
+      }}
+      renderGrid={renderGrid}
       tableProps={{
         tableName: 'v_inventory_items',
         data: inventory,
         columns: columns,
         loading: isLoading,
-        isFetching: isFetching,
+        isFetching: isFetching || isMutating,
         actions: tableActions,
-        selectable: false,
+        selectable: canDelete,
+        onRowSelect: (rows) => {
+          const validRows = rows.filter(
+            (row): row is V_inventory_itemsRowSchema & { id: string } => !!row.id,
+          );
+          bulkActions.handleRowSelect(validRows);
+        },
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -289,6 +487,7 @@ export default function InventoryPage() {
             pagination.setPageLimit(s);
           },
         },
+        customToolbar: <></>,
       }}
       isEmpty={inventory.length === 0 && !isLoading}
       emptyState={
@@ -299,14 +498,56 @@ export default function InventoryPage() {
       }
       modals={
         <>
+          <input
+            type='file'
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className='hidden'
+            accept='.xlsx, .xls'
+          />
+
+          <UploadResultModal
+            isOpen={isUploadResultOpen}
+            onClose={() => setIsUploadResultOpen(false)}
+            result={uploadResult}
+            title='Inventory Import Report'
+          />
+
+          <InventoryFormModal
+            isOpen={editModal.isOpen}
+            onClose={editModal.close}
+            editingItem={editModal.record as V_inventory_itemsRowSchema | null}
+            onSubmit={crudActions.handleSave as (data: Inventory_itemsInsertSchema) => void}
+            isLoading={isMutating}
+          />
+
+          {isIssueModalOpen && (
+            <IssueItemModal
+              isOpen={isIssueModalOpen}
+              onClose={() => setIsIssueModalOpen(false)}
+              item={itemToIssue}
+              onSubmit={handleIssueSubmit}
+              isLoading={isIssuing}
+            />
+          )}
+
           {isHistoryModalOpen && historyItem && (
             <InventoryHistoryModal
               isOpen={isHistoryModalOpen}
               onClose={() => setIsHistoryModalOpen(false)}
-              itemId={historyItem.id}
-              itemName={historyItem.name}
+              item={historyItem}
             />
           )}
+
+          <ConfirmModal
+            isOpen={deleteModal.isOpen}
+            onConfirm={deleteModal.onConfirm}
+            onCancel={deleteModal.onCancel}
+            title='Confirm Deletion'
+            message={deleteModal.message}
+            loading={deleteModal.loading}
+            type='danger'
+          />
         </>
       }
     />

@@ -118,8 +118,7 @@ const defaultFormatters = {
         value
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
           : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
-      }`}
-    >
+      }`}>
       {value ? '✓ Yes' : '✗ No'}
     </span>
   ),
@@ -133,8 +132,7 @@ const defaultFormatters = {
             isVerified
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
               : 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
-          }`}
-        >
+          }`}>
           {isVerified ? '✓ Verified' : '✗ Unverified'}
         </span>
       )}
@@ -335,15 +333,13 @@ const DetailsModal = <T extends Record<string, unknown>>({
         <motion.div
           className='flex items-start gap-2.5'
           whileHover={{ x: 2 }}
-          transition={{ duration: 0.2 }}
-        >
+          transition={{ duration: 0.2 }}>
           {field.icon && (
             <motion.div
               className='text-gray-400 dark:text-gray-500 mt-0.5 shrink-0 w-4'
               initial={{ rotate: -10, opacity: 0 }}
               animate={{ rotate: 0, opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-            >
+              transition={{ delay: 0.1, duration: 0.3 }}>
               {field.icon}
             </motion.div>
           )}
@@ -367,13 +363,11 @@ const DetailsModal = <T extends Record<string, unknown>>({
       <motion.div
         key={section.title}
         className={`${section.className || ''}`}
-        variants={sectionVariants}
-      >
+        variants={sectionVariants}>
         <motion.div
           className='flex items-center gap-2 mb-4'
           whileHover={{ x: 3 }}
-          transition={{ duration: 0.2 }}
-        >
+          transition={{ duration: 0.2 }}>
           {section.icon && (
             <motion.div
               className='w-8 h-8 flex items-center justify-center bg-linear-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-lg text-blue-600 dark:text-blue-400'
@@ -385,8 +379,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                 type: 'spring',
                 stiffness: 400,
                 damping: 15,
-              }}
-            >
+              }}>
               {section.icon}
             </motion.div>
           )}
@@ -417,8 +410,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
     return (
       <motion.div
         className='relative px-6 py-5 border-b border-gray-200 dark:border-gray-800'
-        variants={headerVariants}
-      >
+        variants={headerVariants}>
         <div className='flex items-start justify-between gap-4'>
           <motion.div className='flex items-center gap-3 flex-1 min-w-0' variants={headerVariants}>
             {header.avatar && (
@@ -433,8 +425,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                   type: 'spring',
                   stiffness: 400,
                   damping: 15,
-                }}
-              >
+                }}>
                 {avatarUrl ? (
                   <div className='relative'>
                     <Image
@@ -464,8 +455,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                 <div
                   className={`h-12 w-12 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm ${
                     avatarUrl ? 'hidden' : ''
-                  }`}
-                >
+                  }`}>
                   <span className='text-lg font-semibold text-white'>
                     {header.avatar.fallbackText(record)}
                   </span>
@@ -488,8 +478,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                 className='text-lg font-semibold text-gray-900 dark:text-gray-100 truncate'
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-              >
+                transition={{ delay: 0.1, duration: 0.3 }}>
                 {title}
               </motion.h2>
               {subtitle && (
@@ -497,8 +486,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                   className='text-sm text-gray-600 dark:text-gray-400 truncate'
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.3 }}
-                >
+                  transition={{ delay: 0.15, duration: 0.3 }}>
                   {subtitle}
                 </motion.p>
               )}
@@ -507,8 +495,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
                   className='flex items-center gap-2 flex-wrap mt-2'
                   variants={badgeContainerVariants}
                   initial='hidden'
-                  animate='visible'
-                >
+                  animate='visible'>
                   {header.badges.map((badge, index) => (
                     <motion.div key={`${String(badge.key)}-${index}`} variants={badgeVariants}>
                       {badge.component(getNestedValue(record, String(badge.key)), record)}
@@ -531,8 +518,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
               type: 'spring',
               stiffness: 400,
               damping: 17,
-            }}
-          >
+            }}>
             <FiX size={20} />
           </motion.button>
         </div>
@@ -549,8 +535,7 @@ const DetailsModal = <T extends Record<string, unknown>>({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className='fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50'
-            >
+              className='fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50'>
               <CardSpinner />
             </motion.div>
           ) : data ? (
@@ -560,26 +545,22 @@ const DetailsModal = <T extends Record<string, unknown>>({
               animate='visible'
               exit='exit'
               className='fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4'
-              onClick={onClose}
-            >
+              onClick={onClose}>
               <motion.div
                 variants={modalVariants}
                 onClick={(e) => e.stopPropagation()}
-                className={`bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-7xl w-full max-h-[85vh] overflow-hidden border border-gray-200 dark:border-gray-800 ${className}`}
-              >
+                className={`bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-[95vw] w-full max-h-[85vh] overflow-hidden border border-gray-200 dark:border-gray-800 ${className}`}>
                 {renderHeader(data)}
                 <motion.div
                   className='p-6 overflow-y-auto max-h-[calc(85vh-100px)] custom-scrollbar'
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15, duration: 0.3 }}
-                >
+                  transition={{ delay: 0.15, duration: 0.3 }}>
                   <motion.div
                     className='grid grid-cols-1 md:grid-cols-2 gap-6'
                     variants={sectionVariants}
                     initial='hidden'
-                    animate='visible'
-                  >
+                    animate='visible'>
                     {config.sections.map((section) => renderSection(section, data))}
                   </motion.div>
                 </motion.div>

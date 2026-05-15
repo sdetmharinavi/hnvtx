@@ -1,5 +1,5 @@
+// hooks/data/useAllOfcConnectionsData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 export const useAllOfcConnectionsData = createGenericDataQuery<'v_ofc_connections_complete'>({
   tableName: 'v_ofc_connections_complete',
@@ -12,7 +12,7 @@ export const useAllOfcConnectionsData = createGenericDataQuery<'v_ofc_connection
     'remark',
   ],
   defaultSortField: 'ofc_route_name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed
   filterFn: (c, filters) => {
     if (filters.ofc_type_name && c.ofc_type_name !== filters.ofc_type_name) return false;
 

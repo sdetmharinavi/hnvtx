@@ -1,5 +1,6 @@
 import { parseJson, toPgBoolean, toPgDate, toTitleCase } from '@/config/helper-functions';
 import { ColumnMeta, TableMetaMap, UploadMetaMap } from '@/config/helper-types';
+import type { UploadConfig } from '@/stores/useUploadConfigStore';
 import { PublicTableName, PublicTableOrViewName, Row, isTableName } from '@/hooks/database';
 import { removeSubnet } from '@/hooks/database/excel-queries/excel-helpers';
 
@@ -44,7 +45,7 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
   systems: {
     uploadType: 'upsert',
     conflictColumn: 'id',
-    isUploadEnabled: false,
+    isUploadEnabled: false, // Disabled by default for systems to prefer specialized upload
   },
   ports_management: {
     uploadType: 'upsert',
@@ -81,7 +82,82 @@ export const UPLOAD_TABLE_META: UploadMetaMap = {
     conflictColumn: 'id',
     isUploadEnabled: true,
   },
-  
+  // THE FIX: Added all missing tables to prevent "Missing conflictColumn" errors
+  system_connections: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  sdh_connections: {
+    uploadType: 'upsert',
+    conflictColumn: 'system_connection_id',
+    isUploadEnabled: true,
+  },
+  e_files: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  file_movements: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  ring_based_systems: {
+    uploadType: 'upsert',
+    conflictColumn: 'system_id,ring_id',
+    isUploadEnabled: true,
+  },
+  logical_path_segments: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  logical_fiber_paths: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  junction_closures: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  cable_segments: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  fiber_splices: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  logical_paths: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  inventory_transactions: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  advances: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  expenses: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
+  ofc_cable_links: {
+    uploadType: 'upsert',
+    conflictColumn: 'id',
+    isUploadEnabled: true,
+  },
 };
 
 export const TABLE_COLUMN_META: TableMetaMap = {
@@ -122,7 +198,6 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     updated_en_id: { excelFormat: 'text' },
   },
   nodes: { status: { transform: toPgBoolean } },
-  // THE FIX: Added ip_address transform to base systems table
   systems: {
     commissioned_on: { transform: toPgDate, excelFormat: 'date' },
     status: { transform: toPgBoolean },
@@ -133,14 +208,12 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     port_admin_status: { title: 'Admin Status', transform: toPgBoolean },
     services_count: { title: 'Services Count', excelFormat: 'integer' },
   },
-  // THE FIX: Added sn_ip and en_ip transforms
   v_system_connections_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: 'date' },
     status: { transform: toPgBoolean },
     sn_ip: { transform: removeSubnet },
     en_ip: { transform: removeSubnet },
   },
-  // THE FIX: Added ip_address transform to the systems view
   v_systems_complete: {
     commissioned_on: { transform: toPgDate, excelFormat: 'date' },
     status: { transform: toPgBoolean },
@@ -148,7 +221,6 @@ export const TABLE_COLUMN_META: TableMetaMap = {
   },
   diary_notes: {
     note_date: { transform: toPgDate, excelFormat: 'date' },
-    // THE FIX: Parse tags string "[]" into actual Array
     tags: { transform: parseJson, excelFormat: 'json' },
   },
   v_audit_logs: {
@@ -156,7 +228,6 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     old_data: { excelFormat: 'json' },
     new_data: { excelFormat: 'json' },
   },
-  // ADDED: Metadata formatting for files
   files: {
     uploaded_at: { transform: toPgDate, excelFormat: 'date' },
     file_size: { title: 'Size (Bytes)', excelFormat: 'number' },
@@ -184,9 +255,8 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     category: { title: 'Category' },
     priority: { title: 'Priority' },
     initiator_name: { title: 'Initiator' },
-    current_holder_name: { title: 'Current Holder' }, // Matches the import mapping key
+    current_holder_name: { title: 'Current Holder' },
     status: { title: 'Status' },
-    // Hide ID columns to clean up the export
     id: { excelFormat: 'text' },
     initiator_employee_id: { title: 'Initiator ID' },
     current_holder_employee_id: { title: 'Holder ID' },
@@ -201,11 +271,6 @@ export const TABLE_COLUMN_META: TableMetaMap = {
     },
     cost: { title: 'Unit Cost' },
     total_value: { title: 'Total Value (Calculated)' },
-
-    // ADDED: Virtual columns for Import Mapping
-    // These keys don't exist in the view, but we add them here so the importer can recognize them
-    // if the user adds them to the Excel file manually for bulk actions.
-    // Note: The useInventoryExcelUpload hook handles the mapping manually, but this helps consistency.
   },
 };
 
@@ -220,10 +285,10 @@ export function buildColumnConfig<T extends PublicTableOrViewName>(tableName: T)
   return keys.map((key) => {
     const m = meta[key] || {};
     const title = m.title ?? toTitleCase(key);
-    // THE FIX: Ensure 'transform' is passed to the returned config
     return { key, dataIndex: key, title, excelFormat: m.excelFormat, transform: m.transform };
   });
 }
+
 export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T) {
   type RowType = Row<T>;
   type ColumnKey = keyof RowType & string;
@@ -238,7 +303,10 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     : undefined;
 
   const uploadType = tableMeta?.uploadType ?? 'upsert';
-  const conflictColumn = tableMeta?.conflictColumn;
+
+  // THE FIX: Added a fallback to 'id' so that Views or undefined tables don't trigger the error.
+  const conflictColumn = tableMeta?.conflictColumn ?? 'id';
+
   const isUploadEnabled = tableMeta?.isUploadEnabled ?? true;
 
   const columnMapping = keys.map((key) => {
@@ -270,7 +338,7 @@ export function buildUploadConfig<T extends PublicTableOrViewName>(tableName: T)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     conflictColumn: conflictColumn as any,
     isUploadEnabled,
-  };
+  } satisfies UploadConfig<T>;
 }
 
 export type ValidatedColumnKeys = {
@@ -501,7 +569,7 @@ const TABLE_COLUMN_OBJECTS = {
     vlan: 'vlan',
   },
   ports_management: {
-    id: 'id', // Added primary key
+    id: 'id',
     system_id: 'system_id',
     port: 'port',
     port_type_id: 'port_type_id',
@@ -699,26 +767,26 @@ const TABLE_COLUMN_OBJECTS = {
   },
 
   expenses: {
-    expense_date: "expense_date",
-    terminal_location: "terminal_location",
-    vendor: "vendor",
-    category: "category",
-    amount: "amount",
-    invoice_no: "invoice_no",
-    description: "description",
-    spent_by_employee_id: "spent_by_employee_id",
-    advance_id: "advance_id",
-    created_at: "created_at",
-    id: "id",
-    updated_at: "updated_at",
+    expense_date: 'expense_date',
+    terminal_location: 'terminal_location',
+    vendor: 'vendor',
+    category: 'category',
+    amount: 'amount',
+    invoice_no: 'invoice_no',
+    description: 'description',
+    spent_by_employee_id: 'spent_by_employee_id',
+    advance_id: 'advance_id',
+    created_at: 'created_at',
+    id: 'id',
+    updated_at: 'updated_at',
   },
 
   ofc_cable_links: {
-    cable_id_1: "cable_id_1",
-    cable_id_2: "cable_id_2",
-    created_at: "created_at",
-    description: "description",
-    id: "id",
+    cable_id_1: 'cable_id_1',
+    cable_id_2: 'cable_id_2',
+    created_at: 'created_at',
+    description: 'description',
+    id: 'id',
   },
 
   // ==================== Views ====================
@@ -1032,6 +1100,7 @@ const TABLE_COLUMN_OBJECTS = {
     maintenance_area_name: 'maintenance_area_name',
     is_closed_loop: 'is_closed_loop',
     topology_config: 'topology_config',
+    associated_system_ips: 'associated_system_ips',
     associated_system_names: 'associated_system_names',
     bts_status: 'bts_status',
     ofc_status: 'ofc_status',
@@ -1041,7 +1110,6 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: 'updated_at',
     maintenance_terminal_id: 'maintenance_terminal_id',
     ring_type_id: 'ring_type_id',
-    associated_system_ips: 'associated_system_ips',
   },
   file_movements: {
     action_type: 'action_type',
@@ -1219,22 +1287,22 @@ const TABLE_COLUMN_OBJECTS = {
     updated_at: 'updated_at',
   },
   v_expenses_complete: {
-    expense_date: "expense_date",
-    advance_holder_name: "advance_holder_name",
-    terminal_location: "terminal_location",
-    vendor: "vendor",
-    category: "category",
-    amount: "amount",
-    invoice_no: "invoice_no",
-    used_by: "used_by",
-    spender_name: "spender_name",
-    description: "description",
-    advance_id: "advance_id",
-    advance_req_no: "advance_req_no",
-    created_at: "created_at",
-    id: "id",
-    spent_by_employee_id: "spent_by_employee_id",
-    updated_at: "updated_at",
+    expense_date: 'expense_date',
+    advance_holder_name: 'advance_holder_name',
+    terminal_location: 'terminal_location',
+    vendor: 'vendor',
+    category: 'category',
+    amount: 'amount',
+    invoice_no: 'invoice_no',
+    used_by: 'used_by',
+    spender_name: 'spender_name',
+    description: 'description',
+    advance_id: 'advance_id',
+    advance_req_no: 'advance_req_no',
+    created_at: 'created_at',
+    id: 'id',
+    spent_by_employee_id: 'spent_by_employee_id',
+    updated_at: 'updated_at',
   },
   v_advances_complete: {
     id: 'id',
@@ -1250,7 +1318,7 @@ const TABLE_COLUMN_OBJECTS = {
     description: 'description',
     created_at: 'created_at',
     updated_at: 'updated_at',
-  }
+  },
 } satisfies ValidatedColumnKeys;
 
 // Programmatically create the array-based export from the validated object.

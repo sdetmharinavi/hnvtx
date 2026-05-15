@@ -6,11 +6,14 @@ import { usePathname } from 'next/navigation';
 import { FiChevronDown, FiExternalLink } from 'react-icons/fi';
 import { NavItem as NavItemType, submenuVariants } from './sidebar-types';
 import { UserRole } from '@/types/user-roles';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ButtonSpinner } from '@/components/common/ui/LoadingSpinner';
+import { useQueryClient } from '@tanstack/react-query';
+import { ROUTE_QUERY_MAP } from '@/config/route-query-mapping';
+import { createClient } from '@/utils/supabase/client';
 
 interface NavItemProps {
   item: NavItemType;
@@ -18,7 +21,6 @@ interface NavItemProps {
   depth?: number;
   expandedItems: string[];
   toggleExpanded: (id: string) => void;
-  // THE FIX: Add explicit mouse event handlers
   onMouseEnter: (item: NavItemType, position: DOMRect | null) => void;
   onMouseLeave: () => void;
 }
@@ -29,13 +31,17 @@ export const NavItem = ({
   depth = 0,
   expandedItems,
   toggleExpanded,
-  onMouseEnter, // THE FIX
-  onMouseLeave, // THE FIX
+  onMouseEnter,
+  onMouseLeave,
 }: NavItemProps) => {
   const pathname = usePathname();
   const { isSuperAdmin, role } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
+  const prefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const queryClient = useQueryClient();
+  const supabase = createClient();
 
   const hasPermission = (roles: readonly (UserRole | string)[]) => {
     if (isSuperAdmin) return true;
@@ -60,6 +66,57 @@ export const NavItem = ({
     setIsLoading(false);
   }, [pathname]);
 
+  // --- OPTIMIZED PREFETCHING ---
+  const prefetchRouteData = useCallback(async () => {
+    if (!item.href) return;
+    
+    const mapping = ROUTE_QUERY_MAP[item.href];
+    if (mapping) {
+      const { key, tableName } = mapping;
+      
+      // We perform a partial prefetch
+      await queryClient.prefetchQuery({
+        queryKey: [`${key}`], 
+        queryFn: async () => {
+          const { data, error } = await supabase.rpc('get_paged_data', {
+            p_view_name: tableName!,
+            p_limit: 6000, 
+            p_offset: 0,
+            p_filters: {},
+            p_order_by: 'name', // Best guess default sort
+          });
+          if(error) throw error;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return (data as any)?.data || [];
+        },
+        staleTime: 5 * 60 * 1000 // 5 minutes cache
+      });
+    }
+  }, [item.href, queryClient, supabase]);
+
+  const handleMouseEnterWrapper = () => {
+    // 1. Trigger Hover Menu logic immediately (for UI responsiveness)
+    if (isCollapsed && hasChildren && itemRef.current) {
+      onMouseEnter(item, itemRef.current.getBoundingClientRect());
+    }
+    
+    // 2. Trigger Prefetching with Debounce
+    // This prevents firing requests if the user just swipes their mouse across the sidebar
+    if (!item.external && item.href) {
+        if (prefetchTimeoutRef.current) clearTimeout(prefetchTimeoutRef.current);
+        prefetchTimeoutRef.current = setTimeout(() => {
+            prefetchRouteData();
+        }, 150); // 150ms delay - enough to filter accidental hovers, short enough to feel instant
+    }
+  };
+
+  const handleMouseLeaveWrapper = () => {
+     if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+     }
+     onMouseLeave();
+  }
+
   if (!hasPermission(item.roles)) return null;
 
   const itemContentClasses = cn(
@@ -67,7 +124,6 @@ export const NavItem = ({
     active
       ? 'bg-linear-to-r from-blue-500 via-indigo-500 to-cyan-500 text-white shadow-lg hover:shadow-xl hover:from-blue-600 hover:via-indigo-600 hover:to-cyan-600'
       : 'text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-800 hover:shadow-md border-2 border-gray-100 dark:border-gray-800 hover:border-blue-200 dark:hover:border-blue-800',
-    // Collapsed vs Expanded spacing
     isCollapsed
       ? 'justify-center py-1 px-1 mx-0.5 mb-1.5'
       : `justify-between py-1 px-1 mx-0.5 mb-1.5 ${depth > 0 ? 'pl-2' : ''}`,
@@ -183,12 +239,8 @@ export const NavItem = ({
         key={item.id}
         ref={itemRef}
         className='relative'
-        onMouseEnter={() => {
-          if (isCollapsed && hasChildren && itemRef.current) {
-            onMouseEnter(item, itemRef.current.getBoundingClientRect());
-          }
-        }}
-        onMouseLeave={onMouseLeave}
+        onMouseEnter={handleMouseEnterWrapper}
+        onMouseLeave={handleMouseLeaveWrapper}
       >
         <a
           href={item.href}
@@ -215,12 +267,8 @@ export const NavItem = ({
         key={item.id}
         ref={itemRef}
         className='relative'
-        onMouseEnter={() => {
-          if (isCollapsed && hasChildren && itemRef.current) {
-            onMouseEnter(item, itemRef.current.getBoundingClientRect());
-          }
-        }}
-        onMouseLeave={onMouseLeave}
+        onMouseEnter={handleMouseEnterWrapper}
+        onMouseLeave={handleMouseLeaveWrapper}
       >
         <div onClick={() => toggleExpanded(item.id)} className={itemContentClasses}>
           {renderContent()}
@@ -274,7 +322,12 @@ export const NavItem = ({
 
   // --- 3. INTERNAL LINK ITEMS ---
   return (
-    <div key={item.id} className='relative'>
+    <div 
+        key={item.id} 
+        className='relative'
+        onMouseEnter={handleMouseEnterWrapper}
+        onMouseLeave={handleMouseLeaveWrapper}
+    >
       <Link
         href={item.href || '#'}
         className={itemContentClasses}

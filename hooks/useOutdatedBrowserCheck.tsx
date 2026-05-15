@@ -42,8 +42,9 @@ function detectOutdatedBrowser(): boolean {
   return false;
 }
 
-export function useOutdatedBrowserCheck(): boolean | null {
-  const [isOutdated, setIsOutdated] = useState<boolean | null>(null);
+export function useOutdatedBrowserCheck(): boolean {
+  // THE FIX: Default to false to allow SSR and immediate First Contentful Paint.
+  const [isOutdated, setIsOutdated] = useState<boolean>(false);
 
   useEffect(() => {
     // Only run on the client

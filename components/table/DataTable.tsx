@@ -1,14 +1,13 @@
 // components/table/DataTable.tsx
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useRPCExcelDownload } from '@/hooks/database/excel-queries';
+import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries';
 import { TableToolbar, TableHeader, TableBody, TablePagination, TableFilterPanel } from './';
 import { DataTableProps, DownloadOptions, SortConfig } from '@/components/table/datatable-types';
 import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
 import { Column, RPCConfig } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
 import { Card } from '../common/ui';
-import { toast } from 'sonner';
 
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
@@ -18,6 +17,8 @@ type TableState<T extends PublicTableOrViewName> = {
   filters: Filters;
   selectedRows: DataRow<T>[];
   visibleColumns: string[];
+  editingCell: { rowIndex: number; columnKey: string } | null;
+  editValue: string;
   showColumnSelector: boolean;
   showFilters: boolean;
 };
@@ -26,6 +27,12 @@ type BaseTableAction<R> =
   | { type: 'SET_SEARCH_QUERY'; payload: string }
   | { type: 'SET_SELECTED_ROWS'; payload: R[] }
   | { type: 'SET_VISIBLE_COLUMNS'; payload: string[] }
+  | {
+      type: 'START_EDIT_CELL';
+      payload: { rowIndex: number; columnKey: string; value: string };
+    }
+  | { type: 'SET_EDIT_VALUE'; payload: string }
+  | { type: 'CANCEL_EDIT' }
   | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
   | { type: 'TOGGLE_FILTERS'; payload?: boolean };
 
@@ -49,8 +56,24 @@ function tableReducer<T extends PublicTableOrViewName>(
       return { ...state, selectedRows: action.payload };
     case 'SET_VISIBLE_COLUMNS':
       return { ...state, visibleColumns: action.payload };
+    case 'START_EDIT_CELL':
+      return {
+        ...state,
+        editingCell: {
+          rowIndex: action.payload.rowIndex,
+          columnKey: action.payload.columnKey,
+        },
+        editValue: action.payload.value,
+      };
+    case 'SET_EDIT_VALUE':
+      return { ...state, editValue: action.payload };
+    case 'CANCEL_EDIT':
+      return { ...state, editingCell: null, editValue: '' };
     case 'TOGGLE_COLUMN_SELECTOR':
-      return { ...state, showColumnSelector: action.payload ?? !state.showColumnSelector };
+      return {
+        ...state,
+        showColumnSelector: action.payload ?? !state.showColumnSelector,
+      };
     case 'TOGGLE_FILTERS':
       return { ...state, showFilters: action.payload ?? !state.showFilters };
     default:
@@ -60,6 +83,7 @@ function tableReducer<T extends PublicTableOrViewName>(
 
 export function DataTable<T extends PublicTableOrViewName>({
   data = [],
+  tableName,
   columns,
   loading = false,
   pagination,
@@ -81,6 +105,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   onRefresh,
   onExport,
   onRowSelect,
+  onCellEdit,
   customToolbar,
   showColumnSelector: showColumnSelectorProp,
   showColumnsToggle,
@@ -95,6 +120,8 @@ export function DataTable<T extends PublicTableOrViewName>({
     filters: {},
     selectedRows: [],
     visibleColumns: columns.map((col) => col.key),
+    editingCell: null,
+    editValue: '',
     showColumnSelector: !!showColumnSelectorProp,
     showFilters: false,
   };
@@ -106,6 +133,8 @@ export function DataTable<T extends PublicTableOrViewName>({
     filters,
     selectedRows,
     visibleColumns,
+    editingCell,
+    editValue,
     showColumnSelector,
     showFilters,
   } = state;
@@ -114,7 +143,10 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   useEffect(() => {
     if (typeof showColumnSelectorProp === 'boolean') {
-      dispatch({ type: 'TOGGLE_COLUMN_SELECTOR', payload: showColumnSelectorProp });
+      dispatch({
+        type: 'TOGGLE_COLUMN_SELECTOR',
+        payload: showColumnSelectorProp,
+      });
     }
   }, [showColumnSelectorProp]);
 
@@ -124,39 +156,78 @@ export function DataTable<T extends PublicTableOrViewName>({
     }
   }, [filterable]);
 
-  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, { showToasts: true });
+  const tableExcelDownload = useTableExcelDownload<T>(supabase, tableName, {
+    showToasts: true,
+  });
+  const rpcExcelDownload = useRPCExcelDownload<T>(supabase, {
+    showToasts: true,
+  });
 
   const processedData = useMemo(() => {
-    let filteredData = [...data] as DataRow<T>[];
+    const rawData = data as DataRow<T>[];
+    if (rawData.length === 0) return [];
 
-    if (searchQuery && searchable && !serverSearch) {
-      const q = searchQuery.toLowerCase();
-      filteredData = filteredData.filter((item) =>
-        columns.some((column) => {
-          if (column.searchable === false) return false;
-          const value = item[column.dataIndex as keyof typeof item];
-          return String(value ?? '')
-            .toLowerCase()
-            .includes(q);
-        }),
-      );
-    }
+    const activeFilters = Object.entries(filters).filter(([, v]) => v !== undefined && v !== '');
+    const hasFilters = filterable && activeFilters.length > 0;
 
-    if (filterable && Object.keys(filters).length > 0) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          filteredData = filteredData.filter((item) =>
-            String(item[key as keyof DataRow<T>] ?? '')
-              .toLowerCase()
-              .includes(String(value).toLowerCase()),
-          );
+    const lowerQuery = searchQuery?.toLowerCase();
+    const hasSearch = searchable && !serverSearch && !!lowerQuery;
+
+    let filteredData: DataRow<T>[] = [];
+
+    if (hasFilters || hasSearch) {
+      for (let i = 0; i < rawData.length; i++) {
+        const item = rawData[i];
+        let include = true;
+
+        if (hasSearch) {
+          let match = false;
+          for (let j = 0; j < columns.length; j++) {
+            const col = columns[j];
+            if (col.searchable === false) continue;
+            const val = item[col.dataIndex as keyof typeof item];
+            if (
+              String(val ?? '')
+                .toLowerCase()
+                .includes(lowerQuery)
+            ) {
+              match = true;
+              break;
+            }
+          }
+          if (!match) {
+            include = false;
+            continue;
+          }
         }
-      });
+
+        if (hasFilters) {
+          for (let j = 0; j < activeFilters.length; j++) {
+            const [key, value] = activeFilters[j];
+            const itemVal = item[key as keyof DataRow<T>];
+            if (
+              !String(itemVal ?? '')
+                .toLowerCase()
+                .includes(String(value).toLowerCase())
+            ) {
+              include = false;
+              break;
+            }
+          }
+        }
+
+        if (include) {
+          filteredData.push(item);
+        }
+      }
+    } else {
+      filteredData = [...rawData];
     }
 
     if (sortConfig && sortable) {
       const sortColumn = columns.find((c) => c.key === sortConfig.key);
       const useNaturalSort = !!sortColumn?.naturalSort;
+
       const collator = useNaturalSort
         ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
         : null;
@@ -164,17 +235,21 @@ export function DataTable<T extends PublicTableOrViewName>({
       filteredData.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
+
         if (aValue === null || aValue === undefined) return 1;
         if (bValue === null || bValue === undefined) return -1;
+
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           if (useNaturalSort && collator) {
             const result = collator.compare(aValue, bValue);
             return sortConfig.direction === 'asc' ? result : -result;
           }
+
           return sortConfig.direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
         }
+
         return sortConfig.direction === 'asc'
           ? aValue > bValue
             ? 1
@@ -184,6 +259,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             : -1;
       });
     }
+
     return filteredData;
   }, [
     data,
@@ -205,7 +281,10 @@ export function DataTable<T extends PublicTableOrViewName>({
       if (sortConfig?.key === columnKey && sortConfig.direction === 'desc') {
         dispatch({ type: 'SET_SORT_CONFIG', payload: null });
       } else {
-        dispatch({ type: 'SET_SORT_CONFIG', payload: { key: columnKey, direction } });
+        dispatch({
+          type: 'SET_SORT_CONFIG',
+          payload: { key: columnKey, direction },
+        });
       }
     },
     [sortable, sortConfig],
@@ -224,22 +303,64 @@ export function DataTable<T extends PublicTableOrViewName>({
 
   const handleSelectAll = useCallback(
     (selected: boolean) => {
-      const newSelection = selected ? [...processedData] : [];
+      let newSelection: DataRow<T>[];
+
+      if (selected) {
+        const selectionMap = new Map(selectedRows.map((row) => [row.id, row]));
+        processedData.forEach((row) => selectionMap.set(row.id, row));
+        newSelection = Array.from(selectionMap.values());
+      } else {
+        const visibleIds = new Set(processedData.map((row) => row.id));
+        newSelection = selectedRows.filter((row) => !visibleIds.has(row.id));
+      }
+
       dispatch({ type: 'SET_SELECTED_ROWS', payload: newSelection });
       onRowSelect?.(newSelection);
     },
-    [processedData, onRowSelect],
+    [processedData, selectedRows, onRowSelect],
   );
+
+  const handleCellEdit = useCallback(
+    (record: DataRow<T>, column: Column<Row<T>>, rowIndex: number) => {
+      if (!column.editable) return;
+      dispatch({
+        type: 'START_EDIT_CELL',
+        payload: {
+          rowIndex,
+          columnKey: column.key,
+          value: String(record[column.dataIndex as keyof DataRow<T>] ?? ''),
+        },
+      });
+    },
+    [],
+  );
+
+  const saveCellEdit = useCallback(() => {
+    if (!editingCell) return;
+    const record = processedData[editingCell.rowIndex];
+    const column = columns.find((col) => col.key === editingCell.columnKey);
+    if (column && onCellEdit) {
+      onCellEdit(record, column, editValue);
+    }
+    dispatch({ type: 'CANCEL_EDIT' });
+  }, [editingCell, processedData, columns, onCellEdit, editValue]);
+
+  const cancelCellEdit = useCallback(() => dispatch({ type: 'CANCEL_EDIT' }), []);
 
   const emptyColumnKeys = useMemo(() => {
     if (!autoHideEmptyColumns || processedData.length === 0) return new Set<string>();
+
     const nonEmptyKeys = new Set<string>();
+    const SCAN_LIMIT = 500;
+    const rowsToScan =
+      processedData.length > SCAN_LIMIT ? processedData.slice(0, SCAN_LIMIT) : processedData;
+
     columns.forEach((col) => {
       if (col.alwaysVisible) {
         nonEmptyKeys.add(col.key);
         return;
       }
-      const hasValue = processedData.some((row) => {
+      const hasValue = rowsToScan.some((row) => {
         const val = row[col.dataIndex as keyof typeof row];
         if (val === null || val === undefined) return false;
         if (typeof val === 'string' && val.trim() === '') return false;
@@ -289,15 +410,53 @@ export function DataTable<T extends PublicTableOrViewName>({
           rpcConfig: exportOptions.rpcConfig,
         };
         await rpcExcelDownload.mutateAsync(rpcOptions);
+      } else {
+        await tableExcelDownload.mutateAsync(baseOptions);
       }
     } catch (err) {
-      console.log(err);
-      toast.error('Export Failed');
+      if (exportOptions?.fallbackToCsv) {
+        try {
+          const headers = columnsToExport.map((c) => c.title).join(',');
+          const keys = columnsToExport.map((c) => c.dataIndex as keyof Row<T> & string);
+          const rows = (processedData as Row<T>[])?.map((r) =>
+            keys
+              .map((k) => {
+                const v = (r as Row<T>)[k] as unknown;
+                if (v === null || v === undefined) return '';
+                const s = String(v).replace(/"/g, '""');
+                return `"${s}"`;
+              })
+              .join(','),
+          );
+          const csv = [headers, ...(rows || [])].join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const csvName = (exportOptions?.fileName?.replace(/\.xlsx$/i, '') || 'export') + '.csv';
+          link.href = URL.createObjectURL(blob);
+          link.download = csvName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
     }
-  }, [onExport, processedData, visibleColumnsData, exportOptions, filters, rpcExcelDownload]);
+  }, [
+    onExport,
+    processedData,
+    visibleColumnsData,
+    exportOptions,
+    filters,
+    tableExcelDownload,
+    rpcExcelDownload,
+  ]);
 
   const hasActions = actions.length > 0;
-  const isExporting = rpcExcelDownload.isPending;
+  const isExporting = tableExcelDownload.isPending || rpcExcelDownload.isPending;
 
   const renderActions = (record: DataRow<T>, index: number) => {
     if (!hasActions) return null;
@@ -317,7 +476,11 @@ export function DataTable<T extends PublicTableOrViewName>({
                 if (!isDisabled) action.onClick(record, index);
               }}
               disabled={isDisabled}
-              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${isDisabled ? 'opacity-50' : ''} ${action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'}`}
+              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                isDisabled ? 'opacity-50' : ''
+              } ${
+                action.variant === 'danger' ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'
+              }`}
             >
               {action.getIcon ? action.getIcon(record) : action.icon}
             </button>
@@ -326,6 +489,12 @@ export function DataTable<T extends PublicTableOrViewName>({
       </div>
     );
   };
+
+  const allVisibleSelected = useMemo(() => {
+    if (processedData.length === 0) return false;
+    const selectedIds = new Set(selectedRows.map((r) => r.id));
+    return processedData.every((r) => selectedIds.has(r.id));
+  }, [processedData, selectedRows]);
 
   return (
     <div
@@ -363,17 +532,18 @@ export function DataTable<T extends PublicTableOrViewName>({
           loading={loading}
           isExporting={isExporting}
         />
+
         <TableFilterPanel
           columns={columns}
           filters={filters}
-          showFilters={showFilters}
-          filterable={filterable}
           setFilters={(f) =>
             dispatch({
               type: 'SET_FILTERS',
               payload: typeof f === 'function' ? (f as (prev: Filters) => Filters)(filters) : f,
             })
           }
+          showFilters={showFilters}
+          filterable={filterable}
         />
       </div>
 
@@ -383,7 +553,10 @@ export function DataTable<T extends PublicTableOrViewName>({
             {loading ? (
               <div className='space-y-3'>
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className='h-32 bg-gray-100 animate-pulse rounded-lg' />
+                  <div
+                    key={i}
+                    className='h-32 bg-gray-100 dark:bg-gray-700 animate-pulse rounded-lg'
+                  />
                 ))}
               </div>
             ) : processedData.length === 0 ? (
@@ -395,7 +568,7 @@ export function DataTable<T extends PublicTableOrViewName>({
                   className='p-4 border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm relative'
                 >
                   {selectable && (
-                    <div className='absolute top-4 left-4'>
+                    <div className='absolute top-4 left-4 z-10'>
                       <input
                         type='checkbox'
                         checked={selectedRows.some((r) => r.id === record.id)}
@@ -404,7 +577,8 @@ export function DataTable<T extends PublicTableOrViewName>({
                       />
                     </div>
                   )}
-                  <div className={selectable ? 'pl-8' : ''}>
+                  {/* THE FIX: Increased padding left from pl-8 to pl-10 when selectable is true */}
+                  <div className={selectable ? 'pl-10' : ''}>
                     {renderMobileItem(record, renderActions(record, idx))}
                   </div>
                 </Card>
@@ -414,7 +588,9 @@ export function DataTable<T extends PublicTableOrViewName>({
         )}
 
         <table
-          className={`min-w-full w-full table-auto sm:table-fixed ${bordered ? 'border-separate border-spacing-0' : ''} ${renderMobileItem ? 'hidden sm:table' : ''}`}
+          className={`min-w-full w-full table-auto sm:table-fixed ${
+            bordered ? 'border-separate border-spacing-0' : ''
+          } ${renderMobileItem ? 'hidden sm:table' : ''}`}
         >
           <TableHeader
             columns={columns}
@@ -428,7 +604,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             sortConfig={sortConfig}
             onSort={handleSort}
             onSelectAll={handleSelectAll}
-            allSelected={processedData.length > 0 && selectedRows.length === processedData.length}
+            allSelected={allVisibleSelected}
             hasData={processedData.length > 0}
           />
           <TableBody
@@ -445,7 +621,14 @@ export function DataTable<T extends PublicTableOrViewName>({
             loading={loading}
             emptyText={emptyText}
             selectedRows={selectedRows}
+            editingCell={editingCell}
+            editValue={editValue}
+            setEditValue={(value) => dispatch({ type: 'SET_EDIT_VALUE', payload: value })}
             onRowSelect={handleRowSelect}
+            onCellEdit={handleCellEdit}
+            saveCellEdit={saveCellEdit}
+            cancelCellEdit={cancelCellEdit}
+            isLoading={loading}
           />
         </table>
       </div>

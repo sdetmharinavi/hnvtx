@@ -6,9 +6,14 @@ import L from 'leaflet';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ButtonSpinner } from '@/components/common/ui';
-import { Ruler, X } from 'lucide-react';
+import { X } from 'lucide-react'; // THE FIX: Removed unused Ruler import
 import { PopupFiberRow } from '../PopupFiberRow';
-import { fetchOrsDistance, isColocated, getCurvedPath } from '@/utils/mapUtils';
+import {
+  fetchOrsDistance,
+  isColocated,
+  getCurvedPath,
+  getDynamicLineWeight,
+} from '@/utils/mapUtils';
 import { PathConfig, RingMapNode } from './types';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
@@ -29,6 +34,7 @@ interface ConnectionLineProps {
   curveOffset?: number;
   hasReverse?: boolean;
   rotation?: number;
+  isMeasureMode: boolean; // THE FIX: Added prop to disable interaction during measurement
 }
 
 export const ConnectionLine = ({
@@ -44,6 +50,7 @@ export const ConnectionLine = ({
   customColor,
   curveOffset = 0,
   rotation = 0,
+  isMeasureMode,
 }: ConnectionLineProps) => {
   const map = useMap();
   const [manualPos, setManualPos] = useState<L.LatLng | null>(null);
@@ -56,7 +63,6 @@ export const ConnectionLine = ({
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
 
-  // --- Calculate Line Geometry ---
   const isCluster = isColocated(startPos, endPos, 0.005);
   const positions = useMemo(() => {
     if (isCluster) {
@@ -69,22 +75,15 @@ export const ConnectionLine = ({
   }, [startPos, endPos, isCluster, curveOffset]);
 
   const centerPos = useMemo(() => {
-    if (positions.length === 3 && positions[1] instanceof L.LatLng) {
-      return positions[1];
-    }
-    const lat = (startPos.lat + endPos.lat) / 2;
-    const lng = (startPos.lng + endPos.lng) / 2;
-    return new L.LatLng(lat, lng);
+    if (positions.length === 3 && positions[1] instanceof L.LatLng) return positions[1];
+    return new L.LatLng((startPos.lat + endPos.lat) / 2, (startPos.lng + endPos.lng) / 2);
   }, [positions, startPos, endPos]);
 
   const activePopupPos = manualPos || (showPopup ? centerPos : null);
 
   const popupOffset = useMemo(() => {
-    const distance = 20;
     const rad = (rotation * Math.PI) / 180;
-    const x = -distance * Math.sin(rad);
-    const y = -distance * Math.cos(rad);
-    return L.point(x, y);
+    return L.point(-20 * Math.sin(rad), -20 * Math.cos(rad));
   }, [rotation]);
 
   const popupRef = useRef<L.Popup>(null);
@@ -114,7 +113,7 @@ export const ConnectionLine = ({
     }
   }, [rotation, activePopupPos]);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
     enabled: shouldFetch,
@@ -128,15 +127,22 @@ export const ConnectionLine = ({
     queryKey: ['logical_paths', 'segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
       const { data, error } = await supabase
         .from('logical_paths')
-        .select('id, name, status, remark')
-        .or(filter);
+        .select('id, name, status, source_system_id, destination_system_id')
+        .in('source_system_id', [start.id, end.id])
+        .in('destination_system_id', [start.id, end.id]);
+
       if (error) throw error;
-      return data;
+
+      return data.filter(
+        (p) =>
+          (p.source_system_id === start.id && p.destination_system_id === end.id) ||
+          (p.source_system_id === end.id && p.destination_system_id === start.id),
+      );
     },
-    enabled: shouldFetch,
+    enabled: shouldFetch && !!start.id && !!end.id,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -144,32 +150,35 @@ export const ConnectionLine = ({
     queryKey: ['logical_fiber_paths', 'segment', start.id, end.id],
     queryFn: async () => {
       if (!start.id || !end.id) return [];
-      const filter = `and(source_system_id.eq.${start.id},destination_system_id.eq.${end.id}),and(source_system_id.eq.${end.id},destination_system_id.eq.${start.id})`;
+
       const { data, error } = await supabase
         .from('logical_fiber_paths')
-        .select('id, system_connection_id, remark')
-        .or(filter);
+        .select('id, system_connection_id, remark, source_system_id, destination_system_id')
+        .in('source_system_id', [start.id, end.id])
+        .in('destination_system_id', [start.id, end.id]);
+
       if (error) throw error;
-      return data;
+
+      return data.filter(
+        (p) =>
+          (p.source_system_id === start.id && p.destination_system_id === end.id) ||
+          (p.source_system_id === end.id && p.destination_system_id === start.id),
+      );
     },
-    enabled: shouldFetch,
+    enabled: shouldFetch && !!start.id && !!end.id,
     staleTime: 1000 * 60 * 5,
   });
 
   useEffect(() => {
     const configPath = configuredPaths[0];
     const provPath = provisionedPaths[0];
-    const serviceName = configPath?.name;
-    const sysConnectionId = provPath?.system_connection_id || undefined;
-    const remark = provPath?.remark || configPath?.remark || '';
-    setAllotedService(serviceName || config?.cableName);
-    setConnectionId(sysConnectionId || config?.connectionId);
-    if (!isEditingRemark) setRemarkText(remark);
+    setAllotedService(configPath?.name || config?.cableName);
+    setConnectionId(provPath?.system_connection_id || config?.connectionId);
+    if (!isEditingRemark) setRemarkText(provPath?.remark || '');
   }, [configuredPaths, provisionedPaths, config, isEditingRemark]);
 
   const { mutate: saveRemark, isPending: isSaving } = useMutation({
     mutationFn: async (text: string) => {
-      // THE FIX: Target logical_fiber_paths for remark updates
       const existingPath = provisionedPaths[0];
       if (existingPath) {
         const { error } = await supabase
@@ -178,13 +187,12 @@ export const ConnectionLine = ({
           .eq('id', existingPath.id);
         if (error) throw error;
       } else {
-        // Create a minimal logical_fiber_path if none exists, to store the remark
         const { error } = await supabase.from('logical_fiber_paths').insert({
           source_system_id: start.id,
           destination_system_id: end.id,
           remark: text,
           path_name: `Remark for Link: ${start.name} - ${end.name}`,
-          path_role: 'working', // Default role
+          path_role: 'working',
         });
         if (error) throw error;
       }
@@ -192,27 +200,13 @@ export const ConnectionLine = ({
     onSuccess: () => {
       toast.success('Remark saved successfully');
       setIsEditingRemark(false);
-      // Invalidate both queries to be safe
       refetchConfig();
       queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
     },
-    onError: (err: Error) => toast.error(`Failed to save remark: ${err.message}`),
   });
 
-  const handleSaveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    saveRemark(remarkText);
-  };
-  const handleCancelClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingRemark(false);
-    setRemarkText(provisionedPaths[0]?.remark || configuredPaths[0]?.remark || '');
-  };
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsEditingRemark(true);
-  };
-  const handleClosePopup = () => setManualPos(null);
+  const baseWeight = type === 'solid' ? 4 : 2.5;
+  const dynamicWeight = getDynamicLineWeight(config?.bandwidthGbps, baseWeight);
 
   const defaultColor =
     type === 'solid'
@@ -224,65 +218,48 @@ export const ConnectionLine = ({
         : '#dc2626';
   const color = customColor || defaultColor;
 
-  const distanceText = isLoading ? (
-    <span className='flex items-center gap-2 text-gray-500 text-xs'>
-      <ButtonSpinner size='xs' /> Calc...
-    </span>
-  ) : isError ? (
-    <span className='text-red-500 text-xs'>Failed</span>
-  ) : data?.distance_km ? (
-    <span className='font-bold'>{data.distance_km} km</span>
-  ) : (
-    'N/A'
-  );
-  const hasConfig =
-    (config &&
-      (config.source ||
-        (config.fiberMetrics && config.fiberMetrics.length > 0) ||
-        config.cableName)) ||
-    configuredPaths.length > 0 ||
-    provisionedPaths.length > 0;
-
-  const handlePolylineClick = (e: L.LeafletMouseEvent) => {
-    L.DomEvent.stopPropagation(e);
-    if (rotation === 0) {
-      setManualPos(e.latlng);
-      return;
-    }
-    const mapSize = map.getSize();
-    const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
-    const clickPoint = e.containerPoint;
-    const deltaX = clickPoint.x - centerPoint.x;
-    const deltaY = clickPoint.y - centerPoint.y;
-    const angleRad = (-rotation * Math.PI) / 180;
-    const rotatedX = deltaX * Math.cos(angleRad) - deltaY * Math.sin(angleRad);
-    const rotatedY = deltaX * Math.sin(angleRad) + deltaY * Math.cos(angleRad);
-    const correctedPoint = L.point(centerPoint.x + rotatedX, centerPoint.y + rotatedY);
-    const correctedLatLng = map.containerPointToLatLng(correctedPoint);
-    setManualPos(correctedLatLng);
-  };
-
-  const hitWeight = isMobile ? 30 : 5;
-
   return (
     <>
       <Polyline
         positions={positions}
         pathOptions={{
           color,
-          weight: type === 'solid' ? 4 : 2.5,
+          weight: dynamicWeight,
           opacity: type === 'solid' ? 1 : 0.7,
           dashArray: type === 'dashed' ? '20, 20' : undefined,
           interactive: false,
         }}
       />
+      {/* THE FIX: Passed isMeasureMode to the interactive pathOptions */}
       <Polyline
         positions={positions}
-        pathOptions={{ color: 'transparent', weight: hitWeight, opacity: 0 }}
-        eventHandlers={{ click: handlePolylineClick }}
+        pathOptions={{ color: 'transparent', weight: isMobile ? 30 : 15, opacity: 0 }}
+        interactive={!isMeasureMode}
+        eventHandlers={{
+          click: (e) => {
+            L.DomEvent.stopPropagation(e);
+            if (rotation === 0) {
+              setManualPos(e.latlng);
+              return;
+            }
+            const mapSize = map.getSize();
+            const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
+            const clickPoint = e.containerPoint;
+            const rad = (-rotation * Math.PI) / 180;
+            const rotX =
+              (clickPoint.x - centerPoint.x) * Math.cos(rad) -
+              (clickPoint.y - centerPoint.y) * Math.sin(rad);
+            const rotY =
+              (clickPoint.x - centerPoint.x) * Math.sin(rad) +
+              (clickPoint.y - centerPoint.y) * Math.cos(rad);
+            setManualPos(
+              map.containerPointToLatLng(L.point(centerPoint.x + rotX, centerPoint.y + rotY)),
+            );
+          },
+        }}
         ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
       />
-      {activePopupPos && (
+      {activePopupPos && !isMeasureMode && (
         <Popup
           position={activePopupPos}
           ref={popupRef}
@@ -292,21 +269,18 @@ export const ConnectionLine = ({
           minWidth={320}
           maxWidth={400}
           offset={popupOffset}
-          closeButton={false}
-        >
+          closeButton={false}>
           <div className='text-sm w-full relative'>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleClosePopup();
+                setManualPos(null);
               }}
               className='absolute -top-3 -right-3 p-1.5 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-white rounded-full shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 transition-all z-50 cursor-pointer'
-              title='Close'
-              type='button'
-            >
+              type='button'>
               <X size={14} />
             </button>
-            {hasConfig ? (
+            {config?.connectionId || configuredPaths.length > 0 || provisionedPaths.length > 0 ? (
               <div className='mb-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden'>
                 <div className='divide-y divide-gray-100 dark:divide-gray-700'>
                   <PopupFiberRow connectionId={connectionId} allotedService={allotedService} />
@@ -322,21 +296,21 @@ export const ConnectionLine = ({
               isEditing={isEditingRemark}
               editText={remarkText}
               isSaving={isSaving}
-              onEditClick={handleEditClick}
-              onSaveClick={handleSaveClick}
-              onCancelClick={handleCancelClick}
+              onEditClick={(e) => {
+                e.stopPropagation();
+                setIsEditingRemark(true);
+              }}
+              onSaveClick={(e) => {
+                e.stopPropagation();
+                saveRemark(remarkText);
+              }}
+              onCancelClick={(e) => {
+                e.stopPropagation();
+                setIsEditingRemark(false);
+                setRemarkText(provisionedPaths[0]?.remark || '');
+              }}
               onTextChange={setRemarkText}
             />
-            <div className='flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700 mt-2'>
-              <div className='mt-1 flex justify-between items-center px-1'>
-                <span className='font-medium flex items-center gap-1'>
-                  <Ruler className='w-3 h-3' /> Road Distance
-                </span>
-                <span className='font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded'>
-                  {distanceText}
-                </span>
-              </div>
-            </div>
           </div>
         </Popup>
       )}

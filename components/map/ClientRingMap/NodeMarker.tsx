@@ -20,10 +20,11 @@ interface NodeMarkerProps {
   portsList: PortDisplayInfo[];
   displayIp: string | null;
   markerRefs: RefObject<{ [key: string]: L.Marker }>;
-  polylineRefs?: RefObject<{ [key: string]: L.Polyline }>; // Type fix
+  polylineRefs?: RefObject<{ [key: string]: L.Polyline }>;
   onNodeClick?: (nodeId: string) => void;
   onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
   rotation: number;
+  isMeasureMode: boolean; // THE FIX: Interactivity control
 }
 
 export const NodeMarker = ({
@@ -39,6 +40,7 @@ export const NodeMarker = ({
   onNodeClick,
   onLabelDragEnd,
   rotation,
+  isMeasureMode,
 }: NodeMarkerProps) => {
   const dLat = node.displayLat - mapCenter.lat;
   const dLng = node.displayLng - mapCenter.lng;
@@ -61,37 +63,32 @@ export const NodeMarker = ({
   ];
   const finalLabelPos = labelPos || defaultLabelPos;
 
-  // Label counter-rotation (Passed into HTML generation)
   const labelIcon = L.divIcon({
     html: createLabelHtml(
       node.system_node_name || node.name || 'Unknown',
       displayIp,
       portsList,
       theme === 'dark',
-      rotation // Pass rotation to rotate text inside the label div
+      rotation,
     ),
     className: 'bg-transparent border-none',
     iconSize: [0, 0],
     iconAnchor: [0, 0],
   });
 
-  // Icon counter-rotation (passed to util which wraps in rotated div)
   const markerIcon = getNodeIcon(node.system_type, node.type, !!isHighlighted, rotation);
 
-  // Popup counter-rotation ref
   const popupRef = useRef<L.Popup>(null);
 
   useEffect(() => {
-    // This effect ensures popups stay upright when the map is rotated
     if (popupRef.current) {
-      // Small timeout to ensure the popup DOM is mounted by Leaflet
       const timer = setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const popup = popupRef.current as any;
         if (!popup || !popup._container) return;
 
         const wrapper = popup._container.querySelector(
-          '.leaflet-popup-content-wrapper'
+          '.leaflet-popup-content-wrapper',
         ) as HTMLElement;
         const tip = popup._container.querySelector('.leaflet-popup-tip-container') as HTMLElement;
         const shadow = popup._container.querySelector('.leaflet-popup-shadow') as HTMLElement;
@@ -102,7 +99,6 @@ export const NodeMarker = ({
 
           if (rotation !== 0) {
             wrapper.style.transform = `rotate(${-rotation}deg)`;
-            // Hide tip/shadow during rotation as they look broken
             if (tip) tip.style.opacity = '0';
             if (shadow) shadow.style.opacity = '0';
           } else {
@@ -129,6 +125,7 @@ export const NodeMarker = ({
         }}
         interactive={false}
       />
+      {/* THE FIX: Pass interactive prop to allow map clicks to bleed through during measurement */}
       <Marker
         position={nodePos}
         icon={markerIcon}
@@ -137,6 +134,7 @@ export const NodeMarker = ({
           if (el && node.id) markerRefs.current[node.id] = el;
         }}
         zIndexOffset={100}
+        interactive={!isMeasureMode}
       >
         <Popup
           ref={popupRef}
@@ -145,23 +143,26 @@ export const NodeMarker = ({
           className={theme === 'dark' ? 'dark-popup' : ''}
           offset={[0, -25]}
         >
-          <div className="text-sm min-w-[200px]">
-            <div className="bg-gray-100 dark:bg-gray-700 -mx-4 -mt-3 px-4 py-2 mb-2 border-b border-gray-200 dark:border-gray-600 rounded-t-lg">
-              <div className="text-xs font-bold text-gray-900 dark:text-gray-100">
+          <div className='text-sm min-w-[200px]'>
+            <div className='bg-gray-100 dark:bg-gray-700 -mx-4 -mt-3 px-4 py-2 mb-2 border-b border-gray-200 dark:border-gray-600 rounded-t-lg'>
+              <div className='text-xs font-bold text-gray-900 dark:text-gray-100'>
                 {node.system_node_name}
               </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="font-medium text-gray-800 dark:text-gray-200">{node.name}</div>
+            <div className='space-y-1'>
+              <div className='font-medium text-gray-800 dark:text-gray-200'>{node.name}</div>
               {node.lat && node.long && (
-                <div className="text-xs text-gray-500 font-mono">
+                <div className='text-xs text-gray-500 font-mono'>
                   {node.lat.toFixed(5)}, {node.long.toFixed(5)}
                 </div>
               )}
-              <GenericRemarks remark={node.remark || ''} />
+              <GenericRemarks
+                className='whitespace-normal wrap-break-words'
+                remark={node.remark || ''}
+              />
               {node.ip && (
-                <p className="font-mono text-xs mt-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded inline-block">
+                <p className='font-mono text-xs mt-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded inline-block'>
                   IP: {displayIp}
                 </p>
               )}
@@ -172,10 +173,11 @@ export const NodeMarker = ({
       <Marker
         position={finalLabelPos}
         icon={labelIcon}
-        draggable={true}
+        draggable={!isMeasureMode}
         eventHandlers={{ dragend: (e) => onLabelDragEnd(e, node.id!) }}
         zIndexOffset={1000}
         opacity={1}
+        interactive={!isMeasureMode}
       />
     </div>
   );

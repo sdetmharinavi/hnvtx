@@ -1,10 +1,22 @@
-// path: components/home/HeroContent.tsx
+// components/home/HeroContent.tsx
 'use client';
 
 import { motion, MotionValue, TargetAndTransition, Variants } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { PauseCircle, PlayCircle } from 'lucide-react'; // Import icons
+
+ type BaseZone = {
+   name: string;
+   city: string;
+ };
+
+ type ZoneWithTime = BaseZone & {
+   offset: number;
+   time: string;
+ };
+
+ type Zone = BaseZone | ZoneWithTime;
 
 interface HeroContentProps {
   variants: {
@@ -18,7 +30,6 @@ interface HeroContentProps {
   textY: MotionValue<number>;
 }
 
-// Fixed Spinner to ensure Tailwind classes work reliably
 const LoadingSpinner = ({
   size = 'sm',
   color = 'border-white',
@@ -39,10 +50,14 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
   const [countdown, setCountdown] = useState(15);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPaused, setIsPaused] = useState(false);
+  
+  // THE FIX: Add mounted state to prevent hydration mismatches with dynamic time
+  const [mounted, setMounted] = useState(false);
 
   const navTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    setMounted(true); // Component has hydrated
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -50,29 +65,24 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     return () => clearInterval(timeInterval);
   }, []);
 
-  // THIS IS THE CORRECTED EFFECT
   useEffect(() => {
-    // First, handle the termination condition: redirect when countdown reaches zero.
     if (countdown <= 0) {
-      if (!loading) { // Prevent multiple router pushes
+      if (!loading) { 
         setLoading(true);
         router.push('/dashboard');
       }
-      return; // Stop the effect here
+      return; 
     }
 
-    // Next, handle pause conditions. If paused or loading, clear any timer and do nothing.
     if (loading || isPaused) {
       if (navTimerRef.current) clearTimeout(navTimerRef.current);
       return;
     }
 
-    // If we're here, it means we should be actively counting down.
     navTimerRef.current = setTimeout(() => {
       setCountdown((prev) => prev - 1);
     }, 1000);
 
-    // Cleanup function to clear the timer on re-render or unmount.
     return () => {
       if (navTimerRef.current) clearTimeout(navTimerRef.current);
     };
@@ -107,7 +117,11 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     });
   };
 
-  const getTimeZones = () => {
+  const isZoneWithTime = (zone: Zone): zone is ZoneWithTime => {
+    return 'time' in zone;
+  };
+
+  const getTimeZones = (): ZoneWithTime[] => {
     const zones = [
       { name: 'IST', offset: 5.5, city: 'Kolkata' },
       { name: 'UTC', offset: 0, city: 'London' },
@@ -138,6 +152,14 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
     return (totalSeconds / 86400) * 100;
   };
 
+  // Pre-define static zones for SSR fallback to prevent layout shifts
+  const staticZones: BaseZone[] = [
+    { name: 'IST', city: 'Kolkata' },
+    { name: 'UTC', city: 'London' },
+    { name: 'EST', city: 'New York' },
+    { name: 'JST', city: 'Tokyo' },
+  ];
+
   return (
     <motion.div
       className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 text-center sm:px-6 overflow-hidden"
@@ -146,11 +168,8 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
       initial="hidden"
       animate="visible"
     >
-      {/* Time & Date Wizard */}
       <motion.div variants={variants.highlightVariants} className="mb-8 w-full max-w-4xl">
-        {/* Main Clock Display */}
         <div className="relative overflow-hidden rounded-2xl border border-red-400/30 bg-gray-900 bg-linear-to-br from-red-950/80 via-purple-950/60 to-red-950/80 p-6 shadow-2xl backdrop-blur-xl">
-          {/* Animated background glow */}
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-0 left-1/4 h-32 w-32 animate-pulse rounded-full bg-red-500 blur-3xl" />
             <div
@@ -164,9 +183,11 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="mb-4 text-sm font-medium text-red-300/80 sm:text-base"
+              // Added min-h to prevent layout shift before mount
+              className="mb-4 text-sm font-medium text-red-300/80 sm:text-base min-h-[24px]"
             >
-              {formatDate(currentTime)}
+              {/* THE FIX: Only render date after mount */}
+              {mounted ? formatDate(currentTime) : '\u00A0'}
             </motion.div>
 
             <motion.div
@@ -175,15 +196,15 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
               transition={{ delay: 0.6 }}
               className="mb-6 font-mono"
             >
-              <div className="text-5xl font-bold text-white drop-shadow-lg sm:text-6xl md:text-7xl lg:text-8xl">
-                {formatTime(currentTime)}
+              <div className="text-5xl font-bold text-white drop-shadow-lg sm:text-6xl md:text-7xl lg:text-8xl min-h-[1em]">
+                {/* THE FIX: Only render time after mount */}
+                {mounted ? formatTime(currentTime) : '00:00:00'}
               </div>
               <div className="mt-2 text-xs text-red-300/60 sm:text-sm">
                 Indian Standard Time (IST)
               </div>
             </motion.div>
 
-            {/* Day Progress Bar */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -192,13 +213,15 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
             >
               <div className="mb-2 flex items-center justify-between text-xs text-red-300/60">
                 <span>Day Progress</span>
-                <span>{getDayProgress().toFixed(1)}%</span>
+                {/* THE FIX: Hide percentage during SSR */}
+                <span>{mounted ? getDayProgress().toFixed(1) : '0.0'}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-red-950/50">
                 <motion.div
                   className="h-full rounded-full bg-red-500 bg-linear-to-r from-red-500 via-purple-500 to-pink-500 shadow-lg shadow-red-500/50"
                   initial={{ width: 0 }}
-                  animate={{ width: `${getDayProgress()}%` }}
+                  // THE FIX: Set width strictly to 0 during SSR
+                  animate={{ width: mounted ? `${getDayProgress()}%` : '0%' }}
                   transition={{ duration: 1, ease: 'easeOut' }}
                 />
               </div>
@@ -210,7 +233,8 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
               transition={{ delay: 0.8 }}
               className="hidden lg:grid grid-cols-2 gap-3 sm:grid-cols-4"
             >
-              {getTimeZones().map((zone, index) => (
+              {/* THE FIX: Render stable placeholders during SSR */}
+              {(mounted ? getTimeZones() : staticZones).map((zone, index) => (
                 <motion.div
                   key={zone.name}
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -220,8 +244,9 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
                   className="rounded-lg border border-red-400/20 bg-red-900/30 p-3 backdrop-blur-sm transition-all hover:border-red-400/40 hover:bg-red-900/40"
                 >
                   <div className="mb-1 text-xs font-semibold text-red-300/80">{zone.city}</div>
-                  <div className="mb-1 font-mono text-lg font-bold text-white sm:text-xl">
-                    {zone.time}
+                  <div className="mb-1 font-mono text-lg font-bold text-white sm:text-xl min-h-[28px]">
+                    {/* Time exists on mounted zones, undefined on static zones */}
+                    {isZoneWithTime(zone) ? zone.time : '\u00A0'}
                   </div>
                   <div className="text-xs text-red-300/60">{zone.name}</div>
                 </motion.div>
@@ -235,13 +260,13 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
         variants={variants.titleVariants}
         className="relative mb-4 text-3xl leading-tight font-black text-white sm:mb-6 sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl dark:text-gray-100"
       >
-        <span className="mb-1 block text-2xl sm:mb-2 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
+        <span className="mb-1 block text-2xl sm:mb-2 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl text-red-600">
           Welcome to
         </span>
-        <span className="block text-red-500 dark:text-blue-400 text-3xl font-extrabold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
+        <span className="block text-red-900 text-3xl font-extrabold sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl">
           Harinavi Transmission
         </span>
-        <span className="mt-1 block text-2xl font-semibold text-gray-200 sm:mt-2 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl dark:text-gray-300">
+        <span className="mt-1 block text-2xl font-semibold sm:mt-2 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl text-red-600">
           Record Database
         </span>
       </motion.h1>
@@ -289,7 +314,6 @@ export default function HeroContent({ variants, floatingAnimation, textY }: Hero
           </motion.button>
         )}
       </motion.div>
-      {/* Floating badge */}
       <motion.div
         variants={variants.ctaVariants}
         animate={floatingAnimation}

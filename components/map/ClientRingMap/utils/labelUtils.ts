@@ -1,11 +1,31 @@
+// components/map/ClientRingMap/utils/labelUtils.ts
 import { PortDisplayInfo } from "@/components/map/ClientRingMap/types";
 
+// THE FIX: Robust hex to RGB converter handling both 3-digit and 6-digit hex codes
 export const getReadableTextColor = (bgColor: string): string => {
-  const c = bgColor.substring(1);
+  let c = bgColor.trim();
+  
+  // Basic validation - if it's not a hex code (e.g. named colors, rgb(), or empty), default to white
+  if (!c.startsWith('#') || (c.length !== 4 && c.length !== 7)) {
+    return '#ffffff';
+  }
+
+  // Remove the hash
+  c = c.substring(1);
+  
+  // Expand 3-digit hex to 6-digit (e.g. "F00" -> "FF0000")
+  if (c.length === 3) {
+    c = c.split('').map(char => char + char).join('');
+  }
+
   const rgb = parseInt(c, 16);
+  if (isNaN(rgb)) return '#ffffff'; // Fallback if parsing failed
+
   const r = (rgb >> 16) & 255;
   const g = (rgb >> 8) & 255;
   const b = rgb & 255;
+  
+  // Standard perceived brightness formula
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 150 ? '#000000' : '#ffffff';
 };
@@ -15,7 +35,7 @@ export const createLabelHtml = (
   ip: string | null,
   ports: PortDisplayInfo[],
   isDark: boolean,
-  rotation: number = 0 // Added parameter
+  rotation: number = 0
 ) => {
   const bgClass = isDark ? 'bg-slate-800' : 'bg-white';
   const textClass = isDark ? 'text-slate-50' : 'text-slate-900';
@@ -23,8 +43,9 @@ export const createLabelHtml = (
 
   let portsHtml = '';
   if (ports.length > 0) {
-    const visiblePorts = ports.slice(0, 6);
-    const hiddenCount = ports.length - 6;
+    const VISIBLE_LIMIT = 8;
+    const visiblePorts = ports.slice(0, VISIBLE_LIMIT);
+    const hiddenCount = ports.length - VISIBLE_LIMIT;
 
     const portItems = visiblePorts
       .map((p) => {
@@ -35,13 +56,12 @@ export const createLabelHtml = (
 
     const moreItem =
       hiddenCount > 0
-        ? `<div class="text-[9px] text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>`
+        ? `<div class="text-9px text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-sm">+${hiddenCount}</div>`
         : '';
 
-    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-[200px]">${portItems}${moreItem}</div>`;
+    portsHtml = `<div class="mt-1 flex flex-row gap-px items-center justify-center max-w-240px">${portItems}${moreItem}</div>`;
   }
 
-  // Calculate counter-rotation to keep text upright
   const transformStyle = rotation !== 0 ? `transform: rotate(${-rotation}deg);` : '';
 
   return `

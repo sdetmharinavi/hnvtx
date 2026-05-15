@@ -1,8 +1,8 @@
 // components/map/ClientRingMap/ClientRingMap.tsx
 'use client';
 
-import { MapContainer, TileLayer, LayersControl } from 'react-leaflet';
-import L, { LatLngBounds } from 'leaflet';
+import { MapContainer, TileLayer, LayersControl, useMap } from 'react-leaflet';
+import L, { LatLngBounds, LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
@@ -17,7 +17,34 @@ import { FullscreenControl } from './controllers/FullscreenControl';
 import { MapFlyToController } from './controllers/MapFlyToController';
 import { MapNode, PortDisplayInfo, RingMapNode, SegmentConfigMap } from './types';
 import { RotatedDragOverlay } from './controllers/RotatedDragOverlay';
-import { FiEye, FiEyeOff } from 'react-icons/fi'; // Import icons
+import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { MeasureController } from '@/components/kml/MeasureController'; // THE FIX: Imported tool
+
+const MapAutoFit = ({ nodes }: { nodes: MapNode[] }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (nodes.length === 0) return;
+
+    const latLngs: LatLngExpression[] = nodes
+      .filter((n) => n.lat != null && n.long != null)
+      .map((n) => [n.lat!, n.long!]);
+
+    if (latLngs.length > 0) {
+      const bounds = new LatLngBounds(latLngs);
+      setTimeout(() => {
+        map.flyToBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 15,
+          animate: true,
+          duration: 1.5,
+        });
+      }, 100);
+    }
+  }, [nodes, map]);
+
+  return null;
+};
 
 interface ClientRingMapProps {
   nodes: MapNode[];
@@ -61,18 +88,16 @@ export default function ClientRingMap({
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
 
-  // NEW STATE: Control visibility of UI overlays
   const [uiVisible, setUiVisible] = useState(true);
-
   const [rotation, setRotation] = useState(0);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMeasureMode, setIsMeasureMode] = useState(false); // THE FIX: State added
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
 
-  // ... (useMemo for nodes, posMap, mapCenter, groupedSolidLines) ...
   const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
   const nodePosMap = useMemo(() => {
@@ -104,7 +129,6 @@ export default function ClientRingMap({
     }
   };
 
-  // ... (useEffect hooks for Leaflet icons, resizing, popups, rotation) ...
   useEffect(() => {
     import('@/utils/mapUtils').then((utils) => {
       utils.fixLeafletIcons();
@@ -128,6 +152,17 @@ export default function ClientRingMap({
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [isFullScreen]);
+
+  // THE FIX: Listen for escape to close measurement tool
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isMeasureMode) setIsMeasureMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isMeasureMode]);
 
   useEffect(() => {
     Object.values(markerRefs.current).forEach((marker) =>
@@ -215,16 +250,13 @@ export default function ClientRingMap({
 
   return (
     <div className={wrapperClass} ref={containerRef}>
-      {/* UI Visibility Toggle - Always Visible */}
       <button
         onClick={() => setUiVisible(!uiVisible)}
         className='absolute top-16 left-2 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
-        title={uiVisible ? 'Hide Map Tools' : 'Show Map Tools'}
-      >
+        title={uiVisible ? 'Hide Map Tools' : 'Show Map Tools'}>
         {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
       </button>
 
-      {/* Conditionally Render UI Elements */}
       {uiVisible && <MapLegend />}
 
       {showControls && uiVisible && (
@@ -237,6 +269,8 @@ export default function ClientRingMap({
           onRotate={handleRotate}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
+          isMeasureMode={isMeasureMode} // THE FIX
+          setIsMeasureMode={setIsMeasureMode} // THE FIX
         />
       )}
 
@@ -246,15 +280,18 @@ export default function ClientRingMap({
           bounds={bounds || undefined}
           zoom={13}
           ref={mapRef}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: '100%', width: '100%', cursor: isMeasureMode ? 'crosshair' : 'grab' }} // THE FIX
           className='z-0 bg-gray-200 dark:bg-gray-800'
           closePopupOnClick={false}
-          zoomControl={false}
-        >
+          zoomControl={false}>
           <MapController isFullScreen={isFullScreen} />
           <FullscreenControl isFullScreen={isFullScreen} setIsFullScreen={setIsFullScreen} />
           <MapFlyToController coords={flyToCoordinates} />
           <RotatedDragOverlay rotation={rotation} />
+          <MapAutoFit nodes={nodes} />
+
+          {/* THE FIX: Instantiated MeasureController */}
+          <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
 
           <LayersControl position='bottomright'>
             <LayersControl.BaseLayer checked name='Street View'>
@@ -306,6 +343,7 @@ export default function ClientRingMap({
                   customColor={lineColor}
                   curveOffset={curveOffset}
                   rotation={rotation}
+                  isMeasureMode={isMeasureMode} // THE FIX
                 />
               );
             });
@@ -330,6 +368,7 @@ export default function ClientRingMap({
                   setPolylineRef={setPolylineRef}
                   hasReverse={false}
                   rotation={rotation}
+                  isMeasureMode={isMeasureMode} // THE FIX
                 />
               );
             })}
@@ -355,6 +394,7 @@ export default function ClientRingMap({
                 onNodeClick={onNodeClick}
                 onLabelDragEnd={handleLabelDragEnd}
                 rotation={rotation}
+                isMeasureMode={isMeasureMode} // THE FIX
               />
             );
           })}

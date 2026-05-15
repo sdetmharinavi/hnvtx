@@ -1,4 +1,4 @@
-// components/users/RoleBadge.tsx
+// components/common/ui/badges/RoleBadge.tsx
 import { UserRole } from "@/types/user-roles";
 
 export const RoleBadge = ({ role }: { role: UserRole }) => {

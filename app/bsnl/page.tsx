@@ -20,7 +20,6 @@ import { SystemDetailsModal } from '@/config/system-details-config';
 import { CableDetailsModal } from '@/config/cable-details-config';
 import { Row } from '@/hooks/database';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { useDebounce } from 'use-debounce';
 import { useDashboardOverview } from '@/hooks/data/useDashboardOverview';
 import { formatIP } from '@/utils/formatters';
 
@@ -56,13 +55,8 @@ export default function ScalableFiberNetworkDashboard() {
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
   const [zoom, setZoom] = useState(13);
 
-  const debouncedMapBounds = useDebounce(mapBounds, 500);
-
-  // Destructure globalOptions from the hook
-  const { data, globalOptions, isLoading, isError, error } = useBsnlDashboardData(
-    filters,
-    debouncedMapBounds[0],
-  );
+  // THE FIX: Call the updated hook without mapBounds
+  const { data, globalOptions, isLoading, isError, error } = useBsnlDashboardData(filters);
 
   const { data: overviewData, isLoading: isOverviewLoading } = useDashboardOverview();
 
@@ -90,10 +84,8 @@ export default function ScalableFiberNetworkDashboard() {
     });
   }, []);
 
-  // Generate a stable key for filters to control auto-zoom behavior
   const filterKey = useMemo(() => JSON.stringify(filters), [filters]);
 
-  // NEW: Handle status click from stats grid
   const handleStatusFilter = useCallback((status: 'active' | 'inactive' | 'all') => {
     setFilters((prev) => ({
       ...prev,
@@ -202,7 +194,12 @@ export default function ScalableFiberNetworkDashboard() {
   const isInitialLoad = isLoading || isOverviewLoading;
 
   if (isInitialLoad) return <PageSpinner text='Loading Network Dashboard Data...' />;
-  if (isError) return <ErrorDisplay error={error || 'An unknown error occurred.'} />;
+  if (isError)
+    return (
+      <ErrorDisplay
+        error={error instanceof Error ? error.message : error || 'An unknown error occurred.'}
+      />
+    );
 
   const totalSystems =
     (overviewData?.system_status_counts?.Active ?? 0) +
@@ -245,7 +242,6 @@ export default function ScalableFiberNetworkDashboard() {
           filters={filters}
           onFiltersChange={setFilters}
           onClear={clearFilters}
-          // THE FIX: Use globalOptions here
           typeOptions={globalOptions.typeOptions}
           regionOptions={globalOptions.regionOptions}
           nodeTypeOptions={globalOptions.nodeTypeOptions}
@@ -260,8 +256,7 @@ export default function ScalableFiberNetworkDashboard() {
                   activeTab === tab
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
+                }`}>
                 {tab}
               </button>
             ))}
@@ -280,7 +275,6 @@ export default function ScalableFiberNetworkDashboard() {
           )}
           {activeTab === 'overview' && (
             <div className='space-y-6'>
-              {/* Pass handler and filter status */}
               <DashboardStatsGrid
                 data={data}
                 onStatusClick={handleStatusFilter}
@@ -317,7 +311,7 @@ export default function ScalableFiberNetworkDashboard() {
             <DataTable
               autoHideEmptyColumns={true}
               tableName='v_ofc_cables_complete'
-              data={data.ofcCables}
+              data={data.ofcCablesTable}
               columns={cableColumns}
               loading={isLoading}
               actions={cableTableActions}

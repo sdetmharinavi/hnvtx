@@ -7,7 +7,7 @@ const createSvgDivIcon = (
   size: [number, number] = [25, 41],
   anchor: [number, number] = [12, 41],
   isImage = false,
-  rotation = 0
+  rotation = 0,
 ): L.DivIcon => {
   const content = isImage
     ? `<img src="${svgOrImg}" style="width:100%;height:100%;object-fit:contain;transform:rotate(${-rotation}deg);transition:transform 0.5s;" />`
@@ -130,13 +130,14 @@ const IMG_BTS = '/images/bts_image.png';
 const IMG_BTSRL = '/images/bts_rl_image.png';
 const IMG_DEFAULT = '/images/marker-icon.png';
 const IMG_HIGHLIGHT = '/images/marker-icon-highlight.png';
+const IMG_CUSTOMER = '/images/customer.png';
 
 // Updated logic to check both System Type and Node Type
 export const getNodeIcon = (
   systemType: string | null | undefined,
   nodeType: string | null | undefined,
   isHighlighted: boolean,
-  rotation: number = 0
+  rotation: number = 0,
 ) => {
   // Always use DivIcon wrapper to allow CSS rotation of the content
   if (isHighlighted) {
@@ -196,6 +197,11 @@ export const getNodeIcon = (
   // 5. OLT
   if (sType.includes('olt') || nType.includes('olt')) {
     return createSvgDivIcon(SVG_NETWORK_NODE, [25, 41], [12, 41], false, rotation);
+  }
+
+  // 6. Customer
+  if (sType.includes('customer') || nType.includes('customer')) {
+    return createSvgDivIcon(IMG_CUSTOMER, [40, 40], [20, 20], true, rotation);
   }
 
   // Fallback

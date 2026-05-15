@@ -5,15 +5,19 @@ import { useMemo, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GiLinkedRings } from 'react-icons/gi';
 import { PageHeader, useStandardHeaderActions } from '@/components/common/page-header';
-import { ErrorDisplay } from '@/components/common/ui';
-import { DataTable } from '@/components/table';
+import { ConfirmModal, ErrorDisplay } from '@/components/common/ui';
+import { RingModal } from '@/components/rings/RingModal';
+import { DataTable, TableAction } from '@/components/table';
 import { SearchAndFilters } from '@/components/common/filters/SearchAndFilters';
 import { SelectFilter } from '@/components/common/filters/FilterInputs';
 import { createStandardActions } from '@/components/table/action-helpers';
-import { useCrudManager } from '@/hooks/useCrudManager';
-import { useRingsData } from '@/hooks/data/useRingsData';
+import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
+// THE FIX: Switch to useRingManagerData which calculates stats accurately
+import { useRingManagerData, DynamicStats } from '@/hooks/data/useRingManagerData';
 import {
   V_ringsRowSchema,
+  RingsRowSchema,
+  RingsInsertSchema,
   Lookup_typesRowSchema,
   Maintenance_areasRowSchema,
 } from '@/schemas/zod-schemas';
@@ -21,7 +25,9 @@ import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { RingsColumns } from '@/config/table-columns/RingsTableColumns';
 import { Row } from '@/hooks/database';
+import { useUser } from '@/providers/UserProvider';
 import { useLookupTypeOptions, useMaintenanceAreaOptions } from '@/hooks/data/useDropdownOptions';
+import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
 
 const STATUS_OPTIONS = {
@@ -42,28 +48,54 @@ const STATUS_OPTIONS = {
   ],
 };
 
+// Interface extension to expose stats returned by useRingManagerData
+interface RingCrudReturn extends UseCrudManagerReturn<V_ringsRowSchema> {
+  stats: DynamicStats;
+}
+
 export default function RingsPage() {
   const router = useRouter();
   const [showFilters, setShowFilters] = useState(false);
+
+  // THE FIX: Swap out `useRingsData` for `useRingManagerData` and cast to access custom `stats`
+  const crud = useCrudManager<'rings', V_ringsRowSchema>({
+    tableName: 'rings',
+    dataQueryHook: useRingManagerData,
+    displayNameField: 'name',
+    // ADDED IPs TO SEARCH CONFIG
+    searchColumn: [
+      'name',
+      'description',
+      'ring_type_name',
+      'maintenance_area_name',
+      'associated_system_names',
+      'associated_system_ips',
+    ] as any,
+    syncTables: ['rings', 'v_rings', 'ring_based_systems'],
+  }) as RingCrudReturn;
 
   const {
     data: rings,
     totalCount,
     isLoading,
+    isMutating,
     isFetching,
     error,
     refetch,
     pagination,
     search,
     filters,
-  } = useCrudManager<'rings', V_ringsRowSchema>({
-    tableName: 'rings',
-    localTableName: 'v_rings',
-    dataQueryHook: useRingsData,
-    displayNameField: 'name',
-    searchColumn: ['name', 'description', 'ring_type_name', 'maintenance_area_name'],
-    syncTables: ['rings', 'v_rings', 'ring_based_systems'],
-  });
+    editModal,
+    deleteModal,
+    actions: crudActions,
+    stats: dynamicStats, // Destructure our robust pre-pagination stats!
+  } = crud;
+
+  const { canAccess } = useUser();
+  const canEdit = canAccess(PERMISSIONS.canManage);
+  const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+
+  // --- DATA FETCHING FOR MODALS ---
 
   const { originalData: ringTypesRaw, isLoading: isLoadingRingTypes } =
     useLookupTypeOptions('RING_TYPES');
@@ -76,6 +108,8 @@ export default function RingsPage() {
     () => (maintenanceAreasRaw || []) as Maintenance_areasRowSchema[],
     [maintenanceAreasRaw],
   );
+
+  const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
   const ringTypeFilterOptions = useMemo(
     () =>
@@ -95,30 +129,16 @@ export default function RingsPage() {
     [maintenanceAreas],
   );
 
+  // --- THE FIX: Calculate stats based on the globally accurate dynamicStats ---
   const headerStats = useMemo<StatProps[]>(() => {
-    const s = {
+    // If stats hasn't loaded yet, provide safe defaults
+    const s = dynamicStats || {
+      total: 0,
+      totalNodes: 0,
       spec: { issued: 0, pending: 0 },
       ofc: { ready: 0, partial: 0, pending: 0 },
       bts: { onAir: 0, pending: 0, nodesOnAir: 0, configuredCount: 0 },
     };
-    let nodesSum = 0;
-
-    rings.forEach((r) => {
-      nodesSum += r.total_nodes || 0;
-      if (r.spec_status === 'Issued') s.spec.issued++;
-      else s.spec.pending++;
-      if (r.ofc_status === 'Ready') s.ofc.ready++;
-      else if (r.ofc_status === 'Partial Ready') s.ofc.partial++;
-      else s.ofc.pending++;
-      if (r.bts_status === 'On-Air') {
-        s.bts.onAir++;
-        s.bts.nodesOnAir += r.total_nodes ?? 0;
-      } else if (r.bts_status === 'Configured') {
-        s.bts.configuredCount++;
-      } else {
-        s.bts.pending++;
-      }
-    });
 
     const currentOfcFilter = filters.filters.ofc_status;
     const currentSpecFilter = filters.filters.spec_status;
@@ -126,9 +146,10 @@ export default function RingsPage() {
 
     return [
       {
-        value: `${nodesSum} / ${totalCount}`,
+        value: `${s.totalNodes} / ${s.total}`,
         label: 'Total Nodes / Rings',
         color: 'default',
+        // Click clears specific status filters
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -161,11 +182,16 @@ export default function RingsPage() {
         isActive: currentOfcFilter === 'Ready',
       },
     ];
-  }, [rings, totalCount, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dynamicStats,
+    filters.filters.ofc_status,
+    filters.filters.spec_status,
+    filters.filters.bts_status,
+    filters.setFilters,
+  ]);
 
-  // Disable inline cell editing by overriding the editable property inside RingsColumns
-  // We can just pass standard actions without editing
-  const columns = RingsColumns(rings, STATUS_OPTIONS).map((col) => ({ ...col, editable: false }));
+  const columns = RingsColumns(rings, STATUS_OPTIONS);
   const orderedColumns = useOrderedColumns(columns, [...TABLE_COLUMN_KEYS.v_rings]);
 
   const handleView = useCallback(
@@ -175,21 +201,26 @@ export default function RingsPage() {
     [router],
   );
 
-  const tableActions = useMemo(() => {
-    return createStandardActions<'v_rings'>({
+  const tableActions = useMemo((): TableAction<'v_rings'>[] => {
+    const standardActions = createStandardActions<V_ringsRowSchema>({
+      onEdit: canEdit ? editModal.openEdit : undefined,
       onView: handleView,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
     });
-  }, [handleView]);
+    return standardActions;
+  }, [editModal.openEdit, handleView, crudActions.handleDelete, canEdit, canDelete]);
 
   const isInitialLoad = isLoading && rings.length === 0;
 
   const headerActions = useStandardHeaderActions({
-    data: rings,
+    data: rings as RingsRowSchema[],
     onRefresh: async () => {
       await refetch();
     },
+    onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     isFetching: isFetching,
+    exportConfig: canEdit ? { tableName: 'rings' } : undefined,
   });
 
   const renderMobileItem = useCallback((record: Row<'v_rings'>, actions: React.ReactNode) => {
@@ -215,10 +246,10 @@ export default function RingsPage() {
   return (
     <div className='mx-auto space-y-4 p-6'>
       <PageHeader
-        title='Ring Directory'
-        description='View network rings and track phase progress.'
+        title='Ring Management'
+        description='Manage network rings, assign systems, and track phase progress.'
         icon={<GiLinkedRings />}
-        stats={headerStats}
+        stats={headerStats} // Refreshed automatically
         actions={headerActions}
         isLoading={isInitialLoad}
         isFetching={isFetching}
@@ -232,9 +263,10 @@ export default function RingsPage() {
         columns={orderedColumns}
         loading={isLoading}
         actions={tableActions}
-        isFetching={isFetching}
+        isFetching={isFetching || isMutating}
         renderMobileItem={renderMobileItem}
-        selectable={false}
+        // Enable cell editing
+        onCellEdit={canEdit ? crudActions.handleCellEdit : undefined}
         pagination={{
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,
@@ -253,8 +285,7 @@ export default function RingsPage() {
             onToggleFilters={() => setShowFilters((p) => !p)}
             onClearFilters={() => filters.setFilters({})}
             hasActiveFilters={Object.values(filters.filters).some(Boolean)}
-            activeFilterCount={Object.values(filters.filters).filter(Boolean).length}
-          >
+            activeFilterCount={Object.values(filters.filters).filter(Boolean).length}>
             <SelectFilter
               label='Ring Type'
               filterKey='ring_type_id'
@@ -304,6 +335,30 @@ export default function RingsPage() {
             />
           </SearchAndFilters>
         }
+      />
+
+      <RingModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.close}
+        onSubmit={crudActions.handleSave as (data: RingsInsertSchema) => void}
+        editingRing={editModal.record}
+        ringTypes={ringTypes || []}
+        maintenanceAreas={maintenanceAreas || []}
+        isLoading={isMutating}
+        isLoadingDropdowns={isLoadingDropdowns}
+      />
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onConfirm={deleteModal.onConfirm}
+        onCancel={deleteModal.onCancel}
+        title='Confirm Deletion'
+        message={deleteModal.message}
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
+        showIcon
+        loading={deleteModal.loading}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import {
   FiCalendar,
   FiArchive,
   FiGlobe,
+  FiShield,
   FiAirplay,
   FiDatabase,
   FiActivity,
@@ -58,28 +59,28 @@ function NavItems() {
             label: 'Designations',
             icon: <ImUserTie className='h-5 w-5' />,
             href: '/dashboard/designations',
-            roles: ROLES.VIEWERS, // Correctly restricted
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'categories',
             label: 'Categories',
             icon: <FiLayers className='h-5 w-5' />,
             href: '/dashboard/categories',
-            roles: ROLES.VIEWERS, // Correctly restricted
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'lookups',
             label: 'Lookups',
             icon: <FiList className='h-5 w-5' />,
             href: '/dashboard/lookup',
-            roles: ROLES.VIEWERS, // Correctly restricted
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'maintenance-areas',
             label: 'Maintenance Areas',
             icon: <FiMapPin className='h-5 w-5' />,
             href: '/dashboard/maintenance-areas',
-            roles: ROLES.VIEWERS, // Correctly restricted
+            roles: ROLES.PROADMINS, // Correctly restricted
           },
           {
             id: 'nodes',
@@ -249,6 +250,13 @@ function NavItems() {
         icon: <FiUsers className='h-5 w-5' />,
         href: '/dashboard/users',
         roles: PERMISSIONS.canManageUsers, // Correctly restricted
+      },
+      {
+        id: 'audit-logs',
+        label: 'Audit Logs',
+        icon: <FiShield className='h-5 w-5' />,
+        href: '/dashboard/audit-logs',
+        roles: PERMISSIONS.canViewAuditLogs, // Correctly restricted
       },
       {
         id: 'help',

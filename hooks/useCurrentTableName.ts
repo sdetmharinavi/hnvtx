@@ -1,4 +1,3 @@
-// hooks/useCurrentTableName.ts
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { TableNames } from '@/config/helper-types';
@@ -10,17 +9,16 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
     if (tableName) return tableName;
 
     const path = pathname || '';
-    const segments = path.split('/').filter(Boolean); // Remove empty segments
+    const segments = path.split('/').filter(Boolean);
 
-    // Look for the dashboard segment and get the next segment as the route
     const dashboardIndex = segments.findIndex((segment) => segment === 'dashboard');
     if (dashboardIndex === -1 || dashboardIndex >= segments.length - 1) {
       return null;
     }
 
     const routeSegment = segments[dashboardIndex + 1];
+    const subSegment = segments[dashboardIndex + 2];
 
-    // Map route segments to table names
     switch (routeSegment) {
       case 'users':
         return 'user_profiles';
@@ -36,50 +34,21 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return 'maintenance_areas';
       case 'lookup':
         return 'lookup_types';
-      // case "inventory":
-      //   return "inventory_items";
       case 'ofc':
-        // Check if there's a third segment
-        const subSegment = segments[dashboardIndex + 2];
-        if (!subSegment) return 'ofc_cables'; // /dashboard/ofc
-        if (subSegment === 'connections') return 'ofc_connections'; // /dashboard/ofc/connections (NEW)
-        return 'ofc_connections'; // /dashboard/ofc/[id] (Existing)
-      // case "ofc_connections":
-      //   return "ofc_connections";
+        if (!subSegment) return 'ofc_cables';
+        if (subSegment === 'connections') return 'ofc_connections';
+        return 'ofc_connections';
       case 'nodes':
         return 'nodes';
       case 'systems':
+        if (subSegment === 'connections') return 'system_connections';
         return 'systems';
-      case 'cpan':
-        return null;
-      case 'cpan_connections':
-        return null;
       case 'fiber-joints':
         return 'fiber_splices';
-      case 'fiber-joint-connections':
-        return null;
       case 'logical-fiber-paths':
         return 'logical_fiber_paths';
-      case 'maan':
-        return null;
-      case 'maan_connections':
-        return null;
       case 'management-ports':
         return 'management_ports';
-      case 'sdh':
-        return 'sdh_systems';
-      case 'sdh_connections':
-        return 'sdh_connections';
-      case 'sdh_node_associations':
-        return 'sdh_node_associations';
-      case 'system-connections':
-        return 'system_connections';
-      case 'user-activity-logs':
-        return null;
-      // THE FIX: Map diagrams route to files table
-      // case "diagrams":
-      //   return "files";
-      // THE FIX: Added kml-manager mapping
       case 'kml-manager':
         return 'files';
       case 'services':

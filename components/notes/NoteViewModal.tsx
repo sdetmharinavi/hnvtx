@@ -24,7 +24,7 @@ export const NoteViewModal = ({ isOpen, onClose, note }: NoteViewModalProps) => 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={note.title || ''} size='xl'>
+    <Modal isOpen={isOpen} onClose={onClose} title={note.title || ''} size='full'>
       <div className='flex flex-col h-full'>
         {/* Printable Content Area */}
         <div className='space-y-6 p-2 printable-content bg-white dark:bg-transparent'>
@@ -74,8 +74,7 @@ export const NoteViewModal = ({ isOpen, onClose, note }: NoteViewModalProps) => 
               {note.tags.map((tag, idx) => (
                 <span
                   key={idx}
-                  className='inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800 print:border-gray-300 print:bg-white print:text-black'
-                >
+                  className='inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800 print:border-gray-300 print:bg-white print:text-black'>
                   <FiTag className='w-3 h-3' />
                   {tag}
                 </span>
@@ -94,8 +93,7 @@ export const NoteViewModal = ({ isOpen, onClose, note }: NoteViewModalProps) => 
           <Button
             variant='outline'
             onClick={handlePrint}
-            leftIcon={<FiPrinter className='w-4 h-4' />}
-          >
+            leftIcon={<FiPrinter className='w-4 h-4' />}>
             Print
           </Button>
           <Button variant='secondary' onClick={onClose}>

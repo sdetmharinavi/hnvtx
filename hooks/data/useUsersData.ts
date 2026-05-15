@@ -1,79 +1,64 @@
 // hooks/data/useUsersData.ts
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, StoredVUserProfilesExtended } from '@/hooks/data/localDb'; // THE FIX: Import StoredVUserProfilesExtended
-import { useLocalFirstQuery } from './useLocalFirstQuery';
+import { useQuery } from '@tanstack/react-query';
+import { DEFAULTS } from '@/constants/constants';
 
-/**
- * Implements the local-first data fetching strategy for the Users page.
- */
 export const useUsersData = (
   params: DataQueryHookParams
 ): DataQueryHookReturn<V_user_profiles_extendedRowSchema> => {
   const { currentPage, pageLimit, filters, searchQuery } = params;
-
-  const onlineQueryFn = useCallback(async (): Promise<V_user_profiles_extendedRowSchema[]> => {
-    const { data, error } = await createClient().rpc('admin_get_all_users_extended', {
-      search_query: searchQuery || undefined,
-      filter_role: (filters.role as string) || undefined,
-      filter_status: (filters.status as string) || undefined,
-      page_limit: 5000,
-      page_offset: 0,
-    });
-    if (error) throw error;
-    return (data?.data || []) as V_user_profiles_extendedRowSchema[];
-  }, [searchQuery, filters]);
-
-  // THE FIX: The local query now fetches from the complete view data.
-  const localQueryFn = useCallback(() => {
-    return localDb.v_user_profiles_extended.toArray();
-  }, []);
+  const supabase = createClient();
 
   const {
-    data: allUsers = [],
+    data: response,
     isLoading,
     isFetching,
     error,
     refetch,
-  } = useLocalFirstQuery<
-    'v_user_profiles_extended',
-    V_user_profiles_extendedRowSchema,
-    StoredVUserProfilesExtended
-  >({
-    queryKey: ['user_profiles-data', searchQuery, filters],
-    onlineQueryFn,
-    localQueryFn,
-    // THE FIX: Point to the new, correctly typed Dexie table.
-    dexieTable: localDb.v_user_profiles_extended,
+  } = useQuery({
+    queryKey: ['admin-users-list', searchQuery, filters, currentPage, pageLimit],
+    queryFn: async () => {
+      // Use the admin RPC which returns paginated data directly
+      // Note: The existing RPC `admin_get_all_users_extended` does internal pagination.
+      // We pass 5000 limit to fetch "all" for client side filtering if preferred, 
+      // OR use the RPC's pagination.
+      
+      // Let's use standard get_paged_data for consistency if possible, 
+      // but users requires auth schema joins so `admin_get_all_users_extended` is specific.
+      
+      const { data, error } = await supabase.rpc('admin_get_all_users_extended', {
+        search_query: searchQuery || undefined,
+        filter_role: (filters.role as string) || undefined,
+        filter_status: (filters.status as string) || undefined,
+        // We will fetch large set and paginate client side for consistency with other hooks
+        // or let the RPC handle it. The current UI assumes client pagination on full list for filtering flexibility.
+        page_limit: 5000, 
+        page_offset: 0,
+      });
+
+      if (error) throw error;
+      
+      // The RPC returns { data: [], counts: {...} }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data as any) || { data: [], counts: { total: 0 } };
+    },
+    staleTime: DEFAULTS.CACHE_TIME,
   });
 
   const processedData = useMemo(() => {
-    if (!allUsers) {
-      return { data: [], totalCount: 0, activeCount: 0, inactiveCount: 0 };
-    }
+    const allUsers = (response?.data || []) as V_user_profiles_extendedRowSchema[];
 
-    // THE FIX: Remove the manual data reconstruction. The view data is already complete.
-    let filtered = allUsers as V_user_profiles_extendedRowSchema[];
-
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (user) =>
-          user.full_name?.toLowerCase().includes(lowerQuery) ||
-          user.email?.toLowerCase().includes(lowerQuery)
-      );
-    }
-    if (filters.role) {
-      filtered = filtered.filter((user) => user.role === filters.role);
-    }
-    if (filters.status) {
-      filtered = filtered.filter((user) => user.status === filters.status);
-    }
-
+    // If client-side searching is needed on top of server search:
+    const filtered = allUsers;
+    
+    // (Optional: Additional client filtering if RPC params are insufficient)
+    
     const totalCount = filtered.length;
     const activeCount = filtered.filter((u) => u.status === 'active').length;
+    
     const start = (currentPage - 1) * pageLimit;
     const end = start + pageLimit;
     const paginatedData = filtered.slice(start, end);
@@ -84,7 +69,7 @@ export const useUsersData = (
       activeCount,
       inactiveCount: totalCount - activeCount,
     };
-  }, [allUsers, searchQuery, filters, currentPage, pageLimit]);
+  }, [response, currentPage, pageLimit]);
 
   return { ...processedData, isLoading, isFetching, error, refetch };
 };

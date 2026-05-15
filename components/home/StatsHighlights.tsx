@@ -5,7 +5,7 @@ export default function StatsHighlights() {
   const stats = [
     { number: "99.9%", label: "Uptime Guarantee", icon: "⚡" },
     { number: "Secure", label: "Military Grade", icon: "🔒" },
-    { number: "Offline", label: "Local Caching", icon: "📈" }
+    { number: "Storage", label: "Local Caching", icon: "📈" }
   ];
 
   // Removed top margin to allow parent flex to control spacing
@@ -25,7 +25,7 @@ export default function StatsHighlights() {
           className="group relative p-2 sm:p-4 rounded-xl bg-white/5 border border-white/10 dark:border-gray-600/30 shadow-lg text-center"
         >
           <div className="text-lg sm:text-2xl mb-1 sm:mb-2">{stat.icon}</div>
-          <div className="text-sm sm:text-xl font-bold text-red-400 dark:text-blue-400 mb-0.5">
+          <div className="text-sm sm:text-xl font-bold text-red-400 dark:text-red-600 mb-0.5">
             {stat.number}
           </div>
           <div className="text-[10px] sm:text-xs font-medium text-gray-300">

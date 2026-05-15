@@ -31,7 +31,8 @@ export interface PathConfig {
   capacity?: number;
   fiberInfo?: string;
   connectionId?: string;
-  color?: string; // ADDED: Allow explicit color override
+  color?: string;
+  bandwidthGbps?: number; // ADDED
 }
 
 export type SegmentConfigMap = Record<string, PathConfig[]>;
@@ -40,3 +41,20 @@ export type DisplayNode<T> = T & {
   displayLat: number;
   displayLng: number;
 };
+
+export type LogicalPath = {
+  id: string;
+  path_name: string;
+  path_role: string | null;
+  system_connection_id: string | null;
+  bandwidth_gbps: number | null;
+  remark: string | null;
+  source_system_id: string | null;
+  destination_system_id: string | null;
+  source_port: string | null;
+  destination_port: string | null;
+  // ADDED: Type to hold the nested relationship join
+  system_connections?: { bandwidth: string | null } | { bandwidth: string | null }[] | null;
+};
+
+export type LogicalPathsMap = Record<string, LogicalPath[]>;

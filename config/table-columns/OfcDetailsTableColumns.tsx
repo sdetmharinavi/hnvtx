@@ -1,9 +1,10 @@
-// config/table-columns/OfcDetailsTableColumns.tsx
+// path: config/table-columns/OfcDetailsTableColumns.tsx
 import { Row } from '@/hooks/database';
 import { useDynamicColumnConfig } from '@/hooks/useColumnConfig';
 import { formatDate } from '@/utils/formatters';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 import React from 'react';
+import { Cable } from 'lucide-react';
 
 // Helper component for metric badges
 const MetricBadge = ({
@@ -25,42 +26,69 @@ const MetricBadge = ({
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold border ${colorMap[colorClass]}`}
-    >
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-bold border ${colorMap[colorClass]}`}>
       {value ? `${value} ${suffix}` : '-'}
     </span>
   );
 };
 
-export const OfcDetailsTableColumns = (data: Row<'v_ofc_connections_complete'>[]) => {
+export const OfcDetailsTableColumns = (
+  data: Row<'v_ofc_connections_complete'>[],
+  showCableContext: boolean = false,
+) => {
+  const omitFields = [
+    'id',
+    'ofc_id',
+    'created_at',
+    'updated_at',
+    'sn_id',
+    'en_id',
+    'connection_category',
+    'destination_port',
+    'en_name',
+    'path_segment_order',
+    'sn_name',
+    'source_port',
+    'system_id',
+    'ofc_type_name',
+    'fiber_no_sn',
+    'fiber_no_en',
+    'logical_path_id',
+    'status', // Status is shown via row styling or separate badge usually, but we omit raw column
+    'maintenance_area_name',
+    'updated_sn_id',
+    'updated_en_id',
+    'path_direction',
+  ];
+
+  if (!showCableContext) {
+    omitFields.push('ofc_route_name');
+  }
+
   return useDynamicColumnConfig('v_ofc_connections_complete', {
     data: data,
-    omit: [
-      'id',
-      'ofc_id',
-      'created_at',
-      'updated_at',
-      'sn_id',
-      'en_id',
-      'connection_category',
-      'destination_port',
-      'en_name',
-      'path_segment_order',
-      'sn_name',
-      'source_port',
-      'system_id',
-      'ofc_type_name',
-      'ofc_route_name',
-      'fiber_no_sn',
-      'fiber_no_en',
-      'logical_path_id',
-      'status', // Status is shown via row styling or separate badge usually, but we omit raw column
-      'maintenance_area_name',
-      'updated_sn_id',
-      'updated_en_id',
-      'path_direction',
-    ],
+    omit: omitFields as any,
     overrides: {
+      ofc_route_name: {
+        title: 'Cable Route',
+        width: 240,
+        sortable: true,
+        searchable: true,
+        render: (value, record) => (
+          <a
+            href={`/dashboard/ofc/${record.ofc_id}`}
+            target='_blank'
+            rel='noopener noreferrer'
+            onClick={(e) => e.stopPropagation()}
+            className='flex items-center gap-2 text-blue-700 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 font-semibold group transition-colors'
+            title='Open Parent Cable in new tab'>
+            <div className='p-1 bg-blue-100 dark:bg-blue-900/40 rounded-md group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors'>
+              <Cable className='w-4 h-4 shrink-0' />
+            </div>
+            <TruncateTooltip text={value as string} className='truncate group-hover:underline' />
+          </a>
+        ),
+      },
       system_name: {
         title: 'Connected Service',
         excelHeader: 'System Name',

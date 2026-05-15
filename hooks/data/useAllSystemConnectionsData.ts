@@ -1,5 +1,12 @@
+// hooks/data/useAllSystemConnectionsData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
+
+const matchFilter = (itemValue: unknown, filterValue: unknown) => {
+  if (Array.isArray(filterValue)) {
+    return filterValue.includes(itemValue);
+  }
+  return itemValue === filterValue;
+};
 
 export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_connections_complete'>({
   tableName: 'v_system_connections_complete',
@@ -16,6 +23,10 @@ export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_conn
     'remark',
     'vlan',
     'sn_interface',
+    'en_interface',
+    'system_working_interface',
+    'system_protection_interface',
+    'en_protection_interface',
   ],
   serverSearchFields: [
     'service_name',
@@ -30,25 +41,29 @@ export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_conn
     'remark',
     'vlan::text',
     'sn_interface',
+    'en_interface',
+    'system_working_interface',
+    'system_protection_interface',
+    'en_protection_interface',
   ],
   defaultSortField: 'service_name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
-  orderBy: 'asc', // Explicit sort order
+  // rpcLimit removed
+  orderBy: 'asc',
   filterFn: (c, filters) => {
     // Media Type Filter
-    if (filters.media_type_id && c.media_type_id !== filters.media_type_id) {
+    if (filters.media_type_id && !matchFilter(c.media_type_id, filters.media_type_id)) {
       return false;
     }
-    
+
     // Link Type Filter
     if (
       filters.connected_link_type_id &&
-      c.connected_link_type_id !== filters.connected_link_type_id
+      !matchFilter(c.connected_link_type_id, filters.connected_link_type_id)
     ) {
       return false;
     }
 
-    // Status Filter (Handle string 'true'/'false' from selects)
+    // Status Filter
     if (filters.status !== undefined && filters.status !== '') {
       const statusBool = String(filters.status) === 'true';
       if (c.status !== statusBool) return false;

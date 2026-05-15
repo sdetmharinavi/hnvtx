@@ -6,15 +6,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { V_user_profiles_extendedRowSchema } from '@/schemas/zod-schemas';
 import { Json } from '@/types/supabase-types';
 import { createClient } from '@/utils/supabase/client';
-import { localDb, StoredVUserProfilesExtended } from '@/hooks/data/localDb';
-import { useLocalFirstQuery } from '@/hooks/data/useLocalFirstQuery';
-import { UseQueryResult } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { parseJson } from '@/config/helper-functions';
 
-// ... (Types unchanged)
+// --- Types ---
+export type UserRole = string | null;
+export type SuperAdminStatus = boolean | null;
 type UserPermissionsData = V_user_profiles_extendedRowSchema | null;
 
-interface UserPermissions {
+export interface UserPermissions {
   profile: UserPermissionsData;
   role: UserRole;
   isSuperAdmin: SuperAdminStatus;
@@ -27,82 +27,66 @@ interface UserPermissions {
   hasAnyRole: (requiredRoles: readonly string[]) => boolean;
 }
 
-type UserRole = string | null;
-type SuperAdminStatus = boolean | null;
-
 export const useUserPermissionsExtended = () => {
   const supabase = createClient();
   const { user, authState } = useAuth();
 
-  // 1. Online Query Function
-  const onlineQueryFn = React.useCallback(async (): Promise<
-    V_user_profiles_extendedRowSchema[]
-  > => {
-    if (!user?.id) return [];
-
-    const { data, error } = await supabase.rpc('get_my_user_details');
-
-    if (error) throw error;
-    if (!data || data.length === 0) return [];
-
-    const profileData = data[0];
-
-    // Transform RPC result
-    const transformedData = {
-      ...profileData,
-      id: profileData.id,
-      email: profileData.email,
-      address: parseJson(profileData.address) as Json,
-      preferences: parseJson(profileData.preferences) as Json,
-      status: profileData.status || 'inactive',
-      created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
-      updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
-      last_sign_in_at: profileData.last_sign_in_at
-        ? new Date(profileData.last_sign_in_at).toISOString()
-        : null,
-      // Fill defaults for view fields not in RPC
-      computed_status: null,
-      account_age_days: null,
-      last_activity_period: null,
-      is_phone_verified: false,
-      phone_confirmed_at: null,
-      email_confirmed_at: null,
-      auth_updated_at: null,
-      raw_app_meta_data: null,
-      raw_user_meta_data: null,
-      full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
-    };
-
-    return [transformedData as V_user_profiles_extendedRowSchema];
-  }, [user?.id, supabase]);
-
-  // 2. Local Query Function
-  const localQueryFn = React.useCallback(async () => {
-    if (!user?.id) return [];
-    const profile = await localDb.v_user_profiles_extended.get(user.id);
-    return profile ? [profile] : [];
-  }, [user?.id]);
-
-  // 3. Use Local First Hook
+  // --- QUERY: Fetch User Profile ---
   const {
-    data: profiles = [],
+    data: profile = null,
     isLoading: isQueryLoading,
     error,
+    isError,
     refetch,
-  } = useLocalFirstQuery<
-    'v_user_profiles_extended',
-    V_user_profiles_extendedRowSchema,
-    StoredVUserProfilesExtended
-  >({
+  } = useQuery<UserPermissionsData, Error>({
     queryKey: ['user-full-profile', user?.id],
-    onlineQueryFn,
-    localQueryFn,
-    dexieTable: localDb.v_user_profiles_extended,
-    enabled: authState === 'authenticated' && !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
+    queryFn: async () => {
+      if (!user?.id) return null;
 
-  const profile = profiles[0] || null;
+      const { data, error } = await supabase.rpc('get_my_user_details');
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+
+      const profileData = data[0];
+
+      // Transform RPC result to match the view schema expected by the UI
+      const transformedData = {
+        ...profileData,
+        id: profileData.id,
+        email: profileData.email,
+        address: parseJson(profileData.address) as Json,
+        preferences: parseJson(profileData.preferences) as Json,
+        status: profileData.status || 'inactive',
+        created_at: profileData.created_at ? new Date(profileData.created_at).toISOString() : null,
+        updated_at: profileData.updated_at ? new Date(profileData.updated_at).toISOString() : null,
+        last_sign_in_at: profileData.last_sign_in_at
+          ? new Date(profileData.last_sign_in_at).toISOString()
+          : null,
+        // Fill defaults for view fields not in RPC (optional UI fields)
+        computed_status: null,
+        account_age_days: null,
+        last_activity_period: null,
+        is_phone_verified: false,
+        phone_confirmed_at: null,
+        email_confirmed_at: null,
+        auth_updated_at: null,
+        raw_app_meta_data: null,
+        raw_user_meta_data: null,
+        full_name: `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim(),
+      };
+
+      return transformedData as V_user_profiles_extendedRowSchema;
+    },
+    // Only run if we are authenticated and have a user ID
+    enabled: authState === 'authenticated' && !!user?.id,
+    
+    // CRITICAL: Profile data is very static. Cache it for a long time.
+    // If user roles change, we update via mutation invalidation.
+    staleTime: 60 * 60 * 1000, // 1 hour
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours (keep in memory)
+    retry: 1,
+  });
 
   // OPTIMIZATION: Only report loading if we have NO profile and auth is still processing
   // This prevents the "Verifying permissions..." spinner from blocking UI if we have cached data
@@ -110,14 +94,15 @@ export const useUserPermissionsExtended = () => {
 
   const permissions = React.useMemo(
     () => ({
-      profile: profile as UserPermissionsData,
+      profile,
       role: profile?.role ?? null,
       isSuperAdmin: profile?.is_super_admin ?? null,
       isLoading,
       error: error || null,
+      isError,
       refetch: refetch as unknown as () => Promise<UseQueryResult<UserPermissionsData, Error>>,
     }),
-    [profile, isLoading, error, refetch]
+    [profile, isLoading, error, isError, refetch]
   );
 
   const hasRole = React.useCallback(
@@ -133,9 +118,11 @@ export const useUserPermissionsExtended = () => {
 
   const canAccess = React.useCallback(
     (allowedRoles?: readonly string[]): boolean => {
-      // If we have a profile (even from cache), we can check logic
+      // If user is super admin, they have access to everything
       if (permissions.isSuperAdmin) return true;
+      // If no roles specified, everyone has access
       if (!allowedRoles || allowedRoles.length === 0) return true;
+      // Otherwise check against the list
       return hasAnyRole(allowedRoles);
     },
     [permissions.isSuperAdmin, hasAnyRole]
@@ -150,10 +137,7 @@ export const useUserPermissionsExtended = () => {
   };
 };
 
-// ... (Rest of file unchanged) ...
 export const useHasPermission = (allowedRoles?: string[]): boolean => {
-    const { canAccess } = useUserPermissionsExtended();
-    return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles]);
+  const { canAccess } = useUserPermissionsExtended();
+  return React.useMemo(() => canAccess(allowedRoles), [canAccess, allowedRoles]);
 };
-  
-export type { UserRole, SuperAdminStatus, UserPermissions };

@@ -1,9 +1,7 @@
 // utils/mapUtils.ts
 import { MapNode } from '@/components/map/ClientRingMap/types';
 import L from 'leaflet';
-import { localDb } from '@/hooks/data/localDb';
 
-// ... (Existing Jitter Logic - Unchanged) ...
 export type CoordinateNode = {
   id: string | null;
   lat?: number | null;
@@ -20,6 +18,45 @@ export type DisplayNode<T = CoordinateNode> = T & {
   isCluster: boolean;
 };
 
+// --- BANDWIDTH PARSING & WEIGHT LOGIC ---
+
+export const parseBandwidthGbps = (bwString?: string | null, bwGbps?: number | null): number => {
+  if (bwGbps != null) return bwGbps; 
+  if (!bwString) return 1; // Default fallback to 1G to avoid invisible lines
+  
+  const upper = bwString.toUpperCase();
+  if (upper.includes('100G') || upper.includes('100 G')) return 100;
+  if (upper.includes('10G') || upper.includes('10 G')) return 10;
+  if (upper.includes('2.5G') || upper.includes('2.5 G') || upper.includes('STM16')) return 2.5;
+  if (upper.includes('1G') || upper.includes('1000M')) return 1;
+  if (upper.includes('STM1')) return 0.155; // 155 Mbps
+  
+  const match = upper.match(/([\d\.]+)\s*(G|M|K)/);
+  if (match) {
+     const val = parseFloat(match[1]);
+     const unit = match[2];
+     if (unit === 'G') return val;
+     if (unit === 'M') return val / 1000;
+     if (unit === 'K') return val / 1000000;
+  }
+  return 1;
+};
+
+export const getDynamicLineWeight = (bandwidthGbps: number | null | undefined, baseWeight: number): number => {
+  if (bandwidthGbps == null) return baseWeight;
+  
+  // THE FIX: Exaggerated weight differences for clear visual contrast on the map
+  if (bandwidthGbps >= 100) return baseWeight + 6; // e.g., 4 -> 8 (Massive)
+  if (bandwidthGbps >= 10) return baseWeight + 3;  // e.g., 4 -> 4 (Double thickness)
+  if (bandwidthGbps > 1) return baseWeight + 1.5;  // e.g., 4 -> 5.5 (Noticeably thicker)
+  if (bandwidthGbps === 1) return baseWeight;      // e.g., 4 (Standard)
+  
+  // Low capacity (<1G) -> Thinner
+  return Math.max(1.5, baseWeight - 1.5);
+};
+
+// -------------------------------------------
+
 export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): DisplayNode<T>[] => {
   const groupedNodes = new Map<string, T[]>();
 
@@ -32,12 +69,21 @@ export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): Displa
     return null;
   };
 
+  const PRECISION_MULTIPLIER = 100000;
+
   nodes.forEach((node) => {
     const coords = getCoords(node);
     if (coords) {
-      const key = `${coords[0].toFixed(6)},${coords[1].toFixed(6)}`;
-      if (!groupedNodes.has(key)) groupedNodes.set(key, []);
-      groupedNodes.get(key)!.push(node);
+      const hashLat = Math.round(coords[0] * PRECISION_MULTIPLIER);
+      const hashLng = Math.round(coords[1] * PRECISION_MULTIPLIER);
+      const key = `${hashLat}_${hashLng}`;
+      
+      let group = groupedNodes.get(key);
+      if (!group) {
+        group = [];
+        groupedNodes.set(key, group);
+      }
+      group.push(node);
     }
   });
 
@@ -77,35 +123,13 @@ export const applyJitterToNodes = <T extends CoordinateNode>(nodes: T[]): Displa
   return results;
 };
 
-// ... (Existing ORS Logic - Unchanged) ...
 let orsFetchChain: Promise<void> = Promise.resolve();
 const ORS_REQUEST_DELAY = 1600;
-
-const getDistanceKey = (start: MapNode, end: MapNode) => {
-  const lat1 = start.lat!.toFixed(6);
-  const lng1 = start.long!.toFixed(6);
-  const lat2 = end.lat!.toFixed(6);
-  const lng2 = end.long!.toFixed(6);
-  const p1 = `${lat1},${lng1}`;
-  const p2 = `${lat2},${lng2}`;
-  return p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
-};
 
 export const fetchOrsDistance = async (
   start: MapNode,
   end: MapNode
 ): Promise<{ distance_km: number; source: string }> => {
-  const cacheKey = getDistanceKey(start, end);
-
-  try {
-    const cached = await localDb.route_distances.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < 1000 * 60 * 60 * 24 * 30) {
-      return { distance_km: cached.distance_km, source: 'cache' };
-    }
-  } catch (e) {
-    console.warn('Failed to read route cache', e);
-  }
-
   const makeRequest = async () => {
     const response = await fetch('/api/ors-distance', {
       method: 'POST',
@@ -117,20 +141,7 @@ export const fetchOrsDistance = async (
       throw new Error(`ORS API failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
-
-    if (data.distance_km) {
-      localDb.route_distances
-        .put({
-          id: cacheKey,
-          distance_km: parseFloat(data.distance_km),
-          source: data.source || 'api',
-          timestamp: Date.now(),
-        })
-        .catch((err) => console.error('Failed to cache route distance', err));
-    }
-
-    return data;
+    return response.json();
   };
 
   const resultPromise = orsFetchChain.then(makeRequest);
@@ -142,7 +153,6 @@ export const fetchOrsDistance = async (
   return resultPromise;
 };
 
-// ... (Existing Leaflet Logic - Unchanged) ...
 export const fixLeafletIcons = () => {
   if (typeof window === 'undefined') return;
   // @ts-expect-error - Accessing internal Leaflet prototype
@@ -215,29 +225,17 @@ export const getCurvedPath = (start: L.LatLng, end: L.LatLng, offsetMultiplier: 
 
 export const getLoopPath = (position: L.LatLng, offsetIndex: number = 0, loopSize: number = 100) => {
   const { lat, lng } = position;
-  const spread = offsetIndex * 20; 
+  const spread = offsetIndex * 20;
   const p1 = new L.LatLng(lat + loopSize + spread, lng + (loopSize * 0.4));
   const p2 = new L.LatLng(lat + (loopSize * 0.4), lng + loopSize + spread);
   return getCubicBezierPoints(position, p1, p2, position);
 };
 
-/**
- * Calculates the offset multiplier for parallel curved lines.
- * UPDATED: Increased spread to visually separate overlapping lines better.
- */
 export const getMultiLineCurveOffset = (index: number, total: number): number => {
   if (total <= 1) return 0;
-
-  // INCREASED SPREAD: 0.3 -> 0.6 to separate lines more aggressively
-  // This value is relative to the straight-line distance between nodes.
-  const spread = 0.6; 
-  
-  // Calculate step to distribute lines evenly around the center (0)
+  const spread = 0.6;
   const step = spread / (total - 1);
   const start = -spread / 2;
-
-  // e.g. Total 2: -0.3, +0.3 (Separated)
-  // e.g. Total 3: -0.3, 0, +0.3 (One straight, two curved)
   return start + index * step;
 };
 

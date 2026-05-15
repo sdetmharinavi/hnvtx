@@ -1,3 +1,4 @@
+// components/navigation/sidebar-components/HoverMenu.tsx
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,8 +12,8 @@ import { useMemo } from 'react';
 interface HoverMenuProps {
   hoveredItem: NavItemType | null;
   hoverPosition: DOMRect | null;
-  clearLeaveTimeout: () => void; // THE FIX: Add prop to clear the timeout
-  onMouseLeave: () => void; // THE FIX: Add prop to handle leaving the menu
+  clearLeaveTimeout: () => void;
+  onMouseLeave: () => void;
 }
 
 export const HoverMenu = ({
@@ -60,10 +61,12 @@ export const HoverMenu = ({
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className='fixed z-60 min-w-48 overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10'
+          // THE FIX: Added `before:absolute before:inset-y-0 before:-left-4 before:w-4 before:bg-transparent`
+          // This creates an invisible bridge spanning the 4px gap so the mouse never triggers onMouseLeave
+          className='fixed z-60 min-w-48 overflow-visible rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 before:absolute before:inset-y-0 before:-left-4 before:w-4 before:bg-transparent'
           style={menuStyle}
-          onMouseEnter={clearLeaveTimeout} // THE FIX: Clear timeout when entering menu
-          onMouseLeave={onMouseLeave} // THE FIX: Close menu when leaving
+          onMouseEnter={clearLeaveTimeout}
+          onMouseLeave={onMouseLeave}
         >
           <div className='py-2'>
             {hoveredItem.children.map((child) => (

@@ -7,6 +7,7 @@ import { Fragment, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Row, PublicTableOrViewName } from '@/hooks/database';
+import { createClient } from '@/utils/supabase/client';
 
 // Map URL segments to the view/table names used in query keys
 const segmentToEntityMap: Record<string, PublicTableOrViewName> = {
@@ -20,7 +21,6 @@ const segmentToEntityMap: Record<string, PublicTableOrViewName> = {
   inventory: 'v_inventory_items',
   'ring-paths': 'logical_paths',
   'route-manager': 'v_ofc_cables_complete',
-  // ... add more as needed
 };
 
 // Map entity names to potential "name" fields in the data
@@ -46,29 +46,28 @@ const ResolvedSegment = ({
   prevSegment: string | null;
 }) => {
   const [resolvedName, setResolvedName] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
   const queryClient = useQueryClient();
+  const supabase = createClient();
 
   useEffect(() => {
     let isMounted = true;
 
     if (!uuidRegex.test(segment) || !prevSegment) {
-      setResolvedName(null); // Not a UUID or no context, so nothing to resolve.
+      setResolvedName(null);
       return;
     }
 
     const entity = segmentToEntityMap[prevSegment];
     if (!entity) return;
 
-    // More robust cache search logic
+    // 1. Try to find the name in the React Query Cache (Instant)
     const findNameInCache = () => {
-      // Find all queries that start with the entity's base query key.
-      // This is a "prefix" search and is very flexible.
       const queries = queryClient.getQueryCache().findAll({
         queryKey: [`${entity}-data`],
-        fetchStatus: 'idle', // Only look in successful, non-fetching queries
+        fetchStatus: 'idle',
       });
 
-      // Also check for single-record RPC queries
       const rpcQueries = queryClient.getQueryCache().findAll({
         queryKey: ['rpc-record', entity, segment],
       });
@@ -82,16 +81,14 @@ const ResolvedSegment = ({
 
         let dataArray: Row<typeof entity>[] = [];
 
-        // Check if data is in a paged result format or a direct array/object
         if (queryData.data && Array.isArray(queryData.data)) {
-          dataArray = queryData.data; // e.g., from useCrudManager
+          dataArray = queryData.data;
         } else if (Array.isArray(queryData)) {
-          dataArray = queryData; // e.g., from a direct useQuery
+          dataArray = queryData;
         } else if (typeof queryData === 'object' && queryData.id === segment) {
-          dataArray = [queryData]; // It's the single object we're looking for
+          dataArray = [queryData];
         }
 
-        // Search within the data array for our ID
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = dataArray.find((d: any) => d.id === segment);
 
@@ -102,31 +99,68 @@ const ResolvedSegment = ({
             const name = (item as any)[field];
             if (name && typeof name === 'string') {
               if (isMounted) setResolvedName(name);
-              return name; // Found it, exit.
+              return true;
             }
           }
         }
       }
-      return null; // Not found in any cache
+      return false;
     };
 
-    const name = findNameInCache();
-    if (!name && isMounted) {
-      setResolvedName(null); // Explicitly set to null if not found
+    const foundInCache = findNameInCache();
+
+    // 2. If NOT found in cache (Deep Link), fetch from database via RPC
+    if (!foundInCache && isMounted) {
+      const fetchFromDb = async () => {
+        setIsFetching(true);
+        try {
+          const nameFields = entityToNameFieldMap[entity] || ['name'];
+          const fieldToFetch = nameFields[0];
+
+          // THE FIX: Use RPC to bypass view RLS permissions securely
+          const { data, error } = await supabase.rpc('get_paged_data', {
+            p_view_name: entity,
+            p_limit: 1,
+            p_offset: 0,
+            p_filters: { id: segment },
+          });
+
+          if (!error && data && isMounted) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rows = (data as any)?.data || [];
+            if (rows.length > 0) {
+              const name = rows[0][fieldToFetch];
+              if (name) setResolvedName(name);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to resolve breadcrumb name', err);
+        } finally {
+          if (isMounted) setIsFetching(false);
+        }
+      };
+
+      fetchFromDb();
     }
 
     return () => {
       isMounted = false;
     };
-  }, [segment, prevSegment, queryClient]);
+  }, [segment, prevSegment, queryClient, supabase]);
 
   const formatSegment = (s: string) => {
     return s.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
+  if (isFetching) {
+    return (
+      <span className='animate-pulse bg-gray-200 dark:bg-gray-700 h-4 w-24 rounded inline-block align-middle'></span>
+    );
+  }
+
   const label = resolvedName || (uuidRegex.test(segment) ? 'Details' : formatSegment(segment));
 
-  return <span>{label}</span>;
+  return <span className='truncate max-w-[200px] inline-block align-bottom'>{label}</span>;
 };
 
 export function Breadcrumbs() {
@@ -160,14 +194,14 @@ export function Breadcrumbs() {
 
           return (
             <Fragment key={href}>
-              <li className='shrink-0 text-gray-300 dark:text-gray-600'>
+              <li className='shrink-0 text-gray-300 dark:text-gray-600 flex items-center'>
                 <ChevronRight className='h-3 w-3 sm:h-4 sm:w-4' />
               </li>
-              <li className='shrink-0 last:pr-4'>
+              <li className='shrink-0 last:pr-4 flex items-center'>
                 {isLast ? (
                   <span
                     className={cn(
-                      'font-semibold text-gray-800 dark:text-gray-200 cursor-default',
+                      'font-semibold text-gray-800 dark:text-gray-200 cursor-default flex items-center',
                       'text-xs sm:text-sm',
                     )}
                   >
@@ -177,7 +211,7 @@ export function Breadcrumbs() {
                   <Link
                     href={href}
                     className={cn(
-                      'font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors',
+                      'font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors flex items-center',
                       'text-xs sm:text-sm',
                     )}
                   >

@@ -13,6 +13,8 @@ interface DataGridProps<T> {
     current: number;
     pageSize: number;
     total: number;
+    showSizeChanger?: boolean; // THE FIX: Added missing property
+    pageSizeOptions?: number[]; // THE FIX: Added missing property
     onChange: (page: number, pageSize: number) => void;
   };
   isLoading?: boolean;
@@ -84,7 +86,8 @@ export function DataGrid<T>({
       {/* Integrated Pagination for Grid View */}
       {pagination && pagination.total > 0 && (
         <div className='bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden'>
-          <TablePagination pagination={{ ...pagination, showSizeChanger: true }} bordered={false} />
+          {/* THE FIX: We also provide a fallback here in case a page forgets to pass showSizeChanger */}
+          <TablePagination pagination={{ showSizeChanger: true, ...pagination }} bordered={false} />
         </div>
       )}
     </div>

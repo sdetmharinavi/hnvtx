@@ -1,6 +1,5 @@
 // hooks/data/useNodesData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 // Helper for array/single value matching
 const matchFilter = (itemValue: unknown, filterValue: unknown) => {
@@ -15,9 +14,8 @@ export const useNodesData = createGenericDataQuery<'v_nodes_complete'>({
   searchFields: ['name', 'node_type_code', 'remark', 'latitude', 'longitude'],
   serverSearchFields: ['name', 'node_type_code', 'remark', 'latitude::text', 'longitude::text'],
   defaultSortField: 'name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed to use default 6000
   filterFn: (node, filters) => {
-    // 1. Standard Filters (Multi-select enabled)
     if (filters.node_type_id && !matchFilter(node.node_type_id, filters.node_type_id)) return false;
     if (
       filters.maintenance_terminal_id &&
@@ -30,7 +28,6 @@ export const useNodesData = createGenericDataQuery<'v_nodes_complete'>({
       if (node.status !== statusBool) return false;
     }
 
-    // 2. Custom Logic: Coordinates Status
     if (filters.coordinates_status) {
       const hasCoords =
         node.latitude !== null &&

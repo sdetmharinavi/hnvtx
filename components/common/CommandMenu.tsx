@@ -15,15 +15,13 @@ import {
   FiDatabase,
   FiUser,
   FiGitBranch,
-  FiZap,
   FiLayers,
+  FiZap,
 } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import { useDebounce } from 'use-debounce';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { localDb } from '@/hooks/data/localDb';
 
-// Basic types for search results
 type SearchResult = {
   id: string;
   title: string;
@@ -42,7 +40,6 @@ export function CommandMenu() {
   const supabase = createClient();
   const isOnline = useOnlineStatus();
 
-  // 1. Toggle with Cmd+K OR "/"
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -63,17 +60,15 @@ export function CommandMenu() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  // 2. THE FIX: Close on Escape key
-  // We attach this listener only when the menu is OPEN to avoid running logic unnecessarily.
   React.useEffect(() => {
     if (!open) return;
 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        e.preventDefault(); // Prevent bubbling to other modals if open
+        e.preventDefault();
         e.stopPropagation();
         setOpen(false);
-        setQuery(''); // Optional: clear query on close
+        setQuery('');
       }
     };
 
@@ -81,7 +76,6 @@ export function CommandMenu() {
     return () => document.removeEventListener('keydown', handleEsc);
   }, [open]);
 
-  // Search Logic
   React.useEffect(() => {
     async function search() {
       if (!debouncedQuery.trim()) {
@@ -93,7 +87,6 @@ export function CommandMenu() {
       const searchTerm = debouncedQuery.toLowerCase();
       const newResults: SearchResult[] = [];
 
-      // 1. Static Pages matches (Always available)
       if ('dashboard'.includes(searchTerm))
         newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
       if ('inventory'.includes(searchTerm))
@@ -115,7 +108,7 @@ export function CommandMenu() {
           id: 'rng',
           title: 'Ring Manager',
           type: 'page',
-          url: '/dashboard/rings',
+          url: '/dashboard/ring-manager',
         });
       if ('connections'.includes(searchTerm))
         newResults.push({
@@ -131,7 +124,6 @@ export function CommandMenu() {
 
       try {
         if (isOnline) {
-          // --- ONLINE SEARCH (RPC / Supabase) ---
           const rpcTerm = `%${searchTerm}%`;
 
           const [systems, nodes, cables, services, employees] = await Promise.all([
@@ -209,83 +201,6 @@ export function CommandMenu() {
               url: `/dashboard/employees?search=${encodeURIComponent(e.employee_name)}`,
             }),
           );
-        } else {
-          // --- OFFLINE SEARCH (Dexie / LocalDb) ---
-          const [localSystems, localNodes, localCables, localServices, localEmployees] =
-            await Promise.all([
-              localDb.v_systems_complete
-                .filter((s) => (s.system_name || '').toLowerCase().includes(searchTerm))
-                .limit(3)
-                .toArray(),
-              localDb.v_nodes_complete
-                .filter((n) => (n.name || '').toLowerCase().includes(searchTerm))
-                .limit(3)
-                .toArray(),
-              localDb.v_ofc_cables_complete
-                .filter((c) => (c.route_name || '').toLowerCase().includes(searchTerm))
-                .limit(3)
-                .toArray(),
-              localDb.v_services
-                .filter(
-                  (s) =>
-                    (s.name || '').toLowerCase().includes(searchTerm) ||
-                    (s.vlan || '').toLowerCase().includes(searchTerm) ||
-                    (s.unique_id || '').toLowerCase().includes(searchTerm),
-                )
-                .limit(3)
-                .toArray(),
-              localDb.v_employees
-                .filter((e) => (e.employee_name || '').toLowerCase().includes(searchTerm))
-                .limit(3)
-                .toArray(),
-            ]);
-
-          localSystems.forEach((s) =>
-            newResults.push({
-              id: s.id!,
-              title: s.system_name!,
-              subtitle: s.ip_address ? String(s.ip_address).split('/')[0] : 'Offline',
-              type: 'system',
-              url: `/dashboard/systems/${s.id}`,
-            }),
-          );
-
-          localNodes.forEach((n) =>
-            newResults.push({
-              id: n.id!,
-              title: n.name!,
-              type: 'node',
-              url: `/dashboard/nodes?search=${encodeURIComponent(n.name!)}`,
-            }),
-          );
-
-          localCables.forEach((c) =>
-            newResults.push({
-              id: c.id!,
-              title: c.route_name!,
-              type: 'cable',
-              url: `/dashboard/ofc/${c.id}`,
-            }),
-          );
-
-          localServices.forEach((s) =>
-            newResults.push({
-              id: s.id!,
-              title: s.name!,
-              subtitle: s.vlan ? `VLAN: ${s.vlan}` : 'Offline',
-              type: 'service',
-              url: `/dashboard/services?search=${encodeURIComponent(s.name!)}`,
-            }),
-          );
-
-          localEmployees.forEach((e) =>
-            newResults.push({
-              id: e.id!,
-              title: e.employee_name!,
-              type: 'employee',
-              url: `/dashboard/employees?search=${encodeURIComponent(e.employee_name!)}`,
-            }),
-          );
         }
       } catch (err) {
         console.error('Search error:', err);
@@ -307,96 +222,87 @@ export function CommandMenu() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4 animate-in fade-in duration-200">
+    // THE FIX: Changed z-index from z-9999 to z-[10000] to sit above standard modals
+    <div className='fixed inset-0 z-10000 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4 animate-in fade-in duration-200'>
       <div
-        className="w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all"
+        className='w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all'
         onClick={(e) => e.stopPropagation()}
       >
-        <Command label="Global Search" shouldFilter={false} className="w-full">
-          {/* Search Input */}
-          <div className="flex items-center border-b border-gray-200 dark:border-gray-700 px-4">
-            <FiSearch className="w-5 h-5 text-gray-400 mr-3" />
+        <Command label='Global Search' shouldFilter={false} className='w-full'>
+          <div className='flex items-center border-b border-gray-200 dark:border-gray-700 px-4'>
+            <FiSearch className='w-5 h-5 text-gray-400 mr-3' />
             <Command.Input
               value={query}
               onValueChange={setQuery}
               placeholder={
-                isOnline ? 'Search systems, services, people...' : 'Searching offline database...'
+                isOnline ? 'Search systems, services, people...' : 'Offline: Search disabled'
               }
-              className="w-full py-4 text-lg bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              className='w-full py-4 text-lg bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400'
               autoFocus
+              disabled={!isOnline}
             />
-            <div className="flex items-center gap-2">
-              {loading && <FiLoader className="w-4 h-4 animate-spin text-blue-500" />}
-              {!isOnline && <FiWifiOff className="w-4 h-4 text-orange-500" title="Offline Mode" />}
+            <div className='flex items-center gap-2'>
+              {loading && <FiLoader className='w-4 h-4 animate-spin text-blue-500' />}
+              {!isOnline && <FiWifiOff className='w-4 h-4 text-orange-500' title='Offline Mode' />}
             </div>
           </div>
 
-          {/* Results List */}
-          <Command.List className="max-h-[60vh] overflow-y-auto p-2 scroll-py-2 custom-scrollbar">
+          <Command.List className='max-h-[60vh] overflow-y-auto p-2 scroll-py-2 custom-scrollbar'>
             {query && results.length === 0 && !loading && (
-              <div className="py-10 text-center text-sm text-gray-500">
-                No results found {isOnline ? '' : 'in local cache'}.
-              </div>
+              <div className='py-10 text-center text-sm text-gray-500'>No results found.</div>
             )}
 
             {!query && (
-              <div className="px-4 py-2">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+              <div className='px-4 py-2'>
+                <p className='text-xs font-medium text-gray-400 uppercase tracking-wider mb-2'>
                   Quick Navigation
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
                   <Command.Item
                     onSelect={() => handleSelect('/dashboard/systems')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiServer className="w-4 h-4 shrink-0" /> Systems Manager
+                    <FiServer className='w-4 h-4 shrink-0' /> Systems Manager
                   </Command.Item>
 
                   <Command.Item
                     onSelect={() => handleSelect('/dashboard/systems/connections')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiGitBranch className="w-4 h-4 shrink-0" /> Global Connections
+                    <FiGitBranch className='w-4 h-4 shrink-0' /> Global Connections
                   </Command.Item>
 
                   <Command.Item
                     onSelect={() => handleSelect('/dashboard/services')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiDatabase className="w-4 h-4 shrink-0" /> Services Catalog
-                  </Command.Item>
-
-                  <Command.Item
-                    onSelect={() => handleSelect('/dashboard/rings')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
-                  >
-                    <FiActivity className="w-4 h-4 shrink-0" /> Ring List
+                    <FiDatabase className='w-4 h-4 shrink-0' /> Services Catalog
                   </Command.Item>
 
                   <Command.Item
                     onSelect={() => handleSelect('/dashboard/ring-manager')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiLayers className="w-4 h-4 shrink-0" /> Ring Topology
+                    <FiLayers className='w-4 h-4 shrink-0' /> Ring Topology
                   </Command.Item>
 
                   <Command.Item
                     onSelect={() => handleSelect('/dashboard/ofc/connections')}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiZap className="w-4 h-4 shrink-0" /> Physical Fibers
+                    <FiZap className='w-4 h-4 shrink-0' /> Physical Fibers
                   </Command.Item>
                 </div>
               </div>
             )}
 
             {results.length > 0 && (
-              <Command.Group heading="Search Results" className="px-2 mt-2">
+              <Command.Group heading='Search Results' className='px-2 mt-2'>
                 {results.map((item) => (
                   <Command.Item
                     key={`${item.type}-${item.id}`}
                     onSelect={() => handleSelect(item.url)}
-                    className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors"
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <div
                       className={`flex items-center justify-center w-8 h-8 rounded text-gray-500 ${
@@ -412,14 +318,14 @@ export function CommandMenu() {
                       {item.type === 'employee' && <FiUser size={16} />}
                       {item.type === 'page' && <FiFileText size={16} />}
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-medium truncate">{item.title}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1 rounded">
+                    <div className='flex flex-col min-w-0'>
+                      <span className='font-medium truncate'>{item.title}</span>
+                      <div className='flex items-center gap-2'>
+                        <span className='text-[10px] text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1 rounded'>
                           {item.type}
                         </span>
                         {item.subtitle && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
+                          <span className='text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]'>
                             {item.subtitle}
                           </span>
                         )}
@@ -431,8 +337,8 @@ export function CommandMenu() {
             )}
           </Command.List>
 
-          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center text-xs text-gray-400">
-            <span className="hidden sm:inline">
+          <div className='border-t border-gray-200 dark:border-gray-700 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center text-xs text-gray-400'>
+            <span className='hidden sm:inline'>
               Use <strong>↑↓</strong> to navigate
             </span>
             <span>
@@ -440,7 +346,7 @@ export function CommandMenu() {
             </span>
             <button
               onClick={() => setOpen(false)}
-              className="hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none"
+              className='hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none'
             >
               <strong>Esc</strong> to close
             </button>
@@ -448,8 +354,7 @@ export function CommandMenu() {
         </Command>
       </div>
 
-      {/* Click outside to close */}
-      <div className="absolute inset-0 -z-10" onClick={() => setOpen(false)} />
+      <div className='absolute inset-0 -z-10' onClick={() => setOpen(false)} />
     </div>
   );
 }

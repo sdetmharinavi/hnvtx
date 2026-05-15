@@ -108,7 +108,8 @@ export const getOptimalImageSettings = (file: File) => {
 
 /**
  * Compresses an image using a Web Worker to prevent UI blocking.
- * Falls back to original file if Workers/OffscreenCanvas are not supported.
+ * Falls back to original file if Workers/OffscreenCanvas are not supported
+ * or if Content Security Policy (CSP) blocks the inline blob worker.
  */
 export const smartCompress = async (file: File): Promise<File> => {
   // Skip non-images or if Worker API is unavailable
@@ -117,28 +118,30 @@ export const smartCompress = async (file: File): Promise<File> => {
   }
 
   return new Promise((resolve) => {
+    let workerUrl = '';
+    let worker: Worker | null = null;
+
     try {
-      // Create worker from inline blob
+      // THE FIX: Wrapped in try-catch to handle strict CSP rules blocking 'blob:' workers
       const blob = new Blob([workerCode], { type: 'application/javascript' });
-      const workerUrl = URL.createObjectURL(blob);
-      const worker = new Worker(workerUrl);
+      workerUrl = URL.createObjectURL(blob);
+      worker = new Worker(workerUrl);
 
       const options = getOptimalImageSettings(file);
 
       // Handle worker response
       worker.onmessage = (e) => {
-        const { success, blob, error } = e.data;
+        const { success, blob: optimizedBlob, error } = e.data;
 
-        if (success && blob) {
-          // Log compression stats for debugging
-          const reduction = (((file.size - blob.size) / file.size) * 100).toFixed(1);
+        if (success && optimizedBlob) {
+          const reduction = (((file.size - optimizedBlob.size) / file.size) * 100).toFixed(1);
           console.debug(
-            `[SmartCompress] ${file.name}: -${reduction}% (${(blob.size / 1024 / 1024).toFixed(
+            `[SmartCompress] ${file.name}: -${reduction}% (${(optimizedBlob.size / 1024 / 1024).toFixed(
               2
             )}MB)`
           );
 
-          const optimizedFile = new File([blob], file.name, {
+          const optimizedFile = new File([optimizedBlob], file.name, {
             type: file.type,
             lastModified: Date.now(),
           });
@@ -148,23 +151,25 @@ export const smartCompress = async (file: File): Promise<File> => {
           resolve(file);
         }
 
-        // Cleanup
-        worker.terminate();
-        URL.revokeObjectURL(workerUrl);
+        worker?.terminate();
+        if (workerUrl) URL.revokeObjectURL(workerUrl);
       };
 
-      // Handle worker startup errors
+      // Handle worker startup errors (e.g. CSP blocking)
       worker.onerror = (err) => {
-        console.error('[SmartCompress] Worker error:', err);
-        worker.terminate();
-        URL.revokeObjectURL(workerUrl);
+        console.warn('[SmartCompress] Worker execution blocked or failed. Using original file.', err);
+        worker?.terminate();
+        if (workerUrl) URL.revokeObjectURL(workerUrl);
         resolve(file);
       };
 
       // Start the job
       worker.postMessage({ file, options });
+
     } catch (e) {
-      console.error('[SmartCompress] Setup failed:', e);
+      console.warn('[SmartCompress] Worker creation failed (likely CSP). Using original file.', e);
+      if (worker) worker.terminate();
+      if (workerUrl) URL.revokeObjectURL(workerUrl);
       resolve(file);
     }
   });
@@ -187,7 +192,7 @@ export const createOptimizedUppy = (options: OptimizedUppyOptions) => {
     restrictions: {
       maxFileSize,
       maxNumberOfFiles,
-      allowedFileTypes: [
+      allowedFileTypes:[
         'image/*',
         'application/pdf',
         '.doc',

@@ -1,6 +1,5 @@
 // hooks/data/useOfcData.ts
 import { createGenericDataQuery } from './useGenericDataQuery';
-import { DEFAULTS } from '@/constants/constants';
 
 const matchFilter = (itemValue: unknown, filterValue: unknown) => {
   if (Array.isArray(filterValue)) {
@@ -21,7 +20,7 @@ export const useOfcData = createGenericDataQuery<'v_ofc_cables_complete'>({
     'remark',
   ],
   defaultSortField: 'route_name',
-  rpcLimit: DEFAULTS.PAGE_SIZE,
+  // rpcLimit removed
   filterFn: (c, filters) => {
     if (filters.ofc_type_id && !matchFilter(c.ofc_type_id, filters.ofc_type_id)) return false;
     if (filters.ofc_owner_id && !matchFilter(c.ofc_owner_id, filters.ofc_owner_id)) return false;

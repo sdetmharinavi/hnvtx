@@ -1,4 +1,4 @@
-// path: components/ofc-details/OfcDetailsHeader.tsx
+// components/ofc-details/OfcDetailsHeader.tsx
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import {
@@ -82,7 +82,8 @@ const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
         whileHover={{ y: -1, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)' }}
         className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all"
       >
-        <div className="absolute inset-0 bg-linear-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
+        {/* ADDED: Fallback bg-blue-50 */}
+        <div className="absolute inset-0 bg-blue-50 bg-linear-to-br from-blue-50/50 via-transparent to-indigo-50/30 dark:bg-blue-900/10 dark:from-blue-900/10 dark:via-transparent dark:to-indigo-900/10" />
 
         <div className="relative p-4">
           <motion.div
@@ -91,6 +92,7 @@ const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
+            {/* ADDED: Fallback bg-blue-500 */}
             <div className="p-1.5 rounded-lg bg-blue-500 bg-linear-to-r from-blue-500 to-indigo-600 text-white shadow">
               <Cable size={16} />
             </div>
@@ -127,7 +129,8 @@ const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
         whileHover={{ y: -1, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)' }}
         className="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all"
       >
-        <div className="absolute inset-0 bg-linear-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
+        {/* ADDED: Fallback bg-emerald-50 */}
+        <div className="absolute inset-0 bg-emerald-50 bg-linear-to-br from-emerald-50/50 via-transparent to-teal-50/30 dark:bg-emerald-900/10 dark:from-emerald-900/10 dark:via-transparent dark:to-teal-900/10" />
 
         <div className="relative p-4">
           <motion.div
@@ -136,6 +139,7 @@ const OfcDetailsHeader: React.FC<OfcDetailsHeaderProps> = ({ cable }) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.25 }}
           >
+            {/* ADDED: Fallback bg-emerald-500 */}
             <div className="p-1.5 rounded-lg bg-emerald-500 bg-linear-to-r from-emerald-500 to-teal-600 text-white shadow">
               <Settings size={16} />
             </div>
