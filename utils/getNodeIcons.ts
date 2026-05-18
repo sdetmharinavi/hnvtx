@@ -127,6 +127,7 @@ export const SVG_CALCULATOR = `
 // Image Paths
 const IMG_MAAN = '/images/switch_image.png';
 const IMG_BTS = '/images/bts_image.png';
+const IMG_BBU = '/images/bts_image_bbu.png';
 const IMG_BTSRL = '/images/bts_rl_image.png';
 const IMG_DEFAULT = '/images/marker-icon.png';
 const IMG_HIGHLIGHT = '/images/marker-icon-highlight.png';
@@ -164,13 +165,25 @@ export const getNodeIcon = (
   if (
     sType.includes('radiolink') ||
     sType.includes('microwave') ||
+    sType.includes('bts (running over radiolink)') ||
     nType.includes('radiolink') ||
+    nType.includes('bts (running over radiolink)') ||
     nType.includes('microwave')
   ) {
     return createSvgDivIcon(IMG_BTSRL, [40, 40], [20, 20], true, rotation);
   }
 
-  // 3. BTS
+  // 3. BBU
+  if (
+    sType.includes('bbu') ||
+    sType.includes('baseband unit') ||
+    nType.includes('bbu') ||
+    nType.includes('baseband unit')
+  ) {
+    return createSvgDivIcon(IMG_BBU, [40, 40], [20, 20], true, rotation);
+  }
+
+  // 4. BTS
   if (
     sType.includes('bts') ||
     sType.includes('base transceiver') ||
@@ -182,7 +195,7 @@ export const getNodeIcon = (
     return createSvgDivIcon(IMG_BTS, [40, 40], [20, 20], true, rotation);
   }
 
-  // 4. Exchanges
+  // 5. Exchanges
   if (
     nType.includes('exchange') ||
     nType.includes('exch.') ||
@@ -194,12 +207,12 @@ export const getNodeIcon = (
     return createSvgDivIcon(SVG_COMPASS, [25, 41], [12, 41], false, rotation);
   }
 
-  // 5. OLT
+  // 6. OLT
   if (sType.includes('olt') || nType.includes('olt')) {
     return createSvgDivIcon(SVG_NETWORK_NODE, [25, 41], [12, 41], false, rotation);
   }
 
-  // 6. Customer
+  // 7. Customer
   if (sType.includes('customer') || nType.includes('customer')) {
     return createSvgDivIcon(IMG_CUSTOMER, [40, 40], [20, 20], true, rotation);
   }
