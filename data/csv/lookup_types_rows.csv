@@ -45,6 +45,7 @@ id,category,name,code,description,sort_order,is_system_default,is_ring_based,sta
 3be43529-ead7-4052-9134-5d7df9d3d800,BUSINESS_AREA_TYPE,Retail Fixed Line,RETAIL,Landline and basic voice services.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 3beb3ea2-55a4-48da-a7fa-f7c9ccf7de79,SYSTEM_CAPACITY,40 Gbps (CPAN B1),40G,"CPAN B1 – 40 Gbps Capacity.Switching fabric	40 Gbps
 Real-world usable	20–25 Gbps",0,false,false,true,2025-11-23 00:00:00+00,2025-11-27 00:00:00+00
+3de2e5ac-729b-4538-be10-049123e7fcda,INVENTORY_CATEGORY,24F ARMORED,24FARMORED,,0,false,false,true,2026-03-21 05:27:56.557456+00,2026-03-21 05:27:56.557456+00
 3de66615-3963-4edc-98ad-a2f08eda5417,PORT_TYPES,STM-16 Port,STM16,2.5 Gbps optical interface.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 3e347a50-468a-4006-b0d2-e1ba90f461ea,BUSINESS_AREA_TYPE,Broadband Services,BB,BSNL FTTH and DSL broadband.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 3e47f912-eea2-47e0-8c55-89f7629a4f31,INVENTORY_CATEGORY,4F OFC,4FOFC,,0,false,false,true,2026-03-14 05:08:47.387887+00,2026-03-14 05:08:47.387887+00
@@ -72,7 +73,9 @@ Protection (ring 1:1 or linear) takes reserved bandwidth",0,false,false,true,202
 53ad10dc-7140-437e-8f18-8f2b4b024d67,LINK_TYPES,SDH 2.5G,SDH2.5G,,0,false,false,true,2026-02-07 07:22:37.471907+00,2026-02-07 07:22:37.471907+00
 53df8996-fb6a-4257-afc8-a5269f23b585,OFC_TYPES,288F Unarmored,288F-U,Two-hundred eighty-eight core unarmored optical fiber cable.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 54d8861d-0df4-4eb6-ab79-21c5843fd12c,OFC_PATH_STATUS,inactive,INACTIVE,The logical path is not currently active.,0,false,false,true,2025-11-17 00:00:00+00,2025-11-27 00:00:00+00
+5598cd31-fe40-4dbf-b9a0-7dd5a7bce720,INVENTORY_CATEGORY,48F ARMOURED,48ARMOURED,,0,false,false,true,2026-03-21 05:27:23.895991+00,2026-03-21 05:27:23.895991+00
 56848c9f-31d9-488e-914d-3c71f0c207e5,INVENTORY_CATEGORY,24F ADSS OFC,24ADSSOFC,,0,false,false,true,2026-03-14 04:58:46.09759+00,2026-03-14 04:58:46.09759+00
+574d4286-85ce-4623-bfab-8861a9e709bf,INVENTORY_CATEGORY,PLB,PLB,,0,false,false,true,2026-03-21 05:28:40.209763+00,2026-03-21 05:28:40.209763+00
 57d0e81e-7df8-47c5-9804-2e66d78b5e77,SYSTEM_TYPES,PON SPLITTER 1:4,SPL1:4,,0,false,false,true,2025-12-27 10:32:34.092503+00,2025-12-27 10:32:34.092503+00
 58129d20-5fcb-4171-b641-80c6aa08e2ba,PORT_TYPES,40 Gigabit Ethernet Port,40GE,Very high-capacity Ethernet port.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 581b175e-98f8-4768-b1be-26c871a8335b,BUSINESS_AREA_TYPE,Enterprise Services,ENT,"Leased lines, MPLS VPN for corporate customers.",0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
@@ -109,6 +112,7 @@ Features: Integrates MUX, OSC, SCC, supports GMPLS, and uses Forward Error Corre
 7874595b-5650-477e-8d88-e4cedbe025e2,SYSTEM_TYPES,CPAN,CPAN,"Converged Packet Aggregation Node acts as an intermediary node between access networks (e.g., BBUs) and MAAN, ensuring seamless traffic aggregation and service hand-off.",0,false,true,true,2025-08-10 00:00:00+00,2025-12-31 05:14:03.677058+00
 79266904-d231-46f0-809b-38e00f8dc2e2,SFP_TYPES,10G SFP+ Single Mode,SFP10GSM,10Gbps optical module for SMF.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 7be2cd28-a794-4f98-b2aa-31ea6c1c6edc,PORT_TYPES,STM-1 Port,STM1,155 Mbps optical interface in SDH.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
+7cb68bb6-9812-4b70-a0ce-0ae5efc71f56,INVENTORY_CATEGORY,96F Unarmoured,96UNARMOURED,,0,false,false,true,2026-03-21 05:26:33.700471+00,2026-03-21 05:26:33.700471+00
 7ea3765b-49d8-4ae0-90da-f6d931f4fd86,LINK_TYPES,FTTH,FTTH,,0,false,false,true,2025-12-30 06:07:32.722391+00,2025-12-30 06:07:32.722391+00
 7f05c55b-9306-46b1-bb96-6e2e481a43fd,RING_TYPES,Unidirectional Path Switched Ring,UPSR,Ring topology with unidirectional traffic flow.,0,false,false,true,2025-08-10 00:00:00+00,2025-11-27 00:00:00+00
 7f20455f-6783-44fc-b4c5-55090ad8e606,SYSTEM_CAPACITY,~78 Mbps per ONT,SPL1:32,INSERTION LOSS ≈ ~15–17 dB,0,false,false,true,2025-12-27 10:53:37.144315+00,2025-12-27 10:56:14.456871+00
