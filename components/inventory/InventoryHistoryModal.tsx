@@ -44,7 +44,7 @@ const StatBox = ({
 interface InventoryHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  item: V_inventory_itemsRowSchema | null; // THE FIX: Accept the full item
+  item: V_inventory_itemsRowSchema | null;
 }
 
 export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistoryModalProps) => {
@@ -89,6 +89,7 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
       key: 'issued_date',
       title: 'Date',
       dataIndex: 'issued_date',
+      sortable: true,
       width: 120,
       editable: canEdit,
       excelFormat: 'date',
@@ -134,7 +135,7 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
     },
     {
       key: 'issued_to',
-      title: 'Issued To / Party',
+      title: 'Party (Source/Dest)',
       dataIndex: 'issued_to',
       width: 180,
       editable: canEdit,
@@ -147,7 +148,7 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
     },
     {
       key: 'issue_reason',
-      title: 'Reason',
+      title: 'Remarks/Reason',
       dataIndex: 'issue_reason',
       width: 200,
       editable: canEdit,
@@ -169,10 +170,11 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
     },
   ];
 
+  const exportFileName = `${(item?.asset_no || item?.name || 'Item').replace(/[^a-zA-Z0-9]/g, '_')}_History`;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`History: ${itemName}`} size='xxl'>
       <div className='p-4 sm:p-6'>
-        {/* THE FIX: Contextual Header with item details */}
         {item && (
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6'>
             <StatBox
@@ -224,19 +226,16 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
         {canEdit && (
           <div className='mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-sm rounded-lg border border-blue-200 dark:border-blue-800'>
             <strong>Admin Mode:</strong> You can click directly on the <strong>Date</strong>,{' '}
-            <strong>Issued To</strong>, or <strong>Reason</strong> cells to edit them. (Quantity
-            edits are disabled to maintain stock accuracy).
+            <strong>Party</strong>, or <strong>Remarks</strong> cells to edit them. (Quantity edits
+            are disabled to maintain stock accuracy).
           </div>
         )}
 
         <div className='border rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden'>
           <DataTable
             autoHideEmptyColumns={true}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             tableName={'v_inventory_transactions_extended' as any}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             data={history as any[]}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             columns={columns as any[]}
             loading={isLoading}
             onCellEdit={handleCellEdit}
@@ -244,9 +243,25 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
               current: 1,
               pageSize: 10,
               total: history.length,
-              onChange: () => {}, // Local pagination inside modal is usually sufficient
+              onChange: () => {},
             }}
             searchable={false}
+            exportable={true}
+            exportOptions={{
+              fileName: exportFileName,
+              // THE FIX: Provide the explicit RPC configuration to bypass RLS limits on direct view selects.
+              rpcConfig: {
+                functionName: 'get_paged_data',
+                parameters: {
+                  p_view_name: 'v_inventory_transactions_extended',
+                  p_limit: 10000,
+                  p_offset: 0,
+                  p_order_by: 'created_at',
+                  p_order_dir: 'desc',
+                  p_filters: { inventory_item_id: itemId || '' },
+                },
+              },
+            }}
           />
         </div>
       </div>
