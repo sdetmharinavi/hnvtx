@@ -362,6 +362,7 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
             data={filteredHistory as any[]}
             columns={columns as any[]}
             loading={isLoading}
+            showColumnsToggle={true}
             onCellEdit={handleCellEdit}
             pagination={{
               current: 1,
