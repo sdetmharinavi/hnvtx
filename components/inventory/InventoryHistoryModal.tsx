@@ -19,7 +19,6 @@ import { FaRupeeSign } from 'react-icons/fa';
 import React, { useMemo, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { FiCalendar, FiSearch, FiX } from 'react-icons/fi';
-import 'react-datepicker/dist/react-datepicker.css';
 
 // Reusable stat box component for the header
 const StatBox = ({
