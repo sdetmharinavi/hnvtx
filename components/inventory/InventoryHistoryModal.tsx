@@ -16,7 +16,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
 import { FaRupeeSign } from 'react-icons/fa';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import DatePicker from 'react-datepicker';
+import { FiCalendar, FiSearch, FiX } from 'react-icons/fi';
+import 'react-datepicker/dist/react-datepicker.css';
 
 // Reusable stat box component for the header
 const StatBox = ({
@@ -41,6 +44,34 @@ const StatBox = ({
   </div>
 );
 
+// Custom Date Input for explicit Range Feedback
+const CustomDateInput = React.forwardRef<
+  HTMLButtonElement,
+  { onClick?: () => void; onClear: () => void; hasValue: boolean; displayText: string }
+>(({ onClick, onClear, hasValue, displayText }, ref) => (
+  <button
+    type="button"
+    className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors w-full sm:w-[280px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+    onClick={onClick}
+    ref={ref}
+  >
+    <FiCalendar className={`shrink-0 ${hasValue ? 'text-blue-500 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+    <span className={`truncate flex-1 text-left ${hasValue ? 'font-medium text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}>
+      {displayText}
+    </span>
+    {hasValue && (
+      <FiX
+        className="w-4 h-4 text-gray-400 hover:text-red-500 shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClear();
+        }}
+      />
+    )}
+  </button>
+));
+CustomDateInput.displayName = 'CustomDateInput';
+
 interface InventoryHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,6 +89,11 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
 
   const supabase = createClient();
   const queryClient = useQueryClient();
+
+  // --- FILTERS STATE ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
+  const [startDate, endDate] = dateRange;
 
   const { mutate: updateTransaction } = useTableUpdate(supabase, 'inventory_transactions', {
     onSuccess: () => {
@@ -83,6 +119,52 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
       data: { [column.dataIndex]: finalValue } as any,
     });
   };
+
+  // --- CLIENT-SIDE FILTERING ---
+  const filteredHistory = useMemo(() => {
+    let result = history;
+
+    // 1. Text Search Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (r) =>
+          r.issued_to?.toLowerCase().includes(q) ||
+          r.issue_reason?.toLowerCase().includes(q) ||
+          r.transaction_type?.toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Date Range Filter
+    if (startDate || endDate) {
+      result = result.filter((r) => {
+        const recordDate = new Date(r.issued_date || r.created_at || '');
+        if (isNaN(recordDate.getTime())) return false;
+        
+        // Strip time for accurate day-level comparison
+        recordDate.setHours(0, 0, 0, 0);
+
+        if (startDate && endDate) {
+          const s = new Date(startDate);
+          s.setHours(0, 0, 0, 0);
+          const e = new Date(endDate);
+          e.setHours(23, 59, 59, 999);
+          return recordDate >= s && recordDate <= e;
+        } else if (startDate) {
+          const s = new Date(startDate);
+          s.setHours(0, 0, 0, 0);
+          return recordDate >= s;
+        } else if (endDate) {
+          const e = new Date(endDate);
+          e.setHours(23, 59, 59, 999);
+          return recordDate <= e;
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [history, searchQuery, startDate, endDate]);
 
   const columns: Column<Row<'v_inventory_transactions_extended'>>[] = [
     {
@@ -172,6 +254,49 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
 
   const exportFileName = `${(item?.asset_no || item?.name || 'Item').replace(/[^a-zA-Z0-9]/g, '_')}_History`;
 
+  // Provide explicit UI formatting for Date Picker
+  const formatDateStr = (d: Date | null) => d ? formatDate(d, { format: 'dd-mm-yyyy' }) : '';
+  const dateDisplayText = startDate && endDate 
+    ? `${formatDateStr(startDate)}  →  ${formatDateStr(endDate)}`
+    : startDate 
+      ? `${formatDateStr(startDate)}  →  Select end date...`
+      : 'Filter by date range...';
+
+  // Custom Toolbar containing our Search & Date Range Picker
+  const customToolbar = (
+    <div className="flex flex-col sm:flex-row gap-3 items-center w-full">
+      <div className="relative w-full sm:flex-1 max-w-sm">
+        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Search party or reason..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="w-full sm:w-auto z-50">
+        <DatePicker
+          selectsRange={true}
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(update: [Date | null, Date | null]) => setDateRange(update)}
+          isClearable={false}
+          dateFormat="dd MMM yyyy"
+          maxDate={new Date()}
+          portalId="root-portal"
+          customInput={
+            <CustomDateInput 
+              onClear={() => setDateRange([null, null])} 
+              hasValue={!!(startDate || endDate)} 
+              displayText={dateDisplayText}
+            />
+          }
+        />
+      </div>
+    </div>
+  );
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`History: ${itemName}`} size='xxl'>
       <div className='p-4 sm:p-6'>
@@ -231,36 +356,28 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
           </div>
         )}
 
-        <div className='border rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden'>
+        <div className='border rounded-lg border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm'>
           <DataTable
             autoHideEmptyColumns={true}
             tableName={'v_inventory_transactions_extended' as any}
-            data={history as any[]}
+            data={filteredHistory as any[]}
             columns={columns as any[]}
             loading={isLoading}
             onCellEdit={handleCellEdit}
             pagination={{
               current: 1,
               pageSize: 10,
-              total: history.length,
+              total: filteredHistory.length,
               onChange: () => {},
             }}
             searchable={false}
+            filterable={false} // Disable default column filters in favor of our custom toolbar
+            customToolbar={customToolbar}
             exportable={true}
             exportOptions={{
               fileName: exportFileName,
-              // THE FIX: Provide the explicit RPC configuration to bypass RLS limits on direct view selects.
-              rpcConfig: {
-                functionName: 'get_paged_data',
-                parameters: {
-                  p_view_name: 'v_inventory_transactions_extended',
-                  p_limit: 10000,
-                  p_offset: 0,
-                  p_order_by: 'created_at',
-                  p_order_dir: 'desc',
-                  p_filters: { inventory_item_id: itemId || '' },
-                },
-              },
+              // We omit rpcConfig here so the DataTable automatically exports the `filteredHistory`
+              // data that the user currently sees on their screen (respecting the Date/Search filters).
             }}
           />
         </div>

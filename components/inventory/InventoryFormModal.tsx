@@ -85,7 +85,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
           asset_no: '',
           name: '',
           description: '',
-          quantity: 1,
+          quantity: 0,
         });
       }
     }
@@ -180,6 +180,7 @@ export const InventoryFormModal: React.FC<InventoryFormModalProps> = ({
           register={register}
           error={errors.quantity}
           required
+          readOnly
         />
         <FormDateInput
           name="purchase_date"

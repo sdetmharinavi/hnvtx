@@ -13,7 +13,7 @@ export function useInventoryHistory(itemId: string | null) {
 
       const { data, error } = await supabase.rpc('get_paged_data', {
         p_view_name: 'v_inventory_transactions_extended',
-        p_limit: 100,
+        p_limit: 5000, // INCREASED: Fetch a large batch so client-side date filtering works perfectly
         p_offset: 0,
         p_filters: { inventory_item_id: itemId },
         p_order_by: 'created_at',
