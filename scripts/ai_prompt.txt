@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all I want that on clicking hidden more services should be visible.
+Let's begin! First of all It is observed tha in inventory page instead of searchable select, simple search dropdown is used which is not good for UX.
