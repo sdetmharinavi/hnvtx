@@ -12,18 +12,22 @@ export const systemFormValidationSchema = systemsInsertSchema
     id: true,
   })
   .extend({
-    // THE FIX: Allow empty string (default state) or valid UUID.
-    // Transform empty string to null for the backend.
+    // THE FIX: Override unique_id to be a string
+    unique_id: z
+      .string()
+      .optional()
+      .nullable()
+      .transform(val => val === '' ? null : val),
+
     ring_id: z
       .union([z.uuid(), z.literal('')])
       .optional()
       .nullable()
       .transform((val) => val || null),
 
-    // ADDED: order_in_ring with transformation to handle empty form inputs
     order_in_ring: ring_based_systemsInsertSchema.shape.order_in_ring
       .transform((val) => {
-        if (val == null) return null; // This catches both null and undefined
+        if (val == null) return null; 
         const stringVal = String(val);
         if (stringVal === '') return null;
         const num = Number(stringVal);
@@ -31,14 +35,12 @@ export const systemFormValidationSchema = systemsInsertSchema
       })
       .optional(),
 
-    // ADDED: System Capacity
     system_capacity_id: z
       .union([z.uuid(), z.literal('')])
       .optional()
       .nullable()
       .transform((val) => val || null),
 
-    // NEW FIELD: Asset Number
     asset_no: z
       .string()
       .optional()

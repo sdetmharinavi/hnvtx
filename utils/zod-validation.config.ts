@@ -212,9 +212,9 @@ export const defaultValidationConfig: ValidationConfig = {
     },
     {
       fieldName: 'unique_id',
-      tableName: 'services',
+      // THE FIX: Removed tableName: 'services' to apply this globally to all tables/views
       validation: 'z.string()',
-      description: 'BTS ID is a nullable string',
+      description: 'Unique ID is a nullable string, not a UUID',
     },
     {
       fieldName: 'updated_sn_name',
