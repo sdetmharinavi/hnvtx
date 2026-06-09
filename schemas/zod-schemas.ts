@@ -1404,7 +1404,6 @@ export const systemsRowSchema = z.object({
   id: z.uuid(),
   ip_address: z.any(),
   is_hub: z.boolean().nullable(),
-  maan_node_id: z.string().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   make: z.string().nullable(),
   node_id: z.uuid(),
@@ -1414,6 +1413,7 @@ export const systemsRowSchema = z.object({
   system_capacity_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_type_id: z.uuid(),
+  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -1424,7 +1424,6 @@ export const systemsInsertSchema = z.object({
   id: z.uuid().optional(),
   ip_address: z.any().optional(),
   is_hub: z.boolean().nullable().optional(),
-  maan_node_id: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   make: z.string().nullable().optional(),
   node_id: z.uuid(),
@@ -1434,6 +1433,7 @@ export const systemsInsertSchema = z.object({
   system_capacity_id: z.uuid().nullable().optional(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   system_type_id: z.uuid(),
+  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1444,7 +1444,6 @@ export const systemsUpdateSchema = z.object({
   id: z.uuid().optional(),
   ip_address: z.any().optional(),
   is_hub: z.boolean().nullable().optional(),
-  maan_node_id: z.string().nullable().optional(),
   maintenance_terminal_id: z.uuid().nullable().optional(),
   make: z.string().nullable().optional(),
   node_id: z.uuid().optional(),
@@ -1454,6 +1453,7 @@ export const systemsUpdateSchema = z.object({
   system_capacity_id: z.uuid().nullable().optional(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   system_type_id: z.uuid().optional(),
+  unique_id: z.uuid().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -2054,7 +2054,6 @@ export const v_systems_completeRowSchema = z.object({
   is_ring_based: z.boolean().nullable(),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
-  maan_node_id: z.string().nullable(),
   maintenance_terminal_id: z.uuid().nullable(),
   make: z.string().nullable(),
   node_id: z.uuid().nullable(),
@@ -2075,6 +2074,7 @@ export const v_systems_completeRowSchema = z.object({
   system_type_code: z.string().nullable(),
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  unique_id: z.uuid().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 

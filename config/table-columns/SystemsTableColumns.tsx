@@ -135,6 +135,18 @@ export const SystemsTableColumns = (data: V_systems_completeRowSchema[]) => {
         width: 150,
         render: (value) => formatDate(value as string, { format: 'dd-mm-yyyy' }),
       },
+      unique_id: {
+        title: 'Network / System ID',
+        dataIndex: 'unique_id',
+        sortable: true,
+        searchable: true,
+        width: 140,
+        render: (value) => (
+            <span className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-300">
+                {(value as string) || '—'}
+            </span>
+        )
+      },
     },
   });
 };

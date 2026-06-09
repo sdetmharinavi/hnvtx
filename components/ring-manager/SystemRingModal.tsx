@@ -32,7 +32,7 @@ const createDefaultFormValues = (): SystemRingFormValues => ({
   system_type_id: '',
   node_id: '',
   asset_no: null,
-  maan_node_id: null,
+  unique_id: null,
   maintenance_terminal_id: null,
   ip_address: null,
   commissioned_on: null,
@@ -132,7 +132,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         setValue('make', selectedSystem.make || '');
         setValue('system_capacity_id', selectedSystem.system_capacity_id || null);
         setValue('maintenance_terminal_id', selectedSystem.maintenance_terminal_id || null);
-        setValue('maan_node_id', selectedSystem.maan_node_id || null);
+        setValue('unique_id', selectedSystem.unique_id || null);
         setValue('remark', selectedSystem.remark || '');
         setValue('commissioned_on', selectedSystem.commissioned_on || null);
       }
@@ -178,7 +178,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         commissioned_on: formData.commissioned_on,
         remark: formData.remark,
         maintenance_terminal_id: formData.maintenance_terminal_id,
-        maan_node_id: formData.maan_node_id,
+        maan_node_id: formData.unique_id, // Map unique_id to maan_node_id for backend compatibility
         system_capacity_id: formData.system_capacity_id,
       };
 

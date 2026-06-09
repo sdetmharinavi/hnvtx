@@ -31,6 +31,7 @@ export const systemDetailsConfig = {
         { key: 'system_type_name', label: 'System Type', icon: <FiCpu size={18} /> },
         { key: 's_no', label: 'Serial Number', icon: <FiInfo size={18} /> },
         { key: 'asset_no', label: 'Asset Number', icon: <FiHash size={18} /> }, // Added
+        { key: 'unique_id', label: 'Network / System ID', icon: <FiHash size={18} /> }, // Added
         {
           key: 'ip_address',
           label: 'IP Address',

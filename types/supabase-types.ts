@@ -996,6 +996,100 @@ export type Database = {
         }
         Relationships: []
       }
+      webauthn_challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string
+          expires_at: string
+          id: string
+          session_data: Json
+          user_id: string | null
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          session_data: Json
+          user_id?: string | null
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_data?: Json
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webauthn_challenges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webauthn_credentials: {
+        Row: {
+          aaguid: string | null
+          attestation_type: string
+          backed_up: boolean
+          backup_eligible: boolean
+          created_at: string
+          credential_id: string
+          friendly_name: string
+          id: string
+          last_used_at: string | null
+          public_key: string
+          sign_count: number
+          transports: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aaguid?: string | null
+          attestation_type?: string
+          backed_up?: boolean
+          backup_eligible?: boolean
+          created_at?: string
+          credential_id: string
+          friendly_name?: string
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          sign_count?: number
+          transports?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aaguid?: string | null
+          attestation_type?: string
+          backed_up?: boolean
+          backup_eligible?: boolean
+          created_at?: string
+          credential_id?: string
+          friendly_name?: string
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
+          sign_count?: number
+          transports?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webauthn_credentials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3715,7 +3809,6 @@ export type Database = {
           id: string
           ip_address: unknown
           is_hub: boolean | null
-          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
@@ -3725,6 +3818,7 @@ export type Database = {
           system_capacity_id: string | null
           system_name: string | null
           system_type_id: string
+          unique_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3734,7 +3828,6 @@ export type Database = {
           id?: string
           ip_address?: unknown
           is_hub?: boolean | null
-          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id: string
@@ -3744,6 +3837,7 @@ export type Database = {
           system_capacity_id?: string | null
           system_name?: string | null
           system_type_id: string
+          unique_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3753,7 +3847,6 @@ export type Database = {
           id?: string
           ip_address?: unknown
           is_hub?: boolean | null
-          maan_node_id?: string | null
           maintenance_terminal_id?: string | null
           make?: string | null
           node_id?: string
@@ -3763,6 +3856,7 @@ export type Database = {
           system_capacity_id?: string | null
           system_name?: string | null
           system_type_id?: string
+          unique_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -5718,7 +5812,6 @@ export type Database = {
           is_ring_based: boolean | null
           latitude: number | null
           longitude: number | null
-          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string | null
@@ -5739,6 +5832,7 @@ export type Database = {
           system_type_code: string | null
           system_type_id: string | null
           system_type_name: string | null
+          unique_id: string | null
           updated_at: string | null
         }
         Relationships: [
@@ -6425,6 +6519,17 @@ export type Database = {
         Args: { p_fiber_id: string }
         Returns: undefined
       }
+      restock_inventory_item: {
+        Args: {
+          p_date?: string
+          p_item_id: string
+          p_quantity: number
+          p_reason: string
+          p_source: string
+          p_unit_cost?: number
+        }
+        Returns: Json
+      }
       restore_diagrams_backup: {
         Args: { p_files: Json; p_folders: Json }
         Returns: Json
@@ -6607,7 +6712,6 @@ export type Database = {
           p_id?: string
           p_ip_address?: unknown
           p_is_hub: boolean
-          p_maan_node_id?: string
           p_maintenance_terminal_id?: string
           p_make?: string
           p_node_id: string
@@ -6618,6 +6722,7 @@ export type Database = {
           p_system_capacity_id?: string
           p_system_name: string
           p_system_type_id: string
+          p_unique_id?: string
         }
         Returns: {
           asset_no: string | null
@@ -6626,7 +6731,6 @@ export type Database = {
           id: string
           ip_address: unknown
           is_hub: boolean | null
-          maan_node_id: string | null
           maintenance_terminal_id: string | null
           make: string | null
           node_id: string
@@ -6636,6 +6740,7 @@ export type Database = {
           system_capacity_id: string | null
           system_name: string | null
           system_type_id: string
+          unique_id: string | null
           updated_at: string | null
         }[]
         SetofOptions: {

@@ -1,3 +1,4 @@
+// path: components/systems/SystemModal.tsx
 'use client';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -58,7 +59,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   const [step, setStep] = useState(1);
   const supabase = createClient();
 
-  // --- Data Fetching ---
   const { options: systemTypeOptions, originalData: systemTypesRaw } =
     useLookupTypeOptions('SYSTEM_TYPES');
   const { options: capacityOptions } = useLookupTypeOptions('SYSTEM_CAPACITY');
@@ -67,7 +67,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   const { options: ringOptions } = useActiveRingOptions();
   const [inferredTerminalOption, setInferredTerminalOption] = useState<Option | null>(null);
 
-  // --- Use Form Modal Hook ---
   const { form, isEditMode } = useFormModal<SystemFormValues, V_systems_completeRowSchema>({
     isOpen,
     schema: systemModalFormSchema,
@@ -77,7 +76,7 @@ export const SystemModal: FC<SystemModalProps> = ({
       system_type_id: '',
       system_capacity_id: '',
       node_id: '',
-      maan_node_id: null,
+      unique_id: null,
       maintenance_terminal_id: null,
       ip_address: '',
       commissioned_on: null,
@@ -95,13 +94,13 @@ export const SystemModal: FC<SystemModalProps> = ({
       system_type_id: record.system_type_id || '',
       system_capacity_id: record.system_capacity_id || '',
       node_id: record.node_id || '',
-      maan_node_id: record.maan_node_id || null,
+      unique_id: (record as any).unique_id || null,
       maintenance_terminal_id: record.maintenance_terminal_id,
       ip_address: record.ip_address ? record.ip_address.split('/')[0] : '',
       commissioned_on: record.commissioned_on || null,
       remark: record.remark || '',
       s_no: record.s_no || '',
-      asset_no: record.asset_no || '', // THE FIX: Removed "as any" cast
+      asset_no: record.asset_no || '',
       status: record.status ?? true,
       ring_id: record.ring_id ?? '',
       order_in_ring: record.order_in_ring ?? 0,
@@ -123,7 +122,6 @@ export const SystemModal: FC<SystemModalProps> = ({
   const selectedSystemTypeId = watch('system_type_id');
   const selectedNodeId = watch('node_id');
 
-  // --- Derived State ---
   const isRingBasedSystem = useMemo(() => {
     if (!systemTypesRaw || !selectedSystemTypeId) return false;
     const typeRecord = (systemTypesRaw as unknown as Lookup_typesRowSchema[]).find(
@@ -144,7 +142,17 @@ export const SystemModal: FC<SystemModalProps> = ({
 
   const needsStep2 = isRingBasedSystem || isSdhSystem;
 
-  // --- Effects ---
+  // DYNAMIC LABEL LOGIC FOR UNIQUE ID
+  const uniqueIdLabel = useMemo(() => {
+    if (!selectedSystemTypeLabel) return 'Network ID';
+    const label = selectedSystemTypeLabel.toUpperCase();
+    if (label.includes('MAAN')) return 'MAAN Node ID';
+    if (label.includes('BTS')) return 'BTS ID';
+    if (label.includes('BBU')) return 'BBU ID';
+    if (label.includes('CPAN')) return 'CPAN ID';
+    if (label.includes('OLT')) return 'OLT ID';
+    return 'System / Site ID';
+  }, [selectedSystemTypeLabel]);
 
   useEffect(() => {
     if (isOpen) {
@@ -202,7 +210,6 @@ export const SystemModal: FC<SystemModalProps> = ({
     return maintenanceTerminalOptions;
   }, [maintenanceTerminalOptions, inferredTerminalOption]);
 
-  // --- Submit Handlers ---
   const onValidSubmit: SubmitHandler<SystemFormValues> = useCallback(
     (formData) => {
       const payload = formData as unknown as SystemFormData;
@@ -330,15 +337,13 @@ export const SystemModal: FC<SystemModalProps> = ({
                 error={errors.node_id}
                 required
               />
-              {(selectedSystemTypeLabel.includes('MAAN') ||
-                selectedSystemTypeLabel.includes('Multi-Access Aggregation Node')) && (
-                <FormInput
-                  name='maan_node_id'
-                  label='MAAN Node ID'
-                  register={register}
-                  error={errors.maan_node_id}
-                />
-              )}
+              <FormInput
+                name='unique_id'
+                label={uniqueIdLabel}
+                register={register}
+                error={errors.unique_id as any}
+                placeholder={`Enter ${uniqueIdLabel}`}
+              />
               <FormSearchableSelect
                 name='maintenance_terminal_id'
                 label='Maintenance Terminal'

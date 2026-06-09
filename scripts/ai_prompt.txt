@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all It is observed tha in inventory page instead of searchable select, simple search dropdown is used which is not good for UX.
+Let's begin! First of all It is observed tha in nodes page there is no unique_node_id, lets add that column to the nodes table and also update form as well as information to be displayed.
