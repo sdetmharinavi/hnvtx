@@ -94,7 +94,7 @@ export function useSystemExcelUpload(
           p_node_id: (processedData.node_id as string) ?? '',
           p_status: (processedData.status as boolean) ?? true,
           p_is_hub: (processedData.is_hub as boolean) ?? false,
-          p_maan_node_id: (processedData.maan_node_id as string | null) || undefined,
+          p_unique_id: (processedData.unique_id as string | null) || undefined,
           p_ip_address: processedData.ip_address
             ? ((processedData.ip_address as string).split('/')[0] as string | null) || undefined
             : undefined,

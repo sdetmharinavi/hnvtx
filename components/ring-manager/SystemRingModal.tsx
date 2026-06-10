@@ -178,7 +178,7 @@ export const SystemRingModal: FC<SystemRingModalProps> = ({
         commissioned_on: formData.commissioned_on,
         remark: formData.remark,
         maintenance_terminal_id: formData.maintenance_terminal_id,
-        maan_node_id: formData.unique_id, // Map unique_id to maan_node_id for backend compatibility
+        unique_id: formData.unique_id, // Map unique_id to maan_node_id for backend compatibility
         system_capacity_id: formData.system_capacity_id,
       };
 
