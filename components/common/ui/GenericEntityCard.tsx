@@ -74,8 +74,6 @@ export function GenericEntityCard<T>({
 }: GenericEntityCardProps<T>) {
   const isAvatarStyle = !!initials;
   const [isInteracting, setIsInteracting] = useState(false);
-
-  // THE FIX: Track timeout reference to prevent memory leaks if unmounted
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup timeout on unmount
@@ -91,11 +89,8 @@ export function GenericEntityCard<T>({
     if (!onView || isInteracting) return;
 
     setIsInteracting(true);
-
-    // Trigger the parent action
     onView(entity);
 
-    // Safety fallback (ensuring we don't leak memory)
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       setIsInteracting(false);
@@ -104,19 +99,47 @@ export function GenericEntityCard<T>({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onView && (e.key === 'Enter' || e.key === ' ')) {
+      // Guard keyboard interaction
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('select') ||
+        target.closest('[data-prevent-card-click="true"]') ||
+        target.classList.contains('no-card-click')
+      ) {
+        return;
+      }
+
       e.preventDefault();
       handleViewAction();
     }
   };
 
   const handleClick = (e: React.MouseEvent) => {
+    // Check if the click originated from an interactive element
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('a') ||
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('select') ||
+      target.closest('[data-prevent-card-click="true"]') ||
+      target.classList.contains('no-card-click')
+    ) {
+      // Do not trigger parent details modal view if clicking an interactive element
+      return;
+    }
+
     e.stopPropagation();
     if (onView) {
       handleViewAction();
     }
   };
 
-  // Helper function to render data item value
   const renderValue = (item: EntityCardItem) => {
     const value = item.value;
 
@@ -129,7 +152,6 @@ export function GenericEntityCard<T>({
     if (typeof value === 'string' || typeof value === 'number') {
       const stringValue = String(value);
 
-      // Handle coordinates specially
       if (
         item.label.toLowerCase().includes('coordinate') ||
         item.label.toLowerCase() === 'lat/long'
@@ -138,7 +160,7 @@ export function GenericEntityCard<T>({
         if (coords.length === 2) {
           const [lat, long] = coords;
           return (
-            <div className='flex flex-col gap-0.5'>
+            <div className='flex flex-col gap-0.5' data-prevent-card-click="true">
               <span className='text-sm font-semibold text-blue-900 dark:text-blue-100'>
                 Lat: {lat.trim()}
               </span>
@@ -176,7 +198,7 @@ export function GenericEntityCard<T>({
     }
 
     return (
-      <div className='text-blue-950 dark:text-blue-50 font-semibold min-w-0 wrap-break-words'>
+      <div className='text-blue-950 dark:text-blue-50 font-semibold min-w-0 wrap-break-words' data-prevent-card-click="true">
         {value}
       </div>
     );
@@ -291,7 +313,7 @@ export function GenericEntityCard<T>({
                 <TruncateTooltip text={title} />
               </h3>
               {subBadge && (
-                <div className='flex flex-wrap gap-1.5 mt-1.5' role='list'>
+                <div className='flex flex-wrap gap-1.5 mt-1.5' role='list' data-prevent-card-click="true">
                   {subBadge}
                 </div>
               )}
@@ -324,11 +346,11 @@ export function GenericEntityCard<T>({
             >
               {subtitle || '—'}
             </p>
-            {subBadge && <div role='list'>{subBadge}</div>}
+            {subBadge && <div role='list' data-prevent-card-click="true">{subBadge}</div>}
           </div>
         )}
 
-        {customHeader && <div className='min-w-0'>{customHeader}</div>}
+        {customHeader && <div className='min-w-0' data-prevent-card-click="true">{customHeader}</div>}
 
         <div className='space-y-2 min-w-0' role='list'>
           {dataItems
@@ -407,7 +429,7 @@ export function GenericEntityCard<T>({
             })}
         </div>
 
-        {customFooter && <div className='min-w-0 pt-2'>{customFooter}</div>}
+        {customFooter && <div className='min-w-0 pt-2' data-prevent-card-click="true">{customFooter}</div>}
       </div>
 
       {/* Footer Actions */}
