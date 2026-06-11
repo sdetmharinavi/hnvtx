@@ -27,6 +27,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       onClear,
       id,
       value,
+      placeholder = ' ', // Default to a spacer to trigger :placeholder-shown natively when empty
       ...props
     },
     ref,
@@ -34,7 +35,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const generatedId = useId();
     const inputId = id || generatedId;
     const innerRef = useRef<HTMLInputElement | null>(null);
-    const [liveHasValue, setLiveHasValue] = useState<boolean>(false);
+
+    // Track clear button visibility
+    const [showClearBtn, setShowClearBtn] = useState(false);
 
     // Merge forwarded ref with local ref
     const setRefs = (el: HTMLInputElement | null) => {
@@ -44,38 +47,37 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
     };
 
-    // Initialize hasValue logic
-    useEffect(() => {
+    // Calculate clear button visibility
+    const syncClearButton = () => {
       const val = value !== undefined ? value : (innerRef.current?.value ?? '');
-      setLiveHasValue(String(val).length > 0);
-    }, [value]);
+      setShowClearBtn(!!clearable && !disabled && !isLoading && String(val).length > 0);
+    };
+
+    useEffect(() => {
+      syncClearButton();
+    }, [value, clearable, disabled, isLoading]);
 
     const handleClear = (e: React.MouseEvent) => {
-      e.preventDefault(); // Prevent default to stop focus loss fighting
-      e.stopPropagation(); // Prevent event bubbling
+      e.preventDefault();
+      e.stopPropagation();
 
-      // Create synthetic event for onChange handlers expecting an event
       const syntheticEvent = {
         target: { value: '' },
         currentTarget: { value: '' },
       } as React.ChangeEvent<HTMLInputElement>;
 
-      // Trigger standard change handler
       props.onChange?.(syntheticEvent);
-
-      // Trigger custom clear handler
       onClear?.();
 
-      // Handle uncontrolled inputs
       if (innerRef.current) {
         innerRef.current.value = '';
         innerRef.current.focus();
       }
-      setLiveHasValue(false);
+      setShowClearBtn(false);
     };
 
-    const safeValue = value === undefined ? undefined : (value ?? '');
-    const shouldShowClear = clearable && !disabled && !isLoading && liveHasValue;
+    // Guarantee a valid non-empty placeholder for :placeholder-shown support
+    const finalPlaceholder = placeholder && placeholder.trim() !== '' ? placeholder : ' ';
 
     const inputClasses = clsx(
       'rounded-lg border transition-all duration-200 font-medium w-full',
@@ -83,15 +85,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       'placeholder:text-gray-400 dark:placeholder-gray-500',
       'px-4 py-2.5 text-base',
       leftIcon && 'pl-11',
-      shouldShowClear && 'pr-11', // Ensure padding for clear button
+      showClearBtn && 'pr-11',
       className,
       error
         ? 'border-red-500 focus:ring-red-500 dark:border-red-600'
         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:ring-blue-500',
-      (disabled || isLoading) && 'bg-gray-100 dark:bg-gray-900 text-gray-500 cursor-not-allowed',
-      !(disabled || isLoading) && liveHasValue && 'bg-gray-50 dark:bg-gray-800!',
-      !(disabled || isLoading) && !liveHasValue && 'bg-white dark:bg-gray-900',
-      !(disabled || isLoading) && 'text-gray-900 dark:text-gray-100',
+
+      // Pure CSS Background States
+      // Base state is filled (has text). When empty (placeholder is shown), change to white/gray-900.
+      'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100',
+      'placeholder-shown:bg-white dark:placeholder-shown:bg-gray-900',
+
+      // Disabled / Loading state overrides
+      (disabled || isLoading) && 'bg-gray-100! dark:bg-gray-900! text-gray-500! cursor-not-allowed',
     );
 
     return (
@@ -107,21 +113,20 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           type={type}
           className={inputClasses}
           disabled={disabled || isLoading}
-          value={safeValue}
+          value={value === undefined ? undefined : (value ?? '')}
+          placeholder={finalPlaceholder}
           onChange={(e) => {
-            setLiveHasValue(e.currentTarget.value.length > 0);
+            setShowClearBtn(!!clearable && !disabled && !isLoading && e.currentTarget.value.length > 0);
             props.onChange?.(e);
           }}
           aria-invalid={!!error}
           {...props}
         />
-        {shouldShowClear && (
+        {showClearBtn && (
           <button
             type='button'
             onClick={handleClear}
-            // Add onMouseDown preventDefault to ensure click registers before blur
             onMouseDown={(e) => e.preventDefault()}
-            // Added z-10 and pointer-events-auto
             className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10 cursor-pointer pointer-events-auto'
             aria-label='Clear input'
           >

@@ -7,15 +7,16 @@ export async function POST(req: NextRequest) {
   // 10s timeout for the external API
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-  // Define variables in outer scope to be accessible in catch block for fallback
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let a: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let b: any;
+  // Initialize variables safely in the outer scope
+  let latA: number | null = null;
+  let lngA: number | null = null;
+  let latB: number | null = null;
+  let lngB: number | null = null;
 
   try {
     const body = await req.text();
     if (!body) {
+      clearTimeout(timeoutId);
       return NextResponse.json({ error: 'Request body is empty' }, { status: 400 });
     }
 
@@ -24,25 +25,21 @@ export async function POST(req: NextRequest) {
     try {
       parsedBody = JSON.parse(body);
     } catch {
+      clearTimeout(timeoutId);
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Assign to outer variables
-    ({ a, b } = parsedBody);
+    const { a, b } = parsedBody;
 
     // Extract coordinates supporting both short lat/long and full latitude/longitude schemas
-    const latA = a?.lat ?? a?.latitude;
-    const lngA = a?.long ?? a?.longitude ?? a?.lng;
-    const latB = b?.lat ?? b?.latitude;
-    const lngB = b?.long ?? b?.longitude ?? b?.lng;
+    latA = a?.lat ?? a?.latitude ?? null;
+    lngA = a?.long ?? a?.longitude ?? a?.lng ?? null;
+    latB = b?.lat ?? b?.latitude ?? null;
+    lngB = b?.long ?? b?.longitude ?? b?.lng ?? null;
 
     // Validate coordinates
-    if (
-      latA === undefined || latA === null ||
-      lngA === undefined || lngA === null ||
-      latB === undefined || latB === null ||
-      lngB === undefined || lngB === null
-    ) {
+    if (latA === null || lngA === null || latB === null || lngB === null) {
+      clearTimeout(timeoutId);
       return NextResponse.json({ error: 'Missing coordinates' }, { status: 400 });
     }
 
@@ -52,6 +49,7 @@ export async function POST(req: NextRequest) {
     if (!ORS_API_KEY) {
       console.warn('ORS API key missing. Using fallback distance.');
       const dist = haversineDistance(latA, lngA, latB, lngB).toFixed(2);
+      clearTimeout(timeoutId);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
@@ -94,18 +92,8 @@ export async function POST(req: NextRequest) {
 
     console.warn('ORS Fetch failed or timed out, falling back to Haversine:', error);
 
-    const latA = a?.lat ?? a?.latitude;
-    const lngA = a?.long ?? a?.longitude ?? a?.lng;
-    const latB = b?.lat ?? b?.latitude;
-    const lngB = b?.long ?? b?.longitude ?? b?.lng;
-
-    // Fallback if we have valid coordinates
-    if (
-      latA !== undefined && latA !== null &&
-      lngA !== undefined && lngA !== null &&
-      latB !== undefined && latB !== null &&
-      lngB !== undefined && lngB !== null
-    ) {
+    // Fallback if we have valid coordinates extracted in scope
+    if (latA !== null && lngA !== null && latB !== null && lngB !== null) {
       const dist = haversineDistance(latA, lngA, latB, lngB).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }

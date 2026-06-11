@@ -5,7 +5,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { Button } from '@/components/common/ui/Button';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, ArrowUpRight } from 'lucide-react';
 import { FiEdit2, FiTrash2, FiInfo } from 'react-icons/fi';
 import { IconType } from 'react-icons';
 import { LoadingSpinner } from '@/components/common/ui/LoadingSpinner';
@@ -211,6 +211,7 @@ export function GenericEntityCard<T>({
       tabIndex={onView ? 0 : undefined}
       onKeyDown={handleKeyDown}
       aria-label={onView ? `View details for ${title}` : undefined}
+      aria-haspopup={onView ? 'dialog' : undefined}
       className={`
         bg-white dark:bg-gray-800
         rounded-xl
@@ -236,7 +237,12 @@ export function GenericEntityCard<T>({
       {/* Header Section */}
       {isAvatarStyle ? (
         <div className='relative h-20 bg-blue-50 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:bg-gray-800 dark:from-gray-800 dark:via-blue-900/20 dark:to-purple-900/20'>
-          <div className='absolute top-2.5 right-2.5 z-10'>
+          <div className='absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5'>
+            {onView && (
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-white/80 dark:bg-gray-900/80 shadow-xs border border-gray-200 dark:border-gray-700 text-gray-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5'>
+                <ArrowUpRight className='h-3.5 w-3.5' />
+              </span>
+            )}
             <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
           <div className='absolute -bottom-10 left-1/2 transform -translate-x-1/2'>
@@ -279,11 +285,16 @@ export function GenericEntityCard<T>({
             aria-hidden='true'
           />
 
-          <div className='absolute top-3.5 right-3.5 z-10'>
+          <div className='absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5'>
+            {onView && (
+              <span className='flex h-6 w-6 items-center justify-center rounded-full bg-white/80 dark:bg-gray-900/80 shadow-xs border border-gray-200 dark:border-gray-700 text-gray-500 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5'>
+                <ArrowUpRight className='h-3.5 w-3.5' />
+              </span>
+            )}
             <StatusBadge status={status ?? false} showStatusLabel={showStatusLabel} />
           </div>
 
-          <div className='flex items-start gap-3 pr-14'>
+          <div className='flex items-start gap-3 pr-20'>
             {headerIcon && (
               <div className='relative shrink-0 group/icon'>
                 <div

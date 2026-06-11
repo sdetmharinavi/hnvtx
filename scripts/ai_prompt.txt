@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all Lets improve the project so that user can better analyze the data for better report creation/analysis
+Let's begin! First of all Lets improve the project's UX
