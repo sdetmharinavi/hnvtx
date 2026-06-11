@@ -12,7 +12,7 @@ import {
 } from '@/hooks/database/queries-type-helpers';
 import { processExcelData } from './excel-helpers';
 import { Ofc_cablesInsertSchema } from '@/schemas/zod-schemas';
-import { invalidateRelatedCaches } from '@/hooks/database/cache-performance'; // ADDED
+import { invalidateRelatedCaches } from '@/hooks/database/cache-performance';
 
 export interface OfcCableUploadOptions {
   file: File;
@@ -32,7 +32,7 @@ export function useOfcCableExcelUpload(
 
       toast.info('Processing Excel file & fetching references...');
 
-      // 1. Process Data using Generic Helper
+      // 1. Process Data using Generic Helper (returns Record<string, unknown>[])
       const { validRecords, validationErrors, processingLogs, skippedRows, errorCount } =
         await processExcelData(file, columns);
 
@@ -40,7 +40,7 @@ export function useOfcCableExcelUpload(
         successCount: 0,
         errorCount: errorCount,
         totalRows: validRecords.length + errorCount,
-        errors:[],
+        errors: [],
         processingLogs,
         validationErrors,
         skippedRows,
@@ -61,7 +61,7 @@ export function useOfcCableExcelUpload(
       }
 
       // 2. Fetch Reference Dictionaries (Nodes, Lookups, Areas)
-      const[
+      const [
         { data: nodes },
         { data: lookups },
         { data: areas }
@@ -86,19 +86,26 @@ export function useOfcCableExcelUpload(
       const areaMap = new Map<string, string>();
       areas?.forEach(a => a.name && areaMap.set(a.name.trim().toLowerCase(), a.id));
 
-      // 3. Map Data to DB Schema
-      const recordsToProcess: Ofc_cablesInsertSchema[] =[];
+      // 3. Map Data to DB Schema with explicit type assertions
+      const recordsToProcess: Ofc_cablesInsertSchema[] = [];
 
       for (let i = 0; i < validRecords.length; i++) {
         const record = validRecords[i];
-        const rowValidationErrors: ValidationError[] =[];
+        const rowValidationErrors: ValidationError[] = [];
 
-        // Name Resolution
-        const snId = record.sn_id || (typeof record.sn_name === 'string' ? nodeMap.get(record.sn_name.trim().toLowerCase()) : undefined);
-        const enId = record.en_id || (typeof record.en_name === 'string' ? nodeMap.get(record.en_name.trim().toLowerCase()) : undefined);
-        const typeId = record.ofc_type_id || (typeof record.ofc_type_name === 'string' ? typeMap.get(record.ofc_type_name.trim().toLowerCase()) : undefined);
-        const ownerId = record.ofc_owner_id || (typeof record.ofc_owner_name === 'string' ? ownerMap.get(record.ofc_owner_name.trim().toLowerCase()) : undefined);
-        const areaId = record.maintenance_terminal_id || (typeof record.maintenance_area_name === 'string' ? areaMap.get(record.maintenance_area_name.trim().toLowerCase()) : undefined);
+        // Cast unknown fields safely before comparison or lookup
+        const snName = typeof record.sn_name === 'string' ? record.sn_name : '';
+        const enName = typeof record.en_name === 'string' ? record.en_name : '';
+        const ofcTypeName = typeof record.ofc_type_name === 'string' ? record.ofc_type_name : '';
+        const ofcOwnerName = typeof record.ofc_owner_name === 'string' ? record.ofc_owner_name : '';
+        const mntAreaName = typeof record.maintenance_area_name === 'string' ? record.maintenance_area_name : '';
+
+        // Name Resolution using safe typecasted variables
+        const snId = (record.sn_id as string) || (snName ? nodeMap.get(snName.trim().toLowerCase()) : undefined);
+        const enId = (record.en_id as string) || (enName ? nodeMap.get(enName.trim().toLowerCase()) : undefined);
+        const typeId = (record.ofc_type_id as string) || (ofcTypeName ? typeMap.get(ofcTypeName.trim().toLowerCase()) : undefined);
+        const ownerId = (record.ofc_owner_id as string) || (ofcOwnerName ? ownerMap.get(ofcOwnerName.trim().toLowerCase()) : undefined);
+        const areaId = (record.maintenance_terminal_id as string) || (mntAreaName ? areaMap.get(mntAreaName.trim().toLowerCase()) : undefined);
 
         if (!snId) rowValidationErrors.push({ rowIndex: i + 2, column: 'sn_name', value: record.sn_name, error: 'Start Node not found in database' });
         if (!enId) rowValidationErrors.push({ rowIndex: i + 2, column: 'en_name', value: record.en_name, error: 'End Node not found in database' });
@@ -109,7 +116,7 @@ export function useOfcCableExcelUpload(
           uploadResult.errorCount++;
           uploadResult.errors.push({
             rowIndex: i + 2,
-            data: record,
+            data: record as Record<string, unknown>,
             error: rowValidationErrors.map((e) => e.error).join('; ')
           });
           continue;
@@ -170,7 +177,6 @@ export function useOfcCableExcelUpload(
       return uploadResult;
     },
     onSuccess: (result, variables) => {
-      // THE FIX: Master invalidator used here
       if (result.successCount > 0) {
         invalidateRelatedCaches(queryClient, 'ofc_cables');
       }
