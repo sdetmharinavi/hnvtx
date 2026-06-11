@@ -3,10 +3,7 @@
 import { z } from 'zod';
 import {
   v_ofc_cables_completeRowSchema,
-  cable_segmentsRowSchema,
-  junction_closuresRowSchema,
   fiber_splicesRowSchema,
-  nodesRowSchema,
 } from '@/schemas/zod-schemas';
 import { JsonSchema } from '@/types/custom';
 
@@ -109,13 +106,13 @@ export const cableRouteSchema = z.object({
   asset_no: z.string().nullable(),
   transnet_id: z.string().nullable(),
   remark: z.string().nullable().optional(),
-  
+
   // ID fields
   sn_id: z.uuid().nullable(),
   en_id: z.uuid().nullable(),
   sn_name: z.string().nullable(),
   en_name: z.string().nullable(),
-  
+
   // Timestamps
   commissioned_on: dateStringSchema,
   created_at: dateStringSchema,
@@ -124,15 +121,15 @@ export const cableRouteSchema = z.object({
 
   // Status
   status: z.boolean().nullable().optional(),
-  
+
   // Derived/Joined fields
   start_site: siteSchema.optional(),
   end_site: siteSchema.optional(),
   evolution_status: z.enum(['simple', 'with_jcs', 'fully_segmented']).optional(),
-  
+
   // Handle linked_cables jsonb safely
   linked_cables: JsonSchema.nullable().optional(),
-}).loose(); // Allow extra fields from the view without crashing
+}).passthrough(); // Allow extra fields from the view without crashing
 
 export type CableRoute = z.infer<typeof cableRouteSchema>;
 
@@ -142,7 +139,7 @@ export const jointBoxSchema = z.object({
   node_id: z.uuid(),
   ofc_cable_id: z.uuid(),
   position_km: numberSchema,
-  
+
   // Joined/Derived
   node: z.object({ name: z.string().nullable() }).nullable().optional(),
   status: z.enum(['existing', 'planned']).optional(),
@@ -150,10 +147,10 @@ export const jointBoxSchema = z.object({
     position_on_route: z.number(),
     name: z.string().optional(),
   }).optional(),
-  
+
   created_at: dateStringSchema,
   updated_at: dateStringSchema,
-}).loose();
+}).passthrough();
 
 export type JointBox = z.infer<typeof jointBoxSchema>;
 
@@ -168,10 +165,10 @@ export const cableSegmentSchema = z.object({
   end_node_type: z.string(),
   distance_km: z.number(),
   fiber_count: z.number(),
-  
+
   created_at: dateStringSchema,
   updated_at: dateStringSchema,
-}).loose();
+}).passthrough();
 
 export type CableSegment = z.infer<typeof cableSegmentSchema>;
 
@@ -179,7 +176,7 @@ export type CableSegment = z.infer<typeof cableSegmentSchema>;
 export const fiberSpliceSchema = fiber_splicesRowSchema.extend({
   created_at: dateStringSchema,
   updated_at: dateStringSchema,
-}).loose();
+}).passthrough();
 
 export type FiberSplice = z.infer<typeof fiberSpliceSchema>;
 
@@ -220,7 +217,6 @@ export const pathToUpdateSchema = z.object({
 export type PathToUpdate = z.infer<typeof pathToUpdateSchema>;
 
 // --- BSNL Dashboard Search Filters ---
-// MODIFIED: type, region, and nodeType can now be string OR array of strings
 export const bsnlSearchFiltersSchema = z.object({
   query: z.string().optional(),
   status: z.string().optional(),
@@ -241,7 +237,6 @@ export const linkedCableSchema = z.object({
 export type LinkedCable = z.infer<typeof linkedCableSchema>;
 
 // Extended Schema to include the JSONB aggregated column
-// Use the redefined cableRouteSchema for consistency instead of extending the generated one again
 export const extendedOfcCableSchema = cableRouteSchema.extend({
   linked_cables: z.array(linkedCableSchema).nullable().optional(),
 });

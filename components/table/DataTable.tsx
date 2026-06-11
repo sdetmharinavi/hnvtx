@@ -1,4 +1,5 @@
-// components/table/DataTable.tsx
+// path: components/table/DataTable.tsx
+
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useTableExcelDownload, useRPCExcelDownload } from '@/hooks/database/excel-queries';
@@ -401,6 +402,7 @@ export function DataTable<T extends PublicTableOrViewName>({
       customStyles: exportOptions?.customStyles,
       columns: columnsToExport,
       filters: mergedFilters,
+      summaryRows: exportOptions?.summaryRows,
     };
 
     try {
@@ -577,7 +579,6 @@ export function DataTable<T extends PublicTableOrViewName>({
                       />
                     </div>
                   )}
-                  {/* THE FIX: Increased padding left from pl-8 to pl-10 when selectable is true */}
                   <div className={selectable ? 'pl-10' : ''}>
                     {renderMobileItem(record, renderActions(record, idx))}
                   </div>

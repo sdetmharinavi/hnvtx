@@ -30,8 +30,19 @@ export async function POST(req: NextRequest) {
     // Assign to outer variables
     ({ a, b } = parsedBody);
 
+    // Extract coordinates supporting both short lat/long and full latitude/longitude schemas
+    const latA = a?.lat ?? a?.latitude;
+    const lngA = a?.long ?? a?.longitude ?? a?.lng;
+    const latB = b?.lat ?? b?.latitude;
+    const lngB = b?.long ?? b?.longitude ?? b?.lng;
+
     // Validate coordinates
-    if (!a?.lat || !a?.long || !b?.lat || !b?.long) {
+    if (
+      latA === undefined || latA === null ||
+      lngA === undefined || lngA === null ||
+      latB === undefined || latB === null ||
+      lngB === undefined || lngB === null
+    ) {
       return NextResponse.json({ error: 'Missing coordinates' }, { status: 400 });
     }
 
@@ -40,7 +51,7 @@ export async function POST(req: NextRequest) {
     // If no key, fallback immediately to Haversine
     if (!ORS_API_KEY) {
       console.warn('ORS API key missing. Using fallback distance.');
-      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
+      const dist = haversineDistance(latA, lngA, latB, lngB).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
@@ -53,8 +64,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         coordinates: [
-          [a.long, a.lat],
-          [b.long, b.lat],
+          [lngA, latA],
+          [lngB, latB],
         ],
       }),
       signal: controller.signal,
@@ -66,7 +77,7 @@ export async function POST(req: NextRequest) {
       const errorText = await res.text();
       console.warn(`ORS API Error (${res.status}):`, errorText);
       // On API error (e.g. quota exceeded), fallback to Haversine
-      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
+      const dist = haversineDistance(latA, lngA, latB, lngB).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 
@@ -83,9 +94,19 @@ export async function POST(req: NextRequest) {
 
     console.warn('ORS Fetch failed or timed out, falling back to Haversine:', error);
 
+    const latA = a?.lat ?? a?.latitude;
+    const lngA = a?.long ?? a?.longitude ?? a?.lng;
+    const latB = b?.lat ?? b?.latitude;
+    const lngB = b?.long ?? b?.longitude ?? b?.lng;
+
     // Fallback if we have valid coordinates
-    if (a?.lat && a?.long && b?.lat && b?.long) {
-      const dist = haversineDistance(a.lat, a.long, b.lat, b.long).toFixed(2);
+    if (
+      latA !== undefined && latA !== null &&
+      lngA !== undefined && lngA !== null &&
+      latB !== undefined && latB !== null &&
+      lngB !== undefined && lngB !== null
+    ) {
+      const dist = haversineDistance(latA, lngA, latB, lngB).toFixed(2);
       return NextResponse.json({ distance_km: dist, source: 'haversine-fallback' });
     }
 

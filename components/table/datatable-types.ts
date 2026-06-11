@@ -1,6 +1,7 @@
-// @/components/table/types.ts
+// path: components/table/datatable-types.ts
+
 import { TableOrViewName, Row, Filters } from "@/hooks/database";
-import { Column, RPCConfig, ExcelStyles } from "@/hooks/database/excel-queries/excel-helpers";
+import { Column, RPCConfig, ExcelStyles, SummaryRowConfig } from "@/hooks/database/excel-queries/excel-helpers";
 
 export interface TableAction<T extends TableOrViewName> {
   key: string;
@@ -22,6 +23,7 @@ export interface DownloadOptions<T extends TableOrViewName> {
   maxRows?: number;
   customStyles?: ExcelStyles;
   rpcConfig?: RPCConfig;
+  summaryRows?: SummaryRowConfig<Row<T>>[];
 }
 
 export interface DataTableProps<T extends TableOrViewName> {
@@ -68,11 +70,10 @@ export interface DataTableProps<T extends TableOrViewName> {
     maxRows?: number;
     rpcConfig?: RPCConfig;
     fallbackToCsv?: boolean;
+    summaryRows?: SummaryRowConfig<Row<T>>[];
   } & Omit<DownloadOptions<T>, "rpcConfig">;
   renderMobileItem?: (record: Row<T>, actions: React.ReactNode) => React.ReactNode;
-  
-  // NEW PROP
-  autoHideEmptyColumns?: boolean; 
+  autoHideEmptyColumns?: boolean;
 }
 
 export type SortDirection = "asc" | "desc";

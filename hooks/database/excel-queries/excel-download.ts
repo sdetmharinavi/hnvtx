@@ -42,7 +42,7 @@ interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName>
   defaultOrderBy?: OrderByOption[];
   defaultWrapText?: boolean;
   defaultAutoFitColumns?: boolean;
-  maxRows?: number; // FIX: Added missing property
+  maxRows?: number;
 }
 
 // --- HELPER FUNCTION ---
@@ -52,7 +52,7 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
 ): Promise<ExcelDownloadResult> {
   // Dynamically import ExcelJS to avoid bloating the main bundle
   const ExcelJS = (await import('exceljs')).default;
-  
+
   const {
     fileName = `export-${new Date().toISOString().split('T')[0]}.xlsx`,
     columns,
@@ -60,6 +60,7 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
     customStyles,
     wrapText,
     autoFitColumns,
+    summaryRows,
   } = options;
 
   if (!columns || columns.length === 0) throw new Error('No columns specified for export');
@@ -74,23 +75,23 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
   worksheet.columns = exportColumns.map((col) => ({
     key: String(col.dataIndex),
     // Use the excelHeader if provided (e.g. "Asset No"), else title
-    header: col.excelHeader || col.title, 
+    header: col.excelHeader || col.title,
   }));
 
   const headerRow = worksheet.getRow(1);
   headerRow.height = 25;
-  
+
   // Style Header
   if (styles.headerFont) headerRow.font = styles.headerFont;
   if (styles.headerFill) headerRow.fill = styles.headerFill;
-  
+
   // Center headers
   headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
   // --- DATA ROWS ---
   data.forEach((record, rowIndex) => {
-    const rowData: { [key: string]: unknown } = {};
-    
+    const rowData: Record<string, unknown> = {};
+
     exportColumns.forEach((col) => {
       const key = String(col.dataIndex);
       // Format value using helpers (dates, booleans, etc)
@@ -105,28 +106,84 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
       if (!col) return;
 
       if (styles.dataFont) cell.font = styles.dataFont;
-      
+
       // Zebra striping
       if (rowIndex % 2 === 1 && styles.alternateRowFill) {
         cell.fill = styles.alternateRowFill;
       }
 
       // Alignment & Wrapping
-      cell.alignment = { 
-        wrapText: wrapText || false, 
-        vertical: 'top', 
-        horizontal: col.align || 'left' 
+      cell.alignment = {
+        wrapText: wrapText || false,
+        vertical: 'top',
+        horizontal: col.align || 'left'
       };
 
       // Number formats
       applyCellFormatting(cell, col);
-      
+
       // Borders
       if (styles.borderStyle) {
         cell.border = styles.borderStyle;
       }
     });
   });
+
+  // --- SUMMARY/TOTALS ROWS ---
+  if (summaryRows && summaryRows.length > 0) {
+    summaryRows.forEach((summaryConfig) => {
+      const summaryData: Record<string, unknown> = {};
+
+      exportColumns.forEach((col) => {
+        const key = String(col.dataIndex);
+        const op = summaryConfig[key];
+
+        if (!op) {
+          summaryData[key] = '';
+          return;
+        }
+
+        if (typeof op === 'function') {
+          summaryData[key] = op(data);
+        } else if (op === 'sum' || op === 'avg' || op === 'count') {
+          const numericValues = data
+            .map((item) => {
+              const rawVal = item[key as keyof Row<T>];
+              const num = Number(rawVal);
+              return isNaN(num) || rawVal === null || rawVal === undefined ? null : num;
+            })
+            .filter((v): v is number => v !== null);
+
+          if (op === 'count') {
+            summaryData[key] = numericValues.length;
+          } else if (numericValues.length === 0) {
+            summaryData[key] = '';
+          } else {
+            const total = numericValues.reduce((sum, v) => sum + v, 0);
+            summaryData[key] = op === 'sum' ? total : total / numericValues.length;
+          }
+        } else {
+          summaryData[key] = op;
+        }
+      });
+
+      const summaryRow = worksheet.addRow(summaryData);
+      summaryRow.height = 22;
+
+      summaryRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const col = exportColumns[colNumber - 1];
+        if (!col) return;
+
+        cell.font = { ...styles.dataFont, bold: true };
+        cell.border = {
+          top: { style: 'thin' },
+          bottom: { style: 'double' },
+        };
+
+        applyCellFormatting(cell, col);
+      });
+    });
+  }
 
   // --- COLUMN WIDTHS ---
   worksheet.columns.forEach((column, index) => {
@@ -135,29 +192,27 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
 
     // 1. Explicit Width (e.g. Description = 300)
     if (typeof colConfig.width === 'number') {
-      // ExcelJS width is roughly characters. 
+      // ExcelJS width is roughly characters.
       // 300px is roughly 40-50 characters width in Excel terms depending on font.
       // We map pixel width (from UI) to Excel width (approx / 7)
-      column.width = colConfig.width / 7; 
-    } 
-    // 2. Auto Fit
-    else if (autoFitColumns) {
+      column.width = colConfig.width / 7;
+    } else if (autoFitColumns) {
       let maxLength = (colConfig.excelHeader || colConfig.title).length;
-      
+
       // Sample first 50 rows to calculate width (performance optimization)
       const sampleData = data.slice(0, 50);
-      
+
       sampleData.forEach((record) => {
          const val = formatCellValue(record[String(colConfig.dataIndex) as keyof Row<T>], colConfig, record);
          const strVal = String(val ?? '');
          // If wrapping is on, don't expand infinitely, cap it
          if (wrapText && strVal.length > 50) {
-            maxLength = Math.max(maxLength, 50); 
+            maxLength = Math.max(maxLength, 50);
          } else {
             maxLength = Math.max(maxLength, strVal.length);
          }
       });
-      
+
       // Min width 12 chars, Max width 60 chars
       column.width = Math.min(Math.max(maxLength + 2, 12), 60);
     }
@@ -169,7 +224,7 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
   const buffer = await workbook.xlsx.writeBuffer();
   const sanitizedFileName = sanitizeFileName(fileName);
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  
+
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = sanitizedFileName;
@@ -180,7 +235,6 @@ async function generateAndDownloadExcel<T extends TableOrViewName>(
 
   return { fileName: sanitizedFileName, rowCount: data.length, columnCount: exportColumns.length };
 }
-
 
 // --- HOOKS ---
 
@@ -193,16 +247,16 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
   return useMutation<ExcelDownloadResult, Error, EnhancedDownloadOptions<T> & { rpcConfig: RPCConfig }>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
       if (showToasts) toast.info('Fetching data for export...');
-      
+
       const { rpcConfig, filters, maxRows, orderBy } = downloadOptions;
-      
+
       const rpcParams: Record<string, unknown> = {
         ...rpcConfig.parameters,
         ...convertFiltersToRPCParams(filters),
       };
 
       if (maxRows) rpcParams.row_limit = maxRows;
-      
+
       if (orderBy && orderBy.length > 0) {
         rpcParams.order_by = orderBy.map(o => `${o.column}.${o.ascending !== false ? 'asc' : 'desc'}`).join(',');
       }
@@ -213,17 +267,17 @@ export function useRPCExcelDownload<T extends TableOrViewName>(
       );
 
       if (error) throw new Error(`RPC call failed: ${error.message}`);
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dataArray = (data as any)?.data || data || [];
-      
+
       if (dataArray.length === 0) {
         toast.info('No data found to export.');
         return { fileName: '', rowCount: 0, columnCount: 0 };
       }
-      
+
       toast.success(`Fetched ${dataArray.length} records. Generating file...`);
-      
+
       return generateAndDownloadExcel(dataArray, {
         ...downloadOptions,
         wrapText: downloadOptions.wrapText ?? defaultWrapText,
@@ -245,34 +299,34 @@ export function useTableExcelDownload<T extends PublicTableOrViewName>(
   return useMutation<ExcelDownloadResult, Error, Omit<EnhancedDownloadOptions<T>, 'rpcConfig'>>({
     mutationFn: async (downloadOptions): Promise<ExcelDownloadResult> => {
       if (showToasts) toast.info('Fetching data for export...');
-      
+
       const { filters, columns, maxRows, orderBy } = downloadOptions;
-      
+
       const selectFields = columns?.filter(c => !c.excludeFromExport).map(c => c.dataIndex).join(',') || '*';
-      
-      let query = (isTableName(tableName) 
-        ? supabase.from(tableName as PublicTableName) 
+
+      let query = (isTableName(tableName)
+        ? supabase.from(tableName as PublicTableName)
         : supabase.from(tableName as ViewName)).select(selectFields);
 
       if (filters) query = applyFilters(query, filters);
-      
+
       if (orderBy && orderBy.length > 0) {
         orderBy.forEach(o => { query = query.order(o.column, { ascending: o.ascending !== false }); });
       }
-      
+
       // Use maxRows from call or defaultMaxRows from options
       if (maxRows || defaultMaxRows) query = query.limit(maxRows || defaultMaxRows || 50000);
-      
+
       const { data, error } = await query;
-      
+
       if (error) throw new Error(`Failed to fetch data: ${error.message}`);
       if (!data || data.length === 0) {
         toast.info('No data found to export.');
         return { fileName: '', rowCount: 0, columnCount: 0 };
       }
-      
+
       toast.success(`Fetched ${data.length} records. Generating file...`);
-      
+
       return generateAndDownloadExcel(data as Row<T>[], {
         ...downloadOptions,
         wrapText: downloadOptions.wrapText ?? defaultWrapText,

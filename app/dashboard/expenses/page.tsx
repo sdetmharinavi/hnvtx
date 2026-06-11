@@ -1,4 +1,4 @@
-// app/dashboard/expenses/page.tsx
+// path: app/dashboard/expenses/page.tsx
 'use client';
 
 import { useState, useRef, type ChangeEvent, useCallback, useMemo } from 'react';
@@ -61,10 +61,7 @@ export default function ExpensesPage() {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('advances');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
-  // EXACT VS ROUNDED AMOUNTS TOGGLE
   const [showExactAmounts, setShowExactAmounts] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { canAccess } = useUser();
   const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
@@ -72,7 +69,6 @@ export default function ExpensesPage() {
   const { sync, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus();
 
-  // --- EXPORT HOOKS ---
   const { mutate: exportAdvances, isPending: isExportingAdvances } = useTableExcelDownload(
     supabase,
     'v_advances_complete',
@@ -97,7 +93,6 @@ export default function ExpensesPage() {
     syncTables: ['expenses', 'v_expenses_complete', 'advances', 'v_advances_complete'],
   }) as unknown as UseCrudManagerReturn<V_expenses_completeRowSchema> & ExpensesDataReturn;
 
-  // --- DYNAMIC FILTER DATA FOR EXPENSES ---
   const { data: uniqueCategories = [], isLoading: loadingCategories } = useUniqueValues(
     supabase,
     'v_expenses_complete',
@@ -296,7 +291,6 @@ export default function ExpensesPage() {
         isActive: currentStatus === 'settled',
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advanceCrud.stats, advanceCrud.filters.filters.status]);
 
   const handleExportAdvances = useCallback(() => {
@@ -308,6 +302,14 @@ export default function ExpensesPage() {
       columns,
       wrapText: true,
       autoFitColumns: true,
+      summaryRows: [
+        {
+          req_no: 'Total',
+          total_amount: 'sum',
+          spent_amount: 'sum',
+          remaining_balance: 'sum',
+        },
+      ],
     });
   }, [exportAdvances, advanceCrud.filters.filters]);
 
@@ -379,6 +381,12 @@ export default function ExpensesPage() {
       columns,
       wrapText: true,
       autoFitColumns: true,
+      summaryRows: [
+        {
+          expense_date: 'Total',
+          amount: 'sum',
+        },
+      ],
     });
   }, [exportExpenses, expenseCrud.filters.filters, showExactAmounts]);
 
@@ -716,7 +724,6 @@ export default function ExpensesPage() {
     return advanceCrud.data.find((a) => a.id === activeAdvanceId);
   }, [activeAdvanceId, advanceCrud.data]);
 
-  // --- INTERACTIVE STATS FOR EXPENSES TAB ---
   const expenseStats: StatProps[] = useMemo(() => {
     return [
       {
@@ -765,15 +772,12 @@ export default function ExpensesPage() {
   const isLoading = activeTab === 'advances' ? advanceCrud.isLoading : expenseCrud.isLoading;
   const isBusy = isLoading || isSyncing;
 
-  // Exact/Rounded Toggle Component for the Filter Bar
   const filterExtraActions = (
     <button
       onClick={() => setShowExactAmounts(!showExactAmounts)}
       className={cn(
         'px-3 py-1.5 text-sm rounded-md border font-medium transition-colors sm:ml-2 w-full sm:w-auto',
-        showExactAmounts
-          ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300'
-          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
+        showExactAmounts ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-30'  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
       )}>
       {showExactAmounts ? 'Exact Amounts' : 'Rounded Amounts'}
     </button>

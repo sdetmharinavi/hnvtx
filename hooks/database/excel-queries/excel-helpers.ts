@@ -1,4 +1,5 @@
 // path: hooks/database/excel-queries/excel-helpers.ts
+
 import * as ExcelJS from 'exceljs';
 import { Filters, ProcessingLog, ValidationError } from '@/hooks/database';
 import { TableOrViewName, Row, UploadColumnMapping } from '@/hooks/database';
@@ -34,6 +35,12 @@ export interface RPCConfig<TParams = Record<string, unknown>> {
   selectFields?: string;
 }
 
+export type SummaryOperation = 'sum' | 'avg' | 'count';
+
+export interface SummaryRowConfig<T> {
+  [key: string]: SummaryOperation | string | ((data: T[]) => string | number);
+}
+
 export interface DownloadOptions<T extends TableOrViewName = TableOrViewName> {
   fileName?: string;
   filters?: Filters;
@@ -42,6 +49,7 @@ export interface DownloadOptions<T extends TableOrViewName = TableOrViewName> {
   maxRows?: number;
   customStyles?: ExcelStyles;
   rpcConfig?: RPCConfig;
+  summaryRows?: SummaryRowConfig<Row<T>>[];
 }
 
 export interface ExcelStyles {
@@ -67,8 +75,7 @@ export interface UseExcelDownloadOptions<T extends TableOrViewName = TableOrView
 }
 
 export interface ProcessedExcelResult {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  validRecords: Record<string, any>[];
+  validRecords: Record<string, unknown>[];
   validationErrors: ValidationError[];
   processingLogs: ProcessingLog[];
   totalRows: number;
@@ -272,7 +279,6 @@ export const validateValue = (
     const isIPField =
       columnName === 'ip_address' || columnName.endsWith('_ip') || columnName.includes('ipaddr');
     if (isIPField) {
-      // Basic IP check (allows CIDR)
       const ipRegex =
         /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/([0-9]|[1-2][0-9]|3[0-2]))?$/;
       const strValue = String(value).trim();
@@ -403,7 +409,7 @@ export async function processExcelData<T extends TableOrViewName>(
     validRecords,
     validationErrors: allValidationErrors,
     processingLogs,
-    totalRows: validRecords.length, // Valid count
+    totalRows: validRecords.length,
     skippedRows,
     errorCount,
   };

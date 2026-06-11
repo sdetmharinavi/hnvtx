@@ -5,8 +5,7 @@ import { Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ButtonSpinner } from '@/components/common/ui';
-import { X } from 'lucide-react'; // THE FIX: Removed unused Ruler import
+import { X, Navigation } from 'lucide-react';
 import { PopupFiberRow } from '../PopupFiberRow';
 import {
   fetchOrsDistance,
@@ -34,7 +33,7 @@ interface ConnectionLineProps {
   curveOffset?: number;
   hasReverse?: boolean;
   rotation?: number;
-  isMeasureMode: boolean; // THE FIX: Added prop to disable interaction during measurement
+  isMeasureMode: boolean;
 }
 
 export const ConnectionLine = ({
@@ -113,7 +112,7 @@ export const ConnectionLine = ({
     }
   }, [rotation, activePopupPos]);
 
-  const { data } = useQuery({
+  const { data: orsDistanceData, isLoading: isLoadingOrs } = useQuery({
     queryKey: ['ors-distance', start.id, end.id],
     queryFn: () => fetchOrsDistance(start, end),
     enabled: shouldFetch,
@@ -230,7 +229,6 @@ export const ConnectionLine = ({
           interactive: false,
         }}
       />
-      {/* THE FIX: Passed isMeasureMode to the interactive pathOptions */}
       <Polyline
         positions={positions}
         pathOptions={{ color: 'transparent', weight: isMobile ? 30 : 15, opacity: 0 }}
@@ -291,6 +289,29 @@ export const ConnectionLine = ({
                 Physical link not provisioned
               </div>
             ) : null}
+
+            {/* Estimated Road Distance display block */}
+            {shouldFetch && (
+              <div className='mb-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-lg flex items-center justify-between shadow-xs'>
+                <div className='flex items-center gap-2 text-blue-800 dark:text-blue-300'>
+                  <Navigation className='w-4 h-4 text-blue-600 dark:text-blue-400' />
+                  <span className='font-medium text-xs uppercase tracking-wider'>Est. Road Distance</span>
+                </div>
+                <div className='font-mono font-bold text-sm text-blue-700 dark:text-blue-400'>
+                  {isLoadingOrs ? (
+                    <div className='flex items-center gap-1.5'>
+                      <div className='w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin' />
+                      <span className='text-xs font-normal text-gray-400'>Calculating...</span>
+                    </div>
+                  ) : orsDistanceData?.distance_km ? (
+                    `${orsDistanceData.distance_km} km`
+                  ) : (
+                    'N/A'
+                  )}
+                </div>
+              </div>
+            )}
+
             <PopupRemarksRow
               remark={remarkText}
               isEditing={isEditingRemark}
