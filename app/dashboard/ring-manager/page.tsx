@@ -26,9 +26,9 @@ import {
   useTableUpdate,
   RpcFunctionArgs,
   useRpcMutation,
-  useTableQuery,
   PagedQueryResult,
   Filters,
+  usePagedData, // THE FIX: Imported usePagedData for secure RPC fetching
 } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -79,86 +79,30 @@ interface SystemToDisassociate {
 
 // --- Helper Hooks ---
 
+// THE FIX: Completely rewrote useRingSystems to use the get_paged_data RPC
+// instead of a raw PostgREST join. This prevents RLS foreign-key traversal failures in production.
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
-  return useTableQuery(supabase, 'ring_based_systems', {
-    columns: `
-      order_in_ring,
-      ring_id,
-      system:systems!ring_based_systems_system_id_fkey (
-        id,
-        system_name,
-        system_type_id,
-        node_id,
-        is_hub,
-        status,
-        ip_address,
-        s_no,
-        make,
-        unique_id,
-        maintenance_terminal_id,
-        commissioned_on,
-        remark,
-        system_capacity_id
-      )
-    `
-      .replace(/\s+/g, '')
-      .trim(),
-
-    filters: { ring_id: ringId || '' },
-    enabled: !!ringId,
-    orderBy: [{ column: 'order_in_ring', ascending: true }],
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    select: (result: PagedQueryResult<any>) => {
-      const flattened = result.data
-        .map((item) => {
-          const sys = item.system || item.systems;
-          if (!sys) return null;
-
-          const mappedItem = {
-            id: sys.id,
-            system_name: sys.system_name,
-            system_type_id: sys.system_type_id,
-            node_id: sys.node_id,
-            is_hub: !!sys.is_hub,
-            order_in_ring: typeof item.order_in_ring === 'number' ? item.order_in_ring : null,
-            ring_id: item.ring_id,
-            status: !!sys.status,
-            system_type_name: '',
-            ip_address: typeof sys.ip_address === 'string' ? sys.ip_address.split('/')[0] : sys.ip_address,
-            s_no: sys.s_no,
-            make: sys.make,
-            maan_node_id: sys.unique_id,
-            maintenance_terminal_id: sys.maintenance_terminal_id,
-            commissioned_on: sys.commissioned_on,
-            remark: sys.remark,
-            system_capacity_id: sys.system_capacity_id,
-            created_at: null,
-            updated_at: null,
-            system_category: null,
-            system_type_code: null,
-            node_name: null,
-            node_type_name: null,
-            ring_associations: null,
-            ring_logical_area_name: null,
-            system_capacity_name: null,
-            system_maintenance_terminal_name: null,
-            is_ring_based: true,
-            latitude: null,
-            longitude: null,
-          };
-
-          return mappedItem as unknown as V_systems_completeRowSchema;
-        })
-        .filter((item): item is V_systems_completeRowSchema => item !== null);
-
-      return {
-        data: flattened,
-        count: result.count,
-      };
+  const { data, isLoading, error } = usePagedData<V_systems_completeRowSchema>(
+    supabase,
+    'v_systems_complete',
+    {
+      filters: { ring_id: ringId || '' },
+      limit: 1000,
+      orderBy: 'order_in_ring',
+      orderDir: 'asc',
     },
-  });
+    { enabled: !!ringId }
+  );
+
+  return {
+    data: {
+      data: data?.data || [],
+      count: data?.total_count || 0
+    },
+    isLoading,
+    error
+  };
 };
 
 const RingAssociatedSystemsView = ({
@@ -304,7 +248,6 @@ export default function RingManagerPage() {
     tableName: 'rings',
     dataQueryHook: useRingManagerData,
     displayNameField: 'name',
-    // ADDED IPs TO SEARCH CONFIG
     searchColumn: [
       'name',
       'description',
@@ -312,6 +255,7 @@ export default function RingManagerPage() {
       'maintenance_area_name',
       'associated_system_names',
       'associated_system_ips',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any,
     syncTables: [
       'rings',
@@ -802,7 +746,6 @@ export default function RingManagerPage() {
     });
   }, [systemToDisassociate, disassociateSystemMutation]);
 
-  // THE FIX: Create a wrapper function to adapt the signature
   const toggleStatusWrapper = (variables: { id: string; status: boolean }) => {
     const recordToToggle = rings.find((r) => r.id === variables.id);
     if (recordToToggle) {
@@ -836,7 +779,6 @@ export default function RingManagerPage() {
           config={dynamicFilterConfig}
           entitiesQuery={queryResult as UseQueryResult<PagedQueryResult<RingEntity>, Error>}
           isFetching={isFetching}
-          // THE FIX: Pass the adapted wrapper function here
           toggleStatusMutation={
             canDelete ? { mutate: toggleStatusWrapper, isPending: isMutating } : undefined
           }

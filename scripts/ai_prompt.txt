@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all It is observed tha in nodes page there is no unique_node_id, lets add that column to the nodes table and also update form as well as information to be displayed.
+Let's begin! First of all It is observed that while in development environment associated systems are visible while on live site its not visible as can be seen in the attachments
