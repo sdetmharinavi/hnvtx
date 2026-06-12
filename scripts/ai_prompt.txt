@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all Lets improve the project's UX
+Let's begin! First of all Lets improve the project's UX. in mobile view both in grid and list view is showing card, table is not visible.

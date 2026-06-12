@@ -15,7 +15,7 @@ import {
   usePagedData,
   UploadColumnMapping,
   useTableBulkOperations,
-  useTableUpdate, // THE FIX: Imported useTableUpdate for safe single-field patches
+  useTableUpdate,
 } from '@/hooks/database';
 import {
   V_system_connections_completeRowSchema,
@@ -159,7 +159,6 @@ export default function SystemConnectionsPage() {
 
   const { bulkUpdate } = useTableBulkOperations(supabase, 'system_connections');
 
-  // THE FIX: Provide a safe, targeted mutation for simple property toggles
   const { mutate: patchConnection } = useTableUpdate(supabase, 'system_connections', {
     onSuccess: () => {
       toast.success('Status updated');
@@ -439,7 +438,6 @@ export default function SystemConnectionsPage() {
             })
         : undefined,
       onToggleStatus: (record) => {
-        // THE FIX: Uses the safe patch method to avoid RPC data loss
         if (canEdit && record.id) {
           patchConnection({
             id: record.id,
@@ -496,7 +494,7 @@ export default function SystemConnectionsPage() {
     handleViewDetails,
     canEdit,
     canDelete,
-    patchConnection, // Bound to new safe handler
+    patchConnection,
   ]);
 
   const isBusy = isLoadingConnections || isSyncingData || isFetching;
@@ -553,44 +551,6 @@ export default function SystemConnectionsPage() {
       hideTextOnMobile: true,
     });
   }
-
-  const renderMobileItem = useCallback(
-    (record: Row<'v_system_connections_complete'>) => {
-      return (
-        <div className='flex flex-col gap-3'>
-          <ConnectionCard
-            connection={record as V_system_connections_completeRowSchema}
-            parentSystemId={systemId}
-            onViewDetails={handleViewDetails}
-            onViewPath={handleTracePath}
-            onGoToSystem={() => {}}
-            isSystemContext={true}
-            onEdit={canEdit ? openEditModal : undefined}
-            onDelete={
-              canDelete
-                ? (rec) =>
-                    deleteManager.deleteSingle({
-                      id: rec.id!,
-                      name: rec.service_name || 'Connection',
-                    })
-                : undefined
-            }
-            canEdit={canEdit}
-            canDelete={canDelete}
-          />
-        </div>
-      );
-    },
-    [
-      systemId,
-      handleViewDetails,
-      handleTracePath,
-      canEdit,
-      canDelete,
-      openEditModal,
-      deleteManager,
-    ],
-  );
 
   if (isLoadingSystem) return <PageSpinner text='Loading system details...' />;
   if (!parentSystem) return <ErrorDisplay error='System not found.' />;
@@ -684,7 +644,7 @@ export default function SystemConnectionsPage() {
           />
         </div>
 
-        <div className='flex w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0'>
+        <div className='flex flex-col md:flex-row w-full lg:w-auto gap-3 overflow-x-auto pb-2 lg:pb-0'>
           <div className='min-w-[160px]'>
             <SelectFilter
               label=''
@@ -718,7 +678,8 @@ export default function SystemConnectionsPage() {
               placeholder='All Status'
             />
           </div>
-          <div className='hidden sm:flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end'>
+          {/* THE FIX: Removed hidden sm:flex to ensure toggle is visible on mobile */}
+          <div className='flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 h-10 shrink-0 self-end ml-auto sm:ml-0'>
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-md transition-all ${
@@ -800,7 +761,6 @@ export default function SystemConnectionsPage() {
           loading={isLoadingConnections}
           isFetching={isLoadingConnections}
           actions={tableActions}
-          renderMobileItem={renderMobileItem}
           selectable={canDelete}
           onRowSelect={(rows) => {
             const validRows = rows.filter(
@@ -838,7 +798,7 @@ export default function SystemConnectionsPage() {
         isOpen={deleteManager.isConfirmModalOpen}
         onConfirm={deleteManager.handleConfirm}
         onCancel={deleteManager.handleCancel}
-        title='Confirm Delete'
+        title='Confirm Deletion'
         message={deleteManager.confirmationMessage}
         loading={deleteManager.isPending}
         type='danger'
@@ -875,7 +835,7 @@ export default function SystemConnectionsPage() {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         connectionId={detailsConnectionId}
-        parentSystem={parentSystem}
+        parentSystem={null}
       />
     </div>
   );

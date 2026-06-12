@@ -434,20 +434,6 @@ export default function OfcCableDetailsPage() {
     ];
   }, [utilization]);
 
-  const renderMobileItem = useCallback(
-    (record: Row<'v_ofc_connections_complete'>, actions: React.ReactNode) => {
-      return (
-        <FiberConnectionCard
-          fiber={record as V_ofc_connections_completeRowSchema}
-          actions={actions}
-        />
-      );
-    },
-    [],
-  );
-
-  // --- RENDERING ---
-
   if (isLoading || isLoadingRouteDetails || isLoadingUtil) return <PageSpinner />;
 
   // Handle errors specifically.
@@ -554,7 +540,6 @@ export default function OfcCableDetailsPage() {
             onCellEdit={crudActions.handleCellEdit}
             searchable={false}
             customToolbar={<></>}
-            renderMobileItem={renderMobileItem}
             pagination={{
               current: pagination.currentPage,
               pageSize: pagination.pageLimit,
