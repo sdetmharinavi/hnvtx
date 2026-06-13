@@ -54,6 +54,7 @@ export const SystemConnectionsTableColumns = (
     'bandwidth',
     'connected_system_name',
     'service_node_name',
+    'service_end_node_id'
   ];
 
   const finalOmit = showSystemContext

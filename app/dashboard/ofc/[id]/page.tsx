@@ -396,7 +396,7 @@ export default function OfcCableDetailsPage() {
       label: createConnectionsMutation.isPending ? 'Verifying...' : 'Verify Fibers',
       onClick: handleVerifyAndCreateFibers,
       variant: 'outline',
-      leftIcon: <RefreshCw className={createConnectionsMutation.isPending ? 'animate-spin' : ''} />,
+      leftIcon: <RefreshCw className={createConnectionsMutation.isPending ? 'animate-spin w-4 h-4' : ' w-4 h-4'} />,
       disabled: createConnectionsMutation.isPending || isLoading,
       hideTextOnMobile: true,
     });
