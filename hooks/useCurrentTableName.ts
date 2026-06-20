@@ -55,6 +55,8 @@ export const useCurrentTableName = (tableName?: TableNames): TableNames | null =
         return 'services';
       case 'notes':
         return 'technical_notes';
+      case 'power-readings':
+        return 'v_port_power_readings' as any; // Cast as any because TableNames is bound to TABLES initially
       default:
         return null;
     }

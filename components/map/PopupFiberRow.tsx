@@ -9,14 +9,10 @@ import { PathDisplay } from '@/components/system-details/PathDisplay';
 import {
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   Loader2,
   Activity,
-  Cable,
-  Zap,
   ArrowRight,
 } from 'lucide-react';
-import Link from 'next/link';
 import TruncateTooltip from '@/components/common/TruncateTooltip';
 
 interface PopupFiberRowProps {
@@ -47,7 +43,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
     ].filter(Boolean);
   }, [connection]);
 
-  // THE FIX: Use array directly. buildRpcFilters handles arrays correctly.
   const fiberFilters = useMemo(() => {
     if (allocatedFiberIds.length > 0) {
       return { id: allocatedFiberIds };
@@ -74,8 +69,7 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
 
   return (
     <div className='border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-900'>
-      {/* Service Name - Enhanced Display with Fallback BG */}
-      <div className='relative bg-indigo-50 bg-linear-to-r from-indigo-50 to-blue-50 dark:bg-indigo-950 dark:from-indigo-950/30 dark:to-blue-950/30 border-b-2 border-indigo-200 dark:border-indigo-800'>
+      <div className='relative bg-indigo-50 bg-linear-to-r from-indigo-50 to-blue-50 dark:bg-indigo-950 dark:from-indigo-950/30 dark:to-blue-950/30 border-b border-indigo-200 dark:border-indigo-800'>
         <div className='flex items-center gap-3 py-3 px-4'>
           <div className='p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-indigo-200 dark:border-indigo-700'>
             <Activity size={16} className='text-indigo-600 dark:text-indigo-400' />
@@ -92,7 +86,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
         </div>
       </div>
 
-      {/* Logical Route - Enhanced Expandable Section */}
       {hasConnectionId && (
         <div className='border-b border-gray-200 dark:border-gray-700'>
           <button
@@ -103,7 +96,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
             className='w-full group'
             aria-expanded={isLogicalExpanded}
           >
-            {/* Added Fallback BG for hover */}
             <div className='flex items-center gap-3 py-2.5 px-4 hover:bg-blue-50 hover:bg-linear-to-r hover:from-blue-50/50 hover:to-cyan-50/50 dark:hover:bg-blue-900/10 dark:hover:from-blue-950/20 dark:hover:to-cyan-950/20 transition-all duration-200'>
               <div className='p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-md group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors'>
                 {isLogicalExpanded ? (
@@ -114,7 +106,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
               </div>
 
               <div className='flex items-center gap-2 flex-1'>
-                {/* Added Fallback BG */}
                 <div className='w-1 h-4 bg-blue-500 bg-linear-to-b from-blue-500 to-cyan-500 rounded-full shadow-sm' />
                 <span className='text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide'>
                   Logical Route
@@ -136,7 +127,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
           </button>
 
           {isLogicalExpanded && (
-            // Added Fallback BG
             <div className='px-4 pb-3 bg-blue-50 bg-linear-to-b from-blue-50/30 to-transparent dark:bg-blue-900/10 dark:from-blue-950/10 dark:to-transparent'>
               {isConnectionLoading ? (
                 <div className='flex flex-col items-center justify-center py-8 gap-3'>
@@ -162,7 +152,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
         </div>
       )}
 
-      {/* Physical Segments - Enhanced Expandable Section */}
       {hasConnectionId && (
         <div>
           <button
@@ -173,7 +162,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
             className='w-full group'
             aria-expanded={isPhysicalExpanded}
           >
-            {/* Added Fallback BG */}
             <div className='flex items-center gap-3 py-2.5 px-4 hover:bg-emerald-50 hover:bg-linear-to-r hover:from-emerald-50/50 hover:to-teal-50/50 dark:hover:bg-emerald-900/10 dark:hover:from-emerald-950/20 dark:hover:to-teal-950/20 transition-all duration-200'>
               <div className='p-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-md group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/60 transition-colors'>
                 {isPhysicalExpanded ? (
@@ -184,7 +172,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
               </div>
 
               <div className='flex items-center gap-2 flex-1'>
-                {/* Added Fallback BG */}
                 <div className='w-1 h-4 bg-emerald-500 bg-linear-to-b from-emerald-500 to-teal-500 rounded-full shadow-sm' />
                 <span className='text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wide'>
                   Physical Segments
@@ -193,7 +180,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
 
               <div className='flex items-center gap-2'>
                 {ofcData?.data && ofcData.data.length > 0 && (
-                  // Added Fallback BG
                   <span className='text-[10px] font-bold bg-emerald-500 bg-linear-to-r from-emerald-500 to-teal-500 text-white px-2.5 py-1 rounded-full shadow-sm'>
                     {ofcData.data.length}
                   </span>
@@ -212,7 +198,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
           </button>
 
           {isPhysicalExpanded && (
-            // Added Fallback BG
             <div className='px-4 pb-3 bg-emerald-50 bg-linear-to-b from-emerald-50/30 to-transparent dark:bg-emerald-900/10 dark:from-emerald-950/10 dark:to-transparent'>
               {isConnectionLoading || isFibersLoading ? (
                 <div className='flex flex-col items-center justify-center py-8 gap-3'>
@@ -229,23 +214,6 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
               ) : (
                 <div className='bg-white dark:bg-gray-800 rounded-lg border-2 border-emerald-100 dark:border-emerald-900/50 shadow-sm overflow-hidden'>
                   <div className='p-3'>
-                    {connection?.system_id && (
-                      <div className='flex items-center justify-end mb-2'>
-                        <Link
-                          href={`/dashboard/systems/${connection.system_id}`}
-                          target='_blank'
-                          className='group/link flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition-colors px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-full'
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          View System
-                          <ExternalLink
-                            size={10}
-                            className='group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform'
-                          />
-                        </Link>
-                      </div>
-                    )}
-
                     {ofcData?.data && ofcData.data.length > 0 ? (
                       <div className='max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1'>
                         {ofcData.data.map((seg, idx) => {
@@ -255,57 +223,23 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
                           return (
                             <div
                               key={seg.id || idx}
-                              // Added Fallback BG
                               className='group/card p-2.5 bg-gray-50 bg-linear-to-br from-gray-50 to-gray-100/50 dark:bg-gray-800 dark:from-gray-800/50 dark:to-gray-800/30 rounded-lg hover:bg-emerald-50 hover:from-emerald-50 hover:to-teal-50 dark:hover:bg-emerald-900/20 dark:hover:from-emerald-950/20 dark:hover:to-teal-950/20 transition-all duration-200 border-2 border-gray-200/50 dark:border-gray-700/50 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md'
                             >
-                              {/* Route Name & Fiber Numbers */}
                               <div className='flex items-start justify-between gap-2 mb-2'>
                                 <div className='flex items-start gap-2 flex-1 min-w-0'>
-                                  <Cable
-                                    size={14}
-                                    className='shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400'
-                                  />
                                   <TruncateTooltip
                                     className='text-xs font-bold text-gray-900 dark:text-gray-100 truncate leading-tight'
                                     text={`${seg.ofc_route_name} ${seg.ofc_type_name}`}
                                   />
                                 </div>
                                 <div className='flex items-center gap-1.5 shrink-0'>
-                                  {/* Added Fallback BG */}
                                   <span className='font-mono font-bold bg-blue-500 bg-linear-to-r from-blue-500 to-cyan-500 text-white px-2 py-1 rounded-md text-[10px] shadow-sm whitespace-nowrap'>
                                     F{startFib}→F{endFib}
                                   </span>
-                                  {/* Added Fallback BG */}
                                   <span className='font-mono font-bold bg-emerald-500 bg-linear-to-r from-emerald-500 to-teal-500 text-white px-2 py-1 rounded-md text-[10px] shadow-sm capitalize'>
                                     {seg.path_direction}
                                   </span>
                                 </div>
-                              </div>
-
-                              {/* Distance & Power Info */}
-                              <div className='flex items-center gap-3 text-[11px] flex-wrap'>
-                                <div className='flex items-center gap-1.5 bg-white dark:bg-gray-900/50 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700'>
-                                  <div className='w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse' />
-                                  <span className='font-medium text-gray-600 dark:text-gray-400'>
-                                    Distance:
-                                  </span>
-                                  <span className='font-mono font-bold text-orange-600 dark:text-orange-400'>
-                                    {seg.otdr_distance_sn_km}km
-                                  </span>
-                                </div>
-
-                                {(seg.sn_power_dbm || seg.en_power_dbm) && (
-                                  <div className='flex items-center gap-1.5 bg-white dark:bg-gray-900/50 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-700'>
-                                    <Zap size={12} className='shrink-0 text-yellow-500' />
-                                    <span className='font-medium text-gray-600 dark:text-gray-400'>
-                                      {seg.sn_power_dbm ? seg.updated_sn_name : seg.updated_en_name}
-                                      :
-                                    </span>
-                                    <span className='font-mono font-bold text-yellow-600 dark:text-yellow-400'>
-                                      {seg.sn_power_dbm || seg.en_power_dbm}dBm
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           );
@@ -313,14 +247,8 @@ export const PopupFiberRow: React.FC<PopupFiberRowProps> = ({ connectionId, allo
                       </div>
                     ) : (
                       <div className='py-8 text-center'>
-                        <div className='inline-flex items-center justify-center w-16 h-16 bg-gray-100 bg-linear-to-br from-gray-100 to-gray-200 dark:bg-gray-800 dark:from-gray-800 dark:to-gray-700 rounded-full mb-3'>
-                          <Cable size={28} className='text-gray-400 dark:text-gray-500' />
-                        </div>
                         <p className='text-xs font-semibold text-gray-600 dark:text-gray-400'>
                           No Physical Segments Found
-                        </p>
-                        <p className='text-[10px] text-gray-500 dark:text-gray-500 mt-1'>
-                          No fiber segments are available for this connection
                         </p>
                       </div>
                     )}

@@ -33,6 +33,9 @@ export default function MeshDiagram({
   onBack,
   segmentConfigs = {},
   nodePorts,
+  showPowerLevels,
+  setShowPowerLevels,
+  powerData,
 }: MeshDiagramProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, L.LatLngExpression>>({});
@@ -76,7 +79,7 @@ export default function MeshDiagram({
     <div className={containerClass}>
       <button
         onClick={() => setUiVisible(!uiVisible)}
-        className='absolute top-4 left-4 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
+        className='absolute top-4 left-4 z-[1001] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
         title={uiVisible ? 'Hide Controls' : 'Show Controls'}>
         {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
       </button>
@@ -86,6 +89,8 @@ export default function MeshDiagram({
           onBack={onBack}
           isFullScreen={isFullScreen}
           setIsFullScreen={setIsFullScreen}
+          showPowerLevels={showPowerLevels}
+          setShowPowerLevels={setShowPowerLevels}
         />
       )}
 
@@ -98,7 +103,7 @@ export default function MeshDiagram({
         scrollWheelZoom={true}
         attributionControl={false}
         zoomControl={false}
-        className='dark:bg-blue-950! shadow-lg'>
+        className='dark:bg-blue-950 shadow-lg'>
         <MeshController bounds={bounds} />
         {uiVisible && <ZoomControl position='bottomright' />}
 
@@ -120,8 +125,6 @@ export default function MeshDiagram({
               lineColor = getConnectionColor(config.connectionId);
             }
 
-            // Calculate curve offset based on group size
-            // If group size > 1, we ALWAYS want curves to separate them
             const curveOffset = getMultiLineCurveOffset(index, groupLines.length);
 
             return (
@@ -133,7 +136,6 @@ export default function MeshDiagram({
                 isSpur={isSpur}
                 config={config}
                 theme={theme}
-                // THE FIX: Pass system_node_name so the connection trace logs the correct name
                 startNodeName={nodeA.system_node_name || nodeA.name || 'A'}
                 endNodeName={nodeB.system_node_name || nodeB.name || 'B'}
                 customColor={lineColor}
@@ -159,6 +161,8 @@ export default function MeshDiagram({
               theme={theme}
               labelPosition={labelPositions[nodeId]}
               onLabelDragEnd={handleLabelDragEnd}
+              showPowerLevels={showPowerLevels}
+              powerData={powerData}
             />
           );
         })}

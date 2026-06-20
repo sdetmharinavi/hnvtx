@@ -4,7 +4,7 @@ id,name,ring_type_id,description,maintenance_terminal_id,total_nodes,is_closed_l
 <strong class=""text-red-600"">SPEC STATUS:</strong> Not issued<br />
 <strong class=""text-red-600"">PRESENT STATUS:</strong> LP issue<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,,Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-17 09:57:31.031239+00
 09136fb5-6392-44bb-bab4-de1c22a2ac43,HNV-18,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY<br />
-<strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,2,true,,Ready,Issued,Configured,true,2025-08-11 00:00:00+00,2026-05-12 10:44:20.414352+00
+<strong class=""text-green-600"">SPEC STATUS::</strong> ISSUED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,2,true,,Ready,Issued,On-Air,true,2025-08-11 00:00:00+00,2026-06-01 09:27:47.729003+00
 0e8bf0bb-64d7-42f5-87cd-d754e6bdab27,MAAN-19,fe67aa4d-b141-467e-a9dd-58691c489abe,,a41dc1c4-3421-48dd-a123-8c1ddd56b8ba,0,true,,Ready,Issued,On-Air,true,2025-10-17 00:00:00+00,2026-01-11 14:21:04.49972+00
 104775fe-4c27-44d9-a14b-0c38e21a5786,MAAN-06,fe67aa4d-b141-467e-a9dd-58691c489abe,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,4,true,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2026-02-25 10:08:17.461282+00
 17520ee6-a471-47ed-82c1-0590f4c4bad6,HNV-03,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY WITH CPAN FIBRE<br />

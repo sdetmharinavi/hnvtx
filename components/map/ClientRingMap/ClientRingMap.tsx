@@ -18,7 +18,9 @@ import { MapFlyToController } from './controllers/MapFlyToController';
 import { MapNode, PortDisplayInfo, RingMapNode, SegmentConfigMap } from './types';
 import { RotatedDragOverlay } from './controllers/RotatedDragOverlay';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
-import { MeasureController } from '@/components/kml/MeasureController'; // THE FIX: Imported tool
+import { MeasureController } from '@/components/kml/MeasureController';
+// THE FIX: Import the new hook
+import { useLatestSystemsPowerReadings } from '@/hooks/data/usePowerReadings';
 
 const MapAutoFit = ({ nodes }: { nodes: MapNode[] }) => {
   const map = useMap();
@@ -57,6 +59,7 @@ interface ClientRingMapProps {
   showControls?: boolean;
   segmentConfigs?: SegmentConfigMap;
   nodePorts?: Map<string, PortDisplayInfo[]>;
+  ringId?: string | null; 
 }
 
 const groupLines = (lines: Array<[RingMapNode, RingMapNode]>) => {
@@ -81,22 +84,32 @@ export default function ClientRingMap({
   showControls = false,
   segmentConfigs = {},
   nodePorts,
+  ringId = null,
 }: ClientRingMapProps) {
   const { theme } = useThemeStore();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showAllNodePopups, setShowAllNodePopups] = useState(false);
   const [showAllLinePopups, setShowAllLinePopups] = useState(false);
+  const [showPowerLevels, setShowPowerLevels] = useState(false);
   const [labelPositions, setLabelPositions] = useState<Record<string, [number, number]>>({});
 
   const [uiVisible, setUiVisible] = useState(true);
   const [rotation, setRotation] = useState(0);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [isMeasureMode, setIsMeasureMode] = useState(false); // THE FIX: State added
+  const [isMeasureMode, setIsMeasureMode] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
   const markerRefs = useRef<{ [key: string]: L.Marker }>({});
   const polylineRefs = useRef<{ [key: string]: L.Polyline }>({});
+
+  // THE FIX: Extract all System IDs from the mapped nodes to fetch power globally
+  const systemIdsForPower = useMemo(() => {
+    return nodes.map(n => n.id).filter(Boolean) as string[];
+  }, [nodes]);
+
+  // THE FIX: Use the systems-based fetcher
+  const { data: powerData = {} } = useLatestSystemsPowerReadings(systemIdsForPower);
 
   const displayNodes = useMemo(() => applyJitterToNodes(nodes as RingMapNode[]), [nodes]);
 
@@ -153,7 +166,6 @@ export default function ClientRingMap({
     return () => observer.disconnect();
   }, [isFullScreen]);
 
-  // THE FIX: Listen for escape to close measurement tool
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -252,7 +264,7 @@ export default function ClientRingMap({
     <div className={wrapperClass} ref={containerRef}>
       <button
         onClick={() => setUiVisible(!uiVisible)}
-        className='absolute top-16 left-2 z-1001 p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
+        className='absolute top-16 left-2 z-[1001] p-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none border border-gray-200 dark:border-gray-700'
         title={uiVisible ? 'Hide Map Tools' : 'Show Map Tools'}>
         {uiVisible ? <FiEyeOff size={20} /> : <FiEye size={20} />}
       </button>
@@ -266,11 +278,13 @@ export default function ClientRingMap({
           setShowAllNodePopups={setShowAllNodePopups}
           showAllLinePopups={showAllLinePopups}
           setShowAllLinePopups={setShowAllLinePopups}
+          showPowerLevels={showPowerLevels}
+          setShowPowerLevels={setShowPowerLevels}
           onRotate={handleRotate}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          isMeasureMode={isMeasureMode} // THE FIX
-          setIsMeasureMode={setIsMeasureMode} // THE FIX
+          isMeasureMode={isMeasureMode}
+          setIsMeasureMode={setIsMeasureMode} 
         />
       )}
 
@@ -280,7 +294,7 @@ export default function ClientRingMap({
           bounds={bounds || undefined}
           zoom={13}
           ref={mapRef}
-          style={{ height: '100%', width: '100%', cursor: isMeasureMode ? 'crosshair' : 'grab' }} // THE FIX
+          style={{ height: '100%', width: '100%', cursor: isMeasureMode ? 'crosshair' : 'grab' }} 
           className='z-0 bg-gray-200 dark:bg-gray-800'
           closePopupOnClick={false}
           zoomControl={false}>
@@ -290,7 +304,6 @@ export default function ClientRingMap({
           <RotatedDragOverlay rotation={rotation} />
           <MapAutoFit nodes={nodes} />
 
-          {/* THE FIX: Instantiated MeasureController */}
           <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
 
           <LayersControl position='bottomright'>
@@ -343,7 +356,7 @@ export default function ClientRingMap({
                   customColor={lineColor}
                   curveOffset={curveOffset}
                   rotation={rotation}
-                  isMeasureMode={isMeasureMode} // THE FIX
+                  isMeasureMode={isMeasureMode}
                 />
               );
             });
@@ -368,7 +381,7 @@ export default function ClientRingMap({
                   setPolylineRef={setPolylineRef}
                   hasReverse={false}
                   rotation={rotation}
-                  isMeasureMode={isMeasureMode} // THE FIX
+                  isMeasureMode={isMeasureMode}
                 />
               );
             })}
@@ -394,7 +407,9 @@ export default function ClientRingMap({
                 onNodeClick={onNodeClick}
                 onLabelDragEnd={handleLabelDragEnd}
                 rotation={rotation}
-                isMeasureMode={isMeasureMode} // THE FIX
+                isMeasureMode={isMeasureMode}
+                showPowerLevels={showPowerLevels}
+                powerData={powerData} 
               />
             );
           })}

@@ -129,7 +129,7 @@ export const ConnectionLine = ({
 
       const { data, error } = await supabase
         .from('logical_paths')
-        .select('id, name, status, source_system_id, destination_system_id')
+        .select('id, name, source_system_id, destination_system_id')
         .in('source_system_id', [start.id, end.id])
         .in('destination_system_id', [start.id, end.id]);
 

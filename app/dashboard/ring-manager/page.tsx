@@ -1,12 +1,12 @@
 // app/dashboard/ring-manager/page.tsx
 'use client';
 
-import { useMemo, useState, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { GiLinkedRings } from 'react-icons/gi';
 import { FaRoute } from 'react-icons/fa';
+import dynamic from 'next/dynamic';
 import {
   FiUpload,
   FiEdit,
@@ -28,7 +28,8 @@ import {
   useRpcMutation,
   PagedQueryResult,
   Filters,
-  usePagedData, // THE FIX: Imported usePagedData for secure RPC fetching
+  usePagedData,
+  useTableQuery,
 } from '@/hooks/database';
 import { useCrudManager } from '@/hooks/useCrudManager';
 import {
@@ -79,29 +80,61 @@ interface SystemToDisassociate {
 
 // --- Helper Hooks ---
 
-// THE FIX: Completely rewrote useRingSystems to use the get_paged_data RPC
-// instead of a raw PostgREST join. This prevents RLS foreign-key traversal failures in production.
+// THE FIX: Solves multi-ring association rendering bug by fetching 
+// directly from the ring_based_systems junction table first.
 const useRingSystems = (ringId: string | null) => {
   const supabase = createClient();
-  const { data, isLoading, error } = usePagedData<V_systems_completeRowSchema>(
+
+  // 1. Fetch exact system associations and order from junction table
+  const { data: associations, isLoading: isLoadingAssoc } = useTableQuery(
+    supabase,
+    'ring_based_systems',
+    {
+      filters: { ring_id: ringId || '' },
+      columns: 'system_id, order_in_ring',
+      limit: 1000,
+      enabled: !!ringId,
+    }
+  );
+
+  const systemIds = useMemo(() => {
+    return associations?.data?.map((a) => a.system_id).filter(Boolean) || [];
+  }, [associations]);
+
+  // 2. Fetch system details for those specific IDs
+  const { data: systems, isLoading: isLoadingSystems, error } = usePagedData<V_systems_completeRowSchema>(
     supabase,
     'v_systems_complete',
     {
-      filters: { ring_id: ringId || '' },
+      filters: { id: systemIds.length > 0 ? systemIds : ['00000000-0000-0000-0000-000000000000'] },
       limit: 1000,
-      orderBy: 'order_in_ring',
+      orderBy: 'system_name',
       orderDir: 'asc',
     },
-    { enabled: !!ringId }
+    { enabled: !!ringId && !isLoadingAssoc }
   );
+
+  // 3. Map correct order_in_ring and ring_id back to match the selected ring's context
+  const orderedSystems = useMemo(() => {
+    if (!systems?.data || !associations?.data) return [];
+    const assocMap = new Map(associations.data.map((a) => [a.system_id, a.order_in_ring]));
+
+    const mapped = systems.data.map((sys) => ({
+      ...sys,
+      ring_id: ringId,
+      order_in_ring: assocMap.get(sys.id!) ?? sys.order_in_ring,
+    }));
+
+    return mapped.sort((a, b) => (a.order_in_ring ?? 0) - (b.order_in_ring ?? 0));
+  }, [systems, associations, ringId]);
 
   return {
     data: {
-      data: data?.data || [],
-      count: data?.total_count || 0
+      data: orderedSystems,
+      count: orderedSystems.length,
     },
-    isLoading,
-    error
+    isLoading: isLoadingAssoc || isLoadingSystems,
+    error,
   };
 };
 
@@ -128,6 +161,16 @@ const RingAssociatedSystemsView = ({
 
   const systems = systemsData?.data || [];
 
+  const hubMap = useMemo(() => {
+    const map = new Map<number, string>();
+    systems.forEach((s) => {
+      if (s.is_hub && s.order_in_ring !== null) {
+        map.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
+      }
+    });
+    return map;
+  }, [systems]);
+
   if (isLoading || isLoadingTypes)
     return (
       <div className='py-4 text-center text-sm text-gray-500'>Loading associated systems...</div>
@@ -140,13 +183,6 @@ const RingAssociatedSystemsView = ({
       </div>
     );
   }
-
-  const hubMap = new Map<number, string>();
-  systems.forEach((s) => {
-    if (s.is_hub && s.order_in_ring !== null) {
-      hubMap.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
-    }
-  });
 
   return (
     <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2'>
@@ -255,7 +291,6 @@ export default function RingManagerPage() {
       'maintenance_area_name',
       'associated_system_names',
       'associated_system_ips',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ] as any,
     syncTables: [
       'rings',
@@ -285,7 +320,6 @@ export default function RingManagerPage() {
   } = manager;
 
   const dynamicStats = useMemo<DynamicStats>(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const s = (manager as any).stats;
     return (
       s || {
@@ -329,7 +363,6 @@ export default function RingManagerPage() {
     onError: (err) => toast.error(`Failed to disassociate system: ${err.message}`),
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSaveSystems = async (systemsData: any[]) => {
     toast.info(`Saving ${systemsData.length} system associations...`);
     const promises = systemsData.map((systemData) => {
@@ -434,7 +467,6 @@ export default function RingManagerPage() {
   );
   const isLoadingDropdowns = isLoadingRingTypes || isLoadingAreas;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   const handleMutationSuccess = (data: any) => {
     toast.success(`Ring ${editModal.record ? 'updated' : 'created'} successfully.`);
     editModal.close();
@@ -575,7 +607,6 @@ export default function RingManagerPage() {
     canEdit,
   ]);
 
-  // --- INTERACTIVE STATS ---
   const headerStats = useMemo<StatProps[]>(() => {
     const currentSpecFilter = filters.filters.spec_status;
     const currentOfcFilter = filters.filters.ofc_status;
@@ -586,7 +617,6 @@ export default function RingManagerPage() {
         value: `${dynamicStats.total} / ${dynamicStats.totalNodes}`,
         label: 'Total Rings / Nodes',
         color: 'default',
-        // Click clears specific status filters to show all
         onClick: () =>
           filters.setFilters((prev) => {
             const next = { ...prev };
@@ -619,7 +649,6 @@ export default function RingManagerPage() {
         isActive: currentOfcFilter === 'Ready',
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dynamicStats,
     filters.filters.ofc_status,
@@ -769,7 +798,7 @@ export default function RingManagerPage() {
         title='Ring Manager'
         description='Manage network rings, status, and topology.'
         icon={<GiLinkedRings />}
-        stats={headerStats} // Interactive Stats
+        stats={headerStats}
         actions={headerActions}
         isLoading={isLoading}
         isFetching={isFetching}

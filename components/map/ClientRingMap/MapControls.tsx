@@ -1,7 +1,7 @@
 // components/map/ClientRingMap/MapControls.tsx
 'use client';
 
-import { RotateCcw, RotateCw, Plus, Minus, Ruler } from 'lucide-react'; // THE FIX: Imported Ruler
+import { RotateCcw, RotateCw, Plus, Minus, Ruler, Zap } from 'lucide-react'; 
 
 interface MapControlsProps {
   onBack?: () => void;
@@ -9,11 +9,13 @@ interface MapControlsProps {
   setShowAllNodePopups: (show: boolean) => void;
   showAllLinePopups: boolean;
   setShowAllLinePopups: (show: boolean) => void;
+  showPowerLevels: boolean;
+  setShowPowerLevels: (show: boolean) => void;
   onRotate: (deg: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
-  isMeasureMode: boolean; // THE FIX: Added prop
-  setIsMeasureMode: (mode: boolean) => void; // THE FIX: Added prop
+  isMeasureMode: boolean; 
+  setIsMeasureMode: (mode: boolean) => void; 
 }
 
 export const MapControls = ({
@@ -22,6 +24,8 @@ export const MapControls = ({
   setShowAllNodePopups,
   showAllLinePopups,
   setShowAllLinePopups,
+  showPowerLevels,
+  setShowPowerLevels,
   onRotate,
   onZoomIn,
   onZoomOut,
@@ -29,33 +33,48 @@ export const MapControls = ({
   setIsMeasureMode,
 }: MapControlsProps) => {
   return (
-    <div className='absolute top-4 right-4 z-1000 flex flex-col gap-2 no-print'>
+    <div className='absolute top-4 right-4 z-[1000] flex flex-col gap-2 no-print'>
       {/* Menu Controls */}
       <div className='flex flex-col gap-2 bg-white dark:bg-gray-800 min-w-[160px] rounded-lg p-2 shadow-lg text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700'>
         {onBack && (
           <button
             onClick={onBack}
-            className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors text-left'>
+            className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors text-left font-medium'>
             ← Back
           </button>
         )}
         <button
           onClick={() => setShowAllNodePopups(!showAllNodePopups)}
-          className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors text-left'>
-          <span className={showAllNodePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
-          {showAllNodePopups ? 'Hide' : 'Show'} Node Info
+          className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded transition-colors text-left'>
+          <span className={`w-2 h-2 rounded-full ${showAllNodePopups ? 'bg-green-500' : 'bg-red-500'}`} />
+          {showAllNodePopups ? 'Hide Node Info' : 'Show Node Info'}
         </button>
         <button
           onClick={() => setShowAllLinePopups(!showAllLinePopups)}
-          className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1 rounded transition-colors text-left'>
-          <span className={showAllLinePopups ? 'text-green-500' : 'text-red-500'}>●</span>{' '}
-          {showAllLinePopups ? 'Hide' : 'Show'} Line Info
+          className='px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded transition-colors text-left'>
+          <span className={`w-2 h-2 rounded-full ${showAllLinePopups ? 'bg-green-500' : 'bg-red-500'}`} />
+          {showAllLinePopups ? 'Hide Line Info' : 'Show Line Info'}
+        </button>
+        
+        {/* NEW: Show Power Levels Toggle */}
+        <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+        <button
+          onClick={() => setShowPowerLevels(!showPowerLevels)}
+          className={`px-3 py-2 text-sm flex items-center justify-between rounded transition-colors text-left font-semibold ${
+             showPowerLevels 
+                ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' 
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}>
+          <span className="flex items-center gap-2">
+              <Zap size={14} className={showPowerLevels ? 'text-orange-500' : 'text-gray-400'} /> 
+              Power Map
+          </span>
+          <span className={`w-2 h-2 rounded-full ${showPowerLevels ? 'bg-orange-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
         </button>
       </div>
 
       {/* Zoom, Measure & Rotation Controls */}
-      <div className='flex gap-2'>
-        {/* THE FIX: Added Measure Group */}
+      <div className='flex gap-2 justify-end'>
         <div className='flex flex-col gap-px bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden justify-center'>
           <button
             onClick={() => setIsMeasureMode(!isMeasureMode)}
@@ -69,7 +88,6 @@ export const MapControls = ({
           </button>
         </div>
 
-        {/* Zoom Group */}
         <div className='flex flex-col gap-px bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
           <button
             onClick={onZoomIn}
@@ -86,7 +104,6 @@ export const MapControls = ({
           </button>
         </div>
 
-        {/* Rotation Group */}
         <div className='flex gap-px bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
           <button
             onClick={() => onRotate(-90)}

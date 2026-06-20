@@ -1,4 +1,5 @@
 id,req_no,employee_id,amount,advance_date,status,description,created_at,updated_at
 391f2fad-c233-444f-ab05-4f51eef7ec33,Vehicle advance of Ardhendu Khatua,6e741c80-4fa4-4226-bccb-61a22ea65bef,8226.00,2026-01-29,active,Vehicle advance of Ardhendu Khatua.,2026-01-29 12:05:49.780416+00,2026-03-10 06:52:54.946523+00
-5b71ead2-2006-4d93-8e8a-330003583d10,Vehicle_Advance_Arjun,6e741c80-4fa4-4226-bccb-61a22ea65bef,3000.00,2026-05-11,active,Vehicle Advance,2026-05-11 09:17:54.005172+00,2026-05-11 09:17:54.005172+00
+5b71ead2-2006-4d93-8e8a-330003583d10,Vehicle_Advance_Arjun,6e741c80-4fa4-4226-bccb-61a22ea65bef,6211.00,2026-05-11,active,Vehicle Advance,2026-05-11 09:17:54.005172+00,2026-06-15 06:05:12.161627+00
+9e0d25f5-b093-4ea3-a16e-be2375a51d8f,Vehicle_Advance_Ardhendu,6e741c80-4fa4-4226-bccb-61a22ea65bef,2000.00,2026-06-15,active,,2026-06-15 06:04:12.760586+00,2026-06-15 06:04:12.760586+00
 ba7a4119-bfcf-4d67-80f9-0e79a5ff5380,Vehicle_Advance_Rajaul,436e1759-9f21-4071-a391-bea46f81b60a,16000.00,2026-02-04,active,Vehicle Advance for March 2026,2026-02-05 05:05:42.222901+00,2026-02-05 05:05:42.222901+00

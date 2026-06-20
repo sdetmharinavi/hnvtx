@@ -248,51 +248,6 @@ export const diary_notesUpdateSchema = z.object({
   user_id: z.uuid().optional(),
 });
 
-export const e_filesRowSchema = z.object({
-  category: z.string(),
-  created_at: z.iso.datetime().nullable(),
-  current_holder_employee_id: z.uuid(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  file_number: z.string(),
-  id: z.uuid(),
-  initiator_employee_id: z.uuid(),
-  priority: z.string().nullable(),
-  recorded_by_user_id: z.uuid(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
-  subject: z.string(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const e_filesInsertSchema = z.object({
-  category: z.string(),
-  created_at: z.iso.datetime().nullable().optional(),
-  current_holder_employee_id: z.uuid(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  file_number: z.string(),
-  id: z.uuid().optional(),
-  initiator_employee_id: z.uuid(),
-  priority: z.string().nullable().optional(),
-  recorded_by_user_id: z.uuid(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
-  subject: z.string(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const e_filesUpdateSchema = z.object({
-  category: z.string().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  current_holder_employee_id: z.uuid().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  file_number: z.string().optional(),
-  id: z.uuid().optional(),
-  initiator_employee_id: z.uuid().optional(),
-  priority: z.string().nullable().optional(),
-  recorded_by_user_id: z.uuid().optional(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
-  subject: z.string().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
 export const employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -456,42 +411,6 @@ export const fiber_splicesUpdateSchema = z.object({
   outgoing_segment_id: z.uuid().nullable().optional(),
   splice_type_id: z.uuid().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const file_movementsRowSchema = z.object({
-  action_date: z.iso.datetime().nullable(),
-  action_type: z.string(),
-  created_at: z.iso.datetime().nullable(),
-  file_id: z.uuid(),
-  from_employee_id: z.uuid().nullable(),
-  id: z.uuid(),
-  performed_by_user_id: z.uuid(),
-  remarks: z.string().nullable(),
-  to_employee_id: z.uuid(),
-});
-
-export const file_movementsInsertSchema = z.object({
-  action_date: z.iso.datetime().nullable().optional(),
-  action_type: z.string(),
-  created_at: z.iso.datetime().nullable().optional(),
-  file_id: z.uuid(),
-  from_employee_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  performed_by_user_id: z.uuid().optional(),
-  remarks: z.string().nullable().optional(),
-  to_employee_id: z.uuid(),
-});
-
-export const file_movementsUpdateSchema = z.object({
-  action_date: z.iso.datetime().nullable().optional(),
-  action_type: z.string().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  file_id: z.uuid().optional(),
-  from_employee_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  performed_by_user_id: z.uuid().optional(),
-  remarks: z.string().nullable().optional(),
-  to_employee_id: z.uuid().optional(),
 });
 
 export const filesRowSchema = z.object({
@@ -1121,6 +1040,42 @@ export const ofc_connectionsUpdateSchema = z.object({
   updated_sn_id: z.uuid().nullable().optional(),
 });
 
+export const port_power_readingsRowSchema = z.object({
+  id: z.uuid(),
+  port: z.string(),
+  reading_date: z.iso.datetime().nullable(),
+  recorded_by_user_id: z.uuid().nullable(),
+  remark: z.string().nullable(),
+  ring_id: z.uuid().nullable(),
+  rx_power: z.number().nullable(),
+  system_id: z.uuid().nullable(),
+  tx_power: z.number().nullable(),
+});
+
+export const port_power_readingsInsertSchema = z.object({
+  id: z.uuid().optional(),
+  port: z.string(),
+  reading_date: z.iso.datetime().nullable().optional(),
+  recorded_by_user_id: z.uuid().nullable().optional(),
+  remark: z.string().nullable().optional(),
+  ring_id: z.uuid().nullable().optional(),
+  rx_power: z.number().nullable().optional(),
+  system_id: z.uuid().nullable().optional(),
+  tx_power: z.number().nullable().optional(),
+});
+
+export const port_power_readingsUpdateSchema = z.object({
+  id: z.uuid().optional(),
+  port: z.string().optional(),
+  reading_date: z.iso.datetime().nullable().optional(),
+  recorded_by_user_id: z.uuid().nullable().optional(),
+  remark: z.string().nullable().optional(),
+  ring_id: z.uuid().nullable().optional(),
+  rx_power: z.number().nullable().optional(),
+  system_id: z.uuid().nullable().optional(),
+  tx_power: z.number().nullable().optional(),
+});
+
 export const ports_managementRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid(),
@@ -1413,7 +1368,7 @@ export const systemsRowSchema = z.object({
   system_capacity_id: z.uuid().nullable(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_type_id: z.uuid(),
-  unique_id: z.uuid().nullable(),
+  unique_id: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -1433,7 +1388,7 @@ export const systemsInsertSchema = z.object({
   system_capacity_id: z.uuid().nullable().optional(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   system_type_id: z.uuid(),
-  unique_id: z.uuid().nullable().optional(),
+  unique_id: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1453,7 +1408,7 @@ export const systemsUpdateSchema = z.object({
   system_capacity_id: z.uuid().nullable().optional(),
   system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable().optional(),
   system_type_id: z.uuid().optional(),
-  unique_id: z.uuid().nullable().optional(),
+  unique_id: z.string().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
@@ -1633,28 +1588,6 @@ export const v_cable_utilizationRowSchema = z.object({
   utilization_percent: z.number().min(0).max(100).nullable(),
 });
 
-export const v_e_files_extendedRowSchema = z.object({
-  category: z.string().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  current_holder_area: z.string().nullable(),
-  current_holder_designation: z.string().nullable(),
-  current_holder_employee_id: z.uuid().nullable(),
-  current_holder_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  file_number: z.string().nullable(),
-  id: z.uuid().nullable(),
-  initiator_designation: z.string().nullable(),
-  initiator_employee_id: z.uuid().nullable(),
-  initiator_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  last_action_date: z.iso.datetime().nullable(),
-  priority: z.string().nullable(),
-  recorded_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  recorded_by_user_id: z.uuid().nullable(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
-  subject: z.string().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
 export const v_employee_designationsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
@@ -1712,23 +1645,6 @@ export const v_expenses_completeRowSchema = z.object({
   updated_at: z.iso.datetime().nullable(),
   used_by: z.string().nullable(),
   vendor: z.string().nullable(),
-});
-
-export const v_file_movements_extendedRowSchema = z.object({
-  action_date: z.iso.datetime().nullable(),
-  action_type: z.string().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  file_id: z.uuid().nullable(),
-  from_employee_designation: z.string().nullable(),
-  from_employee_id: z.uuid().nullable(),
-  from_employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  id: z.uuid().nullable(),
-  performed_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  performed_by_user_id: z.uuid().nullable(),
-  remarks: z.string().nullable(),
-  to_employee_designation: z.string().nullable(),
-  to_employee_id: z.uuid().nullable(),
-  to_employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
 });
 
 export const v_inventory_itemsRowSchema = z.object({
@@ -1906,6 +1822,20 @@ export const v_ofc_connections_completeRowSchema = z.object({
   updated_sn_name: z.string().nullable(),
 });
 
+export const v_port_power_readingsRowSchema = z.object({
+  id: z.uuid().nullable(),
+  port: z.string().nullable(),
+  reading_date: z.iso.datetime().nullable(),
+  recorded_by_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  recorded_by_user_id: z.uuid().nullable(),
+  remark: z.string().nullable(),
+  ring_id: z.uuid().nullable(),
+  rx_power: z.number().nullable(),
+  system_id: z.uuid().nullable(),
+  system_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
+  tx_power: z.number().nullable(),
+});
+
 export const v_ports_management_completeRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   id: z.uuid().nullable(),
@@ -2037,7 +1967,7 @@ export const v_system_connections_completeRowSchema = z.object({
   system_protection_interface: z.string().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   system_working_interface: z.string().nullable(),
-  unique_id: z.uuid().nullable(),
+  unique_id: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
   vlan: z.string().nullable(),
   working_fiber_in_ids: z.array(z.string()).nullable(),
@@ -2074,7 +2004,7 @@ export const v_systems_completeRowSchema = z.object({
   system_type_code: z.string().nullable(),
   system_type_id: z.uuid().nullable(),
   system_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  unique_id: z.uuid().nullable(),
+  unique_id: z.string().nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 
@@ -2138,9 +2068,6 @@ export type Cable_segmentsUpdateSchema = z.infer<typeof cable_segmentsUpdateSche
 export type Diary_notesRowSchema = z.infer<typeof diary_notesRowSchema>;
 export type Diary_notesInsertSchema = z.infer<typeof diary_notesInsertSchema>;
 export type Diary_notesUpdateSchema = z.infer<typeof diary_notesUpdateSchema>;
-export type E_filesRowSchema = z.infer<typeof e_filesRowSchema>;
-export type E_filesInsertSchema = z.infer<typeof e_filesInsertSchema>;
-export type E_filesUpdateSchema = z.infer<typeof e_filesUpdateSchema>;
 export type Employee_designationsRowSchema = z.infer<typeof employee_designationsRowSchema>;
 export type Employee_designationsInsertSchema = z.infer<typeof employee_designationsInsertSchema>;
 export type Employee_designationsUpdateSchema = z.infer<typeof employee_designationsUpdateSchema>;
@@ -2153,9 +2080,6 @@ export type ExpensesUpdateSchema = z.infer<typeof expensesUpdateSchema>;
 export type Fiber_splicesRowSchema = z.infer<typeof fiber_splicesRowSchema>;
 export type Fiber_splicesInsertSchema = z.infer<typeof fiber_splicesInsertSchema>;
 export type Fiber_splicesUpdateSchema = z.infer<typeof fiber_splicesUpdateSchema>;
-export type File_movementsRowSchema = z.infer<typeof file_movementsRowSchema>;
-export type File_movementsInsertSchema = z.infer<typeof file_movementsInsertSchema>;
-export type File_movementsUpdateSchema = z.infer<typeof file_movementsUpdateSchema>;
 export type FilesRowSchema = z.infer<typeof filesRowSchema>;
 export type FilesInsertSchema = z.infer<typeof filesInsertSchema>;
 export type FilesUpdateSchema = z.infer<typeof filesUpdateSchema>;
@@ -2198,6 +2122,9 @@ export type Ofc_cablesUpdateSchema = z.infer<typeof ofc_cablesUpdateSchema>;
 export type Ofc_connectionsRowSchema = z.infer<typeof ofc_connectionsRowSchema>;
 export type Ofc_connectionsInsertSchema = z.infer<typeof ofc_connectionsInsertSchema>;
 export type Ofc_connectionsUpdateSchema = z.infer<typeof ofc_connectionsUpdateSchema>;
+export type Port_power_readingsRowSchema = z.infer<typeof port_power_readingsRowSchema>;
+export type Port_power_readingsInsertSchema = z.infer<typeof port_power_readingsInsertSchema>;
+export type Port_power_readingsUpdateSchema = z.infer<typeof port_power_readingsUpdateSchema>;
 export type Ports_managementRowSchema = z.infer<typeof ports_managementRowSchema>;
 export type Ports_managementInsertSchema = z.infer<typeof ports_managementInsertSchema>;
 export type Ports_managementUpdateSchema = z.infer<typeof ports_managementUpdateSchema>;
@@ -2232,12 +2159,10 @@ export type V_advances_completeRowSchema = z.infer<typeof v_advances_completeRow
 export type V_audit_logsRowSchema = z.infer<typeof v_audit_logsRowSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
-export type V_e_files_extendedRowSchema = z.infer<typeof v_e_files_extendedRowSchema>;
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
 export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
 export type V_expenses_completeRowSchema = z.infer<typeof v_expenses_completeRowSchema>;
-export type V_file_movements_extendedRowSchema = z.infer<typeof v_file_movements_extendedRowSchema>;
 export type V_inventory_itemsRowSchema = z.infer<typeof v_inventory_itemsRowSchema>;
 export type V_inventory_transactions_extendedRowSchema = z.infer<typeof v_inventory_transactions_extendedRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;
@@ -2246,6 +2171,7 @@ export type V_maintenance_areasRowSchema = z.infer<typeof v_maintenance_areasRow
 export type V_nodes_completeRowSchema = z.infer<typeof v_nodes_completeRowSchema>;
 export type V_ofc_cables_completeRowSchema = z.infer<typeof v_ofc_cables_completeRowSchema>;
 export type V_ofc_connections_completeRowSchema = z.infer<typeof v_ofc_connections_completeRowSchema>;
+export type V_port_power_readingsRowSchema = z.infer<typeof v_port_power_readingsRowSchema>;
 export type V_ports_management_completeRowSchema = z.infer<typeof v_ports_management_completeRowSchema>;
 export type V_ring_nodesRowSchema = z.infer<typeof v_ring_nodesRowSchema>;
 export type V_ringsRowSchema = z.infer<typeof v_ringsRowSchema>;

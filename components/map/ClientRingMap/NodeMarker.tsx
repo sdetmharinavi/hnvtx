@@ -9,6 +9,7 @@ import { DisplayNode } from '@/utils/mapUtils';
 import { PortDisplayInfo, RingMapNode } from './types';
 import { RefObject, useEffect, useRef } from 'react';
 import GenericRemarks from '@/components/common/GenericRemarks';
+import { V_port_power_readingsRowSchema } from '@/schemas/zod-schemas';
 
 interface NodeMarkerProps {
   node: DisplayNode<RingMapNode>;
@@ -24,7 +25,9 @@ interface NodeMarkerProps {
   onNodeClick?: (nodeId: string) => void;
   onLabelDragEnd: (e: L.LeafletEvent, nodeId: string) => void;
   rotation: number;
-  isMeasureMode: boolean; // THE FIX: Interactivity control
+  isMeasureMode: boolean;
+  showPowerLevels?: boolean;
+  powerData?: Record<string, V_port_power_readingsRowSchema>;
 }
 
 export const NodeMarker = ({
@@ -41,6 +44,8 @@ export const NodeMarker = ({
   onLabelDragEnd,
   rotation,
   isMeasureMode,
+  showPowerLevels = false,
+  powerData = {},
 }: NodeMarkerProps) => {
   const dLat = node.displayLat - mapCenter.lat;
   const dLng = node.displayLng - mapCenter.lng;
@@ -70,6 +75,9 @@ export const NodeMarker = ({
       portsList,
       theme === 'dark',
       rotation,
+      showPowerLevels,
+      node.id!,
+      powerData
     ),
     className: 'bg-transparent border-none',
     iconSize: [0, 0],
@@ -125,7 +133,6 @@ export const NodeMarker = ({
         }}
         interactive={false}
       />
-      {/* THE FIX: Pass interactive prop to allow map clicks to bleed through during measurement */}
       <Marker
         position={nodePos}
         icon={markerIcon}

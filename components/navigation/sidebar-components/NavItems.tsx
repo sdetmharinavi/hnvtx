@@ -133,13 +133,6 @@ function NavItems() {
             roles: ROLES.VIEWERS,
           },
           {
-            id: 'efiles',
-            label: 'E-File',
-            icon: <FileText className='h-5 w-5' />,
-            href: '/dashboard/e-files',
-            roles: ROLES.VIEWERS,
-          },
-          {
             id: 'inventory',
             label: 'Inventory',
             icon: <FiArchive className='h-5 w-5' />,
@@ -203,6 +196,13 @@ function NavItems() {
             icon: <GoServer className='h-5 w-5' />,
             href: '/dashboard/ring-manager',
             roles: ROLES.VIEWERS, // THE FIX: Changed from PERMISSIONS.canManageSystems
+          },
+          {
+            id: 'power-readings',
+            label: 'Power Readings',
+            href: '/dashboard/power-readings',
+            icon: <FiActivity className='h-5 w-5' />,
+            roles: ROLES.VIEWERS,
           },
           {
             id: 'logical-paths',

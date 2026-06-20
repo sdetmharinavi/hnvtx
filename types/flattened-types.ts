@@ -226,51 +226,6 @@ export type Diary_notesUpdate = {
     user_id?: string;
 };
 
-export type E_filesRow = {
-    category: string;
-    created_at: string | null;
-    current_holder_employee_id: string;
-    description: string | null;
-    file_number: string;
-    id: string;
-    initiator_employee_id: string;
-    priority: string | null;
-    recorded_by_user_id: string;
-    status: string | null;
-    subject: string;
-    updated_at: string | null;
-};
-
-export type E_filesInsert = {
-    category: string;
-    created_at?: string | null;
-    current_holder_employee_id: string;
-    description?: string | null;
-    file_number: string;
-    id?: string;
-    initiator_employee_id: string;
-    priority?: string | null;
-    recorded_by_user_id: string;
-    status?: string | null;
-    subject: string;
-    updated_at?: string | null;
-};
-
-export type E_filesUpdate = {
-    category?: string;
-    created_at?: string | null;
-    current_holder_employee_id?: string;
-    description?: string | null;
-    file_number?: string;
-    id?: string;
-    initiator_employee_id?: string;
-    priority?: string | null;
-    recorded_by_user_id?: string;
-    status?: string | null;
-    subject?: string;
-    updated_at?: string | null;
-};
-
 export type Employee_designationsRow = {
     created_at: string | null;
     id: string;
@@ -434,42 +389,6 @@ export type Fiber_splicesUpdate = {
     outgoing_segment_id?: string | null;
     splice_type_id?: string;
     updated_at?: string | null;
-};
-
-export type File_movementsRow = {
-    action_date: string | null;
-    action_type: string;
-    created_at: string | null;
-    file_id: string;
-    from_employee_id: string | null;
-    id: string;
-    performed_by_user_id: string;
-    remarks: string | null;
-    to_employee_id: string;
-};
-
-export type File_movementsInsert = {
-    action_date?: string | null;
-    action_type: string;
-    created_at?: string | null;
-    file_id: string;
-    from_employee_id?: string | null;
-    id?: string;
-    performed_by_user_id?: string;
-    remarks?: string | null;
-    to_employee_id: string;
-};
-
-export type File_movementsUpdate = {
-    action_date?: string | null;
-    action_type?: string;
-    created_at?: string | null;
-    file_id?: string;
-    from_employee_id?: string | null;
-    id?: string;
-    performed_by_user_id?: string;
-    remarks?: string | null;
-    to_employee_id?: string;
 };
 
 export type FilesRow = {
@@ -1099,6 +1018,42 @@ export type Ofc_connectionsUpdate = {
     updated_sn_id?: string | null;
 };
 
+export type Port_power_readingsRow = {
+    id: string;
+    port: string;
+    reading_date: string | null;
+    recorded_by_user_id: string | null;
+    remark: string | null;
+    ring_id: string | null;
+    rx_power: number | null;
+    system_id: string | null;
+    tx_power: number | null;
+};
+
+export type Port_power_readingsInsert = {
+    id?: string;
+    port: string;
+    reading_date?: string | null;
+    recorded_by_user_id?: string | null;
+    remark?: string | null;
+    ring_id?: string | null;
+    rx_power?: number | null;
+    system_id?: string | null;
+    tx_power?: number | null;
+};
+
+export type Port_power_readingsUpdate = {
+    id?: string;
+    port?: string;
+    reading_date?: string | null;
+    recorded_by_user_id?: string | null;
+    remark?: string | null;
+    ring_id?: string | null;
+    rx_power?: number | null;
+    system_id?: string | null;
+    tx_power?: number | null;
+};
+
 export type Ports_managementRow = {
     created_at: string | null;
     id: string;
@@ -1613,28 +1568,6 @@ export type V_cable_utilizationRow = {
     utilization_percent: number | null;
 };
 
-export type V_e_files_extendedRow = {
-    category: string | null;
-    created_at: string | null;
-    current_holder_area: string | null;
-    current_holder_designation: string | null;
-    current_holder_employee_id: string | null;
-    current_holder_name: string | null;
-    description: string | null;
-    file_number: string | null;
-    id: string | null;
-    initiator_designation: string | null;
-    initiator_employee_id: string | null;
-    initiator_name: string | null;
-    last_action_date: string | null;
-    priority: string | null;
-    recorded_by_name: string | null;
-    recorded_by_user_id: string | null;
-    status: string | null;
-    subject: string | null;
-    updated_at: string | null;
-};
-
 export type V_employee_designationsRow = {
     created_at: string | null;
     id: string | null;
@@ -1692,23 +1625,6 @@ export type V_expenses_completeRow = {
     updated_at: string | null;
     used_by: string | null;
     vendor: string | null;
-};
-
-export type V_file_movements_extendedRow = {
-    action_date: string | null;
-    action_type: string | null;
-    created_at: string | null;
-    file_id: string | null;
-    from_employee_designation: string | null;
-    from_employee_id: string | null;
-    from_employee_name: string | null;
-    id: string | null;
-    performed_by_name: string | null;
-    performed_by_user_id: string | null;
-    remarks: string | null;
-    to_employee_designation: string | null;
-    to_employee_id: string | null;
-    to_employee_name: string | null;
 };
 
 export type V_inventory_itemsRow = {
@@ -1884,6 +1800,20 @@ export type V_ofc_connections_completeRow = {
     updated_fiber_no_sn: number | null;
     updated_sn_id: string | null;
     updated_sn_name: string | null;
+};
+
+export type V_port_power_readingsRow = {
+    id: string | null;
+    port: string | null;
+    reading_date: string | null;
+    recorded_by_name: string | null;
+    recorded_by_user_id: string | null;
+    remark: string | null;
+    ring_id: string | null;
+    rx_power: number | null;
+    system_id: string | null;
+    system_name: string | null;
+    tx_power: number | null;
 };
 
 export type V_ports_management_completeRow = {
@@ -2130,12 +2060,10 @@ export const tableNames = [
   "advances",
   "cable_segments",
   "diary_notes",
-  "e_files",
   "employee_designations",
   "employees",
   "expenses",
   "fiber_splices",
-  "file_movements",
   "files",
   "folders",
   "inventory_items",
@@ -2150,6 +2078,7 @@ export const tableNames = [
   "ofc_cable_links",
   "ofc_cables",
   "ofc_connections",
+  "port_power_readings",
   "ports_management",
   "ring_based_systems",
   "rings",
@@ -2167,12 +2096,10 @@ export const viewNames = [
   "v_audit_logs",
   "v_cable_segments_at_jc",
   "v_cable_utilization",
-  "v_e_files_extended",
   "v_employee_designations",
   "v_employees",
   "v_end_to_end_paths",
   "v_expenses_complete",
-  "v_file_movements_extended",
   "v_inventory_items",
   "v_inventory_transactions_extended",
   "v_junction_closures_complete",
@@ -2181,6 +2108,7 @@ export const viewNames = [
   "v_nodes_complete",
   "v_ofc_cables_complete",
   "v_ofc_connections_complete",
+  "v_port_power_readings",
   "v_ports_management_complete",
   "v_ring_nodes",
   "v_rings",

@@ -8,6 +8,7 @@ import { formatIP } from '@/utils/formatters';
 import { PortDisplayInfo, RingMapNode } from '@/components/map/ClientRingMap/types';
 import { createLabelHtml } from '@/components/map/ClientRingMap/utils/labelUtils';
 import { useMemo, useRef } from 'react';
+import { V_port_power_readingsRowSchema } from '@/schemas/zod-schemas';
 
 interface MeshNodeMarkerProps {
   node: RingMapNode;
@@ -16,9 +17,10 @@ interface MeshNodeMarkerProps {
   theme: string;
   labelPosition?: L.LatLngExpression;
   onLabelDragEnd?: (e: L.LeafletEvent, nodeId: string) => void;
+  showPowerLevels?: boolean;
+  powerData?: Record<string, V_port_power_readingsRowSchema>;
 }
 
-// Center of the mesh layout (matches utils/meshUtils.ts)
 const MESH_CENTER_X = 1000;
 const MESH_CENTER_Y = 1000;
 const LABEL_OFFSET_DISTANCE = 80;
@@ -30,52 +32,49 @@ export const MeshNodeMarker = ({
   theme,
   labelPosition,
   onLabelDragEnd,
+  showPowerLevels = false,
+  powerData = {}
 }: MeshNodeMarkerProps) => {
   const isDark = theme === 'dark';
   const labelMarkerRef = useRef<L.Marker>(null);
 
-  // 1. Calculate Smart Initial Label Position (Radial Push)
-  // This pushes the label OUTWARD from the center, so it doesn't overlap the lines converging on the node.
   const finalLabelPos = useMemo(() => {
     if (labelPosition) return labelPosition;
 
-    // Calculate vector from Mesh Center to Node
     const dx = position.lng - MESH_CENTER_X;
     const dy = position.lat - MESH_CENTER_Y;
     const magnitude = Math.sqrt(dx * dx + dy * dy);
 
-    // If node is exactly at center (rare), push down
     if (magnitude < 1) {
       return new L.LatLng(position.lat + LABEL_OFFSET_DISTANCE, position.lng);
     }
 
-    // Normalize and scale vector to push OUTWARD
     const offsetX = (dx / magnitude) * LABEL_OFFSET_DISTANCE;
     const offsetY = (dy / magnitude) * LABEL_OFFSET_DISTANCE;
 
     return new L.LatLng(position.lat + offsetY, position.lng + offsetX);
   }, [position, labelPosition]);
 
-  // 2. Create Custom DivIcon for the Label
-  // Using a small iconSize ensures the drag handle is centered but the HTML content can overflow visibly
   const labelIcon = useMemo(() => {
     return L.divIcon({
       html: createLabelHtml(
-        node.system_node_name || node.name || 'Unknown', // THE FIX: Prioritize system_node_name
+        node.system_node_name || node.name || 'Unknown',
         formatIP(node.ip),
         portsList,
         isDark,
-        0, // No rotation
+        0, 
+        showPowerLevels,
+        node.id!,
+        powerData
       ),
       className: 'bg-transparent border-none',
       iconSize: [20, 20],
       iconAnchor: [10, 10],
     });
-  }, [node.system_node_name, node.name, node.ip, portsList, isDark]);
+  }, [node.system_node_name, node.name, node.ip, portsList, isDark, showPowerLevels, node.id, powerData]);
 
   return (
     <>
-      {/* Dashed Connector Line: Node Icon -> Label */}
       <Polyline
         positions={[position, finalLabelPos]}
         pathOptions={{
@@ -83,11 +82,10 @@ export const MeshNodeMarker = ({
           weight: 1,
           dashArray: '4, 4',
           opacity: 0.4,
-          interactive: false, // Line should not block clicks
+          interactive: false, 
         }}
       />
 
-      {/* Node Icon Marker (Static, Lower Z-Index) */}
       <Marker
         position={position}
         icon={getNodeIcon(node.system_type, node.type, false)}
@@ -96,12 +94,10 @@ export const MeshNodeMarker = ({
           <div className='text-sm min-w-[200px] p-0 rounded-lg overflow-hidden bg-white dark:bg-slate-800'>
             <div className='bg-linear-to-r from-blue-50 to-blue-100 dark:from-slate-700 dark:to-slate-600 px-3 py-2.5 border-b border-slate-200 dark:border-slate-600'>
               <h3 className='font-bold text-slate-900 dark:text-slate-50 text-base'>
-                {/* THE FIX: Title uses System Name */}
                 {node.system_node_name || node.name}
               </h3>
             </div>
             <div className='space-y-2 p-3 text-slate-600 dark:text-slate-300'>
-              {/* THE FIX: Keep the physical location name visible as secondary info */}
               <div className='flex items-center justify-between'>
                 <span className='font-medium text-slate-700 dark:text-slate-200'>Location:</span>
                 <span className='text-xs truncate max-w-[120px]' title={node.name || ''}>
@@ -127,7 +123,6 @@ export const MeshNodeMarker = ({
         </Popup>
       </Marker>
 
-      {/* Label Marker (Draggable, Higher Z-Index) */}
       <Marker
         ref={labelMarkerRef}
         position={finalLabelPos}
@@ -135,13 +130,12 @@ export const MeshNodeMarker = ({
         draggable={true}
         eventHandlers={{
           dragend: (e) => {
-            // Defer update to prevent potential render thrashing
             requestAnimationFrame(() => {
               onLabelDragEnd?.(e, node.id!);
             });
           },
         }}
-        zIndexOffset={1000} // Ensure labels are always on top
+        zIndexOffset={1000}
         opacity={1}
       />
     </>

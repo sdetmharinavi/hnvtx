@@ -1,6 +1,6 @@
 // components/map/MeshDiagram/types.ts
-
 import { PathConfig, PortDisplayInfo, RingMapNode, SegmentConfigMap } from "@/components/map/ClientRingMap/types";
+import { V_port_power_readingsRowSchema } from "@/schemas/zod-schemas";
 import L from 'leaflet';
 
 export interface MeshDiagramProps {
@@ -8,8 +8,11 @@ export interface MeshDiagramProps {
   connections: Array<[RingMapNode, RingMapNode]>;
   ringName?: string;
   onBack?: () => void;
-  segmentConfigs?: SegmentConfigMap; // Updated to use the correct type
+  segmentConfigs?: SegmentConfigMap; 
   nodePorts?: Map<string, PortDisplayInfo[]>;
+  showPowerLevels: boolean;
+  setShowPowerLevels: (show: boolean) => void;
+  powerData: Record<string, V_port_power_readingsRowSchema>;
 }
 
 export interface MeshConnectionLineProps {
@@ -24,5 +27,5 @@ export interface MeshConnectionLineProps {
   customColor?: string;
   start: RingMapNode; 
   end: RingMapNode;
-  curveOffset?: number; // Added
+  curveOffset?: number; 
 }

@@ -1276,87 +1276,6 @@ export type Database = {
           },
         ]
       }
-      e_files: {
-        Row: {
-          category: string
-          created_at: string | null
-          current_holder_employee_id: string
-          description: string | null
-          file_number: string
-          id: string
-          initiator_employee_id: string
-          priority: string | null
-          recorded_by_user_id: string
-          status: string | null
-          subject: string
-          updated_at: string | null
-        }
-        Insert: {
-          category: string
-          created_at?: string | null
-          current_holder_employee_id: string
-          description?: string | null
-          file_number: string
-          id?: string
-          initiator_employee_id: string
-          priority?: string | null
-          recorded_by_user_id: string
-          status?: string | null
-          subject: string
-          updated_at?: string | null
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          current_holder_employee_id?: string
-          description?: string | null
-          file_number?: string
-          id?: string
-          initiator_employee_id?: string
-          priority?: string | null
-          recorded_by_user_id?: string
-          status?: string | null
-          subject?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e_files_current_holder_employee_id_fkey"
-            columns: ["current_holder_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_current_holder_employee_id_fkey"
-            columns: ["current_holder_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_initiator_employee_id_fkey"
-            columns: ["initiator_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_initiator_employee_id_fkey"
-            columns: ["initiator_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_recorded_by_user_id_fkey"
-            columns: ["recorded_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       employee_designations: {
         Row: {
           created_at: string | null
@@ -1662,92 +1581,6 @@ export type Database = {
             columns: ["splice_type_id"]
             isOneToOne: false
             referencedRelation: "v_lookup_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      file_movements: {
-        Row: {
-          action_date: string | null
-          action_type: string
-          created_at: string | null
-          file_id: string
-          from_employee_id: string | null
-          id: string
-          performed_by_user_id: string
-          remarks: string | null
-          to_employee_id: string
-        }
-        Insert: {
-          action_date?: string | null
-          action_type: string
-          created_at?: string | null
-          file_id: string
-          from_employee_id?: string | null
-          id?: string
-          performed_by_user_id?: string
-          remarks?: string | null
-          to_employee_id: string
-        }
-        Update: {
-          action_date?: string | null
-          action_type?: string
-          created_at?: string | null
-          file_id?: string
-          from_employee_id?: string | null
-          id?: string
-          performed_by_user_id?: string
-          remarks?: string | null
-          to_employee_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "file_movements_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "e_files"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "v_e_files_extended"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_from_employee_id_fkey"
-            columns: ["from_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_from_employee_id_fkey"
-            columns: ["from_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_performed_by_user_id_fkey"
-            columns: ["performed_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_to_employee_id_fkey"
-            columns: ["to_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_to_employee_id_fkey"
-            columns: ["to_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
             referencedColumns: ["id"]
           },
         ]
@@ -3204,6 +3037,92 @@ export type Database = {
           },
         ]
       }
+      port_power_readings: {
+        Row: {
+          id: string
+          port: string
+          reading_date: string | null
+          recorded_by_user_id: string | null
+          remark: string | null
+          ring_id: string | null
+          rx_power: number | null
+          system_id: string | null
+          tx_power: number | null
+        }
+        Insert: {
+          id?: string
+          port: string
+          reading_date?: string | null
+          recorded_by_user_id?: string | null
+          remark?: string | null
+          ring_id?: string | null
+          rx_power?: number | null
+          system_id?: string | null
+          tx_power?: number | null
+        }
+        Update: {
+          id?: string
+          port?: string
+          reading_date?: string | null
+          recorded_by_user_id?: string | null
+          remark?: string | null
+          ring_id?: string | null
+          rx_power?: number | null
+          system_id?: string | null
+          tx_power?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "port_power_readings_recorded_by_user_id_fkey"
+            columns: ["recorded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["ring_id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ports_management: {
         Row: {
           created_at: string | null
@@ -4236,66 +4155,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_e_files_extended: {
-        Row: {
-          category: string | null
-          created_at: string | null
-          current_holder_area: string | null
-          current_holder_designation: string | null
-          current_holder_employee_id: string | null
-          current_holder_name: string | null
-          description: string | null
-          file_number: string | null
-          id: string | null
-          initiator_designation: string | null
-          initiator_employee_id: string | null
-          initiator_name: string | null
-          last_action_date: string | null
-          priority: string | null
-          recorded_by_name: string | null
-          recorded_by_user_id: string | null
-          status: string | null
-          subject: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e_files_current_holder_employee_id_fkey"
-            columns: ["current_holder_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_current_holder_employee_id_fkey"
-            columns: ["current_holder_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_initiator_employee_id_fkey"
-            columns: ["initiator_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_initiator_employee_id_fkey"
-            columns: ["initiator_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "e_files_recorded_by_user_id_fkey"
-            columns: ["recorded_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       v_employee_designations: {
         Row: {
           created_at: string | null
@@ -4489,75 +4348,6 @@ export type Database = {
           {
             foreignKeyName: "expenses_spent_by_employee_id_fkey"
             columns: ["spent_by_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_file_movements_extended: {
-        Row: {
-          action_date: string | null
-          action_type: string | null
-          created_at: string | null
-          file_id: string | null
-          from_employee_designation: string | null
-          from_employee_id: string | null
-          from_employee_name: string | null
-          id: string | null
-          performed_by_name: string | null
-          performed_by_user_id: string | null
-          remarks: string | null
-          to_employee_designation: string | null
-          to_employee_id: string | null
-          to_employee_name: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "file_movements_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "e_files"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_file_id_fkey"
-            columns: ["file_id"]
-            isOneToOne: false
-            referencedRelation: "v_e_files_extended"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_from_employee_id_fkey"
-            columns: ["from_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_from_employee_id_fkey"
-            columns: ["from_employee_id"]
-            isOneToOne: false
-            referencedRelation: "v_employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_performed_by_user_id_fkey"
-            columns: ["performed_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "v_user_profiles_extended"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_to_employee_id_fkey"
-            columns: ["to_employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "file_movements_to_employee_id_fkey"
-            columns: ["to_employee_id"]
             isOneToOne: false
             referencedRelation: "v_employees"
             referencedColumns: ["id"]
@@ -5338,6 +5128,72 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_system_connections_complete"
             referencedColumns: ["sn_node_id"]
+          },
+        ]
+      }
+      v_port_power_readings: {
+        Row: {
+          id: string | null
+          port: string | null
+          reading_date: string | null
+          recorded_by_name: string | null
+          recorded_by_user_id: string | null
+          remark: string | null
+          ring_id: string | null
+          rx_power: number | null
+          system_id: string | null
+          system_name: string | null
+          tx_power: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "port_power_readings_recorded_by_user_id_fkey"
+            columns: ["recorded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_profiles_extended"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["ring_id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_ring_id_fkey"
+            columns: ["ring_id"]
+            isOneToOne: false
+            referencedRelation: "v_rings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "systems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_ring_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "port_power_readings_system_id_fkey"
+            columns: ["system_id"]
+            isOneToOne: false
+            referencedRelation: "v_systems_complete"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -6310,6 +6166,10 @@ export type Database = {
         }[]
       }
       get_jc_splicing_details: { Args: { p_jc_id: string }; Returns: Json }
+      get_latest_connection_power_readings: {
+        Args: { p_system_connection_id: string }
+        Returns: Json
+      }
       get_lookup_type_id: {
         Args: { p_category: string; p_name: string }
         Returns: string
@@ -6449,6 +6309,10 @@ export type Database = {
           p_quantity: number
         }
         Returns: Json
+      }
+      log_multiple_port_power_readings: {
+        Args: { p_readings: Json; p_ring_id: string }
+        Returns: undefined
       }
       log_user_activity: {
         Args: {

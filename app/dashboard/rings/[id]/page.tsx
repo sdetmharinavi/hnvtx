@@ -3,7 +3,7 @@
 
 import { useMemo, useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { FiArrowLeft, FiMap, FiGrid, FiSettings, FiRefreshCw } from 'react-icons/fi';
+import { FiArrowLeft, FiMap, FiGrid, FiSettings, FiRefreshCw, FiEdit, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
 import { PageSpinner, Modal, Button } from '@/components/common/ui';
 import { PageHeader } from '@/components/common/page-header';
@@ -12,8 +12,9 @@ import {
   V_ring_nodesRowSchema,
   V_ringsRowSchema,
   V_ofc_cables_completeRowSchema,
+  V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
-import { buildRpcFilters, useRpcRecord, useTableUpdate } from '@/hooks/database';
+import { buildRpcFilters, useRpcRecord, useTableUpdate, useTableQuery, usePagedData } from '@/hooks/database';
 import MeshDiagram from '@/components/map/MeshDiagram/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
@@ -28,12 +29,17 @@ import { getConnectionColor, parseBandwidthGbps } from '@/utils/mapUtils';
 import { useDataSync } from '@/hooks/data/useDataSync';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useAllRingLogicalPaths } from '@/hooks/database/ring-provisioning-hooks';
+import { Zap } from 'lucide-react';
+import { LogPowerReadingsModal } from '@/components/rings/LogPowerReadingsModal';
+import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
+import { useLatestSystemsPowerReadings } from '@/hooks/data/usePowerReadings';
 
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
+// ... (Keep existing types and helper components like RingAssociatedSystemsView the same) ...
 type ExtendedRingDetails = V_ringsRowSchema & {
   topology_config?: {
     disabled_segments?: string[];
@@ -68,6 +74,164 @@ const mapNodeData = (node: V_ring_nodesRowSchema): RingMapNode | null => {
   };
 };
 
+const useRingSystems = (ringId: string | null) => {
+  const supabase = createClient();
+
+  const { data: associations, isLoading: isLoadingAssoc } = useTableQuery(
+    supabase,
+    'ring_based_systems',
+    {
+      filters: { ring_id: ringId || '' },
+      columns: 'system_id, order_in_ring',
+      limit: 1000,
+      enabled: !!ringId,
+    }
+  );
+
+  const systemIds = useMemo(() => {
+    return associations?.data?.map((a) => a.system_id).filter(Boolean) || [];
+  }, [associations]);
+
+  const { data: systems, isLoading: isLoadingSystems, error } = usePagedData<V_systems_completeRowSchema>(
+    supabase,
+    'v_systems_complete',
+    {
+      filters: { id: systemIds.length > 0 ? systemIds : ['00000000-0000-0000-0000-000000000000'] },
+      limit: 1000,
+      orderBy: 'system_name',
+      orderDir: 'asc',
+    },
+    { enabled: !!ringId && !isLoadingAssoc && systemIds.length > 0 }
+  );
+
+  const orderedSystems = useMemo(() => {
+    if (!associations?.data || associations.data.length === 0) return [];
+    if (!systems?.data) return [];
+    
+    const assocMap = new Map(associations.data.map((a) => [a.system_id, a.order_in_ring]));
+
+    const mapped = systems.data.map((sys) => ({
+      ...sys,
+      ring_id: ringId,
+      order_in_ring: assocMap.get(sys.id!) ?? sys.order_in_ring,
+    }));
+
+    return mapped.sort((a, b) => (a.order_in_ring ?? 0) - (b.order_in_ring ?? 0));
+  }, [systems, associations, ringId]);
+
+  return {
+    data: {
+      data: orderedSystems,
+      count: orderedSystems.length,
+    },
+    isLoading: isLoadingAssoc || isLoadingSystems,
+    error,
+  };
+};
+
+const RingAssociatedSystemsView = ({
+  ringId,
+  onEdit,
+  onDelete,
+  canEdit,
+  canDelete,
+}: {
+  ringId: string;
+  onEdit: (sys: V_systems_completeRowSchema) => void;
+  onDelete: (sys: V_systems_completeRowSchema) => void;
+  canEdit: boolean;
+  canDelete: boolean;
+}) => {
+  const { data: systemsData, isLoading } = useRingSystems(ringId);
+  const { options: systemTypes, isLoading: isLoadingTypes } = useLookupTypeOptions(
+    'SYSTEM_TYPES',
+    'asc',
+    '',
+    'code',
+  );
+
+  const systems = systemsData?.data || [];
+
+  const hubMap = useMemo(() => {
+    const map = new Map<number, string>();
+    systems.forEach((s) => {
+      if (s.is_hub && s.order_in_ring !== null) {
+        map.set(Math.floor(s.order_in_ring), s.system_name || 'Unknown Hub');
+      }
+    });
+    return map;
+  }, [systems]);
+
+  if (isLoading || isLoadingTypes)
+    return (
+      <div className='py-4 text-center text-sm text-gray-500'>Loading associated systems...</div>
+    );
+
+  if (systems.length === 0) {
+    return (
+      <div className='text-sm text-gray-500 italic py-2 border-t border-gray-100 dark:border-gray-700'>
+        No systems associated with this ring yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className='space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2'>
+      {systems.map((system) => {
+        const isSpur = !system.is_hub && system.order_in_ring !== null;
+        const parentOrder = isSpur ? Math.floor(system.order_in_ring!) : null;
+        const parentName = parentOrder !== null ? hubMap.get(parentOrder) : null;
+        const system_ip = system.ip_address;
+
+        const typeName =
+          systemTypes.find((t) => t.value === system.system_type_id)?.label || 'Unknown Type';
+
+        return (
+          <div
+            key={system.id}
+            className='flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-md border border-gray-200 dark:border-gray-600 hover:border-blue-300 transition-colors'>
+            <div>
+              <div className='flex items-center gap-2'>
+                <span className='font-medium text-sm text-gray-900 dark:text-gray-100'>
+                  {system.system_name}
+                </span>
+                {system_ip && (
+                  <span className='font-mono text-xs text-gray-500 dark:text-gray-400'>
+                    / {String(system_ip).split('/')[0]}
+                  </span>
+                )}
+                <span className='text-[10px] text-gray-500 border border-gray-200 dark:border-gray-600 px-1.5 rounded-full bg-white dark:bg-gray-800'>
+                  {typeName}
+                </span>
+              </div>
+
+              <div className='flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5'>
+                <span className='font-mono bg-gray-200 dark:bg-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold'>
+                  #{system.order_in_ring ?? '?'}
+                </span>
+                {system.is_hub ? (
+                  <span className='text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
+                    <FiArrowRightCircle className='w-3 h-3' /> Hub
+                  </span>
+                ) : (
+                  <span className='text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide'>
+                    <FiGitMerge className='w-3 h-3' /> Spur
+                    {parentName && (
+                      <span className='text-gray-500 dark:text-gray-400 ml-1 lowercase tracking-normal'>
+                        via {parentName}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function RingMapPage() {
   const params = useParams();
   const router = useRouter();
@@ -76,6 +240,8 @@ export default function RingMapPage() {
 
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isLogPowerOpen, setIsLogPowerOpen] = useState(false);
+  const [showPowerLevels, setShowPowerLevels] = useState(false); // LIFTED STATE
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -133,6 +299,13 @@ export default function RingMapPage() {
     return rawNodes.map((n) => n.node_id).filter((id): id is string => !!id);
   }, [rawNodes]);
 
+  // THE FIX: Fetch Power Data Globally
+  const systemIdsForPower = useMemo(() => {
+    return mappedNodes.map(n => n.id).filter(Boolean) as string[];
+  }, [mappedNodes]);
+
+  const { data: powerData = {} } = useLatestSystemsPowerReadings(systemIdsForPower);
+
   // 4. Fetch Cables
   const { data: ringCables } = useQuery({
     queryKey: ['ring-cables-physical', ringId, ringNodeIds],
@@ -159,10 +332,10 @@ export default function RingMapPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // 5. Fetch ACTIVE Bandwidth Data (The True Data from Fiber Routes)
+  // 5. Fetch ACTIVE Bandwidth Data 
   const { data: allLogicalPaths } = useAllRingLogicalPaths(ringId);
 
-  // 6. Fetch Ring Logical Path configurations (Hub-to-Hub) - THE TOPOLOGY MAP
+  // 6. Fetch Ring Logical Path configurations
   const { data: pathConfigs } = useQuery({
     queryKey: ['ring-path-config', ringId],
     queryFn: async () => {
@@ -180,7 +353,7 @@ export default function RingMapPage() {
     enabled: !!ringId,
   });
 
-  // THE FIX: 6b. Fetch Services explicitly to get Bandwidth for paths that are only "Configured" (no fibers yet)
+  // 6b. Fetch Services
   const { data: servicesData } = useQuery({
     queryKey: ['ring-services', ringId, pathConfigs],
     queryFn: async () => {
@@ -235,7 +408,6 @@ export default function RingMapPage() {
     return { potentialSegments: segments, spurConnections: spurs };
   }, [mappedNodes, ringDetails]);
 
-  // 8. Generate Unique Colors Map
   const connectionColorMap = useMemo(() => {
     const colorMap = new Map<string, string>();
     const uniqueIds = new Set<string>();
@@ -247,7 +419,6 @@ export default function RingMapPage() {
     return colorMap;
   }, [pathConfigs]);
 
-  // 9. PREPARE MULTI-LINE DATA
   const { allSolidLines, configMap } = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
     const activeTopology = potentialSegments.filter(([start, end]) => {
@@ -265,7 +436,6 @@ export default function RingMapPage() {
       return val?.system_name;
     };
 
-    // -- A. Explicit Logical Paths --
     if (pathConfigs && pathConfigs.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pathConfigs.forEach((pc: any) => {
@@ -278,7 +448,6 @@ export default function RingMapPage() {
 
           let bw: number | undefined = undefined;
           
-          // Try to get bandwidth from actual physical connections (if provisioned)
           if (allLogicalPaths) {
              const match = allLogicalPaths.find(f => 
                  (f.source_system_id === start.id && f.destination_system_id === end.id) ||
@@ -290,7 +459,6 @@ export default function RingMapPage() {
              }
           }
 
-          // THE FIX: Fallback to the Services table if it's only "Configured" and has no physical fiber yet
           if (bw === undefined && servicesData) {
               const svc = servicesData.find(s => s.name === pc.name);
               if (svc && svc.bandwidth_allocated) {
@@ -315,7 +483,6 @@ export default function RingMapPage() {
       });
     }
 
-    // -- B. Default Topology Fallback --
     activeTopology.forEach(([start, end]) => {
       const sortedKey = [start.id, end.id].sort().join('-');
       if (!map[sortedKey] || map[sortedKey].length === 0) {
@@ -341,7 +508,6 @@ export default function RingMapPage() {
     return { allSolidLines: lines, configMap: map };
   }, [ringDetails, potentialSegments, pathConfigs, mappedNodes, ringCables, connectionColorMap, allLogicalPaths, servicesData]);
 
-  // 10. Build Node -> Active Ports Map
   const nodePortMap = useMemo(() => {
     const map = new Map<string, PortDisplayInfo[]>();
     if (!rawNodes) return new Map<string, PortDisplayInfo[]>();
@@ -434,6 +600,9 @@ export default function RingMapPage() {
           onBack={handleBack}
           segmentConfigs={configMap}
           nodePorts={nodePortMap}
+          showPowerLevels={showPowerLevels} // PASS LIFTED STATE
+          setShowPowerLevels={setShowPowerLevels} // PASS LIFTED STATE
+          powerData={powerData} // PASS DATA
         />
       );
     }
@@ -481,7 +650,7 @@ export default function RingMapPage() {
                     'logical_paths',
                     'logical_fiber_paths',
                     'logical_path_segments',
-                    'services' // Add services to sync list to ensure bandwidth is pulled
+                    'services' 
                   ]);
                 } else {
                   refetchRing();
@@ -490,6 +659,13 @@ export default function RingMapPage() {
               },
               variant: 'outline',
               leftIcon: <FiRefreshCw className={isBusy ? 'animate-spin' : ''} />,
+              disabled: isBusy,
+            },
+            {
+              label: 'Log Power Readings',
+              onClick: () => setIsLogPowerOpen(true),
+              variant: 'outline',
+              leftIcon: <Zap size={16} />,
               disabled: isBusy,
             },
             {
@@ -565,6 +741,14 @@ export default function RingMapPage() {
           </div>
         </div>
       </Modal>
+
+      {isLogPowerOpen && (
+        <LogPowerReadingsModal
+          isOpen={isLogPowerOpen}
+          onClose={() => setIsLogPowerOpen(false)}
+          ringId={ringId}
+        />
+      )}
     </div>
   );
 }
