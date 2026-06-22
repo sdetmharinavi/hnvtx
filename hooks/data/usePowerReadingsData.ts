@@ -1,6 +1,7 @@
 // hooks/data/usePowerReadingsData.ts
 'use client';
 
+/* STREAMING_CHUNK:Defining types and imports... */
 import { useMemo, useCallback } from 'react';
 import { DataQueryHookParams, DataQueryHookReturn } from '@/hooks/useCrudManager';
 import { V_port_power_readingsRowSchema } from '@/schemas/zod-schemas';
@@ -16,8 +17,10 @@ import { DEFAULTS } from '@/constants/constants';
 
 export interface PowerReadingsStats {
   total: number;
-  avgTx: number | null;
-  avgRx: number | null;
+  maxTx: number | null;
+  minTx: number | null;
+  maxRx: number | null;
+  minRx: number | null;
 }
 
 export interface PowerReadingsDataReturn extends DataQueryHookReturn<V_port_power_readingsRowSchema> {
@@ -42,6 +45,7 @@ export const usePowerReadingsData = (params: DataQueryHookParams): PowerReadings
     'system_name',
   ];
 
+  /* STREAMING_CHUNK:Setting up search and query function... */
   const queryFn = useCallback(async (): Promise<V_port_power_readingsRowSchema[]> => {
     const searchString = buildServerSearchString(searchQuery, serverSearchFields);
     const queryFilters = { ...filters };
@@ -83,6 +87,7 @@ export const usePowerReadingsData = (params: DataQueryHookParams): PowerReadings
     staleTime: DEFAULTS.CACHE_TIME,
   });
 
+  /* STREAMING_CHUNK:Filtering and calculating min/max stats... */
   const processedData = useMemo(() => {
     let filtered = allData;
 
@@ -124,26 +129,31 @@ export const usePowerReadingsData = (params: DataQueryHookParams): PowerReadings
     }
 
     // 3. Stats Calculation on the fully filtered dataset
-    let totalTx = 0;
-    let countTx = 0;
-    let totalRx = 0;
-    let countRx = 0;
+    let maxTx: number | null = null;
+    let minTx: number | null = null;
+    let maxRx: number | null = null;
+    let minRx: number | null = null;
 
-    filtered.forEach((item) => {
+    // Using a for...of loop ensures TypeScript correctly tracks variable reassignments
+    for (const item of filtered) {
       if (item.tx_power !== null && item.tx_power !== undefined) {
-        totalTx += item.tx_power;
-        countTx++;
+        const val = Number(item.tx_power);
+        if (maxTx === null || val > maxTx) maxTx = val;
+        if (minTx === null || val < minTx) minTx = val;
       }
       if (item.rx_power !== null && item.rx_power !== undefined) {
-        totalRx += item.rx_power;
-        countRx++;
+        const val = Number(item.rx_power);
+        if (maxRx === null || val > maxRx) maxRx = val;
+        if (minRx === null || val < minRx) minRx = val;
       }
-    });
+    }
 
     const stats: PowerReadingsStats = {
       total: filtered.length,
-      avgTx: countTx > 0 ? Number((totalTx / countTx).toFixed(2)) : null,
-      avgRx: countRx > 0 ? Number((totalRx / countRx).toFixed(2)) : null,
+      maxTx: maxTx !== null ? Number((maxTx as number).toFixed(2)) : null,
+      minTx: minTx !== null ? Number((minTx as number).toFixed(2)) : null,
+      maxRx: maxRx !== null ? Number((maxRx as number).toFixed(2)) : null,
+      minRx: minRx !== null ? Number((minRx as number).toFixed(2)) : null,
     };
 
     const paginatedData = performClientPagination(filtered, currentPage, pageLimit);

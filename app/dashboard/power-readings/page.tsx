@@ -1,12 +1,12 @@
 // app/dashboard/power-readings/page.tsx
 'use client';
 
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser } from '@/providers/UserProvider';
 import { useCrudManager, UseCrudManagerReturn } from '@/hooks/useCrudManager';
 import { usePowerReadingsData, PowerReadingsDataReturn } from '@/hooks/data/usePowerReadingsData';
 import { DashboardPageLayout } from '@/components/layouts/DashboardPageLayout';
-import { FiRefreshCw, FiDownload, FiCalendar, FiX, FiSearch } from 'react-icons/fi';
+import { FiRefreshCw, FiDownload, FiCalendar, FiX, FiSearch, FiActivity } from 'react-icons/fi';
 import { Zap, ShieldAlert, Activity } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
 import { ConfirmModal } from '@/components/common/ui';
@@ -106,7 +106,7 @@ export default function PowerReadingsHistoryPage() {
     orderBy: 'system_name',
   });
 
-  const { mutate: exportTelemetry, isPending: isExporting } = useTableExcelDownload(
+  const { mutate: exportPower, isPending: isExporting } = useTableExcelDownload(
     supabase,
     'v_port_power_readings' as any,
   );
@@ -122,15 +122,15 @@ export default function PowerReadingsHistoryPage() {
       { key: 'remark', title: 'Remark', dataIndex: 'remark', width: 300 },
     ];
 
-    exportTelemetry({
-      fileName: `Power_Telemetry_${new Date().toISOString().split('T')[0]}.xlsx`,
+    exportPower({
+      fileName: `Power_Measurement_${new Date().toISOString().split('T')[0]}.xlsx`,
       sheetName: 'Power Readings',
       filters: filters.filters,
       columns,
       wrapText: true,
       autoFitColumns: true,
     });
-  }, [exportTelemetry, filters.filters]);
+  }, [exportPower, filters.filters]);
 
   const isBusy = isLoading || isFetching || isSyncing;
 
@@ -139,7 +139,7 @@ export default function PowerReadingsHistoryPage() {
       await sync(['port_power_readings', 'v_port_power_readings']);
     }
     refetch();
-    toast.success('Telemetry history refreshed.');
+    toast.success('Power history refreshed.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline, refetch, sync]);
 
@@ -264,20 +264,32 @@ export default function PowerReadingsHistoryPage() {
   );
 
   const headerStats = useMemo<StatProps[]>(() => {
-    const s = stats || { total: 0, avgTx: null, avgRx: null };
+    const s = stats || { total: 0, maxTx: null, minTx: null, maxRx: null, minRx: null };
     return [
       { value: totalCount, label: 'Filtered Readings', color: 'default' },
       {
-        value: s.avgTx !== null ? `${s.avgTx} dBm` : '—',
-        label: 'Average Tx Level',
+        value: s.maxTx !== null ? `${s.maxTx} dBm` : '—',
+        label: 'Highest Tx Level',
         color: 'warning',
         icon: <Zap className="w-5 h-5 text-orange-500" />,
       },
       {
-        value: s.avgRx !== null ? `${s.avgRx} dBm` : '—',
-        label: 'Average Rx Level',
+        value: s.minTx !== null ? `${s.minTx} dBm` : '—',
+        label: 'Lowest Tx Level',
+        color: 'warning',
+        icon: <Zap className="w-5 h-5 text-orange-300" />,
+      },
+      {
+        value: s.maxRx !== null ? `${s.maxRx} dBm` : '—',
+        label: 'Highest Rx Level',
         color: 'success',
         icon: <Activity className="w-5 h-5 text-green-500" />,
+      },
+      {
+        value: s.minRx !== null ? `${s.minRx} dBm` : '—',
+        label: 'Lowest Rx Level',
+        color: 'success',
+        icon: <Activity className="w-5 h-5 text-green-300" />,
       },
     ];
   }, [stats, totalCount]);
@@ -361,33 +373,23 @@ export default function PowerReadingsHistoryPage() {
                 startDate && endDate
                   ? `${formatDate(startDate, { format: 'dd-mm-yyyy' })} → ${formatDate(endDate, { format: 'dd-mm-yyyy' })}`
                   : startDate
-                    ? `${formatDate(startDate, { format: 'dd-mm-yyyy' })} → Select end...`
-                    : 'Filter by date range...'
+                    ? `${formatDate(startDate, { format: 'dd-mm-yyyy' })} → ...`
+                    : 'Select Date Range'
               }
             />
           }
         />
       </div>
-
-      {hasActiveFilters && (
-        <button
-          onClick={handleClearFilters}
-          className="text-xs flex items-center gap-1.5 text-gray-500 hover:text-red-500 font-medium px-3 py-2 rounded-lg border border-transparent hover:border-red-200 transition-colors"
-        >
-          <FiX className="w-4 h-4" /> Clear Filters
-        </button>
-      )}
     </div>
   );
 
   return (
-    <DashboardPageLayout<'v_port_power_readings'>
-      crud={crud}
+    <DashboardPageLayout
       header={{
-        title: 'Power Telemetry History',
-        description: 'Analyze optical power attenuation records, verify readings, and filter by date range.',
-        icon: <ShieldAlert />,
-        stats: headerStats,
+        title: 'Global Power Readings Explorer',
+        description: 'View and search all logged port power levels across the entire network.',
+        icon: <FiActivity />,
+        stats: headerStats, // Interactive Stats
         actions: headerActions,
         isLoading,
         isFetching,
@@ -431,7 +433,7 @@ export default function PowerReadingsHistoryPage() {
             isOpen={deleteModal.isOpen}
             onConfirm={deleteModal.onConfirm}
             onCancel={deleteModal.onCancel}
-            title="Delete Telemetry Record"
+            title="Delete Power Record"
             message={deleteModal.message}
             type="danger"
             loading={deleteModal.loading}
