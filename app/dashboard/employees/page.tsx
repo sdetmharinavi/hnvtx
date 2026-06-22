@@ -274,6 +274,7 @@ export default function EmployeesPage() {
           onToggleStatus: canDelete ? crudActions.handleToggleStatus : undefined,
         }),
         selectable: canDelete,
+        onRowClick: (record) => viewModal.open(record),
         onRowSelect: (rows) => {
           const validRows = rows.filter(
             (row): row is V_employeesRowSchema & { id: string } => !!row.id,

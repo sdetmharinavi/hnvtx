@@ -394,6 +394,8 @@ export default function GlobalConnectionsPage() {
           onDelete: canDelete ? crudActions.handleDelete : undefined,
         }),
         selectable: canDelete,
+        // FIXED: Enabled double-click / click anywhere on the row to view details modal
+        onRowClick: (record) => handleViewDetails(record),
         onRowSelect: (rows) => {
           const validRows = rows.filter(
             (r): r is V_system_connections_completeRowSchema & { id: string } => !!r.id,

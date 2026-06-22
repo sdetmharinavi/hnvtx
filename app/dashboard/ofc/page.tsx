@@ -474,6 +474,7 @@ export default function OfcPage() {
           );
           bulkActions.handleRowSelect(validRows);
         },
+        onRowClick: (record) => router.push(`/dashboard/ofc/${record.id}`),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

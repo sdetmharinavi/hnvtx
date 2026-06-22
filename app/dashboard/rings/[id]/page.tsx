@@ -1,7 +1,8 @@
 // app/dashboard/rings/[id]/page.tsx
 'use client';
 
-import { useMemo, useCallback, useState } from 'react';
+/* STREAMING_CHUNK:Imports and helper views... */
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiMap, FiGrid, FiSettings, FiRefreshCw, FiEdit, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
@@ -15,7 +16,6 @@ import {
   V_systems_completeRowSchema,
 } from '@/schemas/zod-schemas';
 import { buildRpcFilters, useRpcRecord, useTableUpdate, useTableQuery, usePagedData } from '@/hooks/database';
-import MeshDiagram from '@/components/map/MeshDiagram/MeshDiagram';
 import { toast } from 'sonner';
 import { Json } from '@/types/supabase-types';
 import { useQuery } from '@tanstack/react-query';
@@ -34,12 +34,18 @@ import { LogPowerReadingsModal } from '@/components/rings/LogPowerReadingsModal'
 import { useLookupTypeOptions } from '@/hooks/data/useDropdownOptions';
 import { useLatestSystemsPowerReadings } from '@/hooks/data/usePowerReadings';
 
+// Disable SSR for Map view to prevent Leaflet "window is not defined" crashes
 const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/ClientRingMap'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
-// ... (Keep existing types and helper components like RingAssociatedSystemsView the same) ...
+// FIXED: Disable SSR for Schematic view as well to prevent server-side Leaflet import crashes
+const MeshDiagram = dynamic(() => import('@/components/map/MeshDiagram/MeshDiagram'), {
+  ssr: false,
+  loading: () => <PageSpinner text="Loading Schematic..." />,
+});
+
 type ExtendedRingDetails = V_ringsRowSchema & {
   topology_config?: {
     disabled_segments?: string[];
@@ -129,6 +135,7 @@ const useRingSystems = (ringId: string | null) => {
   };
 };
 
+/* STREAMING_CHUNK:Renders and views... */
 const RingAssociatedSystemsView = ({
   ringId,
   onEdit,
@@ -225,6 +232,28 @@ const RingAssociatedSystemsView = ({
                 )}
               </div>
             </div>
+            <div className='flex gap-1'>
+              {canEdit && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-8 w-8 p-0 text-gray-500 hover:text-blue-600'
+                  onClick={() => onEdit(system)}
+                  title='Edit Order / Hub Status'>
+                  <FiEdit className='w-4 h-4' />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-8 w-8 p-0 text-gray-500 hover:text-red-600'
+                  onClick={() => onDelete(system)}
+                  title='Remove System from Ring'>
+                  <FiTrash2 className='w-4 h-4' />
+                </Button>
+              )}
+            </div>
           </div>
         );
       })}
@@ -241,12 +270,12 @@ export default function RingMapPage() {
   const [viewMode, setViewMode] = useState<'map' | 'schematic'>('map');
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isLogPowerOpen, setIsLogPowerOpen] = useState(false);
-  const [showPowerLevels, setShowPowerLevels] = useState(false); // LIFTED STATE
+  const [showPowerLevels, setShowPowerLevels] = useState(false);
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
-  // 1. Fetch Ring Details
+  // 1. Fetch Ring Details (for header)
   const {
     data: ringDetailsData,
     isLoading: isLoadingRingDetails,
@@ -278,8 +307,6 @@ export default function RingMapPage() {
         p_limit: 1000,
         p_offset: 0,
         p_filters: rpcFilters,
-        p_order_by: 'order_in_ring',
-        p_order_dir: 'asc',
       });
       if (error) throw error;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -299,7 +326,6 @@ export default function RingMapPage() {
     return rawNodes.map((n) => n.node_id).filter((id): id is string => !!id);
   }, [rawNodes]);
 
-  // THE FIX: Fetch Power Data Globally
   const systemIdsForPower = useMemo(() => {
     return mappedNodes.map(n => n.id).filter(Boolean) as string[];
   }, [mappedNodes]);
@@ -600,9 +626,9 @@ export default function RingMapPage() {
           onBack={handleBack}
           segmentConfigs={configMap}
           nodePorts={nodePortMap}
-          showPowerLevels={showPowerLevels} // PASS LIFTED STATE
-          setShowPowerLevels={setShowPowerLevels} // PASS LIFTED STATE
-          powerData={powerData} // PASS DATA
+          showPowerLevels={showPowerLevels}
+          setShowPowerLevels={setShowPowerLevels}
+          powerData={powerData}
         />
       );
     }

@@ -365,6 +365,7 @@ export default function RingsPage() {
           onDelete: canDelete ? crudActions.handleDelete : undefined,
         }),
         onCellEdit: canEdit ? crudActions.handleCellEdit : undefined,
+        onRowClick: (record) => handleView(record as V_ringsRowSchema),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

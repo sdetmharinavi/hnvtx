@@ -1073,6 +1073,7 @@ export default function InventoryPage() {
           );
           bulkActions.handleRowSelect(validRows);
         },
+         onRowClick: (record) => handleOpenHistory(record as V_inventory_itemsRowSchema),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

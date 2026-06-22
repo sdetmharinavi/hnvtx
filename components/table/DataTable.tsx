@@ -1,4 +1,5 @@
-// path: components/table/DataTable.tsx
+// components/table/DataTable.tsx
+'use client';
 
 import React, { useMemo, useCallback, useEffect, useReducer } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -82,6 +83,7 @@ function tableReducer<T extends PublicTableOrViewName>(
   }
 }
 
+/* STREAMING_CHUNK:DataTable processing, selectors, and rendering... */
 export function DataTable<T extends PublicTableOrViewName>({
   data = [],
   tableName,
@@ -106,6 +108,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   onRefresh,
   onExport,
   onRowSelect,
+  onRowClick,
   onCellEdit,
   customToolbar,
   showColumnSelector: showColumnSelectorProp,
@@ -626,6 +629,7 @@ export function DataTable<T extends PublicTableOrViewName>({
             editValue={editValue}
             setEditValue={(value) => dispatch({ type: 'SET_EDIT_VALUE', payload: value })}
             onRowSelect={handleRowSelect}
+            onRowClick={onRowClick} // Propagate new row click handler
             onCellEdit={handleCellEdit}
             saveCellEdit={saveCellEdit}
             cancelCellEdit={cancelCellEdit}

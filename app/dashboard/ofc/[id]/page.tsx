@@ -531,6 +531,7 @@ export default function OfcCableDetailsPage() {
             loading={isLoading}
             actions={tableActions}
             selectable={canDelete}
+            onRowClick={(record) => handleTraceClick(record as V_ofc_connections_completeRowSchema)}
             onRowSelect={(rows) => {
               const validRows = rows.filter(
                 (row): row is Row<'v_ofc_connections_complete'> & { id: string } => !!row.id,

@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all fix the issue that in power readings page, it is being shown Average Tx level and Average Rx level, But I want Highest/Lowest Tx and Highest/Lowest Rx levels.
+Let's begin! First of all implement onRowClick on all suitable pages

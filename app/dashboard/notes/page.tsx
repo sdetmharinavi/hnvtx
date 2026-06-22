@@ -313,6 +313,7 @@ export default function NotesPage() {
            const validRows = rows.filter(r => !!r.id);
            bulkActions.handleRowSelect(validRows);
         },
+        onRowClick: (record) => viewModal.open(record as V_technical_notesRowSchema),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

@@ -61,6 +61,7 @@ export interface DataTableProps<T extends TableOrViewName> {
   onSearchChange?: (query: string) => void;
   onExport?: (data: Row<T>[], columns: Column<Row<T>>[]) => void | Promise<void>;
   onRowSelect?: (selectedRows: Row<T>[]) => void;
+  onRowClick?: (record: Row<T> & { id: string | number }, index: number) => void;
   onCellEdit?: (record: Row<T>, column: Column<Row<T>>, newValue: string) => void;
   customToolbar?: React.ReactNode;
   exportOptions?: {

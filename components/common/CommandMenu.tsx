@@ -124,37 +124,54 @@ export function CommandMenu() {
 
       try {
         if (isOnline) {
-          const rpcTerm = `%${searchTerm}%`;
-
+          // Perform permission-safe querying through the get_paged_data RPC on security views
           const [systems, nodes, cables, services, employees] = await Promise.all([
-            supabase
-              .from('systems')
-              .select('id, system_name, ip_address')
-              .ilike('system_name', rpcTerm)
-              .limit(3),
-            supabase
-              .from('nodes')
-              .select('id, name, maintenance_terminal_id')
-              .ilike('name', rpcTerm)
-              .limit(3),
-            supabase
-              .from('ofc_cables')
-              .select('id, route_name')
-              .ilike('route_name', rpcTerm)
-              .limit(3),
-            supabase
-              .from('services')
-              .select('id, name, vlan, unique_id')
-              .or(`name.ilike.${rpcTerm},unique_id.ilike.${rpcTerm},vlan.ilike.${rpcTerm}`)
-              .limit(3),
-            supabase
-              .from('employees')
-              .select('id, employee_name, employee_pers_no')
-              .ilike('employee_name', rpcTerm)
-              .limit(3),
+            supabase.rpc('get_paged_data', {
+              p_view_name: 'v_systems_complete',
+              p_limit: 3,
+              p_offset: 0,
+              p_filters: { or: `(system_name.ilike.%${searchTerm}%)` },
+            }),
+            supabase.rpc('get_paged_data', {
+              p_view_name: 'v_nodes_complete',
+              p_limit: 3,
+              p_offset: 0,
+              p_filters: { or: `(name.ilike.%${searchTerm}%)` },
+            }),
+            supabase.rpc('get_paged_data', {
+              p_view_name: 'v_ofc_cables_complete',
+              p_limit: 3,
+              p_offset: 0,
+              p_filters: { or: `(route_name.ilike.%${searchTerm}%)` },
+            }),
+            supabase.rpc('get_paged_data', {
+              p_view_name: 'v_services',
+              p_limit: 3,
+              p_offset: 0,
+              p_filters: { or: `(name.ilike.%${searchTerm}% or unique_id.ilike.%${searchTerm}% or vlan.ilike.%${searchTerm}%)` },
+            }),
+            supabase.rpc('get_paged_data', {
+              p_view_name: 'v_employees',
+              p_limit: 3,
+              p_offset: 0,
+              p_filters: { or: `(employee_name.ilike.%${searchTerm}%)` },
+            }),
           ]);
 
-          systems.data?.forEach((s) =>
+          // Extract values safely from the nested array structure returned by the RPC
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const systemsData = (systems.data as any)?.data || [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const nodesData = (nodes.data as any)?.data || [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const cablesData = (cables.data as any)?.data || [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const servicesData = (services.data as any)?.data || [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const employeesData = (employees.data as any)?.data || [];
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          systemsData.forEach((s: any) =>
             newResults.push({
               id: s.id,
               title: s.system_name || 'System',
@@ -164,25 +181,30 @@ export function CommandMenu() {
             }),
           );
 
-          nodes.data?.forEach((n) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          nodesData.forEach((n: any) =>
             newResults.push({
               id: n.id,
               title: n.name,
+              subtitle: n.node_type_name || undefined,
               type: 'node',
               url: `/dashboard/nodes?search=${encodeURIComponent(n.name)}`,
             }),
           );
 
-          cables.data?.forEach((c) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          cablesData.forEach((c: any) =>
             newResults.push({
               id: c.id,
               title: c.route_name,
+              subtitle: c.capacity ? `${c.capacity}F • ${c.ofc_type_name || 'Cable'}` : undefined,
               type: 'cable',
               url: `/dashboard/ofc/${c.id}`,
             }),
           );
 
-          services.data?.forEach((s) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          servicesData.forEach((s: any) =>
             newResults.push({
               id: s.id,
               title: s.name,
@@ -192,7 +214,8 @@ export function CommandMenu() {
             }),
           );
 
-          employees.data?.forEach((e) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          employeesData.forEach((e: any) =>
             newResults.push({
               id: e.id,
               title: e.employee_name,
@@ -222,7 +245,6 @@ export function CommandMenu() {
   if (!open) return null;
 
   return (
-    // THE FIX: Changed z-index from z-9999 to z-[10000] to sit above standard modals
     <div className='fixed inset-0 z-10000 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-[15vh] px-4 animate-in fade-in duration-200'>
       <div
         className='w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all'

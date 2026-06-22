@@ -1,4 +1,4 @@
-// path: app/dashboard/expenses/page.tsx
+// app/dashboard/expenses/page.tsx
 'use client';
 
 import { useState, useRef, type ChangeEvent, useCallback, useMemo } from 'react';
@@ -65,6 +65,7 @@ export default function ExpensesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { canAccess } = useUser();
   const canDelete = canAccess(PERMISSIONS.canDeleteCritical);
+  const canEdit = canAccess(PERMISSIONS.canManage);
 
   const { sync, isSyncing } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -312,48 +313,6 @@ export default function ExpensesPage() {
       ],
     });
   }, [exportAdvances, advanceCrud.filters.filters]);
-
-  // const handleExportExpenses = useCallback(() => {
-  //   const columns: Column<Row<'v_expenses_complete'>>[] = [
-  //     {
-  //       key: 'expense_date',
-  //       title: 'Date',
-  //       dataIndex: 'expense_date',
-  //       excelFormat: 'date',
-  //     },
-  //     { key: 'used_by', title: 'Used By', dataIndex: 'used_by' },
-  //     { key: 'category', title: 'Category', dataIndex: 'category' },
-  //     { key: 'vendor', title: 'Vendor', dataIndex: 'vendor' },
-  //     { key: 'invoice_no', title: 'Invoice No', dataIndex: 'invoice_no' },
-  //     {
-  //       key: 'amount',
-  //       title: 'Amount',
-  //       dataIndex: 'amount',
-  //       excelFormat: 'number',
-  //     },
-  //     {
-  //       key: 'terminal_location',
-  //       title: 'Location',
-  //       dataIndex: 'terminal_location',
-  //     },
-  //     {
-  //       key: 'description',
-  //       title: 'Description',
-  //       dataIndex: 'description',
-  //       width: 300,
-  //     },
-  //     { key: 'advance_req_no', title: 'Req No', dataIndex: 'advance_req_no' },
-  //   ];
-
-  //   exportExpenses({
-  //     fileName: `Expenses_${new Date().toISOString().split('T')[0]}.xlsx`,
-  //     sheetName: 'Expenses',
-  //     filters: expenseCrud.filters.filters,
-  //     columns,
-  //     wrapText: true,
-  //     autoFitColumns: true,
-  //   });
-  // }, [exportExpenses, expenseCrud.filters.filters]);
 
   const handleExportExpenses = useCallback(() => {
     const columns: Column<Row<'v_expenses_complete'>>[] = [
@@ -813,6 +772,7 @@ export default function ExpensesPage() {
 
       {activeTab === 'advances' ? (
         <DashboardPageLayout<'v_advances_complete'>
+          key="advances-layout" // THE FIX: Added Key
           header={{
             title: 'Advance Requests',
             description: 'Manage temporary cash advances given to employees.',
@@ -877,6 +837,12 @@ export default function ExpensesPage() {
               onEdit: advanceCrud.editModal.openEdit,
               onDelete: advanceCrud.actions.handleDelete,
             }),
+            onRowClick: (record) => {
+              if (record.id) {
+                expenseCrud.filters.setFilters({ advance_id: record.id });
+                setActiveTab('expenses');
+              }
+            },
           }}
           modals={
             <>
@@ -894,6 +860,7 @@ export default function ExpensesPage() {
         />
       ) : (
         <DashboardPageLayout<'v_expenses_complete'>
+          key="expenses-layout" // THE FIX: Added Key
           header={{
             title: 'Expense Log',
             description: 'Detailed log of all operational expenses and vendor payments.',
@@ -971,6 +938,7 @@ export default function ExpensesPage() {
               loading={expenseCrud.isLoading}
               searchable={false}
               filterable={false}
+              onRowClick={canEdit ? (record) => expenseCrud.editModal.openEdit(record as V_expenses_completeRowSchema) : undefined}
               pagination={{
                 current: expenseCrud.pagination.currentPage,
                 pageSize: expenseCrud.pagination.pageLimit,

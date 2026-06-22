@@ -64,7 +64,10 @@ export function CategoriesTable({
                 const hasDefaults = categoryInfo?.hasSystemDefaults;
 
                 return (
-                  <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <tr key={category.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${canEdit ? 'cursor-pointer' : ''}`}
+                    onClick={() => {
+                      if (canEdit) onEdit(category.category);
+                    }}>
                     <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-gray-900 dark:text-white">
                       {formatCategoryName(category)}
                     </td>

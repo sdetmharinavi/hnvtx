@@ -8,6 +8,8 @@ import { UseFormReturn, FieldValues, SubmitHandler, SubmitErrorHandler } from 'r
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { toTitleCase } from '@/config/helper-functions';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { WifiOff } from 'lucide-react';
 
 interface BaseFormModalProps<T extends FieldValues> {
   isOpen: boolean;
@@ -47,6 +49,8 @@ export function BaseFormModal<T extends FieldValues>({
     formState: { isDirty },
   } = form;
 
+  const isOnline = useOnlineStatus();
+
   // Intercept Close to check for unsaved changes
   const handleClose = useCallback(() => {
     if (isDirty) {
@@ -59,9 +63,9 @@ export function BaseFormModal<T extends FieldValues>({
     onSubmit(data);
   };
 
-  // THE FIX: Smart Error Feedback
+  // Smart Error Feedback
   const onInvalidSubmit: SubmitErrorHandler<T> = (errors) => {
-    console.error('Form Errors:', errors);
+    console.error('Form Validation Errors:', errors);
 
     // Extract field names, replace underscores, and convert to Title Case
     const errorFields = Object.keys(errors).map((key) => toTitleCase(key.replace(/_/g, ' ')));
@@ -69,7 +73,7 @@ export function BaseFormModal<T extends FieldValues>({
     if (errorFields.length > 0) {
       toast.error('Validation Error', {
         description: `Please check the following fields: ${errorFields.join(', ')}`,
-        duration: 6000, // Slightly longer duration so they have time to read it
+        duration: 6000,
       });
     } else {
       toast.error('Please fix validation errors.');
@@ -82,7 +86,6 @@ export function BaseFormModal<T extends FieldValues>({
       onClose={handleClose}
       title={title}
       visible={false} // We rely on FormCard for the title header
-      // Merge default transparent class with passed className
       className={cn('bg-transparent h-0 w-0', className)}
       closeOnOverlayClick={false}
       closeOnEscape={!isDirty}
@@ -94,12 +97,21 @@ export function BaseFormModal<T extends FieldValues>({
         onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
         onCancel={handleClose}
         isLoading={isLoading}
-        disableSubmit={isLoading}
+        disableSubmit={isLoading || !isOnline} // Prevent submission while offline
         widthClass={widthClass}
         heightClass={heightClass}
         standalone
         footerContent={footerContent}
       >
+        {/* Offline Banner Indicator */}
+        {!isOnline && (
+          <div className="mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 rounded-lg p-3 flex items-start gap-2.5 text-xs text-red-700 dark:text-red-400">
+            <WifiOff className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <span className="font-bold">Offline Mode:</span> You are currently offline. Any changes made to this form cannot be saved until you reconnect to the network.
+            </div>
+          </div>
+        )}
         {children}
       </FormCard>
     </Modal>

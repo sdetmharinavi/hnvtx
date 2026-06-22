@@ -462,6 +462,7 @@ export default function GlobalOfcConnectionsPage() {
           );
           bulkActions.handleRowSelect(validRows);
         },
+        onRowClick: (record) => handleTraceClick(record as V_ofc_connections_completeRowSchema),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

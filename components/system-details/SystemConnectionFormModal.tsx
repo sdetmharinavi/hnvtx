@@ -1,6 +1,7 @@
 // components/system-details/SystemConnectionFormModal.tsx
 'use client';
 
+/* STREAMING_CHUNK:Imports and validations schema setup... */
 import { FC, useEffect, useMemo, useState, useRef } from 'react';
 import {
   useForm,
@@ -34,7 +35,7 @@ import {
   useSystemOptions,
   usePortOptions,
 } from '@/hooks/data/useDropdownOptions';
-import { BaseFormModal } from '@/components/common/form/BaseFormModal'; // IMPORT
+import { BaseFormModal } from '@/components/common/form/BaseFormModal';
 
 const formSchema = z.object({
   system_id: z.uuid(),
@@ -87,6 +88,7 @@ interface SystemConnectionFormModalProps {
   isLoading: boolean;
 }
 
+/* STREAMING_CHUNK:Bandwidth selection utility... */
 const BandwidthInput = ({
   name,
   label,
@@ -143,6 +145,7 @@ const BandwidthInput = ({
   );
 };
 
+/* STREAMING_CHUNK:Main component body and fields initialization... */
 export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   isOpen,
   onClose,
@@ -156,14 +159,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const [activeTab, setActiveTab] = useState('general');
   const [serviceMode, setServiceMode] = useState<'existing' | 'manual'>('existing');
 
-  // FIX: Ref to track initialization state
   const hasInitialized = useRef(false);
 
   const derivedSystemId = parentSystem?.id ?? editingConnection?.system_id ?? null;
   const derivedSystemName =
     parentSystem?.system_name ?? editingConnection?.system_name ?? 'Unknown System';
 
-  // Use derived ID for deps to ensure stability
   const parentSystemId = parentSystem?.id;
 
   const { data: pristineRecord, isLoading: isLoadingPristine } = useRpcRecord(
@@ -298,6 +299,50 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     });
   }, [servicesData, watchLinkTypeId]);
 
+  /* STREAMING_CHUNK:Form effects, synchronization, and automatic tab switching on error... */
+  // 1. Auto-switch active tab based on first validation error
+  useEffect(() => {
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+      const firstErrorField = errorKeys[0];
+      const generalFields = [
+        'system_id',
+        'media_type_id',
+        'link_type_id',
+        'service_name',
+        'vlan',
+        'bandwidth_allocated',
+        'lc_id',
+        'unique_id',
+        'services_ip',
+        'services_interface',
+        'system_working_interface',
+        'system_protection_interface',
+        'commissioned_on',
+        'remark',
+        'bandwidth',
+      ];
+      const connectivityFields = [
+        'sn_id',
+        'sn_interface',
+        'sn_ip',
+        'en_id',
+        'en_interface',
+        'en_protection_interface',
+        'en_ip',
+      ];
+      const sdhFields = ['stm_no', 'carrier', 'a_slot', 'a_customer', 'b_slot', 'b_customer'];
+
+      if (generalFields.includes(firstErrorField)) {
+        setActiveTab('general');
+      } else if (connectivityFields.includes(firstErrorField)) {
+        setActiveTab('connectivity');
+      } else if (sdhFields.includes(firstErrorField)) {
+        setActiveTab('sdh');
+      }
+    }
+  }, [errors, setActiveTab]);
+
   useEffect(() => {
     if (watchWorkingInterface && watchSnId === watchSystemId) {
       setValue('sn_interface', watchWorkingInterface);
@@ -347,7 +392,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
   const enPortType = getPortTypeDisplay(watchEnInterface, enPorts);
   const enProtectionPortType = getPortTypeDisplay(watchEnProtectionInterface, enPorts);
 
-  // FIX: Reset initialized state when modal closes
   useEffect(() => {
     if (!isOpen) {
       hasInitialized.current = false;
@@ -461,14 +505,12 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     isOpen,
     isEditMode,
     pristineRecord,
-    parentSystemId, // Use stable ID
-    // parentSystem is used in logic but won't trigger re-render if ID is stable and guarded
+    parentSystemId,
     reset,
     derivedSystemId,
   ]);
 
   const onValidSubmit = (formData: SystemConnectionFormValues) => {
-    // Helper to return null if string is empty, else the value
     const nullIfEmpty = (val: string | null | undefined) => (val && val.trim() !== '' ? val : null);
 
     const payload: UpsertPayload & { p_en_protection_interface?: string | null } = {
@@ -519,7 +561,6 @@ export const SystemConnectionFormModal: FC<SystemConnectionFormModalProps> = ({
     <BaseFormModal
       isOpen={isOpen}
       onClose={onClose}
-      // FIX: Remove "Edit"/"Add" prefix because BaseFormModal adds it automatically
       title='Service Connection'
       size='full'
       isEditMode={isEditMode}

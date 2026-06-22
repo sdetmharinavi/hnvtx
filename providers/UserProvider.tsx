@@ -32,6 +32,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const { mutate: updateProfile } = useTableUpdate(createClient(), 'user_profiles');
 
   const hasInitializedThemeRef = useRef<string | null>(null);
+  const dbSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 1. Theme Initialization
   useEffect(() => {
@@ -47,7 +48,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [profile, user?.id, setTheme]);
 
-  // 2. Sync Theme Changes to Database
+  // 2. Sync Theme Changes to Database with Debounce
   useEffect(() => {
     const unsubscribe = useThemeStore.subscribe(
       (state) => state.theme,
@@ -55,26 +56,37 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         if (newTheme !== oldTheme && user?.id && profile) {
           const currentPreferences = (profile.preferences as Record<string, unknown>) || {};
           if (currentPreferences.theme !== newTheme) {
-            const newPreferences = { ...currentPreferences, theme: newTheme };
-            updateProfile(
-              { id: user.id, data: { preferences: newPreferences } },
-              {
-                onSuccess: () => {
-                  queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
+            
+            // Clear any pending sync timeout
+            if (dbSyncTimeoutRef.current) {
+              clearTimeout(dbSyncTimeoutRef.current);
+            }
+
+            // Set up debounced database sync (800ms)
+            dbSyncTimeoutRef.current = setTimeout(() => {
+              const newPreferences = { ...currentPreferences, theme: newTheme };
+              updateProfile(
+                { id: user.id, data: { preferences: newPreferences } },
+                {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ['user-full-profile'] });
+                  },
+                  onError: (err) => console.error('Failed to save theme preference:', err),
                 },
-                onError: (err) => console.error('Failed to save theme preference:', err),
-              },
-            );
+              );
+            }, 800000); // 800ms delay
           }
         }
       },
     );
-    return () => unsubscribe();
+    
+    return () => {
+      unsubscribe();
+      if (dbSyncTimeoutRef.current) {
+        clearTimeout(dbSyncTimeoutRef.current);
+      }
+    };
   }, [user?.id, profile, updateProfile, queryClient]);
-
-  // REMOVED: Automatic syncData effect.
-  // React Query's `useQuery` in `useUserPermissionsExtended` handles fetching data on mount.
-  // Triggering `syncData` here caused a double-fetch loop.
 
   return (
     <UserContext.Provider

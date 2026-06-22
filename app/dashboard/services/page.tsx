@@ -400,6 +400,7 @@ export default function ServicesPage() {
           onDelete: canDelete ? crudActions.handleDelete : undefined,
         }),
         selectable: canDelete,
+        onRowClick: canEdit ? (record) => editModal.openEdit(record as V_servicesRowSchema) : undefined,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
             (row): row is V_servicesRowSchema & { id: string } => row.id != null,

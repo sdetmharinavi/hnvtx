@@ -1,4 +1,7 @@
-// @/components/table/TableBody.tsx
+// components/table/TableBody.tsx
+'use client';
+
+/* STREAMING_CHUNK:TableRow imports and variables setup... */
 import React, { useRef, useEffect } from 'react';
 import { FiEdit3, FiCheck, FiX } from 'react-icons/fi';
 import { DataTableProps, TableAction } from '@/components/table/datatable-types';
@@ -22,6 +25,7 @@ interface TableBodyProps<T extends TableOrViewName> extends Pick<
   | 'hoverable'
   | 'loading'
   | 'emptyText'
+  | 'onRowClick'
 > {
   actions?: TableAction<T>[];
   processedData: DataRow<T>[];
@@ -49,7 +53,7 @@ interface TableRowProps<T extends TableOrViewName> extends Omit<
 
 const densityClasses = { compact: 'py-1 px-3', default: 'py-3 px-4', comfortable: 'py-4 px-6' };
 
-// Base Table Row component (generic). We'll memoize it below with a type assertion to preserve generics.
+/* STREAMING_CHUNK:Interactive click handlers and cell edits... */
 function TableRowBase<T extends TableOrViewName>({
   record,
   rowIndex,
@@ -69,8 +73,8 @@ function TableRowBase<T extends TableOrViewName>({
   onCellEdit,
   saveCellEdit,
   cancelCellEdit,
-}: // isLoading,
-TableRowProps<T>) {
+  onRowClick,
+}: TableRowProps<T>) {
   const editInputRef = useRef<HTMLInputElement>(null);
   const editSelectRef = useRef<HTMLSelectElement>(null);
 
@@ -92,6 +96,7 @@ TableRowProps<T>) {
     hoverable && 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
     isStriped && 'bg-gray-50/50 dark:bg-gray-700/25',
     isSelected && 'bg-blue-50 dark:bg-blue-900/20',
+    onRowClick && 'cursor-pointer',
   );
 
   const stickyTdClasses = cn(
@@ -99,24 +104,36 @@ TableRowProps<T>) {
     densityClasses[density ?? 'default'],
     'text-center whitespace-nowrap',
     'transition-colors',
-    // Background logic - order matters for override
     isSelected
       ? 'bg-blue-50 dark:bg-blue-900/20'
       : isStriped
         ? 'bg-gray-50 dark:bg-gray-700/25'
         : 'bg-white dark:bg-gray-800',
-    // Hover state needs to be separate and use group-hover
     hoverable && 'group-hover:bg-gray-100 dark:group-hover:bg-gray-700',
-    // Special override for when it's selected AND hovered
     isSelected && hoverable && 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40',
-    // Border logic
     bordered
       ? 'border-b border-l border-gray-200 dark:border-gray-700'
       : 'shadow-[inset_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.05)]',
   );
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Guard against interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest('textarea') ||
+      target.closest('a') ||
+      target.closest('.interactive-cell')
+    ) {
+      return;
+    }
+    onRowClick?.(record, rowIndex);
+  };
+
   return (
-    <tr className={trClasses}>
+    <tr className={trClasses} onClick={handleRowClick}>
       {selectable && (
         <td
           className={cn(
@@ -132,6 +149,8 @@ TableRowProps<T>) {
             bordered ? `border-b border-r border-gray-200 dark:border-gray-700` : '',
           )}
           style={{ width: 48, minWidth: 48, maxWidth: 48 }}
+          // FIXED: Stop event propagation so selecting checkboxes won't trigger row click
+          onClick={(e) => e.stopPropagation()}
         >
           <input
             type='checkbox'
@@ -169,7 +188,13 @@ TableRowProps<T>) {
               minWidth: column.width ? undefined : '100px',
               maxWidth: '350px',
             }}
-            onClick={() => column.editable && onCellEdit(record, column, rowIndex)}
+            // FIXED: Stop event propagation on editable columns so entering cell-edit mode won't trigger row click details modal
+            onClick={(e) => {
+              if (column.editable) {
+                e.stopPropagation();
+                onCellEdit(record, column, rowIndex);
+              }
+            }}
           >
             {isEditing ? (
               <div
@@ -251,7 +276,12 @@ TableRowProps<T>) {
         );
       })}
       {hasActions && (
-        <td className={stickyTdClasses} style={{ width: 128, minWidth: 128, maxWidth: 128 }}>
+        <td 
+          className={stickyTdClasses} 
+          style={{ width: 128, minWidth: 128, maxWidth: 128 }}
+          // FIXED: Stop event propagation on actions so clicking buttons won't trigger row click details modal
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className='flex items-center justify-center gap-1'>
             {actions?.map((action) => {
               const isHidden =
@@ -306,7 +336,7 @@ const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>
   props: TableRowProps<T>,
 ) => React.ReactElement;
 
-// Base TableBody component (generic). We'll memoize with a type assertion below to preserve generics.
+/* STREAMING_CHUNK:TableBody component definition and exports... */
 function TableBodyBase<T extends TableOrViewName>({
   processedData,
   visibleColumns,

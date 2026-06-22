@@ -387,6 +387,7 @@ export default function RingPathsPage() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             columns={columns as any}
             actions={tableActions}
+            onRowClick={canEdit ? (record) => handleEditPath(record as unknown as LogicalPathData) : undefined}
             loading={isLoadingPaths}
             isFetching={isFetching || generateMutation.isPending}
             searchable={true}

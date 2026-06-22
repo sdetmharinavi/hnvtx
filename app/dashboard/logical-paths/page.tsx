@@ -341,6 +341,13 @@ export default function LogicalPathsPage() {
         loading={isLoading}
         isFetching={isBusy}
         actions={tableActions}
+        onRowClick={(record) => {
+          if (record.source_system_id) {
+            router.push(`/dashboard/systems/${record.source_system_id}`);
+          } else {
+            toast.info('This path does not have a source system assigned.');
+          }
+        }}
         searchable={false}
         pagination={{
           current: currentPage,

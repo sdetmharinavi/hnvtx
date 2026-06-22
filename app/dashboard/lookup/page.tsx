@@ -279,6 +279,7 @@ export default function LookupTypesPage() {
         loading={isLoading}
         searchable={true}
         filterable={false}
+        onRowClick={canManage ? (record) => editModal.openEdit(record as Lookup_typesRowSchema) : undefined}
         pagination={{
           current: crud.pagination.currentPage,
           pageSize: crud.pagination.pageLimit,

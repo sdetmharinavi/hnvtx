@@ -539,6 +539,7 @@ export default function SystemsPage() {
           );
           bulkActions.handleRowSelect(validRows);
         },
+        onRowClick: (record) => handleView(record as V_systems_completeRowSchema),
         pagination: {
           current: pagination.currentPage,
           pageSize: pagination.pageLimit,

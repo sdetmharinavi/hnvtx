@@ -348,7 +348,8 @@ export function FileTable({
                   {filteredAndSortedFiles.map((file) => (
                     <div
                       key={file.id}
-                      className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50`}>
+                      onClick={() => handleView(file)}
+                      className={`group px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer`}>
                       <div className='grid grid-cols-12 gap-4 items-center'>
                         <div className='col-span-5 flex items-center gap-3 min-w-0'>
                           <span className='text-xl'>{getFileIcon(file.file_type)}</span>
