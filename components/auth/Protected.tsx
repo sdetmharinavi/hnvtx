@@ -8,7 +8,7 @@ import { UserRole } from '@/types/user-roles';
 import { UnauthorizedModal } from './UnauthorizedModal';
 import { useAuthStore } from '@/stores/authStore';
 import { useUser } from '@/providers/UserProvider';
-import { ErrorDisplay } from '@/components/common/ui'; // Added import
+import { ErrorDisplay } from '@/components/common/ui';
 
 interface ProtectedProps {
   children: ReactNode;
@@ -23,20 +23,21 @@ const ProtectedContent = ({
   children: ReactNode;
   allowedRoles?: UserRole[];
 }) => {
-  // THE FIX: Destructure isError and error from useUser
-  const { canAccess, isSuperAdmin, role, isLoading: isUserLoading, error } = useUser();
+  // 👇 FIX: Destructure refetch to use instead of window.location.reload
+  const { canAccess, isSuperAdmin, role, isLoading: isUserLoading, error, refetch } = useUser();
 
-  // THE FIX: Catch network timeouts gracefully and prompt user
+  // 👇 FIX: Catch network timeouts gracefully and prompt user WITHOUT a hard reload
   if (error) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
         <div className="max-w-md w-full">
-          <ErrorDisplay 
-            error={error?.message || "Failed to communicate with the database. Please check your network connection."} 
+          <ErrorDisplay
+            error={error?.message || "Failed to communicate with the database. Please check your network connection."}
             title="Connection Error"
             variant="alert"
             actions={[
-              { label: "Retry Connection", onClick: () => window.location.reload(), variant: "primary" }
+              // 👇 FIX: Changed window.location.reload() to a soft React Query refetch
+              { label: "Retry Connection", onClick: () => refetch(), variant: "primary" }
             ]}
           />
         </div>
@@ -44,12 +45,10 @@ const ProtectedContent = ({
     );
   }
 
-  // Spinner is only shown if it's genuinely loading and hasn't errored out
   if (isUserLoading || !role) {
     return <PageSpinner text="Verifying permissions..." />;
   }
 
-  // Security check for roles
   if (allowedRoles && !canAccess(allowedRoles) && !isSuperAdmin) {
     return <UnauthorizedModal allowedRoles={allowedRoles} currentRole={role} />;
   }

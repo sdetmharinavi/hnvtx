@@ -85,8 +85,11 @@ export const useAuth = () => {
 
     const timeoutId = setTimeout(() => {
       if (useAuthStore.getState().authState === 'loading' && isMounted) {
-        console.warn('Auth check timed out. Forcing unauthenticated state.');
-        useAuthStore.getState().setAuthState('unauthenticated');
+        console.warn('Auth check timed out. Retaining previous state if available.');
+        // If we already have a user object cached in Zustand, assume they are still authenticated
+        // This prevents kicking users to login just because the mobile network was slow to reconnect on wake
+        const cachedUser = useAuthStore.getState().user;
+        useAuthStore.getState().setAuthState(cachedUser ? 'authenticated' : 'unauthenticated');
       }
     }, 8000);
 

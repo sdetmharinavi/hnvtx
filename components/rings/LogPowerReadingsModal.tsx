@@ -164,7 +164,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
   const isLoading = loadingSystems || loadingPorts;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Log Fiber Power Levels (Tx/Rx)" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Log Fiber Power Levels (Tx/Rx)" size="full">
       {isLoading ? (
         <PageSpinner text="Loading ring interface configs..." />
       ) : groupedData.length === 0 ? (
@@ -172,7 +172,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
           No optical ports managed on the systems in this ring. Configure system optical ports first.
         </div>
       ) : (
-        <div className="flex flex-col h-[70vh]">
+        <div className="flex flex-col">
           {/* Scrollable Entry form */}
           <div className="flex-1 overflow-y-auto pr-1 space-y-6 custom-scrollbar px-4">
             {groupedData.map(({ system, ports: sysPorts }) => (
@@ -256,10 +256,10 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
               Cancel
             </Button>
             {/* THE FIX: Removed the extraneous "Save & Continue" button */}
-            <Button 
+            <Button
               type="button"
-              onClick={handleSave} 
-              disabled={logReadingsMutation.isPending} 
+              onClick={handleSave}
+              disabled={logReadingsMutation.isPending}
               variant="primary"
             >
               {logReadingsMutation.isPending ? 'Saving...' : 'Save & Close'}

@@ -14,6 +14,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { cn } from '@/lib/utils';
 import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
+// 👇 ADD THIS IMPORT
+import { SplashScreen } from '@/components/common/SplashScreen';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -58,6 +60,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
+            {/* 👇 ADD SPLASH SCREEN HERE */}
+            <SplashScreen />
             <DashboardContent>{children}</DashboardContent>
           </ViewSettingsProvider>
         </RouteBasedUploadConfigProvider>
