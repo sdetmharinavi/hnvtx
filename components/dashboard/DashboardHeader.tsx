@@ -86,7 +86,7 @@ export default function DashboardHeader({ onMenuClick }: { onMenuClick: () => vo
                   alt='Harinavi Logo'
                   width={200}
                   height={60}
-                  className='object-contain w-auto h-[30px] md:h-[60px]'
+                  className='object-contain w-auto h-[30px] md:h-[60px] dark: bg-blue-100'
                   priority
                 />
               </Link>
