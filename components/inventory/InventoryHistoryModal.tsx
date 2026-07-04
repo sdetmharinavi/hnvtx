@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { V_inventory_itemsRowSchema } from '@/schemas/zod-schemas';
 import { FaRupeeSign } from 'react-icons/fa';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import { FiCalendar, FiSearch, FiX } from 'react-icons/fi';
 
@@ -89,10 +89,18 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
   const supabase = createClient();
   const queryClient = useQueryClient();
 
-  // --- FILTERS STATE ---
+  // --- FILTERS & PAGINATION STATE ---
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, startDate, endDate]);
 
   const { mutate: updateTransaction } = useTableUpdate(supabase, 'inventory_transactions', {
     onSuccess: () => {
@@ -164,6 +172,12 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
 
     return result;
   }, [history, searchQuery, startDate, endDate]);
+
+  // --- CLIENT-SIDE PAGINATION ---
+  const paginatedHistory = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredHistory.slice(start, start + pageSize);
+  }, [filteredHistory, currentPage, pageSize]);
 
   const columns: Column<Row<'v_inventory_transactions_extended'>>[] = [
     {
@@ -359,16 +373,20 @@ export const InventoryHistoryModal = ({ isOpen, onClose, item }: InventoryHistor
           <DataTable
             autoHideEmptyColumns={true}
             tableName={'v_inventory_transactions_extended' as any}
-            data={filteredHistory as any[]}
+            data={paginatedHistory as any[]} // <-- THE FIX: Pass sliced data here
             columns={columns as any[]}
             loading={isLoading}
             showColumnsToggle={true}
             onCellEdit={handleCellEdit}
             pagination={{
-              current: 1,
-              pageSize: 10,
+              current: currentPage,
+              pageSize: pageSize,
               total: filteredHistory.length,
-              onChange: () => {},
+              showSizeChanger: true,
+              onChange: (page, limit) => {
+                setCurrentPage(page);
+                setPageSize(limit);
+              },
             }}
             searchable={false}
             filterable={false} // Disable default column filters in favor of our custom toolbar
