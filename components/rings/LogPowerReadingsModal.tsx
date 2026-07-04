@@ -9,7 +9,7 @@ import { V_ring_nodesRowSchema, V_ports_management_completeRowSchema } from '@/s
 import { Server, Activity, Zap, Clock } from 'lucide-react';
 import { Modal, Button, PageSpinner } from '@/components/common/ui';
 import { toast } from 'sonner';
-import { formatDate } from '@/utils/formatters';
+import { formatDate, formatIP } from '@/utils/formatters';
 
 interface LogPowerReadingsModalProps {
   isOpen: boolean;
@@ -98,7 +98,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
         system: {
           id: sys.id,
           system_name: sys.system_node_name || sys.name || 'Unknown System',
-          ip_address: sys.ip
+          ip_address: formatIP(sys.ip)
         },
         ports: sysPorts,
       };
@@ -180,8 +180,8 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
               <div key={system.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
                 <div className="bg-gray-50 dark:bg-gray-800/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
                   <Server size={16} className="text-blue-500" />
-                  <span className="font-bold text-sm text-gray-800 dark:text-gray-200">
-                    {system.system_name} {system.ip_address ? `(${system.ip_address})` : ''}
+                  <span className="font-bold text-xl text-gray-800 dark:text-gray-200">
+                    {system.system_name} {system.ip_address ? `(${formatIP(system.ip_address)})` : ''}
                   </span>
                 </div>
 
@@ -202,20 +202,20 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                         {/* Port Info & Last Log Date */}
                         <div className="min-w-0 pt-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-sm font-bold text-gray-700 dark:text-gray-300">
+                            <span className="font-mono text-[14px] font-bold text-gray-700 dark:text-gray-300">
                               {p.port}
                             </span>
-                            <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 px-1.5 py-0.5 rounded uppercase font-medium">
+                            <span className="text-[12px] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 px-1.5 py-0.5 rounded uppercase font-medium">
                               {p.port_type_code || 'Port'}
                             </span>
                           </div>
                           {lastReading?.reading_date ? (
-                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-1 mt-1.5 text-[12px] text-gray-500 dark:text-gray-400">
                               <Clock className="w-3 h-3" />
                               <span>Last: {formatDate(lastReading.reading_date, { format: 'dd MMM yyyy' })}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-400 dark:text-gray-500 italic">
+                            <div className="flex items-center gap-1 mt-1.5 text-[12px] text-gray-400 dark:text-gray-500 italic">
                               <Clock className="w-3 h-3" />
                               <span>Never logged</span>
                             </div>
@@ -226,7 +226,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                         <div>
                           <div className="flex items-center gap-1.5 mb-1 sm:hidden">
                             <Zap className="w-3.5 h-3.5 text-orange-500" />
-                            <span className="text-xs text-gray-500 font-semibold uppercase">Tx (dBm)</span>
+                            <span className="text-[12px] text-gray-500 font-semibold uppercase">Tx (dBm)</span>
                           </div>
                           <input
                             type="text"
@@ -236,7 +236,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'tx_power', e.target.value)}
                             className="w-full text-sm font-mono border border-gray-300 dark:border-gray-600 rounded p-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">
+                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">
                             Prev: {lastReading?.tx_power != null ? <span className="font-medium text-orange-600 dark:text-orange-400">{lastReading.tx_power} dBm</span> : 'N/A'}
                           </div>
                         </div>
@@ -245,7 +245,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                         <div>
                           <div className="flex items-center gap-1.5 mb-1 sm:hidden">
                             <Activity className="w-3.5 h-3.5 text-green-500" />
-                            <span className="text-xs text-gray-500 font-semibold uppercase">Rx (dBm)</span>
+                            <span className="text-[12px] text-gray-500 font-semibold uppercase">Rx (dBm)</span>
                           </div>
                           <input
                             type="text"
@@ -255,7 +255,7 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'rx_power', e.target.value)}
                             className="w-full text-sm font-mono border border-gray-300 dark:border-gray-600 rounded p-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">
+                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">
                             Prev: {lastReading?.rx_power != null ? <span className="font-medium text-green-600 dark:text-green-400">{lastReading.rx_power} dBm</span> : 'N/A'}
                           </div>
                         </div>
@@ -267,10 +267,10 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                             placeholder="Add remark..."
                             value={current.remark}
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'remark', e.target.value)}
-                            className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full text-[12px] border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                           {lastReading?.remark && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate" title={String(lastReading.remark)}>
+                            <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate" title={String(lastReading.remark)}>
                               Prev: {String(lastReading.remark)}
                             </div>
                           )}
