@@ -3,7 +3,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { memo, useState, useCallback, useEffect, useRef } from 'react'; // THE FIX: Imported useRef
+import { memo, useState, useCallback, useEffect, useRef } from 'react';
 import useIsMobile from '@/hooks/useIsMobile';
 
 import { NavItem } from '@/components/navigation/sidebar-components/NavItem';
@@ -26,14 +26,13 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
   const [hoveredItem, setHoveredItem] = useState<NavItemType | null>(null);
   const [hoverPosition, setHoverPosition] = useState<DOMRect | null>(null);
   const isMobile = useIsMobile();
-  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null); // THE FIX: Ref for the close delay timer
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const allNavItems = NavItems();
   const helpNavItem = allNavItems.find((item) => item.id === 'help');
   const mainNavItems = allNavItems.filter((item) => item.id !== 'help');
   const { showHeader, setShowHeader, showToolbar, setShowToolbar } = useViewSettings();
 
-  // THE FIX: Clear any pending close timer
   const clearLeaveTimeout = useCallback(() => {
     if (leaveTimeoutRef.current) {
       clearTimeout(leaveTimeoutRef.current);
@@ -41,7 +40,6 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
     }
   }, []);
 
-  // THE FIX: Handler for when the mouse enters an icon
   const handleItemMouseEnter = useCallback(
     (item: NavItemType | null, position: DOMRect | null) => {
       clearLeaveTimeout();
@@ -51,15 +49,13 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
     [clearLeaveTimeout],
   );
 
-  // THE FIX: Handler for when the mouse leaves an icon (with a delay)
   const handleItemMouseLeave = useCallback(() => {
     leaveTimeoutRef.current = setTimeout(() => {
       setHoveredItem(null);
       setHoverPosition(null);
-    }, 200); // 200ms delay
+    }, 200); 
   }, []);
 
-  // THE FIX: Handler for when the mouse leaves the pop-out menu itself (immediate)
   const handleMenuMouseLeave = useCallback(() => {
     clearLeaveTimeout();
     setHoveredItem(null);
@@ -68,7 +64,7 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
 
   useEffect(() => {
     if (!isCollapsed) {
-      handleMenuMouseLeave(); // Close immediately if sidebar expands
+      handleMenuMouseLeave();
     }
   }, [isCollapsed, handleMenuMouseLeave]);
 
@@ -98,7 +94,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       animate={isCollapsed ? 'collapsed' : 'expanded'}
       variants={sidebarVariants}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className='hidden md:flex fixed top-0 left-0 z-50 h-full flex-col border-r border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-white'
+      // THE FIX: Replaced z-50 with z-[100] to ensure the sidebar establishes a high stacking context
+      className='hidden md:flex fixed top-0 left-0 z-[100] h-full flex-col border-r border-gray-200 bg-white shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-white'
     >
       {/* Toggle Header */}
       <div className='flex h-16 items-center justify-between border-b border-gray-200 px-4 dark:border-gray-800'>
@@ -138,8 +135,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
               isCollapsed={isCollapsed}
               expandedItems={expandedItems}
               toggleExpanded={toggleExpanded}
-              onMouseEnter={handleItemMouseEnter} // THE FIX: Pass new handler
-              onMouseLeave={handleItemMouseLeave} // THE FIX: Pass new handler
+              onMouseEnter={handleItemMouseEnter}
+              onMouseLeave={handleItemMouseLeave}
             />
           ))}
         </nav>
@@ -187,8 +184,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
             isCollapsed={isCollapsed}
             expandedItems={expandedItems}
             toggleExpanded={toggleExpanded}
-            onMouseEnter={handleItemMouseEnter} // THE FIX: Pass new handler
-            onMouseLeave={handleItemMouseLeave} // THE FIX: Pass new handler
+            onMouseEnter={handleItemMouseEnter}
+            onMouseLeave={handleItemMouseLeave}
           />
         </div>
       )}
@@ -197,8 +194,8 @@ const Sidebar = memo(({ isCollapsed, setIsCollapsed, showMenuFeatures }: Sidebar
       <HoverMenu
         hoveredItem={hoveredItem}
         hoverPosition={hoverPosition}
-        clearLeaveTimeout={clearLeaveTimeout} // THE FIX: Pass canceller
-        onMouseLeave={handleMenuMouseLeave} // THE FIX: Pass immediate leave handler
+        clearLeaveTimeout={clearLeaveTimeout}
+        onMouseLeave={handleMenuMouseLeave}
       />
     </motion.aside>
   );

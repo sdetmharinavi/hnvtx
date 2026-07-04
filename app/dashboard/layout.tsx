@@ -1,3 +1,4 @@
+// app/dashboard/layout.tsx
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +15,6 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { cn } from '@/lib/utils';
 import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
-// 👇 ADD THIS IMPORT
 import { SplashScreen } from '@/components/common/SplashScreen';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -27,7 +27,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <CommandMenu />
       <KeyboardShortcutsModal />
 
-      <div className='no-print z-50'>
+      {/* THE FIX: Added relative z-[100] to ensure the sidebar wrapper commands the stacking context */}
+      <div className='no-print relative z-[100]'>
         <Sidebar
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
@@ -42,11 +43,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           isCollapsed ? 'md:ml-[64px]' : 'md:ml-[260px]',
         )}
       >
-        <div className='no-print'>
+        <div className='no-print z-50'>
           <DashboardHeader onMenuClick={() => setIsCollapsed(!isCollapsed)} />
         </div>
 
-        <main className='flex-1 overflow-x-hidden'>
+        {/* Set z-10 for the main content to push it strictly below the z-[100] Sidebar */}
+        <main className='flex-1 overflow-x-hidden relative z-10'>
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
@@ -60,7 +62,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Protected allowedRoles={allowedRoles}>
         <RouteBasedUploadConfigProvider options={{ autoSetConfig: true }}>
           <ViewSettingsProvider>
-            {/* 👇 ADD SPLASH SCREEN HERE */}
             <SplashScreen />
             <DashboardContent>{children}</DashboardContent>
           </ViewSettingsProvider>

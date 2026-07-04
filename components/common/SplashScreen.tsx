@@ -58,7 +58,7 @@ export const SplashScreen = () => {
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: "100%", opacity: 1 }}
               transition={{ delay: 0.5, duration: 1, ease: "easeOut" }}
-              className="h-1 mt-6 rounded-full bg-blue-600 bg-linear-to-r from-blue-500 to-indigo-600"
+              className="h-1 mt-6 rounded-full bg-neutral-300 bg-linear-to-r from-neutral-200 to-neutral-300"
             />
           </motion.div>
         </motion.div>

@@ -4,11 +4,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePagedData } from '@/hooks/database';
-import { useLogPowerReadings } from '@/hooks/data/usePowerReadings';
+import { useLogPowerReadings, useLatestSystemsPowerReadings } from '@/hooks/data/usePowerReadings';
 import { V_ring_nodesRowSchema, V_ports_management_completeRowSchema } from '@/schemas/zod-schemas';
-import { Server, Activity, Zap } from 'lucide-react';
+import { Server, Activity, Zap, Clock } from 'lucide-react';
 import { Modal, Button, PageSpinner } from '@/components/common/ui';
 import { toast } from 'sonner';
+import { formatDate } from '@/utils/formatters';
 
 interface LogPowerReadingsModalProps {
   isOpen: boolean;
@@ -53,7 +54,6 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
   }, [isOpen]);
 
   // 1. Fetch Systems in Ring
-  // THE FIX: Use v_ring_nodes instead of v_systems_complete to guarantee we capture systems belonging to multiple rings
   const { data: systemsResult, isLoading: loadingSystems } = usePagedData<V_ring_nodesRowSchema>(
     supabase,
     'v_ring_nodes',
@@ -87,6 +87,9 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
     return rawPorts.filter((p) => !isElectricalPort(p.port_type_code, p.port));
   }, [portsResult]);
 
+  // 3. Fetch Latest Historical Readings
+  const { data: powerData = {}, isLoading: loadingPowerData } = useLatestSystemsPowerReadings(systemIds);
+
   // Group ports under systems for a structured list view
   const groupedData = useMemo(() => {
     return systems.map((sys) => {
@@ -111,7 +114,6 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
         ports.forEach((p) => {
           if (p.system_id && p.port) {
             const key = `${p.system_id}_${p.port}`;
-            // THE FIX: Only initialize if it doesn't already exist to prevent wiping user data
             if (!next[key]) {
               next[key] = { tx_power: '', rx_power: '', remark: '' };
               changed = true;
@@ -134,7 +136,6 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
     }));
   };
 
-  // THE FIX: Simplified save handler, removed `keepOpen`
   const handleSave = () => {
     const readings = Object.entries(formState)
       .map(([key, value]) => {
@@ -161,12 +162,12 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
     });
   };
 
-  const isLoading = loadingSystems || loadingPorts;
+  const isLoading = loadingSystems || loadingPorts || loadingPowerData;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Log Fiber Power Levels (Tx/Rx)" size="full">
       {isLoading ? (
-        <PageSpinner text="Loading ring interface configs..." />
+        <PageSpinner text="Loading ring interface configs & history..." />
       ) : groupedData.length === 0 ? (
         <div className="py-12 text-center text-gray-500">
           No optical ports managed on the systems in this ring. Configure system optical ports first.
@@ -188,16 +189,37 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                   {sysPorts.map((p) => {
                     const key = `${p.system_id}_${p.port}`;
                     const current = formState[key] || { tx_power: '', rx_power: '', remark: '' };
+                    
+                    // Retrieve historical data for this specific port
+                    const safeSysId = String(p.system_id).toLowerCase().trim();
+                    const safePort = String(p.port).toLowerCase().trim();
+                    const powerKey = `${safeSysId}_${safePort}`;
+                    const lastReading = powerData[powerKey];
 
                     return (
-                      <div key={p.id} className="p-3 grid grid-cols-1 md:grid-cols-[1fr_120px_120px_200px] gap-3 items-center hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
-                        <div className="min-w-0">
-                          <span className="font-mono text-sm font-bold text-gray-700 dark:text-gray-300">
-                            {p.port}
-                          </span>
-                          <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 px-1.5 py-0.5 rounded ml-2 uppercase font-medium">
-                            {p.port_type_code || 'Port'}
-                          </span>
+                      <div key={p.id} className="p-3 grid grid-cols-1 md:grid-cols-[1fr_120px_120px_200px] gap-3 items-start hover:bg-gray-50/50 dark:hover:bg-gray-800/10 transition-colors">
+                        
+                        {/* Port Info & Last Log Date */}
+                        <div className="min-w-0 pt-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-sm font-bold text-gray-700 dark:text-gray-300">
+                              {p.port}
+                            </span>
+                            <span className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 px-1.5 py-0.5 rounded uppercase font-medium">
+                              {p.port_type_code || 'Port'}
+                            </span>
+                          </div>
+                          {lastReading?.reading_date ? (
+                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                              <Clock className="w-3 h-3" />
+                              <span>Last: {formatDate(lastReading.reading_date, { format: 'dd MMM yyyy' })}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-400 dark:text-gray-500 italic">
+                              <Clock className="w-3 h-3" />
+                              <span>Never logged</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Tx Power Input */}
@@ -209,11 +231,14 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                           <input
                             type="text"
                             inputMode="text"
-                            placeholder="Tx dBm"
+                            placeholder="New Tx"
                             value={current.tx_power}
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'tx_power', e.target.value)}
                             className="w-full text-sm font-mono border border-gray-300 dark:border-gray-600 rounded p-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">
+                            Prev: {lastReading?.tx_power != null ? <span className="font-medium text-orange-600 dark:text-orange-400">{lastReading.tx_power} dBm</span> : 'N/A'}
+                          </div>
                         </div>
 
                         {/* Rx Power Input */}
@@ -225,22 +250,30 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
                           <input
                             type="text"
                             inputMode="text"
-                            placeholder="Rx dBm"
+                            placeholder="New Rx"
                             value={current.rx_power}
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'rx_power', e.target.value)}
                             className="w-full text-sm font-mono border border-gray-300 dark:border-gray-600 rounded p-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">
+                            Prev: {lastReading?.rx_power != null ? <span className="font-medium text-green-600 dark:text-green-400">{lastReading.rx_power} dBm</span> : 'N/A'}
+                          </div>
                         </div>
 
                         {/* Remark Input */}
                         <div>
                           <input
                             type="text"
-                            placeholder="Remark..."
+                            placeholder="Add remark..."
                             value={current.remark}
                             onChange={(e) => handleInputChange(p.system_id!, p.port!, 'remark', e.target.value)}
                             className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
+                          {lastReading?.remark && (
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate" title={String(lastReading.remark)}>
+                              Prev: {String(lastReading.remark)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -255,7 +288,6 @@ export const LogPowerReadingsModal: React.FC<LogPowerReadingsModalProps> = ({
             <Button variant="outline" onClick={onClose} disabled={logReadingsMutation.isPending}>
               Cancel
             </Button>
-            {/* THE FIX: Removed the extraneous "Save & Continue" button */}
             <Button
               type="button"
               onClick={handleSave}

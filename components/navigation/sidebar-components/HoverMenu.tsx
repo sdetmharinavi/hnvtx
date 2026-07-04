@@ -61,9 +61,8 @@ export const HoverMenu = ({
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          // THE FIX: Added `before:absolute before:inset-y-0 before:-left-4 before:w-4 before:bg-transparent`
-          // This creates an invisible bridge spanning the 4px gap so the mouse never triggers onMouseLeave
-          className='fixed z-60 min-w-48 overflow-visible rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 before:absolute before:inset-y-0 before:-left-4 before:w-4 before:bg-transparent'
+          // THE FIX: Replaced invalid `z-60` with `z-[100]` to force it above page content
+          className='fixed z-[100] min-w-48 overflow-visible rounded-lg bg-white shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10 before:absolute before:inset-y-0 before:-left-4 before:w-4 before:bg-transparent'
           style={menuStyle}
           onMouseEnter={clearLeaveTimeout}
           onMouseLeave={onMouseLeave}
