@@ -38,7 +38,7 @@ yarn-error.log*
 .vercel
 
 # AI
-/data/ai_prompt.txt
+/scripts/ai_prompt.txt
 
 # typescript
 *.tsbuildinfo
