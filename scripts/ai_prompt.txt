@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all Lets improve UX. in Power reading page it would have better to show last taken reading if available and last date. If user input the latest data then date should change to current date in the form. Whats your opinion?
+Let's begin! First of all I want to add a functionality in which we can go to google map navigating to nodes lat long directly from nodes details page.

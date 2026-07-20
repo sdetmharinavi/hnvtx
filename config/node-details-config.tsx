@@ -14,6 +14,8 @@ import {
   FiServer,
   FiCode,
   FiInfo,
+  FiMap,
+  FiExternalLink,
 } from 'react-icons/fi';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
@@ -69,6 +71,23 @@ export const nodeDetailsConfig = {
       fields: [
         { key: 'latitude', label: 'Latitude', icon: <FiMapPin size={18} /> },
         { key: 'longitude', label: 'Longitude', icon: <FiMapPin size={18} /> },
+        {
+          key: 'id', // Dummy key to satisfy type checker
+          label: 'Map Link',
+          icon: <FiMap size={18} />,
+          condition: (node) => !!(node.latitude && node.longitude),
+          formatter: (_, node) => (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${node.latitude},${node.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/50"
+            >
+              <FiExternalLink size={14} /> Open in Google Maps
+            </a>
+          ),
+        },
       ],
     },
     {
@@ -101,9 +120,9 @@ export const NodeDetailsModal = ({
   onClose: () => void;
   isOpen: boolean;
 }) => {
-   const { isSuperAdmin } = useUser();
-    const sections = (nodeDetailsConfig.sections || []).filter((section) =>
-      isSuperAdmin ? true : section.title !== 'Timestamps',
-    );
+  const { isSuperAdmin } = useUser();
+  const sections = (nodeDetailsConfig.sections || []).filter((section) =>
+    isSuperAdmin ? true : section.title !== 'Timestamps',
+  );
   return <DetailsModal data={node} onClose={onClose} isOpen={isOpen} config={{...nodeDetailsConfig, sections}} />;
 };

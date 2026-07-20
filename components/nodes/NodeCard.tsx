@@ -1,7 +1,7 @@
 // components/nodes/NodeCard.tsx
 import React from 'react';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiEdit2, FiTrash2, FiMapPin, FiNavigation, FiInfo, FiMessageSquare } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiMapPin, FiNavigation, FiInfo, FiMessageSquare, FiMap } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import L from 'leaflet';
@@ -130,19 +130,34 @@ export const NodeCard: React.FC<NodeCardProps> = ({
           >
             <FiNavigation className="w-5 h-5" />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-bold tracking-wider mb-1">
-              Coordinates
+          <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-bold tracking-wider mb-1">
+                Coordinates
+              </div>
+              <div
+                className={`font-mono text-xs font-medium truncate ${
+                  hasCoordinates
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-gray-400 dark:text-gray-500'
+                }`}
+              >
+                {coords}
+              </div>
             </div>
-            <div
-              className={`font-mono text-xs font-medium truncate ${
-                hasCoordinates
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : 'text-gray-400 dark:text-gray-500'
-              }`}
-            >
-              {coords}
-            </div>
+            
+            {hasCoordinates && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${node.latitude},${node.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()} // Prevents the card's onView from triggering
+                className="shrink-0 p-2 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/60 transition-colors shadow-sm"
+                title="Open in Google Maps"
+              >
+                <FiMap className="w-4 h-4" />
+              </a>
+            )}
           </div>
         </div>
 
