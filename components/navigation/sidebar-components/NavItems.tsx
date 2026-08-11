@@ -119,13 +119,6 @@ function NavItems() {
         roles: ROLES.VIEWERS,
         children: [
           {
-            id: 'expenses',
-            label: 'Expenses',
-            icon: <FaRupeeSign className='h-5 w-5' />,
-            href: '/dashboard/expenses',
-            roles: ROLES.VIEWERS,
-          },
-          {
             id: 'notes',
             label: 'Tech Notes',
             icon: <FiBook className='h-5 w-5' />,

@@ -140,42 +140,6 @@ export const authUsersUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const advancesRowSchema = z.object({
-  advance_date: z.iso.datetime(),
-  amount: z.number().min(0),
-  created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  employee_id: z.uuid().nullable(),
-  id: z.uuid(),
-  req_no: z.string(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
-export const advancesInsertSchema = z.object({
-  advance_date: z.iso.datetime(),
-  amount: z.number().min(0),
-  created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  employee_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  req_no: z.string(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const advancesUpdateSchema = z.object({
-  advance_date: z.iso.datetime().optional(),
-  amount: z.number().min(0).optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  employee_id: z.uuid().nullable().optional(),
-  id: z.uuid().optional(),
-  req_no: z.string().optional(),
-  status: z.string().min(1, "Status cannot be empty").nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-});
-
 export const cable_segmentsRowSchema = z.object({
   created_at: z.iso.datetime().nullable(),
   distance_km: z.number(),
@@ -324,51 +288,6 @@ export const employeesUpdateSchema = z.object({
   remark: z.string().nullable().optional(),
   status: z.boolean().nullable().optional(),
   updated_at: z.iso.datetime().nullable().optional(),
-});
-
-export const expensesRowSchema = z.object({
-  advance_id: z.uuid().nullable(),
-  amount: z.number().min(0),
-  category: z.string().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  expense_date: z.iso.datetime(),
-  id: z.uuid(),
-  invoice_no: z.string().nullable(),
-  spent_by_employee_id: z.uuid().nullable(),
-  terminal_location: z.string().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  vendor: z.string().nullable(),
-});
-
-export const expensesInsertSchema = z.object({
-  advance_id: z.uuid().nullable().optional(),
-  amount: z.number().min(0),
-  category: z.string().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  expense_date: z.iso.datetime(),
-  id: z.uuid().optional(),
-  invoice_no: z.string().nullable().optional(),
-  spent_by_employee_id: z.uuid().nullable().optional(),
-  terminal_location: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  vendor: z.string().nullable().optional(),
-});
-
-export const expensesUpdateSchema = z.object({
-  advance_id: z.uuid().nullable().optional(),
-  amount: z.number().min(0).optional(),
-  category: z.string().nullable().optional(),
-  created_at: z.iso.datetime().nullable().optional(),
-  description: z.string().max(10000, "Text is too long").nullable().optional(),
-  expense_date: z.iso.datetime().optional(),
-  id: z.uuid().optional(),
-  invoice_no: z.string().nullable().optional(),
-  spent_by_employee_id: z.uuid().nullable().optional(),
-  terminal_location: z.string().nullable().optional(),
-  updated_at: z.iso.datetime().nullable().optional(),
-  vendor: z.string().nullable().optional(),
 });
 
 export const fiber_splicesRowSchema = z.object({
@@ -1535,22 +1454,6 @@ export const user_profilesUpdateSchema = z.object({
   updated_at: z.iso.datetime().nullable().optional(),
 });
 
-export const v_advances_completeRowSchema = z.object({
-  advance_date: z.iso.datetime().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  employee_id: z.uuid().nullable(),
-  employee_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  employee_pers_no: z.string().nullable(),
-  id: z.uuid().nullable(),
-  remaining_balance: z.number().nullable(),
-  req_no: z.string().nullable(),
-  spent_amount: z.number().min(0).nullable(),
-  status: z.string().min(1, "Status cannot be empty").nullable(),
-  total_amount: z.number().min(0).nullable(),
-  updated_at: z.iso.datetime().nullable(),
-});
-
 export const v_audit_logsRowSchema = z.object({
   action_type: z.string().nullable(),
   created_at: z.iso.datetime().nullable(),
@@ -1626,25 +1529,6 @@ export const v_end_to_end_pathsRowSchema = z.object({
   source_system_id: z.uuid().nullable(),
   total_distance_km: z.number().nullable(),
   total_loss_db: z.number().nullable(),
-});
-
-export const v_expenses_completeRowSchema = z.object({
-  advance_holder_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  advance_id: z.uuid().nullable(),
-  advance_req_no: z.string().nullable(),
-  amount: z.number().min(0).nullable(),
-  category: z.string().nullable(),
-  created_at: z.iso.datetime().nullable(),
-  description: z.string().max(10000, "Text is too long").nullable(),
-  expense_date: z.iso.datetime().nullable(),
-  id: z.uuid().nullable(),
-  invoice_no: z.string().nullable(),
-  spender_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
-  spent_by_employee_id: z.uuid().nullable(),
-  terminal_location: z.string().nullable(),
-  updated_at: z.iso.datetime().nullable(),
-  used_by: z.string().nullable(),
-  vendor: z.string().nullable(),
 });
 
 export const v_inventory_itemsRowSchema = z.object({
@@ -2059,9 +1943,6 @@ export const v_user_profiles_extendedRowSchema = z.object({
 export type AuthUsersRowSchema = z.infer<typeof authUsersRowSchema>;
 export type AuthUsersInsertSchema = z.infer<typeof authUsersInsertSchema>;
 export type AuthUsersUpdateSchema = z.infer<typeof authUsersUpdateSchema>;
-export type AdvancesRowSchema = z.infer<typeof advancesRowSchema>;
-export type AdvancesInsertSchema = z.infer<typeof advancesInsertSchema>;
-export type AdvancesUpdateSchema = z.infer<typeof advancesUpdateSchema>;
 export type Cable_segmentsRowSchema = z.infer<typeof cable_segmentsRowSchema>;
 export type Cable_segmentsInsertSchema = z.infer<typeof cable_segmentsInsertSchema>;
 export type Cable_segmentsUpdateSchema = z.infer<typeof cable_segmentsUpdateSchema>;
@@ -2074,9 +1955,6 @@ export type Employee_designationsUpdateSchema = z.infer<typeof employee_designat
 export type EmployeesRowSchema = z.infer<typeof employeesRowSchema>;
 export type EmployeesInsertSchema = z.infer<typeof employeesInsertSchema>;
 export type EmployeesUpdateSchema = z.infer<typeof employeesUpdateSchema>;
-export type ExpensesRowSchema = z.infer<typeof expensesRowSchema>;
-export type ExpensesInsertSchema = z.infer<typeof expensesInsertSchema>;
-export type ExpensesUpdateSchema = z.infer<typeof expensesUpdateSchema>;
 export type Fiber_splicesRowSchema = z.infer<typeof fiber_splicesRowSchema>;
 export type Fiber_splicesInsertSchema = z.infer<typeof fiber_splicesInsertSchema>;
 export type Fiber_splicesUpdateSchema = z.infer<typeof fiber_splicesUpdateSchema>;
@@ -2155,14 +2033,12 @@ export type User_activity_logsUpdateSchema = z.infer<typeof user_activity_logsUp
 export type User_profilesRowSchema = z.infer<typeof user_profilesRowSchema>;
 export type User_profilesInsertSchema = z.infer<typeof user_profilesInsertSchema>;
 export type User_profilesUpdateSchema = z.infer<typeof user_profilesUpdateSchema>;
-export type V_advances_completeRowSchema = z.infer<typeof v_advances_completeRowSchema>;
 export type V_audit_logsRowSchema = z.infer<typeof v_audit_logsRowSchema>;
 export type V_cable_segments_at_jcRowSchema = z.infer<typeof v_cable_segments_at_jcRowSchema>;
 export type V_cable_utilizationRowSchema = z.infer<typeof v_cable_utilizationRowSchema>;
 export type V_employee_designationsRowSchema = z.infer<typeof v_employee_designationsRowSchema>;
 export type V_employeesRowSchema = z.infer<typeof v_employeesRowSchema>;
 export type V_end_to_end_pathsRowSchema = z.infer<typeof v_end_to_end_pathsRowSchema>;
-export type V_expenses_completeRowSchema = z.infer<typeof v_expenses_completeRowSchema>;
 export type V_inventory_itemsRowSchema = z.infer<typeof v_inventory_itemsRowSchema>;
 export type V_inventory_transactions_extendedRowSchema = z.infer<typeof v_inventory_transactions_extendedRowSchema>;
 export type V_junction_closures_completeRowSchema = z.infer<typeof v_junction_closures_completeRowSchema>;

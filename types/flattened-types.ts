@@ -118,42 +118,6 @@ export type AuthUsersUpdate = {
     updated_at?: string | null;
 };
 
-export type AdvancesRow = {
-    advance_date: string;
-    amount: number;
-    created_at: string | null;
-    description: string | null;
-    employee_id: string | null;
-    id: string;
-    req_no: string;
-    status: string | null;
-    updated_at: string | null;
-};
-
-export type AdvancesInsert = {
-    advance_date: string;
-    amount: number;
-    created_at?: string | null;
-    description?: string | null;
-    employee_id?: string | null;
-    id?: string;
-    req_no: string;
-    status?: string | null;
-    updated_at?: string | null;
-};
-
-export type AdvancesUpdate = {
-    advance_date?: string;
-    amount?: number;
-    created_at?: string | null;
-    description?: string | null;
-    employee_id?: string | null;
-    id?: string;
-    req_no?: string;
-    status?: string | null;
-    updated_at?: string | null;
-};
-
 export type Cable_segmentsRow = {
     created_at: string | null;
     distance_km: number;
@@ -302,51 +266,6 @@ export type EmployeesUpdate = {
     remark?: string | null;
     status?: boolean | null;
     updated_at?: string | null;
-};
-
-export type ExpensesRow = {
-    advance_id: string | null;
-    amount: number;
-    category: string | null;
-    created_at: string | null;
-    description: string | null;
-    expense_date: string;
-    id: string;
-    invoice_no: string | null;
-    spent_by_employee_id: string | null;
-    terminal_location: string | null;
-    updated_at: string | null;
-    vendor: string | null;
-};
-
-export type ExpensesInsert = {
-    advance_id?: string | null;
-    amount: number;
-    category?: string | null;
-    created_at?: string | null;
-    description?: string | null;
-    expense_date: string;
-    id?: string;
-    invoice_no?: string | null;
-    spent_by_employee_id?: string | null;
-    terminal_location?: string | null;
-    updated_at?: string | null;
-    vendor?: string | null;
-};
-
-export type ExpensesUpdate = {
-    advance_id?: string | null;
-    amount?: number;
-    category?: string | null;
-    created_at?: string | null;
-    description?: string | null;
-    expense_date?: string;
-    id?: string;
-    invoice_no?: string | null;
-    spent_by_employee_id?: string | null;
-    terminal_location?: string | null;
-    updated_at?: string | null;
-    vendor?: string | null;
 };
 
 export type Fiber_splicesRow = {
@@ -1515,22 +1434,6 @@ export type User_profilesUpdate = {
 
 // ============= VIEWS =============
 
-export type V_advances_completeRow = {
-    advance_date: string | null;
-    created_at: string | null;
-    description: string | null;
-    employee_id: string | null;
-    employee_name: string | null;
-    employee_pers_no: string | null;
-    id: string | null;
-    remaining_balance: number | null;
-    req_no: string | null;
-    spent_amount: number | null;
-    status: string | null;
-    total_amount: number | null;
-    updated_at: string | null;
-};
-
 export type V_audit_logsRow = {
     action_type: string | null;
     created_at: string | null;
@@ -1606,25 +1509,6 @@ export type V_end_to_end_pathsRow = {
     source_system_id: string | null;
     total_distance_km: number | null;
     total_loss_db: number | null;
-};
-
-export type V_expenses_completeRow = {
-    advance_holder_name: string | null;
-    advance_id: string | null;
-    advance_req_no: string | null;
-    amount: number | null;
-    category: string | null;
-    created_at: string | null;
-    description: string | null;
-    expense_date: string | null;
-    id: string | null;
-    invoice_no: string | null;
-    spender_name: string | null;
-    spent_by_employee_id: string | null;
-    terminal_location: string | null;
-    updated_at: string | null;
-    used_by: string | null;
-    vendor: string | null;
 };
 
 export type V_inventory_itemsRow = {
@@ -2057,12 +1941,10 @@ export type AuthOne_time_token_type = "confirmation_token" | "reauthentication_t
 // ============= HELPERS =============
 
 export const tableNames = [
-  "advances",
   "cable_segments",
   "diary_notes",
   "employee_designations",
   "employees",
-  "expenses",
   "fiber_splices",
   "files",
   "folders",
@@ -2092,14 +1974,12 @@ export const tableNames = [
 ] as const;
 
 export const viewNames = [
-  "v_advances_complete",
   "v_audit_logs",
   "v_cable_segments_at_jc",
   "v_cable_utilization",
   "v_employee_designations",
   "v_employees",
   "v_end_to_end_paths",
-  "v_expenses_complete",
   "v_inventory_items",
   "v_inventory_transactions_extended",
   "v_junction_closures_complete",
