@@ -803,6 +803,8 @@ const TABLE_COLUMN_OBJECTS = {
     node_type_name: 'node_type_name',
     node_type_code: 'node_type_code',
     remark: 'remark',
+    system_type_ids: 'system_type_ids',
+    system_type_names: 'system_type_names',
     maintenance_area_name: 'maintenance_area_name',
     status: 'status',
     node_type_id: 'node_type_id',
@@ -1255,8 +1257,6 @@ export const VIEWS = {
   v_audit_logs: 'v_audit_logs',
   v_services: 'v_services',
   v_technical_notes: 'v_technical_notes',
-  v_expenses_complete: 'v_expenses_complete',
-  v_advances_complete: 'v_advances_complete',
 } as const;
 
 export const TABLE_NAMES = {

@@ -27,6 +27,8 @@ export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_conn
     'system_working_interface',
     'system_protection_interface',
     'en_protection_interface',
+    'service_node_name',
+    'service_end_node_name',
   ],
   serverSearchFields: [
     'service_name',
@@ -45,6 +47,8 @@ export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_conn
     'system_working_interface',
     'system_protection_interface',
     'en_protection_interface',
+    'service_node_name',
+    'service_end_node_name',
   ],
   defaultSortField: 'service_name',
   // rpcLimit removed

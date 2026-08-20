@@ -1610,6 +1610,8 @@ export type V_nodes_completeRow = {
     node_type_name: string | null;
     remark: string | null;
     status: boolean | null;
+    system_type_ids: string[] | null;
+    system_type_names: string[] | null;
     updated_at: string | null;
 };
 

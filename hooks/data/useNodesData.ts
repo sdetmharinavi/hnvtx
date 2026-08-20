@@ -23,6 +23,27 @@ export const useNodesData = createGenericDataQuery<'v_nodes_complete'>({
     )
       return false;
 
+    // --- EDITED SECTION START ---
+    // Added logic to filter by systems currently present at the node.
+    // We check if there is an intersection between selected types and the node's aggregated system_type_ids.
+    if (filters.system_type_id) {
+      const selectedSystemTypes = Array.isArray(filters.system_type_id)
+        ? filters.system_type_id
+        : [filters.system_type_id];
+
+      if (selectedSystemTypes.length > 0) {
+        // If the node has NO systems, it shouldn't match any system-based filter.
+        if (!node.system_type_ids || node.system_type_ids.length === 0) return false;
+
+        const hasMatch = selectedSystemTypes.some(typeId => 
+          node.system_type_ids!.includes(typeId)
+        );
+        
+        if (!hasMatch) return false;
+      }
+    }
+    // --- EDITED SECTION END ---
+
     if (filters.status) {
       const statusBool = filters.status === 'true';
       if (node.status !== statusBool) return false;

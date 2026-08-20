@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all I want to add a functionality in which we can go to google map navigating to nodes lat long directly from nodes details page.
+Let's begin! First of all we need to update filters to show nodes as per system types also present at that node.

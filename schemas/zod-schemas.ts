@@ -1630,6 +1630,8 @@ export const v_nodes_completeRowSchema = z.object({
   node_type_name: z.string().min(1, "Name cannot be empty").max(255, "Name is too long").nullable(),
   remark: z.string().nullable(),
   status: z.boolean().nullable(),
+  system_type_ids: z.array(z.string()).nullable(),
+  system_type_names: z.array(z.string().min(1, "Name cannot be empty").max(255, "Name is too long")).nullable(),
   updated_at: z.iso.datetime().nullable(),
 });
 

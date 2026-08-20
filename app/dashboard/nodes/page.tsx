@@ -17,14 +17,16 @@ import { TABLE_COLUMN_KEYS } from '@/constants/table-column-keys';
 import { NodesTableColumns } from '@/config/table-columns/NodesTableColumns';
 import useOrderedColumns from '@/hooks/useOrderedColumns';
 import { useStandardHeaderActions } from '@/components/common/page-header';
-import { FiCpu, FiMapPin, FiNavigation, FiCopy } from 'react-icons/fi';
+import { FiCpu, FiMapPin, FiNavigation, FiCopy, FiServer } from 'react-icons/fi';
 import { createStandardActions } from '@/components/table/action-helpers';
 import L from 'leaflet';
 import { getNodeIcon } from '@/utils/getNodeIcons';
 import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
-import { StatProps } from '@/components/common/page-header/StatCard'; // Import StatProps
+import { StatProps } from '@/components/common/page-header/StatCard';
+import { NodeCard } from '@/components/nodes/NodeCard';
+import { NodeInfrastructureModal } from '@/components/nodes/NodeInfrastructureModal';
 
 const NodeFormModal = dynamic(
   () => import('@/components/nodes/NodeFormModal').then((mod) => mod.NodeFormModal),
@@ -33,6 +35,7 @@ const NodeFormModal = dynamic(
 
 export default function NodesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [nodeForInfrastructure, setNodeForInfrastructure] = useState<V_nodes_completeRowSchema | null>(null);
 
   const {
     data: nodes,
@@ -73,6 +76,12 @@ export default function NodesPage() {
   const { options: nodeTypeOptions, isLoading: loadingNodeTypes } =
     useLookupTypeOptions('NODE_TYPES');
   const { options: areaOptions, isLoading: loadingAreas } = useMaintenanceAreaOptions();
+  
+  // --- EDITED SECTION START ---
+  // Fetch system types for the new filter
+  const { options: systemTypeOptions, isLoading: loadingSystemTypes } =
+    useLookupTypeOptions('SYSTEM_TYPES');
+  // --- EDITED SECTION END ---
 
   // --- Filter Config ---
   const filterConfigs = useMemo(
@@ -92,15 +101,28 @@ export default function NodesPage() {
         options: nodeTypeOptions,
         isLoading: loadingNodeTypes,
         sortOptions: false,
+        placeholder: 'All Node Types',
       },
+      // --- EDITED SECTION START ---
+      // Adding System Types Multi-Select Filter
+      {
+        key: 'system_type_id',
+        label: '',
+        type: 'multi-select' as const,
+        options: systemTypeOptions,
+        isLoading: loadingSystemTypes,
+        placeholder: 'All System Types',
+      },
+      // --- EDITED SECTION END ---
       {
         key: 'maintenance_terminal_id',
         type: 'multi-select' as const,
         options: areaOptions,
         isLoading: loadingAreas,
+        placeholder: 'All maintenance terminal',
       },
     ],
-    [nodeTypeOptions, areaOptions, loadingNodeTypes, loadingAreas],
+    [nodeTypeOptions, areaOptions, systemTypeOptions, loadingNodeTypes, loadingAreas, loadingSystemTypes],
   );
 
   const handleFilterChange = useCallback(
@@ -175,66 +197,14 @@ export default function NodesPage() {
 
   const renderItem = useCallback(
     (node: V_nodes_completeRowSchema) => {
-      const iconRaw = getNodeIcon(null, node.node_type_name, false);
-      const iconHtml = (iconRaw.options as L.DivIconOptions).html as string | undefined;
-
-      const iconElement: React.ReactNode = iconHtml ? (
-        <div
-          dangerouslySetInnerHTML={{
-            __html: iconHtml,
-          }}
-          className='scale-90 origin-center'
-        />
-      ) : (
-        <FiMapPin className='w-7 h-7 text-gray-900 dark:text-gray-100' />
-      );
-
-      const coords =
-        node.latitude && node.longitude
-          ? `${node.latitude.toFixed(5)}, ${node.longitude.toFixed(5)}`
-          : 'No Coordinates';
-      const hasCoordinates = !!(node.latitude && node.longitude);
-
       return (
-        <GenericEntityCard
+        <NodeCard
           key={node.id}
-          entity={node}
-          title={node.name || 'Unnamed Node'}
-          status={node.status}
-          showStatusLabel={false}
-          headerIcon={iconElement}
-          subBadge={
-            <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 text-white shadow-sm'>
-              <span className='w-1.5 h-1.5 rounded-full bg-white animate-pulse' />
-              {node.node_type_name || node.node_type_code || 'Unknown Type'}
-            </span>
-          }
-          dataItems={[
-            {
-              icon: FiMapPin,
-              label: 'Maintenance Area',
-              value: node.maintenance_area_name || 'Unassigned',
-            },
-            {
-              icon: FiNavigation,
-              label: 'Coordinates',
-              value: (
-                <span
-                  className={`font-mono text-xs ${
-                    hasCoordinates
-                      ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                      : 'text-gray-400'
-                  }`}
-                >
-                  {coords}
-                </span>
-              ),
-            },
-          ]}
-          customFooter={<GenericRemarks remark={node.remark || ''} />}
+          node={node}
           onView={viewModal.open}
           onEdit={editModal.openEdit}
           onDelete={crudActions.handleDelete}
+          onViewSystems={setNodeForInfrastructure}
           canEdit={canEdit}
           canDelete={canDelete}
         />
@@ -263,6 +233,24 @@ export default function NodesPage() {
     ),
     [nodes, renderItem, isLoading, totalCount, pagination],
   );
+
+  const tableActions = useMemo(() => {
+    const actions = createStandardActions({
+      onEdit: canEdit ? editModal.openEdit : undefined,
+      onView: viewModal.open,
+      onDelete: canDelete ? crudActions.handleDelete : undefined,
+    });
+    
+    actions.unshift({
+      key: 'infrastructure',
+      label: 'Infrastructure',
+      icon: <FiServer className="w-4 h-4" />,
+      onClick: (record) => setNodeForInfrastructure(record as V_nodes_completeRowSchema),
+      variant: 'primary',
+    });
+
+    return actions;
+  }, [canEdit, canDelete, editModal.openEdit, viewModal.open, crudActions.handleDelete]);
 
   if (error)
     return <ErrorDisplay error={error.message} actions={[{ label: 'Retry', onClick: refetch }]} />;
@@ -304,11 +292,7 @@ export default function NodesPage() {
         columns: orderedColumns,
         loading: isLoading,
         isFetching: isFetching || isMutating,
-        actions: createStandardActions({
-          onEdit: canEdit ? editModal.openEdit : undefined,
-          onView: viewModal.open,
-          onDelete: canDelete ? crudActions.handleDelete : undefined,
-        }),
+        actions: tableActions,
         selectable: canDelete,
         onRowSelect: (rows) => {
           const validRows = rows.filter(
@@ -356,6 +340,12 @@ export default function NodesPage() {
             message={deleteModal.message}
             loading={deleteModal.loading}
             type='danger'
+          />
+
+          <NodeInfrastructureModal
+            isOpen={!!nodeForInfrastructure}
+            onClose={() => setNodeForInfrastructure(null)}
+            node={nodeForInfrastructure}
           />
         </>
       }

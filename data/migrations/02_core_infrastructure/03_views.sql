@@ -35,13 +35,36 @@ LEFT JOIN public.maintenance_areas ma ON e.maintenance_terminal_id = ma.id;
 -- View for nodes with joined data
 CREATE OR REPLACE VIEW public.v_nodes_complete WITH (security_invoker = true) AS
 SELECT
-  n.*,
+  n.id,
+  n.name,
+  n.node_type_id,
+  n.latitude,
+  n.longitude,
+  n.maintenance_terminal_id,
+  n.remark,
+  n.status,
+  n.created_at,
+  n.updated_at,
   lt_node.name AS node_type_name,
   lt_node.code AS node_type_code,
-  ma.name AS maintenance_area_name
+  ma.name AS maintenance_area_name,
+  COALESCE((
+    SELECT array_agg(DISTINCT s.system_type_id)
+    FROM public.systems s
+    WHERE s.node_id = n.id
+  ), ARRAY[]::uuid[]) AS system_type_ids,
+  COALESCE((
+    SELECT array_agg(DISTINCT COALESCE(lt_sys.code, lt_sys.name))
+    FROM public.systems s
+    JOIN public.lookup_types lt_sys ON s.system_type_id = lt_sys.id
+    WHERE s.node_id = n.id
+  ), ARRAY[]::text[]) AS system_type_names
 FROM public.nodes n
 LEFT JOIN public.lookup_types lt_node ON n.node_type_id = lt_node.id
 LEFT JOIN public.maintenance_areas ma ON n.maintenance_terminal_id = ma.id;
+
+-- Grant permissions to new view
+GRANT SELECT ON public.v_nodes_complete TO admin, admin_pro, viewer, cpan_admin, sdh_admin, asset_admin, mng_admin, authenticated;
 
 -- View for ofc_cables with joined data
 CREATE OR REPLACE VIEW public.v_ofc_cables_complete WITH (security_invoker = true) AS

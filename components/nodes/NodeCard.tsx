@@ -1,7 +1,7 @@
 // components/nodes/NodeCard.tsx
 import React from 'react';
 import { V_nodes_completeRowSchema } from '@/schemas/zod-schemas';
-import { FiEdit2, FiTrash2, FiMapPin, FiNavigation, FiInfo, FiMessageSquare, FiMap } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiMapPin, FiNavigation, FiInfo, FiMessageSquare, FiMap, FiServer } from 'react-icons/fi';
 import { Button } from '@/components/common/ui/Button';
 import { StatusBadge } from '@/components/common/ui/badges/StatusBadge';
 import L from 'leaflet';
@@ -13,6 +13,7 @@ interface NodeCardProps {
   onEdit: (node: V_nodes_completeRowSchema) => void;
   onDelete: (node: V_nodes_completeRowSchema) => void;
   onView: (node: V_nodes_completeRowSchema) => void;
+  onViewSystems?: (node: V_nodes_completeRowSchema) => void; // THE FIX: Added prop
   canEdit: boolean;
   canDelete: boolean;
 }
@@ -22,6 +23,7 @@ export const NodeCard: React.FC<NodeCardProps> = ({
   onEdit,
   onDelete,
   onView,
+  onViewSystems,
   canEdit,
   canDelete,
 }) => {
@@ -186,17 +188,34 @@ export const NodeCard: React.FC<NodeCardProps> = ({
         className="p-4 bg-gray-50/50 dark:bg-gray-900/30 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center gap-2"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* View Details Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onView(node)}
-          className="flex-1 group/btn hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400"
-          title="View Details"
-        >
-          <FiInfo className="w-4 h-4 mr-1.5 group-hover/btn:scale-110 transition-transform" />
-          Details
-        </Button>
+        <div className="flex flex-1 gap-2">
+          {/* View Details Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onView(node)}
+            className="flex-1 group/btn hover:border-blue-500 hover:text-blue-600 dark:hover:border-blue-400 dark:hover:text-blue-400"
+            title="View Details"
+          >
+            <FiInfo className="w-4 h-4 mr-1.5 group-hover/btn:scale-110 transition-transform" />
+            Details
+          </Button>
+
+          {/* THE FIX: Render the Infrastructure Systems Button */}
+          {onViewSystems && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onViewSystems(node)}
+              className="flex-1 group/btn border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800/50 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
+              title="View Systems and Connections at this Node"
+            >
+              <FiServer className="w-4 h-4 mr-1.5 group-hover/btn:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Infrastructure</span>
+              <span className="sm:hidden">Infra</span>
+            </Button>
+          )}
+        </div>
 
         {/* Edit & Delete Buttons */}
         <div className="flex gap-2">
