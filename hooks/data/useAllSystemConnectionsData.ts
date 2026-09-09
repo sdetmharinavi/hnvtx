@@ -59,6 +59,14 @@ export const useAllSystemConnectionsData = createGenericDataQuery<'v_system_conn
       return false;
     }
 
+    // Exclude Media Type Filter
+    if (filters.exclude_media_type_id) {
+      const excluded = Array.isArray(filters.exclude_media_type_id) 
+        ? filters.exclude_media_type_id 
+        : [filters.exclude_media_type_id];
+      if (excluded.includes(c.media_type_id)) return false;
+    }
+
     // Link Type Filter
     if (
       filters.connected_link_type_id &&

@@ -45,8 +45,8 @@ interface EnhancedUseExcelDownloadOptions<T extends TableOrViewName>
   maxRows?: number;
 }
 
-// --- HELPER FUNCTION ---
-async function generateAndDownloadExcel<T extends TableOrViewName>(
+// --- HELPER FUNCTION (NOW EXPORTED) ---
+export async function generateAndDownloadExcel<T extends TableOrViewName>(
   data: Row<T>[],
   options: EnhancedDownloadOptions<T>
 ): Promise<ExcelDownloadResult> {

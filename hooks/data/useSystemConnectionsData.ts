@@ -12,6 +12,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { DEFAULTS } from '@/constants/constants';
 
+const matchFilter = (itemValue: unknown, filterValue: unknown) => {
+  if (Array.isArray(filterValue)) {
+    return filterValue.includes(itemValue);
+  }
+  return itemValue === filterValue;
+};
+
 const transformConnectionPerspective = (
   conn: V_system_connections_completeRowSchema,
   currentSystemId: string | null,
@@ -110,10 +117,14 @@ export const useSystemConnectionsData = (systemId: string | null) => {
         if (!systemId) return [];
 
         const searchString = buildServerSearchString(searchQuery, serverSearchFields);
-        const rpcFilters = buildRpcFilters({ ...filters, or: searchString });
+        
+        // We strip client-side specific filters before passing to RPC
+        const rpcFiltersInput = { ...filters };
+        delete rpcFiltersInput.exclude_media_type_id;
+        delete rpcFiltersInput.excluded_interfaces; // Strip excluded_interfaces for client-side evaluation
 
-        // We want connections where this system is EITHER source OR destination
-        // The RPC `get_paged_system_connections` handles this logic specifically
+        const rpcFilters = buildRpcFilters({ ...rpcFiltersInput, or: searchString });
+
         const { data, error } = await supabase.rpc('get_paged_system_connections', {
           p_system_id: systemId,
           p_limit: 5000,
@@ -144,19 +155,44 @@ export const useSystemConnectionsData = (systemId: string | null) => {
       }
 
       // 2. Filters
+      if (filters.excluded_interfaces) {
+        const excluded = Array.isArray(filters.excluded_interfaces)
+          ? filters.excluded_interfaces
+          : [filters.excluded_interfaces];
+
+        filtered = filtered.filter((c) => {
+          // Only check local system interfaces
+          const p1 = c.system_working_interface;
+          const p2 = c.system_protection_interface;
+
+          if (p1 && excluded.includes(p1)) return false;
+          if (p2 && excluded.includes(p2)) return false;
+
+          return true;
+        });
+      }
+
       if (filters.media_type_id) {
-        filtered = filtered.filter((c) => c.media_type_id === filters.media_type_id);
+        filtered = filtered.filter((c) => matchFilter(c.media_type_id, filters.media_type_id));
+      }
+      if (filters.exclude_media_type_id) {
+        filtered = filtered.filter((c) => {
+          const excluded = Array.isArray(filters.exclude_media_type_id) 
+            ? filters.exclude_media_type_id 
+            : [filters.exclude_media_type_id];
+          return !excluded.includes(c.media_type_id);
+        });
       }
       if (filters.connected_link_type_id) {
-        filtered = filtered.filter(
-          (c) => c.connected_link_type_id === filters.connected_link_type_id,
+        filtered = filtered.filter((c) =>
+          matchFilter(c.connected_link_type_id, filters.connected_link_type_id),
         );
       }
       if (filters.bandwidth) {
         filtered = filtered.filter((c) => c.bandwidth === filters.bandwidth);
       }
-      if (filters.status) {
-        const statusBool = filters.status === 'true';
+      if (filters.status !== undefined && filters.status !== '') {
+        const statusBool = String(filters.status) === 'true';
         filtered = filtered.filter((c) => c.status === statusBool);
       }
 

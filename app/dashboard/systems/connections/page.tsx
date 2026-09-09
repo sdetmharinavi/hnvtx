@@ -129,17 +129,17 @@ export default function GlobalConnectionsPage() {
     () => [
       {
         key: 'connected_link_type_id',
-        type: 'select', // Changed from multi-select to match systems/[id]
+        type: 'multi-select', // FIXED: multi-select matching systems/[id]
         options: linkOptions,
         isLoading: loadingLink,
-        placeholder: 'Link Type',
+        placeholder: 'All Link Types',
       },
       {
         key: 'media_type_id',
-        type: 'select', // Changed from multi-select to match systems/[id]
+        type: 'multi-select', // FIXED: multi-select matching systems/[id]
         options: mediaOptions,
         isLoading: loadingMedia,
-        placeholder: 'Media Type',
+        placeholder: 'All Media Types',
       },
       {
         key: 'status',
