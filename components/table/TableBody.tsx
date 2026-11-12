@@ -1,9 +1,8 @@
 // components/table/TableBody.tsx
 'use client';
 
-/* STREAMING_CHUNK:TableRow imports and variables setup... */
 import React, { useRef, useEffect } from 'react';
-import { FiEdit3, FiCheck, FiX } from 'react-icons/fi';
+import { FiEdit3, FiCheck, FiX, FiPlus } from 'react-icons/fi';
 import { DataTableProps, TableAction } from '@/components/table/datatable-types';
 import { TableOrViewName, Row } from '@/hooks/database';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
@@ -11,6 +10,7 @@ import { TruncateTooltip } from '@/components/common/TruncateTooltip';
 import { TableSkeleton } from '@/components/common/ui/table/TableSkeleton';
 import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/common/ui/Button';
 
 // Define a type for your row that guarantees a unique identifier
 type DataRow<T extends TableOrViewName> = Row<T> & { id: string | number };
@@ -26,6 +26,7 @@ interface TableBodyProps<T extends TableOrViewName> extends Pick<
   | 'loading'
   | 'emptyText'
   | 'onRowClick'
+  | 'onAddNew' // EDITED: Pick onAddNew
 > {
   actions?: TableAction<T>[];
   processedData: DataRow<T>[];
@@ -44,7 +45,7 @@ interface TableBodyProps<T extends TableOrViewName> extends Pick<
 
 interface TableRowProps<T extends TableOrViewName> extends Omit<
   TableBodyProps<T>,
-  'processedData' | 'loading' | 'emptyText'
+  'processedData' | 'loading' | 'emptyText' | 'onAddNew'
 > {
   record: DataRow<T>;
   rowIndex: number;
@@ -53,7 +54,6 @@ interface TableRowProps<T extends TableOrViewName> extends Omit<
 
 const densityClasses = { compact: 'py-1 px-3', default: 'py-3 px-4', comfortable: 'py-4 px-6' };
 
-/* STREAMING_CHUNK:Interactive click handlers and cell edits... */
 function TableRowBase<T extends TableOrViewName>({
   record,
   rowIndex,
@@ -117,7 +117,6 @@ function TableRowBase<T extends TableOrViewName>({
   );
 
   const handleRowClick = (e: React.MouseEvent) => {
-    // Guard against interactive elements
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -149,7 +148,6 @@ function TableRowBase<T extends TableOrViewName>({
             bordered ? `border-b border-r border-gray-200 dark:border-gray-700` : '',
           )}
           style={{ width: 48, minWidth: 48, maxWidth: 48 }}
-          // FIXED: Stop event propagation so selecting checkboxes won't trigger row click
           onClick={(e) => e.stopPropagation()}
         >
           <input
@@ -188,7 +186,6 @@ function TableRowBase<T extends TableOrViewName>({
               minWidth: column.width ? undefined : '100px',
               maxWidth: '350px',
             }}
-            // FIXED: Stop event propagation on editable columns so entering cell-edit mode won't trigger row click details modal
             onClick={(e) => {
               if (column.editable) {
                 e.stopPropagation();
@@ -279,7 +276,6 @@ function TableRowBase<T extends TableOrViewName>({
         <td 
           className={stickyTdClasses} 
           style={{ width: 128, minWidth: 128, maxWidth: 128 }}
-          // FIXED: Stop event propagation on actions so clicking buttons won't trigger row click details modal
           onClick={(e) => e.stopPropagation()}
         >
           <div className='flex items-center justify-center gap-1'>
@@ -331,17 +327,16 @@ function TableRowBase<T extends TableOrViewName>({
   );
 }
 
-// Memoized Table Row component for performance optimization (preserve generics via assertion)
 const MemoizedTableRow = React.memo(TableRowBase) as <T extends TableOrViewName>(
   props: TableRowProps<T>,
 ) => React.ReactElement;
 
-/* STREAMING_CHUNK:TableBody component definition and exports... */
 function TableBodyBase<T extends TableOrViewName>({
   processedData,
   visibleColumns,
   loading,
   emptyText,
+  onAddNew, // EDITED
   ...rest
 }: TableBodyProps<T>) {
   if (loading) {
@@ -378,6 +373,12 @@ function TableBodyBase<T extends TableOrViewName>({
             <FancyEmptyState
               title='No Data Found'
               description={emptyText || 'Try adjusting your search or filters.'}
+              // EDITED: Pass the Add New action down to the empty state directly!
+              action={onAddNew && (
+                <Button onClick={onAddNew} variant="primary" leftIcon={<FiPlus className="w-4 h-4" />}>
+                  Add New Record
+                </Button>
+              )}
             />
           </td>
         </tr>

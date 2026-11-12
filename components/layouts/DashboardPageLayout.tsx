@@ -126,6 +126,11 @@ export function DashboardPageLayout<T extends PublicTableOrViewName>({
         }
       : undefined);
 
+  // EDITED: Extract the onAddNew action from the header to pass to the DataTable safely
+  const onAddNewActionRaw = header.actions?.find(a => a.label === 'Add New')?.onClick;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onAddNewAction = onAddNewActionRaw ? (e?: any) => onAddNewActionRaw(e) : undefined;
+
   return (
     <div className={className}>
       <PageHeader {...header} />
@@ -154,7 +159,11 @@ export function DashboardPageLayout<T extends PublicTableOrViewName>({
       ) : renderTable ? (
         renderTable()
       ) : tableProps ? (
-        <DataTable<T> {...tableProps} />
+        <DataTable<T> 
+           {...tableProps} 
+           // EDITED: Automatically inject onAddNew so empty states have buttons
+           onAddNew={tableProps.onAddNew || onAddNewAction} 
+        />
       ) : null}
 
       {/* Auto-render delete modal if crud provided */}

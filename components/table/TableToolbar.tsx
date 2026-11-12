@@ -1,16 +1,17 @@
+// components/table/TableToolbar.tsx
 'use client';
 
-import React, { useRef } from 'react';
-import { FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown, FiSearch } from 'react-icons/fi';
+import React, { useRef, useState } from 'react';
+import { FiFilter, FiDownload, FiRefreshCw, FiEye, FiChevronDown, FiSearch, FiMaximize, FiMinimize, FiList } from 'react-icons/fi';
 import { DataTableProps } from '@/components/table/datatable-types';
 import { Column } from '@/hooks/database/excel-queries/excel-helpers';
 import { Row } from '@/hooks/database';
 import { TableColumnSelector } from './TableColumnSelector';
 import { TableOrViewName } from '@/hooks/database';
 import { useViewSettings } from '@/contexts/ViewSettingsContext';
-// THE FIX: Import DebouncedInput
 import { DebouncedInput } from '@/components/common/ui/Input/DebouncedInput';
 
+// EDITED: Extended props to include density controls
 interface TableToolbarProps<T extends TableOrViewName>
   extends Pick<
     DataTableProps<T>,
@@ -36,6 +37,9 @@ interface TableToolbarProps<T extends TableOrViewName>
   setVisibleColumns: (cols: string[]) => void;
   onExport: () => void;
   isExporting: boolean;
+  // EDITED: New density props
+  density?: 'compact' | 'default' | 'comfortable';
+  onDensityChange?: (density: 'compact' | 'default' | 'comfortable') => void;
 }
 
 export function TableToolbar<T extends TableOrViewName>({
@@ -60,9 +64,15 @@ export function TableToolbar<T extends TableOrViewName>({
   onExport,
   loading,
   isExporting,
+  density = 'default',
+  onDensityChange,
 }: TableToolbarProps<T>) {
   const { showToolbar } = useViewSettings();
   const columnsButtonRef = useRef<HTMLButtonElement>(null);
+  
+  // Local state for the density dropdown
+  const [showDensityMenu, setShowDensityMenu] = useState(false);
+  const densityButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -82,7 +92,6 @@ export function TableToolbar<T extends TableOrViewName>({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1 sm:gap-3">
                   {searchable && (
                     <div className="relative flex-1 sm:max-w-sm">
-                      {/* THE FIX: Use DebouncedInput with debounce prop */}
                       <DebouncedInput
                         placeholder="Search..."
                         value={searchQuery}
@@ -116,8 +125,56 @@ export function TableToolbar<T extends TableOrViewName>({
             )}
 
             <div className="flex w-full sm:w-auto sm:flex-none items-center gap-2 sm:gap-3 justify-end mt-1 sm:mt-0 ml-auto">
+              
+              {/* EDITED: Density Toggle */}
+              {onDensityChange && (
+                <div className="relative">
+                  <button
+                    ref={densityButtonRef}
+                    onClick={() => setShowDensityMenu(!showDensityMenu)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                    aria-label="Table Density"
+                    title="Table Density"
+                  >
+                    {density === 'compact' ? <FiMinimize size={14} className="sm:w-4 sm:h-4" /> : 
+                     density === 'comfortable' ? <FiMaximize size={14} className="sm:w-4 sm:h-4" /> : 
+                     <FiList size={14} className="sm:w-4 sm:h-4" />}
+                  </button>
+                  
+                  {/* Simple popover for density options */}
+                  {showDensityMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowDensityMenu(false)} 
+                      />
+                      <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
+                        <button 
+                          onClick={() => { onDensityChange('compact'); setShowDensityMenu(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${density === 'compact' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
+                        >
+                          Compact
+                        </button>
+                        <button 
+                          onClick={() => { onDensityChange('default'); setShowDensityMenu(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${density === 'default' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
+                        >
+                          Default
+                        </button>
+                        <button 
+                          onClick={() => { onDensityChange('comfortable'); setShowDensityMenu(false); }}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${density === 'comfortable' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
+                        >
+                          Comfortable
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {(showColumnsToggle || (!customToolbar && true)) && (
-                <>
+                <div className="relative">
                   <button
                     ref={columnsButtonRef}
                     onClick={() => setShowColumnSelector(!showColumnSelector)}
@@ -146,7 +203,7 @@ export function TableToolbar<T extends TableOrViewName>({
                     setShowColumnSelector={setShowColumnSelector}
                     triggerRef={columnsButtonRef}
                   />
-                </>
+                </div>
               )}
 
               {refreshable && onRefresh && (

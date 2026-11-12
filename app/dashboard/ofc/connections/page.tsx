@@ -257,6 +257,7 @@ export default function GlobalOfcConnectionsPage() {
           useRpc: true,
           orderBy: [{ column: 'ofc_route_name' }, { column: 'fiber_no_sn' }],
           maxRows: 50000,
+      filters: filters.filters
         }
       : undefined,
   });

@@ -131,4 +131,4 @@ Below is my complete project structure and codebase:
 [Paste your project structure and file contents here]
 
 
-Let's begin! First of all we need to fix the issue that on downloaded excel connections is having less row than online. cpan dl is not in excel.
+Let's begin! First of all I want a new feature addition in ring manager.I want to upload kml files if available for a ring's section and want to show actual kml paths on the ring in kml view.

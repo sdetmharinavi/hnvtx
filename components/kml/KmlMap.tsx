@@ -484,6 +484,7 @@ export default function KmlMap({ kmlUrl }: KmlMapProps) {
           zoomControl={false} 
           ref={mapRef}
           keyboard={false} 
+          scrollWheelZoom={false}
         >
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Street View">

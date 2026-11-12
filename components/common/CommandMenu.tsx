@@ -17,17 +17,22 @@ import {
   FiGitBranch,
   FiLayers,
   FiZap,
+  FiMoon, // EDITED
+  FiSun,  // EDITED
+  FiBriefcase
 } from 'react-icons/fi';
 import { createClient } from '@/utils/supabase/client';
 import { useDebounce } from 'use-debounce';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useThemeStore } from '@/stores/themeStore'; // EDITED
 
 type SearchResult = {
   id: string;
   title: string;
   subtitle?: string;
-  type: 'system' | 'node' | 'cable' | 'service' | 'employee' | 'page';
-  url: string;
+  type: 'system' | 'node' | 'cable' | 'service' | 'employee' | 'page' | 'action'; // EDITED
+  url?: string;
+  action?: () => void; // EDITED
 };
 
 export function CommandMenu() {
@@ -39,6 +44,8 @@ export function CommandMenu() {
   const [loading, setLoading] = React.useState(false);
   const supabase = createClient();
   const isOnline = useOnlineStatus();
+  
+  const { theme, setTheme } = useThemeStore(); // EDITED
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -87,44 +94,38 @@ export function CommandMenu() {
       const searchTerm = debouncedQuery.toLowerCase();
       const newResults: SearchResult[] = [];
 
+      // Static Pages & Actions matching
       if ('dashboard'.includes(searchTerm))
         newResults.push({ id: 'home', title: 'Dashboard', type: 'page', url: '/dashboard' });
       if ('inventory'.includes(searchTerm))
-        newResults.push({
-          id: 'inv',
-          title: 'Inventory',
-          type: 'page',
-          url: '/dashboard/inventory',
-        });
-      if ('systems'.includes(searchTerm))
-        newResults.push({
-          id: 'sys',
-          title: 'Systems Manager',
-          type: 'page',
-          url: '/dashboard/systems',
-        });
-      if ('rings'.includes(searchTerm))
-        newResults.push({
-          id: 'rng',
-          title: 'Ring Manager',
-          type: 'page',
-          url: '/dashboard/ring-manager',
-        });
-      if ('connections'.includes(searchTerm))
-        newResults.push({
-          id: 'conn',
-          title: 'Global Connections',
-          type: 'page',
-          url: '/dashboard/systems/connections',
-        });
+        newResults.push({ id: 'inv', title: 'Inventory', type: 'page', url: '/dashboard/inventory' });
+      if ('systems manager'.includes(searchTerm))
+        newResults.push({ id: 'sys', title: 'Systems Manager', type: 'page', url: '/dashboard/systems' });
+      if ('ring manager'.includes(searchTerm))
+        newResults.push({ id: 'rng', title: 'Ring Manager', type: 'page', url: '/dashboard/ring-manager' });
+      if ('global connections'.includes(searchTerm))
+        newResults.push({ id: 'conn', title: 'Global Connections', type: 'page', url: '/dashboard/systems/connections' });
       if ('services'.includes(searchTerm))
         newResults.push({ id: 'srv', title: 'Services', type: 'page', url: '/dashboard/services' });
-      if ('logs'.includes(searchTerm) || 'diary'.includes(searchTerm))
+      if ('log book diary'.includes(searchTerm))
         newResults.push({ id: 'log', title: 'Log Book', type: 'page', url: '/dashboard/diary' });
+      
+      // EDITED: Additional Quick Actions
+      if ('dark mode light mode theme'.includes(searchTerm)) {
+        newResults.push({ 
+          id: 'theme-toggle', 
+          title: theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode', 
+          type: 'action', 
+          action: () => setTheme(theme === 'dark' ? 'light' : 'dark') 
+        });
+      }
+      if ('categories lookups'.includes(searchTerm))
+        newResults.push({ id: 'cat', title: 'Categories & Lookups', type: 'page', url: '/dashboard/categories' });
+      if ('maintenance areas'.includes(searchTerm))
+        newResults.push({ id: 'maint', title: 'Maintenance Areas', type: 'page', url: '/dashboard/maintenance-areas' });
 
       try {
-        if (isOnline) {
-          // Perform permission-safe querying through the get_paged_data RPC on security views
+        if (isOnline && searchTerm.length > 1) { // Only query DB if string is > 1 char
           const [systems, nodes, cables, services, employees] = await Promise.all([
             supabase.rpc('get_paged_data', {
               p_view_name: 'v_systems_complete',
@@ -158,19 +159,12 @@ export function CommandMenu() {
             }),
           ]);
 
-          // Extract values safely from the nested array structure returned by the RPC
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const systemsData = (systems.data as any)?.data || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const nodesData = (nodes.data as any)?.data || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const cablesData = (cables.data as any)?.data || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const servicesData = (services.data as any)?.data || [];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const employeesData = (employees.data as any)?.data || [];
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           systemsData.forEach((s: any) =>
             newResults.push({
               id: s.id,
@@ -181,7 +175,6 @@ export function CommandMenu() {
             }),
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           nodesData.forEach((n: any) =>
             newResults.push({
               id: n.id,
@@ -192,7 +185,6 @@ export function CommandMenu() {
             }),
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           cablesData.forEach((c: any) =>
             newResults.push({
               id: c.id,
@@ -203,7 +195,6 @@ export function CommandMenu() {
             }),
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           servicesData.forEach((s: any) =>
             newResults.push({
               id: s.id,
@@ -214,7 +205,6 @@ export function CommandMenu() {
             }),
           );
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           employeesData.forEach((e: any) =>
             newResults.push({
               id: e.id,
@@ -234,10 +224,14 @@ export function CommandMenu() {
     }
 
     search();
-  }, [debouncedQuery, supabase, isOnline]);
+  }, [debouncedQuery, supabase, isOnline, theme]); // EDITED: Added theme to dependency
 
-  const handleSelect = (url: string) => {
-    router.push(url);
+  const handleSelect = (item: SearchResult) => {
+    if (item.type === 'action' && item.action) {
+      item.action();
+    } else if (item.url) {
+      router.push(item.url);
+    }
     setOpen(false);
     setQuery('');
   };
@@ -257,7 +251,7 @@ export function CommandMenu() {
               value={query}
               onValueChange={setQuery}
               placeholder={
-                isOnline ? 'Search systems, services, people...' : 'Offline: Search disabled'
+                isOnline ? 'Search systems, services, actions...' : 'Offline: Search disabled'
               }
               className='w-full py-4 text-lg bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400'
               autoFocus
@@ -281,38 +275,45 @@ export function CommandMenu() {
                 </p>
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
                   <Command.Item
-                    onSelect={() => handleSelect('/dashboard/systems')}
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'page', url: '/dashboard/systems' })}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <FiServer className='w-4 h-4 shrink-0' /> Systems Manager
                   </Command.Item>
 
                   <Command.Item
-                    onSelect={() => handleSelect('/dashboard/systems/connections')}
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'page', url: '/dashboard/systems/connections' })}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <FiGitBranch className='w-4 h-4 shrink-0' /> Global Connections
                   </Command.Item>
 
                   <Command.Item
-                    onSelect={() => handleSelect('/dashboard/services')}
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'page', url: '/dashboard/services' })}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <FiDatabase className='w-4 h-4 shrink-0' /> Services Catalog
                   </Command.Item>
 
                   <Command.Item
-                    onSelect={() => handleSelect('/dashboard/ring-manager')}
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'page', url: '/dashboard/ring-manager' })}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <FiLayers className='w-4 h-4 shrink-0' /> Ring Topology
                   </Command.Item>
-
+                  
                   <Command.Item
-                    onSelect={() => handleSelect('/dashboard/ofc/connections')}
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'page', url: '/dashboard/ofc' })}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
-                    <FiZap className='w-4 h-4 shrink-0' /> Physical Fibers
+                    <FiActivity className='w-4 h-4 shrink-0' /> OFC Routes
+                  </Command.Item>
+                  
+                  <Command.Item
+                    onSelect={() => handleSelect({ id: '', title: '', type: 'action', action: () => setTheme(theme === 'dark' ? 'light' : 'dark') })}
+                    className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
+                  >
+                    {theme === 'dark' ? <FiSun className='w-4 h-4 shrink-0' /> : <FiMoon className='w-4 h-4 shrink-0' />} Toggle Theme
                   </Command.Item>
                 </div>
               </div>
@@ -323,13 +324,15 @@ export function CommandMenu() {
                 {results.map((item) => (
                   <Command.Item
                     key={`${item.type}-${item.id}`}
-                    onSelect={() => handleSelect(item.url)}
+                    onSelect={() => handleSelect(item)}
                     className='flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 aria-selected:text-blue-700 dark:aria-selected:text-blue-400 transition-colors'
                   >
                     <div
                       className={`flex items-center justify-center w-8 h-8 rounded text-gray-500 ${
                         item.type === 'page'
                           ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                          : item.type === 'action'
+                          ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
                           : 'bg-gray-100 dark:bg-gray-800'
                       }`}
                     >
@@ -339,6 +342,7 @@ export function CommandMenu() {
                       {item.type === 'service' && <FiDatabase size={16} />}
                       {item.type === 'employee' && <FiUser size={16} />}
                       {item.type === 'page' && <FiFileText size={16} />}
+                      {item.type === 'action' && <FiZap size={16} />}
                     </div>
                     <div className='flex flex-col min-w-0'>
                       <span className='font-medium truncate'>{item.title}</span>

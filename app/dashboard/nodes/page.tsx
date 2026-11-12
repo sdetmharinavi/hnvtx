@@ -145,7 +145,8 @@ export default function NodesPage() {
     },
     isLoading: isLoading,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'nodes' } : undefined,
+    exportConfig: canEdit ? { tableName: 'nodes', useRpc: true, 
+      filters: filters.filters } : undefined,
   });
 
   // Inject duplicate toggle

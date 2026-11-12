@@ -32,7 +32,10 @@ export interface PathConfig {
   fiberInfo?: string;
   connectionId?: string;
   color?: string;
-  bandwidthGbps?: number; // ADDED
+  bandwidthGbps?: number;
+  // ADDED: KML specific configurations
+  kmlUrl?: string;
+  kmlName?: string;
 }
 
 export type SegmentConfigMap = Record<string, PathConfig[]>;
@@ -53,7 +56,6 @@ export type LogicalPath = {
   destination_system_id: string | null;
   source_port: string | null;
   destination_port: string | null;
-  // ADDED: Type to hold the nested relationship join
   system_connections?: { bandwidth: string | null } | { bandwidth: string | null }[] | null;
 };
 

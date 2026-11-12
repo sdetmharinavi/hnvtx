@@ -100,9 +100,9 @@ export default function MeshDiagram({
         style={{ height: '100%', width: '100%', background: bgColor }}
         minZoom={-3}
         maxZoom={3}
-        scrollWheelZoom={true}
         attributionControl={false}
         zoomControl={false}
+        scrollWheelZoom={false}
         className='dark:bg-blue-950 shadow-lg'>
         <MeshController bounds={bounds} />
         {uiVisible && <ZoomControl position='bottomright' />}

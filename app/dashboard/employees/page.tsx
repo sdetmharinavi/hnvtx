@@ -26,6 +26,7 @@ import GenericRemarks from '@/components/common/GenericRemarks';
 import { DataGrid } from '@/components/common/DataGrid';
 import { PERMISSIONS } from '@/config/permissions';
 import { StatProps } from '@/components/common/page-header/StatCard';
+import { Row } from '@/hooks/database';
 
 const EmployeeForm = dynamic(
   () => import('@/components/employee/EmployeeForm').then((mod) => mod.default),
@@ -55,7 +56,6 @@ export default function EmployeesPage() {
     actions: crudActions,
   } = useCrudManager<'employees', V_employeesRowSchema>({
     tableName: 'employees',
-    // REMOVED: localTableName
     dataQueryHook: useEmployeesData,
     displayNameField: 'employee_name',
     syncTables: ['employees', 'v_employees', 'employee_designations', 'v_employee_designations'],
@@ -106,14 +106,18 @@ export default function EmployeesPage() {
   const isInitialLoad = isLoading && employees.length === 0;
 
   const headerActions = useStandardHeaderActions({
-    data: employees as EmployeesRowSchema[],
+    data: employees as Row<'v_employees'>[],
     onRefresh: async () => {
       await refetch();
     },
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isInitialLoad,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'employees' } : undefined,
+    exportConfig: canEdit ? { 
+      tableName: 'v_employees', 
+      useRpc: true, 
+      filters: filters.filters // FIX: Pass active filters
+    } : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {

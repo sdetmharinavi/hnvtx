@@ -44,7 +44,6 @@ import { useUnlinkCable } from '@/hooks/database/ofc-linking-hooks';
 import { CableLinkingModal } from '@/components/ofc/CableLinkingModal';
 import { buildUploadConfig } from '@/constants/table-column-keys';
 import { createClient } from '@/utils/supabase/client';
-// THE FIX: Imported useOfcCableExcelUpload and EnhancedUploadResult
 import { useOfcCableExcelUpload } from '@/hooks/database/excel-queries/useOfcCableExcelUpload';
 import { EnhancedUploadResult } from '@/hooks/database';
 import { UploadResultModal } from '@/components/common/ui/UploadResultModal';
@@ -83,7 +82,6 @@ export default function OfcPage() {
     link: LinkedCable;
   } | null>(null);
 
-  // THE FIX: Added state for upload result
   const [uploadResult, setUploadResult] = useState<EnhancedUploadResult | null>(null);
   const [isUploadResultOpen, setIsUploadResultOpen] = useState(false);
 
@@ -115,7 +113,6 @@ export default function OfcPage() {
     syncTables: ['ofc_cables', 'v_ofc_cables_complete', 'v_cable_utilization', 'ofc_cable_links'],
   });
 
-  // THE FIX: Use the new hook specifically built for OFC Cables
   const { mutate: uploadCables, isPending: isUploading } = useOfcCableExcelUpload(supabase, {
     showToasts: false,
     onSuccess: (result) => {
@@ -211,7 +208,6 @@ export default function OfcPage() {
 
   const handleUploadClick = useCallback(() => fileInputRef.current?.click(), []);
 
-  // THE FIX: Trigger the specific upload hook and pass the correct configuration
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -222,12 +218,16 @@ export default function OfcPage() {
   };
 
   const headerActions = useStandardHeaderActions({
-    data: ofcData as Ofc_cablesRowSchema[],
+    data: transformedOfcData as unknown as Row<'v_ofc_cables_complete'>[],
     onRefresh: handleRefresh,
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     isFetching: isFetching || isSyncing,
-    exportConfig: canEdit ? { tableName: 'ofc_cables' } : undefined,
+    exportConfig: canEdit ? { 
+      tableName: 'v_ofc_cables_complete', 
+      useRpc: true,
+      filters: filters.filters // FIX: Pass active filters
+    } : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
@@ -332,7 +332,7 @@ export default function OfcPage() {
                           href={`/dashboard/ofc/${link.cable_id}`}
                           target='_blank'
                           rel='noopener noreferrer'
-                          className='cursor-pointer hover:underline truncate max-w-120px'
+                          className='cursor-pointer hover:underline truncate max-w-[120px]'
                           onClick={(e) => e.stopPropagation()}
                           title={link.description || link.route_name}
                         >
@@ -498,7 +498,6 @@ export default function OfcPage() {
             onChange={handleFileChange}
           />
 
-          {/* THE FIX: Added UploadResultModal component */}
           <UploadResultModal
             isOpen={isUploadResultOpen}
             onClose={() => setIsUploadResultOpen(false)}

@@ -148,7 +148,8 @@ export default function NotesPage() {
     onAddNew: canCreate ? editModal.openAdd : undefined,
     isLoading: isBusy,
     isFetching: isFetching,
-    exportConfig: { tableName: 'v_technical_notes' },
+    exportConfig: { tableName: 'v_technical_notes', useRpc: true, 
+      filters: filters.filters },
   });
 
   // Override refresh action to use sync

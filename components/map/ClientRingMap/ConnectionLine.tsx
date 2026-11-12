@@ -1,11 +1,11 @@
 // components/map/ClientRingMap/ConnectionLine.tsx
 'use client';
 
-import { Polyline, Popup, useMap } from 'react-leaflet';
+import { Polyline, GeoJSON, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Navigation } from 'lucide-react';
+import { X, Navigation, Upload, Trash2, Map } from 'lucide-react';
 import { PopupFiberRow } from '../PopupFiberRow';
 import {
   fetchOrsDistance,
@@ -18,6 +18,8 @@ import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { PopupRemarksRow } from '@/components/map/PopupRemarksRow';
 import useIsMobile from '@/hooks/useIsMobile';
+import { useKmlData } from '@/hooks/data/useKmlData';
+import { Button } from '@/components/common/ui/Button';
 
 interface ConnectionLineProps {
   start: RingMapNode;
@@ -34,6 +36,10 @@ interface ConnectionLineProps {
   hasReverse?: boolean;
   rotation?: number;
   isMeasureMode: boolean;
+  // ADDED: Edit permissions and KML Handlers
+  canEdit?: boolean;
+  onUploadKml?: (segmentKey: string, file: File) => void;
+  onDeleteKml?: (segmentKey: string, url: string) => void;
 }
 
 export const ConnectionLine = ({
@@ -50,6 +56,9 @@ export const ConnectionLine = ({
   curveOffset = 0,
   rotation = 0,
   isMeasureMode,
+  canEdit = false,
+  onUploadKml,
+  onDeleteKml,
 }: ConnectionLineProps) => {
   const map = useMap();
   const [manualPos, setManualPos] = useState<L.LatLng | null>(null);
@@ -61,6 +70,10 @@ export const ConnectionLine = ({
 
   const [isEditingRemark, setIsEditingRemark] = useState(false);
   const [remarkText, setRemarkText] = useState('');
+
+  // Fetch KML Data if url is provided
+  const { geoJsonData, isLoading: isLoadingKml } = useKmlData(config?.kmlUrl);
+  const segmentKey = [start.id, end.id].sort().join('-');
 
   const isCluster = isColocated(startPos, endPos, 0.005);
   const positions = useMemo(() => {
@@ -202,6 +215,7 @@ export const ConnectionLine = ({
       refetchConfig();
       queryClient.invalidateQueries({ queryKey: ['logical_fiber_paths'] });
     },
+    onError: (err: Error) => toast.error(`Failed to save remark: ${err.message}`),
   });
 
   const baseWeight = type === 'solid' ? 4 : 2.5;
@@ -217,46 +231,67 @@ export const ConnectionLine = ({
         : '#dc2626';
   const color = customColor || defaultColor;
 
+  const handleLineClick = (e: L.LeafletMouseEvent) => {
+    L.DomEvent.stopPropagation(e);
+    if (rotation === 0) {
+      setManualPos(e.latlng);
+      return;
+    }
+    const mapSize = map.getSize();
+    const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
+    const clickPoint = e.containerPoint;
+    const rad = (-rotation * Math.PI) / 180;
+    const rotX =
+      (clickPoint.x - centerPoint.x) * Math.cos(rad) -
+      (clickPoint.y - centerPoint.y) * Math.sin(rad);
+    const rotY =
+      (clickPoint.x - centerPoint.x) * Math.sin(rad) +
+      (clickPoint.y - centerPoint.y) * Math.cos(rad);
+    setManualPos(
+      map.containerPointToLatLng(L.point(centerPoint.x + rotX, centerPoint.y + rotY)),
+    );
+  };
+
+  const showKml = config?.kmlUrl && geoJsonData && !isLoadingKml;
+
   return (
     <>
-      <Polyline
-        positions={positions}
-        pathOptions={{
-          color,
-          weight: dynamicWeight,
-          opacity: type === 'solid' ? 1 : 0.7,
-          dashArray: type === 'dashed' ? '20, 20' : undefined,
-          interactive: false,
-        }}
-      />
-      <Polyline
-        positions={positions}
-        pathOptions={{ color: 'transparent', weight: isMobile ? 30 : 15, opacity: 0 }}
-        interactive={!isMeasureMode}
-        eventHandlers={{
-          click: (e) => {
-            L.DomEvent.stopPropagation(e);
-            if (rotation === 0) {
-              setManualPos(e.latlng);
-              return;
-            }
-            const mapSize = map.getSize();
-            const centerPoint = L.point(mapSize.x / 2, mapSize.y / 2);
-            const clickPoint = e.containerPoint;
-            const rad = (-rotation * Math.PI) / 180;
-            const rotX =
-              (clickPoint.x - centerPoint.x) * Math.cos(rad) -
-              (clickPoint.y - centerPoint.y) * Math.sin(rad);
-            const rotY =
-              (clickPoint.x - centerPoint.x) * Math.sin(rad) +
-              (clickPoint.y - centerPoint.y) * Math.cos(rad);
-            setManualPos(
-              map.containerPointToLatLng(L.point(centerPoint.x + rotX, centerPoint.y + rotY)),
-            );
-          },
-        }}
-        ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
-      />
+      {showKml ? (
+        <GeoJSON
+          key={`kml-${segmentKey}-${config.kmlUrl}`} // force re-render on url change
+          data={geoJsonData}
+          style={{
+            color,
+            weight: dynamicWeight + 1,
+            opacity: 0.9,
+          }}
+          interactive={!isMeasureMode}
+          eventHandlers={{
+            click: handleLineClick
+          }}
+        />
+      ) : (
+        <>
+          <Polyline
+            positions={positions}
+            pathOptions={{
+              color,
+              weight: dynamicWeight,
+              opacity: type === 'solid' ? 1 : 0.7,
+              dashArray: type === 'dashed' ? '20, 20' : undefined,
+              interactive: false,
+            }}
+          />
+          <Polyline
+            positions={positions}
+            pathOptions={{ color: 'transparent', weight: isMobile ? 30 : 15, opacity: 0 }}
+            interactive={!isMeasureMode}
+            eventHandlers={{ click: handleLineClick }}
+            ref={(el) => setPolylineRef(`${type}-${start.id}-${end.id}`, el)}
+          />
+        </>
+      )}
+
       {activePopupPos && !isMeasureMode && (
         <Popup
           position={activePopupPos}
@@ -332,6 +367,62 @@ export const ConnectionLine = ({
               }}
               onTextChange={setRemarkText}
             />
+
+            {/* NEW: Actual Path (KML) Section */}
+            {type === 'solid' && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Map className="w-3.5 h-3.5" /> Actual Path (KML)
+                  </span>
+                </div>
+                {config?.kmlUrl ? (
+                  <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1.5 rounded border border-emerald-200 dark:border-emerald-800">
+                    <span className="truncate max-w-[180px] text-xs font-medium text-emerald-700 dark:text-emerald-300" title={config.kmlName}>
+                      {config.kmlName || 'Mapped Route'}
+                    </span>
+                    {canEdit && (
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          onDeleteKml?.(segmentKey, config.kmlUrl!); 
+                        }} 
+                        className="text-gray-400 hover:bg-red-100 hover:text-red-500 p-1.5 rounded transition-colors"
+                        title="Remove Map Path"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ) : canEdit ? (
+                  <div className="flex items-center">
+                    <input 
+                      type="file" 
+                      id={`kml-upload-${segmentKey}`} 
+                      className="hidden" 
+                      accept=".kml,.kmz" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUploadKml?.(segmentKey, file);
+                      }} 
+                    />
+                    <Button 
+                      size="xs" 
+                      variant="outline" 
+                      className="w-full text-xs py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        document.getElementById(`kml-upload-${segmentKey}`)?.click();
+                      }}
+                    >
+                      <Upload size={12} className="mr-1.5" /> Upload KML Route
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-gray-400 italic text-xs">No physical path mapped.</div>
+                )}
+              </div>
+            )}
           </div>
         </Popup>
       )}

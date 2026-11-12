@@ -50,7 +50,6 @@ export default function DesignationManagerPage() {
     queryResult,
   } = useCrudManager<'employee_designations', DesignationWithRelations>({
     tableName: 'employee_designations',
-    // REMOVED: localTableName
     dataQueryHook: useDesignationsData,
     displayNameField: 'name',
     searchColumn: 'name',
@@ -102,13 +101,17 @@ export default function DesignationManagerPage() {
   };
 
   const headerActions = useStandardHeaderActions({
-    data: allDesignations as Row<'employee_designations'>[],
+    data: allDesignations as Row<'v_employee_designations'>[],
     onRefresh: async () => {
       await refetch();
     },
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
-    exportConfig: canEdit ? { tableName: 'employee_designations' } : undefined,
+    exportConfig: canEdit ? { 
+      tableName: 'v_employee_designations', 
+      useRpc: true, 
+      filters: filters.filters // FIX: Pass active filters
+    } : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {

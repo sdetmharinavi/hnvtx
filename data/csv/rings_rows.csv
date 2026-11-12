@@ -8,10 +8,11 @@ id,name,ring_type_id,description,maintenance_terminal_id,total_nodes,is_closed_l
 0e8bf0bb-64d7-42f5-87cd-d754e6bdab27,MAAN-19,fe67aa4d-b141-467e-a9dd-58691c489abe,,a41dc1c4-3421-48dd-a123-8c1ddd56b8ba,0,true,,Ready,Issued,On-Air,true,2025-10-17 00:00:00+00,2026-01-11 14:21:04.49972+00
 104775fe-4c27-44d9-a14b-0c38e21a5786,MAAN-06,fe67aa4d-b141-467e-a9dd-58691c489abe,,30be8eeb-ec4f-4ce2-9935-b249e70caaec,4,true,,Pending,Pending,Pending,true,2025-10-17 00:00:00+00,2026-02-25 10:08:17.461282+00
 17520ee6-a471-47ed-82c1-0590f4c4bad6,HNV-03,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> READY WITH CPAN FIBRE<br />
-<strong class=""text-red-600"">SPEC STATUS:</strong> Not Issued<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,"{""disabled_segments"":[""189db519-2d7c-4dec-934e-50e3116ef8d4-b057a5ce-0436-402f-90c6-b30d2f4ef00a""]}",Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-02-26 09:59:40.487364+00
+<strong class=""text-red-600"">SPEC STATUS:</strong> Not Issued<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,4,true,"{""kml_paths"":{},""disabled_segments"":[""189db519-2d7c-4dec-934e-50e3116ef8d4-b057a5ce-0436-402f-90c6-b30d2f4ef00a""]}",Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-11-12 05:52:04.396154+00
 19e0cbaf-8b50-4041-a318-73c09b10c15d,A_0075B,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-06 06:50:25.488667+00,2026-01-06 06:50:25.488667+00
 1e437e94-08ee-4e1d-9746-3f8aa136135c,HNV-21,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />
 <strong class=""text-blue-600"">OFC STATUS:</strong> READY WITH CPAN FIBER<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,3,,,Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2025-12-20 06:14:24.098356+00
+2972574d-16d8-4ba8-9242-71aa2df587b0,test,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Pending,Pending,Pending,true,2026-10-01 07:26:46.770801+00,2026-10-01 07:26:46.770801+00
 2ca8c4e6-bd3a-4b0d-969d-015b5627af01,A-0327,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-06 10:32:54.575157+00,2026-01-06 10:32:54.575157+00
 2df52bf7-ea95-412a-b933-fc002e80336f,A-0317,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-08 10:28:12.690104+00,2026-01-08 10:28:12.690104+00
 358e860e-aa1a-4639-9f49-c186f4f40b85,DWDM_KULPI_GANGASAGAR,fe90e181-9974-4cdd-af82-a41fe08c52f3,,6b289982-d15e-4cf2-86de-c461517ca938,0,true,{},Ready,Issued,On-Air,true,2026-01-12 07:28:28.061164+00,2026-01-12 07:28:28.061164+00
@@ -95,9 +96,9 @@ f2b99723-5156-46f5-91c6-d0142c735826,"A_0076 ",6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b
 f2d12fde-7958-4a5f-91e8-6a7a8d9b89ce,ADM16/R-136,9f80c728-faa3-40ce-bcd8-2d1dae84e2d5,,4bc2a086-b131-47e1-9c20-f10650c0196d,6,true,,Ready,Issued,On-Air,true,2025-08-11 00:00:00+00,2026-02-07 07:56:36.670912+00
 f718be7a-6b42-4cd3-8161-1abf795a61f5,A_008,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,true,{},Ready,Issued,On-Air,true,2026-01-06 05:05:36.212943+00,2026-01-06 05:05:36.212943+00
 f87142f9-af0c-4922-b29c-a86f18eea9ae,B_005,6b0ba3bf-bf7f-4d25-8e37-05e1f6b2b6b3,,4bc2a086-b131-47e1-9c20-f10650c0196d,0,false,{},Ready,Issued,On-Air,true,2026-01-07 07:40:28.301583+00,2026-02-25 08:33:23.811631+00
-fb724801-3a0a-40fe-9bda-d34a8780a984,HNV-10,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-red-600"">SPEC STATUS:</strong> NOT ISSUED<br />
-<strong class=""text-green-600"">OFC STATUS:</strong> OFC READY WITH CPAN FIBRE<br />
-<strong class=""text-red-600"">PRESENT STATUS:</strong> LP issue TO BE CHECKED<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,true,,Partial Ready,Pending,Pending,true,2025-08-11 00:00:00+00,2026-01-17 10:04:15.420504+00
+fb724801-3a0a-40fe-9bda-d34a8780a984,HNV-10,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> OFC READY WITH CPAN FIBRE<br />
+<strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED<br />
+<strong class=""text-green-600"">BTS STATUS::</strong> On Air<br />",4bc2a086-b131-47e1-9c20-f10650c0196d,6,true,,Ready,Issued,On-Air,true,2025-08-11 00:00:00+00,2026-08-07 05:36:58.974918+00
 fe485021-8891-4bbf-9735-b6db287c831f,VIA_HNV_CPAN,94f314d2-c022-4a67-b3c1-5c1044a3d4dc,"<strong class=""text-green-600"">OFC STATUS:</strong> Co-Located, Via Radio Link<br />
 <strong class=""text-green-600"">SPEC STATUS:</strong> ISSUED Vide: TP/Inst. Prg/02_25/20_Revised DATED: 06-03-2025<br />
 <strong class=""text-green-600"">BTS STATU:</strong> On Air<br />

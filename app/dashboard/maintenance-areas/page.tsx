@@ -99,7 +99,8 @@ export default function MaintenanceAreasPage() {
     onAddNew: canEdit ? handleOpenCreateForm : undefined,
     isLoading: isLoading,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'maintenance_areas' } : undefined,
+    exportConfig: canEdit ? { tableName: 'maintenance_areas', useRpc: true, 
+      filters: filters.filters } : undefined,
   });
 
   const headerStats = useMemo<StatProps[]>(() => {

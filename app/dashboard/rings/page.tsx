@@ -267,7 +267,8 @@ export default function RingsPage() {
     onAddNew: canEdit ? editModal.openAdd : undefined,
     isLoading: isLoading,
     isFetching: isFetching,
-    exportConfig: canEdit ? { tableName: 'rings' } : undefined,
+    exportConfig: canEdit ? { tableName: 'rings', useRpc: true, 
+      filters: filters.filters } : undefined,
   });
 
   const renderGridItem = useCallback(

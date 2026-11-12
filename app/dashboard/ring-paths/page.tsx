@@ -75,7 +75,8 @@ export default function RingPathsIndexPage() {
     isFetching,
     // Provide a valid export config to prevent type inference issues
     exportConfig: {
-      tableName: 'v_rings',
+      tableName: 'v_rings', useRpc: true, 
+      filters: filters.filters
     },
   });
 

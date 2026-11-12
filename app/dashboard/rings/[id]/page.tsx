@@ -1,7 +1,6 @@
 // app/dashboard/rings/[id]/page.tsx
 'use client';
 
-/* STREAMING_CHUNK:Imports and helper views... */
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiArrowLeft, FiMap, FiGrid, FiSettings, FiRefreshCw, FiEdit, FiTrash2, FiArrowRightCircle, FiGitMerge } from 'react-icons/fi';
@@ -40,15 +39,16 @@ const ClientRingMap = dynamic(() => import('@/components/map/ClientRingMap/Clien
   loading: () => <PageSpinner text="Loading Map..." />,
 });
 
-// FIXED: Disable SSR for Schematic view as well to prevent server-side Leaflet import crashes
 const MeshDiagram = dynamic(() => import('@/components/map/MeshDiagram/MeshDiagram'), {
   ssr: false,
   loading: () => <PageSpinner text="Loading Schematic..." />,
 });
 
+// ADDED: Expand the expected structure for topology_config
 type ExtendedRingDetails = V_ringsRowSchema & {
   topology_config?: {
     disabled_segments?: string[];
+    kml_paths?: Record<string, { url: string; name: string }>;
   } | null;
 };
 
@@ -135,7 +135,6 @@ const useRingSystems = (ringId: string | null) => {
   };
 };
 
-/* STREAMING_CHUNK:Renders and views... */
 const RingAssociatedSystemsView = ({
   ringId,
   onEdit,
@@ -272,6 +271,10 @@ export default function RingMapPage() {
   const [isLogPowerOpen, setIsLogPowerOpen] = useState(false);
   const [showPowerLevels, setShowPowerLevels] = useState(false);
 
+  // Permission Logic
+  // This page isn't explicitly using useCrudManager, but generally Admins manage routes
+  const [canEdit] = useState(true); // You could integrate actual role check here like other pages
+
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
 
@@ -289,12 +292,91 @@ export default function RingMapPage() {
   // 2. Mutation
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
     onSuccess: () => {
-      toast.success('Topology configuration saved');
-      refetchRing();
-      setIsConfigModalOpen(false);
+      // Re-fetch is handled at the invocation site for specific toasts
     },
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
+
+  // ADDED: KML Handlers
+  const handleUploadSegmentKml = async (segmentKey: string, file: File) => {
+    const toastId = toast.loading('Uploading KML route...');
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `ring_${ringId}_${segmentKey}_${Date.now()}_${safeName}`;
+      
+      const response = await fetch(`/api/kml?filename=${filename}`, {
+        method: 'POST',
+        body: file,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const blob = await response.json();
+
+      const currentConfig = ringDetails?.topology_config || {};
+      const currentKmls = currentConfig.kml_paths || {};
+      
+      const newConfig = {
+        ...currentConfig,
+        kml_paths: {
+          ...currentKmls,
+          [segmentKey]: { url: blob.url, name: file.name } // Vercel Blob returns .url
+        }
+      };
+
+      updateRing({ id: ringId, data: { topology_config: newConfig as Json } }, {
+        onSuccess: () => {
+          toast.success('KML map route updated successfully', { id: toastId });
+          refetchRing();
+        },
+        onError: (err) => {
+          toast.error(`Database update failed: ${err.message}`, { id: toastId });
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('KML upload failed. Please try again.', { id: toastId });
+    }
+  };
+
+  const handleDeleteSegmentKml = async (segmentKey: string, url: string) => {
+    const toastId = toast.loading('Removing KML route...');
+    try {
+      // Delete from blob storage
+      await fetch('/api/kml/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      // Update Database
+      const currentConfig = ringDetails?.topology_config || {};
+      const currentKmls = currentConfig.kml_paths || {};
+      const newKmls = { ...currentKmls };
+      delete newKmls[segmentKey];
+
+      const newConfig = {
+        ...currentConfig,
+        kml_paths: newKmls
+      };
+
+      updateRing({ id: ringId, data: { topology_config: newConfig as Json } }, {
+        onSuccess: () => {
+          toast.success('KML route removed.', { id: toastId });
+          refetchRing();
+        },
+        onError: (err) => {
+           toast.error(`Database update failed: ${err.message}`, { id: toastId });
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('Deletion failed', { id: toastId });
+    }
+  };
+
 
   // 3. Fetch Nodes
   const { data: rawNodes, isLoading: isLoadingNodes } = useQuery({
@@ -447,6 +529,9 @@ export default function RingMapPage() {
 
   const { allSolidLines, configMap } = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
+    // Parse out kml paths from config
+    const kmlPaths = ringDetails?.topology_config?.kml_paths || {};
+
     const activeTopology = potentialSegments.filter(([start, end]) => {
       return !disabledKeys.has(`${start.id}-${end.id}`) && !disabledKeys.has(`${end.id}-${start.id}`);
     });
@@ -471,6 +556,7 @@ export default function RingMapPage() {
         if (start && end) {
           lines.push([start, end]);
           const sortedKey = [start.id, end.id].sort().join('-');
+          const kmlData = kmlPaths[sortedKey]; // Lookup KML
 
           let bw: number | undefined = undefined;
           
@@ -501,6 +587,9 @@ export default function RingMapPage() {
             cableName: pc.name,
             color: connectionColorMap.get(pc.id),
             bandwidthGbps: bw,
+            // Pass KML properties
+            kmlUrl: kmlData?.url,
+            kmlName: kmlData?.name,
           };
 
           if (!map[sortedKey]) map[sortedKey] = [];
@@ -525,7 +614,13 @@ export default function RingMapPage() {
           if (matchingCables.length > 0) bestCableName = matchingCables[0]?.route_name ?? undefined;
         }
 
-        const config: PathConfig = { cableName: bestCableName || 'Physical Link' };
+        const kmlData = kmlPaths[sortedKey]; // Lookup KML
+
+        const config: PathConfig = { 
+          cableName: bestCableName || 'Physical Link',
+          kmlUrl: kmlData?.url,
+          kmlName: kmlData?.name,
+        };
         if (!map[sortedKey]) map[sortedKey] = [];
         map[sortedKey].push(config);
       }
@@ -598,7 +693,13 @@ export default function RingMapPage() {
         : {}),
       disabled_segments: newDisabled,
     };
-    updateRing({ id: ringId, data: { topology_config: newConfig as Json } });
+    
+    updateRing({ id: ringId, data: { topology_config: newConfig as Json } }, {
+       onSuccess: () => {
+         toast.success('Topology updated successfully');
+         refetchRing();
+       }
+    });
   };
 
   const ringName = ringDetails?.name || `Ring ${ringId?.slice(0, 8)}...`;
@@ -647,6 +748,10 @@ export default function RingMapPage() {
         showControls={true}
         segmentConfigs={configMap}
         nodePorts={nodePortMap}
+        // ADDED KML Handlers
+        canEdit={canEdit}
+        onUploadKml={handleUploadSegmentKml}
+        onDeleteKml={handleDeleteSegmentKml}
       />
     );
   };

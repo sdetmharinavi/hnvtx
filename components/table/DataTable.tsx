@@ -9,7 +9,8 @@ import { DataTableProps, DownloadOptions, SortConfig } from '@/components/table/
 import { PublicTableOrViewName, Row, Filters } from '@/hooks/database';
 import { Column, RPCConfig } from '@/hooks/database/excel-queries/excel-helpers';
 import { cn } from '@/lib/utils';
-import { Card } from '../common/ui';
+import { Button, Card } from '../common/ui';
+import { FancyEmptyState } from '@/components/common/ui/FancyEmptyState';
 
 type DataRow<T extends PublicTableOrViewName> = Row<T> & { id: string | number };
 
@@ -23,6 +24,8 @@ type TableState<T extends PublicTableOrViewName> = {
   editValue: string;
   showColumnSelector: boolean;
   showFilters: boolean;
+  // EDITED: Added internal density state
+  density: 'compact' | 'default' | 'comfortable';
 };
 
 type BaseTableAction<R> =
@@ -36,7 +39,8 @@ type BaseTableAction<R> =
   | { type: 'SET_EDIT_VALUE'; payload: string }
   | { type: 'CANCEL_EDIT' }
   | { type: 'TOGGLE_COLUMN_SELECTOR'; payload?: boolean }
-  | { type: 'TOGGLE_FILTERS'; payload?: boolean };
+  | { type: 'TOGGLE_FILTERS'; payload?: boolean }
+  | { type: 'SET_DENSITY'; payload: 'compact' | 'default' | 'comfortable' }; // EDITED: Added density action
 
 type TableActionReducer<T extends PublicTableOrViewName> =
   | BaseTableAction<DataRow<T>>
@@ -78,12 +82,13 @@ function tableReducer<T extends PublicTableOrViewName>(
       };
     case 'TOGGLE_FILTERS':
       return { ...state, showFilters: action.payload ?? !state.showFilters };
+    case 'SET_DENSITY': // EDITED: Handle density changes
+      return { ...state, density: action.payload };
     default:
       return state;
   }
 }
 
-/* STREAMING_CHUNK:DataTable processing, selectors, and rendering... */
 export function DataTable<T extends PublicTableOrViewName>({
   data = [],
   tableName,
@@ -98,7 +103,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   selectable = false,
   exportable = false,
   refreshable = false,
-  density = 'default',
+  density: initialDensity = 'default', // Renamed prop to initialDensity
   bordered = true,
   striped = true,
   hoverable = true,
@@ -110,6 +115,7 @@ export function DataTable<T extends PublicTableOrViewName>({
   onRowSelect,
   onRowClick,
   onCellEdit,
+  onAddNew,
   customToolbar,
   showColumnSelector: showColumnSelectorProp,
   showColumnsToggle,
@@ -128,6 +134,7 @@ export function DataTable<T extends PublicTableOrViewName>({
     editValue: '',
     showColumnSelector: !!showColumnSelectorProp,
     showFilters: false,
+    density: initialDensity, // Initialize density from prop
   };
 
   const [state, dispatch] = useReducer(tableReducer, initialState);
@@ -141,6 +148,7 @@ export function DataTable<T extends PublicTableOrViewName>({
     editValue,
     showColumnSelector,
     showFilters,
+    density, // Extract density from state
   } = state;
 
   const supabase = createClient();
@@ -501,6 +509,9 @@ export function DataTable<T extends PublicTableOrViewName>({
     return processedData.every((r) => selectedIds.has(r.id));
   }, [processedData, selectedRows]);
 
+  // components/table/DataTable.tsx
+// (Replace the return JSX portion of DataTable.tsx from the previous snippet)
+
   return (
     <div
       className={cn(
@@ -511,6 +522,7 @@ export function DataTable<T extends PublicTableOrViewName>({
     >
       <div className='shrink-0 z-20 relative bg-white dark:bg-gray-800 rounded-t-lg'>
         <TableToolbar
+          // ... all other props identical
           title={title}
           searchable={searchable}
           filterable={filterable}
@@ -536,6 +548,8 @@ export function DataTable<T extends PublicTableOrViewName>({
           onExport={handleExport}
           loading={loading}
           isExporting={isExporting}
+          density={density}
+          onDensityChange={(d) => dispatch({ type: 'SET_DENSITY', payload: d })}
         />
 
         <TableFilterPanel
@@ -565,7 +579,18 @@ export function DataTable<T extends PublicTableOrViewName>({
                 ))}
               </div>
             ) : processedData.length === 0 ? (
-              <div className='text-center py-8 text-gray-500'>{emptyText}</div>
+              // EDITED: Ensure mobile view empty state gets the action too
+              <div className='text-center py-8 text-gray-500'>
+                  <FancyEmptyState
+                      title='No Data Found'
+                      description={emptyText || 'Try adjusting your search or filters.'}
+                      action={onAddNew && (
+                        <Button onClick={onAddNew} variant="primary">
+                          Add New Record
+                        </Button>
+                      )}
+                  />
+              </div>
             ) : (
               processedData.map((record, idx) => (
                 <Card
@@ -629,11 +654,12 @@ export function DataTable<T extends PublicTableOrViewName>({
             editValue={editValue}
             setEditValue={(value) => dispatch({ type: 'SET_EDIT_VALUE', payload: value })}
             onRowSelect={handleRowSelect}
-            onRowClick={onRowClick} // Propagate new row click handler
+            onRowClick={onRowClick} 
             onCellEdit={handleCellEdit}
             saveCellEdit={saveCellEdit}
             cancelCellEdit={cancelCellEdit}
             isLoading={loading}
+            onAddNew={onAddNew} // EDITED: Passthrough
           />
         </table>
       </div>

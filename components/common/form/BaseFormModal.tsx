@@ -63,18 +63,33 @@ export function BaseFormModal<T extends FieldValues>({
     onSubmit(data);
   };
 
-  // Smart Error Feedback
+  // Smart Error Feedback & Auto-Scroll
   const onInvalidSubmit: SubmitErrorHandler<T> = (errors) => {
     console.error('Form Validation Errors:', errors);
 
-    // Extract field names, replace underscores, and convert to Title Case
-    const errorFields = Object.keys(errors).map((key) => toTitleCase(key.replace(/_/g, ' ')));
+    const errorKeys = Object.keys(errors);
+    const errorFields = errorKeys.map((key) => toTitleCase(key.replace(/_/g, ' ')));
 
     if (errorFields.length > 0) {
       toast.error('Validation Error', {
         description: `Please check the following fields: ${errorFields.join(', ')}`,
         duration: 6000,
       });
+
+      // EDITED: Auto-scroll to the first errored field
+      const firstErrorKey = errorKeys[0];
+      if (firstErrorKey) {
+        // Find the element by name or id
+        const element = document.getElementsByName(firstErrorKey)[0] || document.getElementById(firstErrorKey);
+        if (element) {
+          // Find the scrollable container (usually the modal body)
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Optional: focus the element if it's an input
+          if (typeof element.focus === 'function') {
+            setTimeout(() => element.focus(), 300); // Wait for scroll
+          }
+        }
+      }
     } else {
       toast.error('Please fix validation errors.');
     }

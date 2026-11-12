@@ -39,7 +39,7 @@ yarn-error.log*
 
 # AI
 /scripts/ai_prompt.txt
-
+/script/output.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts

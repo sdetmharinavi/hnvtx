@@ -471,6 +471,7 @@ export function OptimizedNetworkMap({
           className='h-full w-full rounded-lg bg-gray-200 dark:bg-gray-800'
           preferCanvas={true}
           style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
+          scrollWheelZoom={false}
         >
           <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
 
@@ -503,6 +504,7 @@ export function OptimizedNetworkMap({
             className='h-full w-full bg-gray-200 dark:bg-gray-800'
             preferCanvas={true}
             style={{ cursor: isMeasureMode ? 'crosshair' : 'grab' }}
+            scrollWheelZoom={true}
           >
             <MeasureController isActive={isMeasureMode} onClose={() => setIsMeasureMode(false)} />
 

@@ -164,7 +164,8 @@ const AdminUsersPage = () => {
     },
     onAddNew: canManage ? () => setIsCreateModalOpen(true) : undefined,
     isLoading: isLoading,
-    exportConfig: { tableName: 'user_profiles' },
+    exportConfig: { tableName: 'user_profiles', useRpc: true, 
+      filters: filters.filters },
   });
 
   const headerStats = useMemo<StatProps[]>(() => {
