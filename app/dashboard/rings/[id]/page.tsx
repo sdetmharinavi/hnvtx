@@ -44,7 +44,6 @@ const MeshDiagram = dynamic(() => import('@/components/map/MeshDiagram/MeshDiagr
   loading: () => <PageSpinner text="Loading Schematic..." />,
 });
 
-// ADDED: Expand the expected structure for topology_config
 type ExtendedRingDetails = V_ringsRowSchema & {
   topology_config?: {
     disabled_segments?: string[];
@@ -272,8 +271,7 @@ export default function RingMapPage() {
   const [showPowerLevels, setShowPowerLevels] = useState(false);
 
   // Permission Logic
-  // This page isn't explicitly using useCrudManager, but generally Admins manage routes
-  const [canEdit] = useState(true); // You could integrate actual role check here like other pages
+  const [canEdit] = useState(true);
 
   const { sync: syncData, isSyncing: isSyncingData } = useDataSync();
   const isOnline = useOnlineStatus();
@@ -292,12 +290,12 @@ export default function RingMapPage() {
   // 2. Mutation
   const { mutate: updateRing, isPending: isUpdating } = useTableUpdate(supabase, 'rings', {
     onSuccess: () => {
-      // Re-fetch is handled at the invocation site for specific toasts
+      // Handled at invocation sites
     },
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
-  // ADDED: KML Handlers
+  // KML Handlers
   const handleUploadSegmentKml = async (segmentKey: string, file: File) => {
     const toastId = toast.loading('Uploading KML route...');
     try {
@@ -315,14 +313,18 @@ export default function RingMapPage() {
       
       const blob = await response.json();
 
-      const currentConfig = ringDetails?.topology_config || {};
-      const currentKmls = currentConfig.kml_paths || {};
+      // THE FIX: Safe extraction and casting of JSONB config to record
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentConfig = (ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' && !Array.isArray(ringDetails.topology_config))
+        ? ringDetails.topology_config as Record<string, any>
+        : {};
+      const currentKmls = (currentConfig.kml_paths as Record<string, { url: string; name: string }>) || {};
       
       const newConfig = {
         ...currentConfig,
         kml_paths: {
           ...currentKmls,
-          [segmentKey]: { url: blob.url, name: file.name } // Vercel Blob returns .url
+          [segmentKey]: { url: blob.url, name: file.name } 
         }
       };
 
@@ -344,16 +346,19 @@ export default function RingMapPage() {
   const handleDeleteSegmentKml = async (segmentKey: string, url: string) => {
     const toastId = toast.loading('Removing KML route...');
     try {
-      // Delete from blob storage
       await fetch('/api/kml/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
 
-      // Update Database
-      const currentConfig = ringDetails?.topology_config || {};
-      const currentKmls = currentConfig.kml_paths || {};
+      // THE FIX: Safe extraction and casting of JSONB config to record
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentConfig = (ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' && !Array.isArray(ringDetails.topology_config))
+        ? ringDetails.topology_config as Record<string, any>
+        : {};
+      const currentKmls = (currentConfig.kml_paths as Record<string, { url: string; name: string }>) || {};
+      
       const newKmls = { ...currentKmls };
       delete newKmls[segmentKey];
 
@@ -529,7 +534,6 @@ export default function RingMapPage() {
 
   const { allSolidLines, configMap } = useMemo(() => {
     const disabledKeys = new Set(ringDetails?.topology_config?.disabled_segments || []);
-    // Parse out kml paths from config
     const kmlPaths = ringDetails?.topology_config?.kml_paths || {};
 
     const activeTopology = potentialSegments.filter(([start, end]) => {
@@ -556,7 +560,7 @@ export default function RingMapPage() {
         if (start && end) {
           lines.push([start, end]);
           const sortedKey = [start.id, end.id].sort().join('-');
-          const kmlData = kmlPaths[sortedKey]; // Lookup KML
+          const kmlData = kmlPaths[sortedKey];
 
           let bw: number | undefined = undefined;
           
@@ -587,7 +591,6 @@ export default function RingMapPage() {
             cableName: pc.name,
             color: connectionColorMap.get(pc.id),
             bandwidthGbps: bw,
-            // Pass KML properties
             kmlUrl: kmlData?.url,
             kmlName: kmlData?.name,
           };
@@ -614,7 +617,7 @@ export default function RingMapPage() {
           if (matchingCables.length > 0) bestCableName = matchingCables[0]?.route_name ?? undefined;
         }
 
-        const kmlData = kmlPaths[sortedKey]; // Lookup KML
+        const kmlData = kmlPaths[sortedKey];
 
         const config: PathConfig = { 
           cableName: bestCableName || 'Physical Link',
@@ -674,7 +677,14 @@ export default function RingMapPage() {
 
   const handleToggleSegment = (startId: string, endId: string) => {
     const key = `${startId}-${endId}`;
-    const currentDisabled = ringDetails?.topology_config?.disabled_segments || [];
+    
+    // THE FIX: Safe extraction and casting of JSONB config to record
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentConfig = (ringDetails?.topology_config && typeof ringDetails.topology_config === 'object' && !Array.isArray(ringDetails.topology_config))
+      ? ringDetails.topology_config as Record<string, any>
+      : {};
+      
+    const currentDisabled = (currentConfig.disabled_segments as string[]) || [];
     const isCurrentlyDisabled =
       currentDisabled.includes(key) || currentDisabled.includes(`${endId}-${startId}`);
 
@@ -688,9 +698,7 @@ export default function RingMapPage() {
     }
 
     const newConfig = {
-      ...(ringDetails?.topology_config && typeof ringDetails.topology_config === 'object'
-        ? ringDetails.topology_config
-        : {}),
+      ...currentConfig,
       disabled_segments: newDisabled,
     };
     
@@ -748,7 +756,6 @@ export default function RingMapPage() {
         showControls={true}
         segmentConfigs={configMap}
         nodePorts={nodePortMap}
-        // ADDED KML Handlers
         canEdit={canEdit}
         onUploadKml={handleUploadSegmentKml}
         onDeleteKml={handleDeleteSegmentKml}
